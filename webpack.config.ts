@@ -1,5 +1,6 @@
 import * as path from "path";
 import { Configuration } from "webpack";
+import ESLintPlugin from "eslint-webpack-plugin";
 import nodeExternals from "webpack-node-externals";
 import ForkTsCheckerWebpackPlugin from "fork-ts-checker-webpack-plugin";
 
@@ -38,19 +39,17 @@ const config: Configuration = {
               happyPackMode: true,
             },
           },
-          {
-            loader: "eslint-loader",
-            options: {
-              cache: true,
-              emitWarning: true,
-              // failOnWarning: false,
-            },
-          },
         ],
       },
     ],
   },
-  plugins: [new ForkTsCheckerWebpackPlugin({ async: true })],
+  plugins: [
+    new ForkTsCheckerWebpackPlugin({ async: true }),
+    new ESLintPlugin({
+      cache: true,
+      emitWarning: true,
+    }),
+  ],
 };
 
 module.exports = config;
