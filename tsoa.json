@@ -1,0 +1,27 @@
+{
+  "entryFile": "./src/controllers.ts",
+  "noImplicitAdditionalProperties": "silently-remove-extras",
+  "spec": {
+    "schemes": [
+      "http"
+    ],
+    "securityDefinitions": {
+      "api_key": {
+        "type": "apiKey",
+        "name": "access_token",
+        "in": "query"
+      }
+    },
+    "host": "localhost:5000",
+    "outputDirectory": "./",
+    "specMerging": "recursive",
+    "specVersion": 3
+  },
+  "routes": {
+    "authenticationModule": "./src/middleware/authentication.ts",
+    "entryFile": "./src/controllers.ts",
+    "routesDir": "./src",
+    "basePath": "/",
+    "middleware": "koa"
+  }
+}
