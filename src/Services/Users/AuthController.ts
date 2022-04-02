@@ -54,7 +54,10 @@ export class AuthController extends Controller {
               role,
             },
             jwtSecretKey,
-            { algorithm: "HS256", expiresIn: "24h" },
+            {
+              algorithm: "HS256",
+              expiresIn: "24h",
+            },
           );
           this.setHeader("set-cookie", `token=${token};path=/;`);
         } else {

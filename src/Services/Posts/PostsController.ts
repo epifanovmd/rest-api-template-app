@@ -3,7 +3,6 @@ import {
   Controller,
   Delete,
   Get,
-  Path,
   Post,
   Put,
   Query,
@@ -40,7 +39,12 @@ export class PostsController extends Controller {
         "userId is undefined",
       );
 
-      return getPosts({ UserId, page, limit, my }).then(result => ({
+      return getPosts({
+        UserId,
+        page,
+        limit,
+        my,
+      }).then(result => ({
         page,
         limit,
         count: result.length,

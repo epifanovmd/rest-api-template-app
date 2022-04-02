@@ -3,7 +3,6 @@ import {
   Controller,
   Delete,
   Get,
-  Path,
   Post,
   Put,
   Query,
@@ -47,7 +46,13 @@ export class CommentsController extends Controller {
         "userId is undefined",
       );
 
-      return getComments({ UserId, page, limit, my, PostId }).then(result => ({
+      return getComments({
+        UserId,
+        page,
+        limit,
+        my,
+        PostId,
+      }).then(result => ({
         page,
         limit,
         count: result.length,

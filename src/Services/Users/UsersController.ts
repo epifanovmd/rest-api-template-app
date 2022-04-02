@@ -1,14 +1,4 @@
-import {
-  Body,
-  Controller,
-  Delete,
-  Get,
-  Put,
-  Query,
-  Route,
-  Security,
-  Tags,
-} from "tsoa";
+import { Body, Controller, Delete, Get, Put, Query, Route, Tags } from "tsoa";
 import { ErrorType } from "../../common/errorType";
 import { ApiError } from "../../common/handlers/errorHandler";
 import { BasePageResult } from "../../dto/BasePageResult";
@@ -35,11 +25,14 @@ export class UsersController extends Controller {
         data: result,
       }));
     } catch (e) {
+      console.log("e", e);
+
       return Promise.reject(
         new ApiError("", 500, ErrorType.DataBaseErrorException),
       );
     }
   }
+
   // @Security("jwt", ["Admin"])
   @Get("{id}")
   getUserById(id: string): Promise<UserDto> {

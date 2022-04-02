@@ -12,9 +12,5 @@ export const RegisterSwagger = (router: KoaRouter, url: string) => {
     },
   });
 
-  router.get(
-    url,
-    // @ts-ignore
-    koaMiddleware,
-  );
+  router.get(url, koaMiddleware);
 };
