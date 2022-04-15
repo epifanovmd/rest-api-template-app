@@ -2,9 +2,18 @@
   "name": "rest-api",
   "version": "1.0.0",
   "description": "REST API Template App",
-  "homepage": "https://epifanovmd.github.io/rest-api-template-app",
+  "private": true,
   "license": "MIT",
-  "author": "",
+  "engines": {
+    "npm": ">=8.5.0",
+    "yarn": ">=1.22.18",
+    "node": ">=16.14.2"
+  },
+  "homepage": "https://epifanovmd.github.io/rest-api-template-app",
+  "author": {
+    "name": "Epifanov Andrei",
+    "email": "epifanovmd@gmail.com"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/epifanovmd/rest-api-template-app.git"
