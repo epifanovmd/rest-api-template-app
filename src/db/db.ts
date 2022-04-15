@@ -1,6 +1,6 @@
 import { Sequelize } from "sequelize";
 
-export const sequelize = new Sequelize("test-db", "epifan", "epifan123", {
+export const sequelize = new Sequelize("test-db", "postgres", "epifan123", {
   define: {
     timestamps: true,
   },
