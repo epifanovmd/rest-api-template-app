@@ -22,7 +22,6 @@ import { koaAuthentication } from "./middleware/authentication";
 // @ts-ignore - no great way to install types from subpackage
 const promiseAny = require("promise.any");
 import * as KoaRouter from "@koa/router";
-import { Worker } from "worker_threads";
 
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 
@@ -522,27 +521,10 @@ export function RegisterRoutes(router: KoaRouter) {
 
       const controller = new UsersController();
 
-      // const promise = controller.getAllUsers.apply(
-      //   controller,
-      //   validatedArgs as any,
-      // );
-
-      const promise = new Promise((resolve, reject) => {
-        const worker = new Worker("./src/worker.js", {
-          workerData: {
-            validatedArgs,
-            controllerName: "UsersController",
-            controllerMethod: "getAllUsers",
-          },
-        });
-        worker.on("message", resolve);
-        worker.on("error", reject);
-        worker.on("exit", code => {
-          if (code !== 0)
-            reject(new Error(`Worker stopped with exit code ${code}`));
-        });
-      });
-
+      const promise = controller.getAllUsers.apply(
+        controller,
+        validatedArgs as any,
+      );
       return promiseHandler(controller, promise, context, undefined, next);
     },
   );
