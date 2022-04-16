@@ -19,6 +19,10 @@ export const appMiddlewares = (
         detectJSON: ctx => (/\.json$/i).test(ctx.path),
       }),
     )
-    .use(helmet())
+    .use(
+      helmet({
+        contentSecurityPolicy: false,
+      }),
+    )
     .use(cors());
 };
