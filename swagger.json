@@ -268,7 +268,10 @@
 		"license": {
 			"name": "MIT"
 		},
-		"contact": {}
+		"contact": {
+			"name": "Epifanov Andrei",
+			"email": "epifanovmd@gmail.com"
+		}
 	},
 	"openapi": "3.0.0",
 	"paths": {
