@@ -5,7 +5,7 @@ export const sequelize = new Sequelize("test-db", "postgres", "epifan123", {
     timestamps: true,
   },
   dialect: "postgres",
-  host: "212.109.197.117",
+  host: "127.0.0.1",
   logging: false,
   port: 5432,
 });
