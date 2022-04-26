@@ -909,7 +909,7 @@
 	},
 	"servers": [
 		{
-			"url": "http://localhost:5000/"
+			"url": "http://test.epifanov-it.ru/"
 		}
 	]
 }

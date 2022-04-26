@@ -12,7 +12,7 @@
         "in": "query"
       }
     },
-    "host": "localhost:5000",
+    "host": "test.epifanov-it.ru",
     "outputDirectory": "./",
     "specMerging": "recursive",
     "specVersion": 3

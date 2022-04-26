@@ -19,8 +19,8 @@
     "url": "https://github.com/epifanovmd/rest-api-template-app.git"
   },
   "scripts": {
-    "dev": "nodemon",
-    "build": "webpack",
+    "dev": "yarn generate && nodemon",
+    "build": "yarn generate && webpack",
     "server": "yarn build && node build/server.js",
     "generate": "tsoa routes && tsoa swagger",
     "test": "mocha -r ts-node/register src/**/*.test.ts",
