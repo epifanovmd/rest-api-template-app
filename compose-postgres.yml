@@ -1,11 +1,11 @@
 version: "3.9"
 
 services:
-  auto-sale-postgres:
-    container_name: auto-sale-postgres_container
+  postgres:
+    container_name: postgres_container
     image: postgres
     volumes:
-      - auto-sale-postgres:/data/postgres
+      - postgres:/data/postgres
     ports:
       - "5444:5432"
     env_file: .env
@@ -14,7 +14,7 @@ services:
       - server-net
 
 volumes:
-  auto-sale-postgres:
+  postgres:
 
 networks:
   server-net:

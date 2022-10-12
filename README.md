@@ -25,6 +25,16 @@ $ yarn server
 REST API Server running on : http://localhost:5000
 ```
 
+### Start in docker container with postgres
+```sh
+$ docker compose -f compose-postgres.yml up --force-recreate -d
+$
+$ docker build -f Dockerfile -t backend:latest .
+$ [[ $(docker ps -f name=backend_container -q -a) != '' ]] && docker rm --force $(docker ps -f name=backend_container -q -a)
+$ docker run -u root -d --restart=always --network server-net -p 8085:8181 --name backend_container backend:latest
+$ docker image prune -a --force
+```
+
 License
 ----
 
