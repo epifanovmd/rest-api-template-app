@@ -1,4 +1,4 @@
-# REST-full API [![Build Status](https://travis-ci.org/epifanovmd/rest-api-template-app.svg?branch=master)](https://travis-ci.org/joemccann/dillinger)
+# REST-full API
 
 ##### Stack:
   - Typescript

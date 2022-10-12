@@ -7,7 +7,7 @@ import { RegisterSwagger } from "./middleware/swagger";
 import { RegisterRoutes } from "./routes";
 // import { ioSocket } from "./webSockets";
 
-const PORT = 5000;
+const PORT = 8181;
 const app = new Koa();
 
 // ioSocket(app);
@@ -34,6 +34,6 @@ app
   .use(router.allowedMethods())
   .use(notFoundHandler);
 
-export const server = app.listen(PORT, "localhost", () => {
+export const server = app.listen(PORT, "0.0.0.0", () => {
   console.info(`REST API Server running on : http://localhost:${PORT}`);
 });

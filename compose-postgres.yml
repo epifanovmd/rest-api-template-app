@@ -1,0 +1,22 @@
+version: "3.9"
+
+services:
+  auto-sale-postgres:
+    container_name: auto-sale-postgres_container
+    image: postgres
+    volumes:
+      - auto-sale-postgres:/data/postgres
+    ports:
+      - "5444:5432"
+    env_file: .env
+    restart: unless-stopped
+    networks:
+      - server-net
+
+volumes:
+  auto-sale-postgres:
+
+networks:
+  server-net:
+    name: server-net
+    driver: bridge
