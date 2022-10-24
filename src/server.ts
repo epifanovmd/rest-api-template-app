@@ -5,12 +5,12 @@ import { notFoundHandler } from "./common/handlers/notFoundHandler";
 import { appMiddlewares } from "./middleware/appMiddlewares";
 import { RegisterSwagger } from "./middleware/swagger";
 import { RegisterRoutes } from "./routes";
-// import { ioSocket } from "./webSockets";
+import { ioSocket } from "./webSockets";
 
 const PORT = 8181;
 const app = new Koa();
 
-// ioSocket(app);
+ioSocket(app);
 
 // middleware
 appMiddlewares(app);

@@ -9,5 +9,6 @@ WORKDIR ./react-app
 
 RUN yarn
 
+EXPOSE 3232
 EXPOSE 8181
 CMD ["yarn", "server"]
