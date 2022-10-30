@@ -5,9 +5,13 @@ import { ApiError } from "./errorHandler";
 export const notFoundHandler = (ctx: Context, next: Next) => {
   if (ctx.status === 404) {
     ctx.status = 404;
-    ctx.body = new ApiError(
-      404,
-      ErrorType.RouteNotFoundException,
-    );
+    ctx.body = {
+      message: "Route not found",
+      error: new ApiError(
+        404,
+        ErrorType.RouteNotFoundException,
+        "Route not found",
+      ),
+    };
   }
 };
