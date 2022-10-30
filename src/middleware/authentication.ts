@@ -17,7 +17,6 @@ export function koaAuthentication(
       if (!token) {
         reject(
           new ApiError(
-            "Unauthorized",
             401,
             ErrorType.UnauthorizedException,
             "No token provided",
@@ -37,7 +36,6 @@ export function koaAuthentication(
                   if (!decoded.role.includes(scope)) {
                     reject(
                       new ApiError(
-                        "AccessRestricted",
                         401,
                         ErrorType.AccessRestrictedException,
                         "Access restricted",

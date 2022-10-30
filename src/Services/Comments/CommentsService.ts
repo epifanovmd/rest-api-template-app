@@ -30,7 +30,6 @@ export class CommentsService {
         if (result === null) {
           return Promise.reject(
             new ApiError(
-              "User not found",
               400,
               ErrorType.UserNotFoundException,
             ),
@@ -42,7 +41,6 @@ export class CommentsService {
       e =>
         Promise.reject(
           new ApiError(
-            "ServerError",
             500,
             ErrorType.DataBaseErrorException,
             e.message,
@@ -56,7 +54,6 @@ export class CommentsService {
         if (result === null) {
           return Promise.reject(
             new ApiError(
-              "User not found",
               400,
               ErrorType.UserNotFoundException,
             ),
@@ -68,7 +65,6 @@ export class CommentsService {
       e =>
         Promise.reject(
           new ApiError(
-            "ServerError",
             500,
             ErrorType.DataBaseErrorException,
             e.message,
@@ -84,7 +80,6 @@ export class CommentsService {
     }).catch(e =>
       Promise.reject(
         new ApiError(
-          "ServerError",
           500,
           ErrorType.DataBaseErrorException,
           e.message,
@@ -105,7 +100,6 @@ export class CommentsService {
         e =>
           Promise.reject(
             new ApiError(
-              "ServerError",
               500,
               ErrorType.DataBaseErrorException,
               e.message,
@@ -115,7 +109,7 @@ export class CommentsService {
     }
 
     return Promise.reject(
-      new ApiError("Access Denied", 403, ErrorType.AccessRestrictedException),
+      new ApiError( 403, ErrorType.AccessRestrictedException),
     );
   };
 
@@ -126,7 +120,6 @@ export class CommentsService {
       return Comments.destroy({ where: { id } }).catch(e =>
         Promise.reject(
           new ApiError(
-            "ServerError",
             500,
             ErrorType.DataBaseErrorException,
             e.message,
@@ -136,7 +129,7 @@ export class CommentsService {
     }
 
     return Promise.reject(
-      new ApiError("Access Denied", 403, ErrorType.AccessRestrictedException),
+      new ApiError(403, ErrorType.AccessRestrictedException),
     );
   };
 }

@@ -28,7 +28,7 @@ export class UsersController extends Controller {
       console.log("e", e);
 
       return Promise.reject(
-        new ApiError("", 500, ErrorType.DataBaseErrorException),
+        new ApiError(500, ErrorType.DataBaseErrorException),
       );
     }
   }

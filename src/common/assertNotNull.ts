@@ -7,7 +7,6 @@ export function assertNotNull<T>(
 ): T {
   if (item === null || item === undefined) {
     throw new ApiError(
-      "ServerError",
       500,
       ErrorType.ServerErrorException,
       message ? message : "",

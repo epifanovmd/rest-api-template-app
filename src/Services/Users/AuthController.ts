@@ -24,7 +24,6 @@ export class AuthController extends Controller {
     if (!email) {
       return Promise.reject(
         new ApiError(
-          "ValidateException",
           400,
           ErrorType.ValidateException,
           "Email is note valid",
@@ -63,7 +62,6 @@ export class AuthController extends Controller {
         } else {
           return Promise.reject(
             new ApiError(
-              "ValidateException",
               400,
               ErrorType.UnauthorizedException,
               "Incorrect username or password",

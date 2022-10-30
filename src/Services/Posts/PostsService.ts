@@ -44,7 +44,6 @@ export class PostsService {
         if (result === null) {
           return Promise.reject(
             new ApiError(
-              "User not found",
               400,
               ErrorType.UserNotFoundException,
             ),
@@ -56,7 +55,6 @@ export class PostsService {
       e =>
         Promise.reject(
           new ApiError(
-            "ServerError",
             500,
             ErrorType.DataBaseErrorException,
             e.message,
@@ -76,7 +74,6 @@ export class PostsService {
         if (result === null) {
           return Promise.reject(
             new ApiError(
-              "User not found",
               400,
               ErrorType.UserNotFoundException,
             ),
@@ -88,7 +85,6 @@ export class PostsService {
       e =>
         Promise.reject(
           new ApiError(
-            "ServerError",
             500,
             ErrorType.DataBaseErrorException,
             e.message,
@@ -112,7 +108,6 @@ export class PostsService {
     ).catch(e =>
       Promise.reject(
         new ApiError(
-          "ServerError",
           500,
           ErrorType.DataBaseErrorException,
           e.message,
@@ -131,7 +126,6 @@ export class PostsService {
         e =>
           Promise.reject(
             new ApiError(
-              "ServerError",
               500,
               ErrorType.DataBaseErrorException,
               e.message,
@@ -141,7 +135,7 @@ export class PostsService {
     }
 
     return Promise.reject(
-      new ApiError("Access Denied", 403, ErrorType.AccessRestrictedException),
+      new ApiError(403, ErrorType.AccessRestrictedException),
     );
   };
 
@@ -152,7 +146,6 @@ export class PostsService {
       return Posts.destroy({ where: { id } }).catch(e =>
         Promise.reject(
           new ApiError(
-            "ServerError",
             500,
             ErrorType.DataBaseErrorException,
             e.message,
@@ -162,7 +155,7 @@ export class PostsService {
     }
 
     return Promise.reject(
-      new ApiError("Access Denied", 403, ErrorType.AccessRestrictedException),
+      new ApiError(403, ErrorType.AccessRestrictedException),
     );
   };
 }

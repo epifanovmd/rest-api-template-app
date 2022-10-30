@@ -21,7 +21,6 @@ export class UsersService {
         if (result === null) {
           return Promise.reject(
             new ApiError(
-              "User not found",
               400,
               ErrorType.UserNotFoundException,
             ),
@@ -33,7 +32,6 @@ export class UsersService {
       e =>
         Promise.reject(
           new ApiError(
-            "ServerError",
             500,
             ErrorType.DataBaseErrorException,
             e.message,
@@ -55,7 +53,6 @@ export class UsersService {
         if (result === null) {
           return Promise.reject(
             new ApiError(
-              "User not found",
               400,
               ErrorType.UserNotFoundException,
             ),
@@ -67,7 +64,6 @@ export class UsersService {
       e =>
         Promise.reject(
           new ApiError(
-            "ServerError",
             500,
             ErrorType.DataBaseErrorException,
             e.message,
@@ -88,7 +84,6 @@ export class UsersService {
     }).catch(e =>
       Promise.reject(
         new ApiError(
-          "ServerError",
           500,
           ErrorType.DataBaseErrorException,
           e.message,
@@ -103,7 +98,6 @@ export class UsersService {
       e =>
         Promise.reject(
           new ApiError(
-            "ServerError",
             500,
             ErrorType.DataBaseErrorException,
             e.message,
@@ -115,7 +109,6 @@ export class UsersService {
     Users.destroy({ where: { id } }).catch(e =>
       Promise.reject(
         new ApiError(
-          "ServerError",
           500,
           ErrorType.DataBaseErrorException,
           e.message,

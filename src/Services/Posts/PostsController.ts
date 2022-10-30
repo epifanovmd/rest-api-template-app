@@ -53,7 +53,6 @@ export class PostsController extends Controller {
     } catch (e) {
       return Promise.reject(
         new ApiError(
-          "ServerError",
           500,
           ErrorType.DataBaseErrorException,
           e.message,
@@ -78,7 +77,6 @@ export class PostsController extends Controller {
     } catch (e) {
       return Promise.reject(
         new ApiError(
-          "Unauthorized",
           401,
           ErrorType.UnauthorizedException,
           "No token provided",
@@ -103,7 +101,6 @@ export class PostsController extends Controller {
     } catch (e) {
       return Promise.reject(
         new ApiError(
-          "Unauthorized",
           401,
           ErrorType.UnauthorizedException,
           "No token provided",
@@ -120,7 +117,6 @@ export class PostsController extends Controller {
     } catch (e) {
       return Promise.reject(
         new ApiError(
-          "Unauthorized",
           401,
           ErrorType.UnauthorizedException,
           "No token provided",
