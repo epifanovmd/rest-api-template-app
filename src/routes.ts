@@ -1,7 +1,7 @@
 /* tslint:disable */
 /* eslint-disable */
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-  import { Controller, ValidationService, FieldErrors, ValidateError, TsoaRoute, HttpStatusCodeLiteral, TsoaResponse } from '@tsoa/runtime';
+  import { Controller, ValidationService, FieldErrors, ValidateError, TsoaRoute, HttpStatusCodeLiteral, TsoaResponse, fetchMiddlewares } from '@tsoa/runtime';
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 import { CommentsController } from './Services/Comments/CommentsController';
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
@@ -13,6 +13,7 @@ import { UsersController } from './Services/Users/UsersController';
 import { koaAuthentication } from './middleware/authentication';
 // @ts-ignore - no great way to install types from subpackage
 const promiseAny = require('promise.any');
+import type { Middleware } from 'koa';
 import * as KoaRouter from '@koa/router';
 
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
@@ -145,6 +146,9 @@ export function RegisterRoutes(router: KoaRouter) {
     // ###########################################################################################################
         router.get('/api/comments',
             authenticateMiddleware([{"jwt":[]}]),
+            ...(fetchMiddlewares<Middleware>(CommentsController)),
+            ...(fetchMiddlewares<Middleware>(CommentsController.prototype.getAllComments)),
+
             async function CommentsController_getAllComments(context: any, next: any) {
             const args = {
                     req: {"in":"request","name":"req","required":true,"dataType":"object"},
@@ -166,11 +170,14 @@ export function RegisterRoutes(router: KoaRouter) {
             const controller = new CommentsController();
 
             const promise = controller.getAllComments.apply(controller, validatedArgs as any);
-            return promiseHandler(controller, promise, context, undefined, next);
+            return promiseHandler(controller, promise, context, undefined, undefined);
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         router.get('/api/comments/:id',
             authenticateMiddleware([{"jwt":[]}]),
+            ...(fetchMiddlewares<Middleware>(CommentsController)),
+            ...(fetchMiddlewares<Middleware>(CommentsController.prototype.getCommentById)),
+
             async function CommentsController_getCommentById(context: any, next: any) {
             const args = {
                     id: {"in":"path","name":"id","required":true,"dataType":"string"},
@@ -188,11 +195,14 @@ export function RegisterRoutes(router: KoaRouter) {
             const controller = new CommentsController();
 
             const promise = controller.getCommentById.apply(controller, validatedArgs as any);
-            return promiseHandler(controller, promise, context, undefined, next);
+            return promiseHandler(controller, promise, context, undefined, undefined);
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         router.post('/api/comments',
             authenticateMiddleware([{"jwt":[]}]),
+            ...(fetchMiddlewares<Middleware>(CommentsController)),
+            ...(fetchMiddlewares<Middleware>(CommentsController.prototype.createComment)),
+
             async function CommentsController_createComment(context: any, next: any) {
             const args = {
                     body: {"in":"body","name":"body","required":true,"ref":"Comment"},
@@ -212,11 +222,14 @@ export function RegisterRoutes(router: KoaRouter) {
             const controller = new CommentsController();
 
             const promise = controller.createComment.apply(controller, validatedArgs as any);
-            return promiseHandler(controller, promise, context, undefined, next);
+            return promiseHandler(controller, promise, context, undefined, undefined);
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         router.put('/api/comments/:id',
             authenticateMiddleware([{"jwt":[]}]),
+            ...(fetchMiddlewares<Middleware>(CommentsController)),
+            ...(fetchMiddlewares<Middleware>(CommentsController.prototype.updateComment)),
+
             async function CommentsController_updateComment(context: any, next: any) {
             const args = {
                     id: {"in":"path","name":"id","required":true,"dataType":"string"},
@@ -236,11 +249,14 @@ export function RegisterRoutes(router: KoaRouter) {
             const controller = new CommentsController();
 
             const promise = controller.updateComment.apply(controller, validatedArgs as any);
-            return promiseHandler(controller, promise, context, undefined, next);
+            return promiseHandler(controller, promise, context, undefined, undefined);
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         router.delete('/api/comments/:id',
             authenticateMiddleware([{"jwt":[]}]),
+            ...(fetchMiddlewares<Middleware>(CommentsController)),
+            ...(fetchMiddlewares<Middleware>(CommentsController.prototype.deleteComment)),
+
             async function CommentsController_deleteComment(context: any, next: any) {
             const args = {
                     id: {"in":"path","name":"id","required":true,"dataType":"string"},
@@ -259,11 +275,14 @@ export function RegisterRoutes(router: KoaRouter) {
             const controller = new CommentsController();
 
             const promise = controller.deleteComment.apply(controller, validatedArgs as any);
-            return promiseHandler(controller, promise, context, undefined, next);
+            return promiseHandler(controller, promise, context, undefined, undefined);
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         router.get('/api/posts',
             authenticateMiddleware([{"jwt":[]}]),
+            ...(fetchMiddlewares<Middleware>(PostsController)),
+            ...(fetchMiddlewares<Middleware>(PostsController.prototype.getAllPosts)),
+
             async function PostsController_getAllPosts(context: any, next: any) {
             const args = {
                     req: {"in":"request","name":"req","required":true,"dataType":"object"},
@@ -284,10 +303,13 @@ export function RegisterRoutes(router: KoaRouter) {
             const controller = new PostsController();
 
             const promise = controller.getAllPosts.apply(controller, validatedArgs as any);
-            return promiseHandler(controller, promise, context, undefined, next);
+            return promiseHandler(controller, promise, context, undefined, undefined);
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         router.get('/api/posts/:id',
+            ...(fetchMiddlewares<Middleware>(PostsController)),
+            ...(fetchMiddlewares<Middleware>(PostsController.prototype.getPostById)),
+
             async function PostsController_getPostById(context: any, next: any) {
             const args = {
                     id: {"in":"path","name":"id","required":true,"dataType":"string"},
@@ -305,11 +327,14 @@ export function RegisterRoutes(router: KoaRouter) {
             const controller = new PostsController();
 
             const promise = controller.getPostById.apply(controller, validatedArgs as any);
-            return promiseHandler(controller, promise, context, undefined, next);
+            return promiseHandler(controller, promise, context, undefined, undefined);
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         router.post('/api/posts',
             authenticateMiddleware([{"jwt":[]}]),
+            ...(fetchMiddlewares<Middleware>(PostsController)),
+            ...(fetchMiddlewares<Middleware>(PostsController.prototype.createPost)),
+
             async function PostsController_createPost(context: any, next: any) {
             const args = {
                     body: {"in":"body","name":"body","required":true,"ref":"IPost"},
@@ -328,11 +353,14 @@ export function RegisterRoutes(router: KoaRouter) {
             const controller = new PostsController();
 
             const promise = controller.createPost.apply(controller, validatedArgs as any);
-            return promiseHandler(controller, promise, context, undefined, next);
+            return promiseHandler(controller, promise, context, undefined, undefined);
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         router.put('/api/posts/:id',
             authenticateMiddleware([{"jwt":[]}]),
+            ...(fetchMiddlewares<Middleware>(PostsController)),
+            ...(fetchMiddlewares<Middleware>(PostsController.prototype.updatePost)),
+
             async function PostsController_updatePost(context: any, next: any) {
             const args = {
                     id: {"in":"path","name":"id","required":true,"dataType":"string"},
@@ -352,11 +380,14 @@ export function RegisterRoutes(router: KoaRouter) {
             const controller = new PostsController();
 
             const promise = controller.updatePost.apply(controller, validatedArgs as any);
-            return promiseHandler(controller, promise, context, undefined, next);
+            return promiseHandler(controller, promise, context, undefined, undefined);
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         router.delete('/api/posts/:id',
             authenticateMiddleware([{"jwt":[]}]),
+            ...(fetchMiddlewares<Middleware>(PostsController)),
+            ...(fetchMiddlewares<Middleware>(PostsController.prototype.deletePost)),
+
             async function PostsController_deletePost(context: any, next: any) {
             const args = {
                     id: {"in":"path","name":"id","required":true,"dataType":"string"},
@@ -375,10 +406,13 @@ export function RegisterRoutes(router: KoaRouter) {
             const controller = new PostsController();
 
             const promise = controller.deletePost.apply(controller, validatedArgs as any);
-            return promiseHandler(controller, promise, context, undefined, next);
+            return promiseHandler(controller, promise, context, undefined, undefined);
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         router.post('/api/auth/registration',
+            ...(fetchMiddlewares<Middleware>(AuthController)),
+            ...(fetchMiddlewares<Middleware>(AuthController.prototype.registration)),
+
             async function AuthController_registration(context: any, next: any) {
             const args = {
                     body: {"in":"body","name":"body","required":true,"ref":"Registration"},
@@ -396,10 +430,13 @@ export function RegisterRoutes(router: KoaRouter) {
             const controller = new AuthController();
 
             const promise = controller.registration.apply(controller, validatedArgs as any);
-            return promiseHandler(controller, promise, context, undefined, next);
+            return promiseHandler(controller, promise, context, undefined, undefined);
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         router.post('/api/auth/login',
+            ...(fetchMiddlewares<Middleware>(AuthController)),
+            ...(fetchMiddlewares<Middleware>(AuthController.prototype.login)),
+
             async function AuthController_login(context: any, next: any) {
             const args = {
                     body: {"in":"body","name":"body","required":true,"ref":"Login"},
@@ -417,10 +454,13 @@ export function RegisterRoutes(router: KoaRouter) {
             const controller = new AuthController();
 
             const promise = controller.login.apply(controller, validatedArgs as any);
-            return promiseHandler(controller, promise, context, undefined, next);
+            return promiseHandler(controller, promise, context, undefined, undefined);
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         router.get('/api/users',
+            ...(fetchMiddlewares<Middleware>(UsersController)),
+            ...(fetchMiddlewares<Middleware>(UsersController.prototype.getAllUsers)),
+
             async function UsersController_getAllUsers(context: any, next: any) {
             const args = {
                     page: {"in":"query","name":"page","dataType":"double"},
@@ -439,10 +479,13 @@ export function RegisterRoutes(router: KoaRouter) {
             const controller = new UsersController();
 
             const promise = controller.getAllUsers.apply(controller, validatedArgs as any);
-            return promiseHandler(controller, promise, context, undefined, next);
+            return promiseHandler(controller, promise, context, undefined, undefined);
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         router.get('/api/users/:id',
+            ...(fetchMiddlewares<Middleware>(UsersController)),
+            ...(fetchMiddlewares<Middleware>(UsersController.prototype.getUserById)),
+
             async function UsersController_getUserById(context: any, next: any) {
             const args = {
                     id: {"in":"path","name":"id","required":true,"dataType":"string"},
@@ -460,10 +503,13 @@ export function RegisterRoutes(router: KoaRouter) {
             const controller = new UsersController();
 
             const promise = controller.getUserById.apply(controller, validatedArgs as any);
-            return promiseHandler(controller, promise, context, undefined, next);
+            return promiseHandler(controller, promise, context, undefined, undefined);
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         router.put('/api/users/:id',
+            ...(fetchMiddlewares<Middleware>(UsersController)),
+            ...(fetchMiddlewares<Middleware>(UsersController.prototype.updateUser)),
+
             async function UsersController_updateUser(context: any, next: any) {
             const args = {
                     id: {"in":"path","name":"id","required":true,"dataType":"string"},
@@ -482,10 +528,13 @@ export function RegisterRoutes(router: KoaRouter) {
             const controller = new UsersController();
 
             const promise = controller.updateUser.apply(controller, validatedArgs as any);
-            return promiseHandler(controller, promise, context, undefined, next);
+            return promiseHandler(controller, promise, context, undefined, undefined);
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         router.delete('/api/users/:id',
+            ...(fetchMiddlewares<Middleware>(UsersController)),
+            ...(fetchMiddlewares<Middleware>(UsersController.prototype.deleteUser)),
+
             async function UsersController_deleteUser(context: any, next: any) {
             const args = {
                     id: {"in":"path","name":"id","required":true,"dataType":"string"},
@@ -503,7 +552,7 @@ export function RegisterRoutes(router: KoaRouter) {
             const controller = new UsersController();
 
             const promise = controller.deleteUser.apply(controller, validatedArgs as any);
-            return promiseHandler(controller, promise, context, undefined, next);
+            return promiseHandler(controller, promise, context, undefined, undefined);
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 
@@ -579,7 +628,7 @@ export function RegisterRoutes(router: KoaRouter) {
 
   // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 
-  function promiseHandler(controllerObj: any, promise: Promise<any>, context: any, successStatus: any, next: () => Promise<any>) {
+  function promiseHandler(controllerObj: any, promise: Promise<any>, context: any, successStatus: any, next?: () => Promise<any>) {
       return Promise.resolve(promise)
         .then((data: any) => {
             let statusCode = successStatus;
@@ -601,10 +650,8 @@ export function RegisterRoutes(router: KoaRouter) {
 
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 
-    function returnHandler(context: any, next: () => any, statusCode?: number, data?: any, headers: any={}) {
+    function returnHandler(context: any, next?: () => any, statusCode?: number, data?: any, headers: any={}) {
         if (!context.headerSent && !context.response.__tsoaResponded) {
-            context.set(headers);
-
             if (data !== null && data !== undefined) {
                 context.body = data;
                 context.status = 200;
@@ -616,8 +663,9 @@ export function RegisterRoutes(router: KoaRouter) {
                 context.status = statusCode;
             }
 
+            context.set(headers);
             context.response.__tsoaResponded = true;
-            return next();
+            return next ? next() : context;
         }
     }
 

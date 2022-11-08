@@ -27,9 +27,11 @@
     "lint": "eslint \"src/**\"",
     "lint:fix": "eslint --fix \"src/**\"",
     "prettier:fix": "prettier --parser typescript --write src/**/*.{json,ts}",
-    "outdated": "yarn outdated"
+    "outdated": "yarn outdated",
+    "postinstall": "node ./patches/tsoa.js"
   },
   "dependencies": {
+    "@koa/multer": "^3.0.0",
     "@koa/router": "^10.1.1",
     "cookie": "^0.5.0",
     "cookie-parser": "^1.4.6",
@@ -45,12 +47,13 @@
     "koa2-router": "^2.0.1",
     "koa2-swagger-ui": "^5.5.0",
     "micromq": "^3.0.2",
+    "multer": "^1.4.5-lts.1",
     "pg": "^8.7.3",
     "sequelize": "^6.19.0",
     "sha256": "^0.2.0",
     "socket.io": "^4.4.1",
     "ts-node": "^10.7.0",
-    "tsoa": "^3.14.1",
+    "tsoa": "^4.1.3",
     "uuid": "^8.3.2"
   },
   "devDependencies": {
