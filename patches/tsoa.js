@@ -1,5 +1,6 @@
-const { readFile, writeFile } = require("fs");
+const { readFile, writeFile, mkdirSync, existsSync } = require("fs");
 
+const mediaDir = "./media";
 const pathToKoaHbsFile =
   "./node_modules/@tsoa/cli/dist/routeGeneration/templates/koa.hbs";
 const pathToMulterOptsFile = "./multerOpts.ts";
@@ -15,7 +16,11 @@ readFile(pathToKoaHbsFile, "utf-8", (err, koa_hbs) => {
   if (err) {
     return;
   }
-  readFile(pathToMulterOptsFile, "utf-8", (err, multerOptsContent) => {
+
+  if (!existsSync(mediaDir)) {
+    mkdirSync(mediaDir);
+  }
+  readFile(pathToMulterOptsFile, "utf-8", err => {
     if (err) {
       writeFile(pathToMulterOptsFile, "export default {};\n", "utf-8", err => {
         console.log(err);
@@ -30,7 +35,7 @@ readFile(pathToKoaHbsFile, "utf-8", (err, koa_hbs) => {
       if (err) {
         console.log(err);
       } else {
-        console.log("Success patch koa.hbs in 'tsoa'");
+        console.log("Success patch koa.hbs in '@tsoa'");
       }
     });
   });

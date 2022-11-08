@@ -1,5 +1,5 @@
 export interface BasePageResult<T> {
-  count: number;
+  count?: number;
   page?: number;
   limit?: number;
   data: T;

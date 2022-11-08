@@ -1,4 +1,5 @@
 import multer from "multer";
+import { v4 } from "uuid";
 
 const multerOpts: multer.Options = {
   storage: multer.diskStorage({
@@ -8,7 +9,7 @@ const multerOpts: multer.Options = {
     filename(req, file, cb) {
       const fileFormat = file.originalname.split(".");
 
-      cb(null, `${Date.now()}.${fileFormat[fileFormat.length - 1]}`);
+      cb(null, `${v4()}.${fileFormat[fileFormat.length - 1]}`);
     },
   }),
 };

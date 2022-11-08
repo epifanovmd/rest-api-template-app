@@ -28,7 +28,7 @@
     "lint:fix": "eslint --fix \"src/**\"",
     "prettier:fix": "prettier --parser typescript --write src/**/*.{json,ts}",
     "outdated": "yarn outdated",
-    "postinstall": "node ./patches/tsoa.js"
+    "postinstall": "node patches/tsoa.js"
   },
   "dependencies": {
     "@koa/multer": "^3.0.0",
