@@ -8,6 +8,7 @@ import {
   AuthDto,
   CreateProfileDto,
   PrivateProfile,
+  Profile,
   ProfileDto,
 } from "./auth.types";
 
@@ -16,7 +17,7 @@ export class AuthService {
   constructor(@Inject(RedisService) private _redisService: RedisService) {}
 
   async signUp(body: CreateProfileDto): Promise<ProfileDto> {
-    const client = await this._redisService.getProfile(body.username);
+    const client = await this._getProfile(body.username);
 
     if (client) {
       throw new ApiError(
@@ -26,25 +27,23 @@ export class AuthService {
     } else {
       const salt = v4();
 
-      return this._redisService
-        .setProfile(body.username, {
-          id: v4(),
+      return this._setProfile(body.username, {
+        id: v4(),
+        username: body.username,
+        name: body.name,
+        password: sha256(body.password + salt),
+        salt,
+      }).then(() =>
+        this.signIn({
           username: body.username,
-          name: body.name,
-          password: sha256(body.password + salt),
-          salt,
-        })
-        .then(() =>
-          this.signIn({
-            username: body.username,
-            password: body.password,
-          }),
-        );
+          password: body.password,
+        }),
+      );
     }
   }
 
   async signIn(body: AuthDto): Promise<ProfileDto> {
-    const client = await this._redisService.getProfile(body.username);
+    const client = await this._getProfile(body.username);
 
     if (client) {
       const { password, salt, ...rest } = client;
@@ -82,5 +81,15 @@ export class AuthService {
       accessToken,
       refreshToken,
     };
+  }
+
+  private _getProfile(username: string): Promise<Profile | null> {
+    return this._redisService.get<Profile>(username);
+  }
+
+  private _setProfile(username: string, body: Profile) {
+    return this._redisService.set(username, body).catch(() => {
+      throw new ApiError("Клиент не найден в базе данных", 500);
+    });
   }
 }
