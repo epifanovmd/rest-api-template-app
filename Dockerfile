@@ -1,4 +1,4 @@
-ARG NODE_VERSION=16.14.2
+ARG NODE_VERSION=20.10.0
 
 FROM node:${NODE_VERSION}
 
@@ -7,11 +7,8 @@ COPY . ./backend
 
 WORKDIR ./backend
 
-RUN mkdir ./media
-
-VOLUME /media
-
 RUN yarn
+RUN yarn build
 
 EXPOSE 3232
 EXPOSE 8181

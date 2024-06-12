@@ -1,39 +1,38 @@
-import Koa from "koa";
-import KoaRouter from "koa-router";
-import { errorHandler } from "./common/handlers/errorHandler";
-import { notFoundHandler } from "./common/handlers/notFoundHandler";
-import { appMiddlewares } from "./middleware/appMiddlewares";
-import { RegisterSwagger } from "./middleware/swagger";
+import { app, router } from "./app";
+
+import { errorHandler, notFoundHandler } from "./common";
+import { RegisterAppMiddlewares, RegisterSwagger } from "./middleware";
+import { iocContainer } from "./modules";
 import { RegisterRoutes } from "./routes";
-import { ioSocket } from "./webSockets";
+import { SocketGateway } from "./services/socket/socket.gateway";
 
-const PORT = 8181;
-const app = new Koa();
+const PORT = Number(process.env.SERVER_PORT ?? 8181);
+const HOST = process.env.SERVER_HOST ?? "0.0.0.0";
 
-ioSocket(app);
+const socketGateway = iocContainer.get(SocketGateway);
 
-// middleware
-appMiddlewares(app);
+const bootstrap = () => {
+  socketGateway.start();
 
-// Services routes
-const router = new KoaRouter();
+  router.get("/ping", context => {
+    context.status = 200;
+    context.body = {
+      serverTime: new Date().toISOString(),
+    };
+  });
 
-router.get("/ping", context => {
-  context.status = 200;
-  context.body = {
-    serverTime: new Date().toISOString(),
-  };
-});
+  RegisterAppMiddlewares(app);
+  RegisterSwagger(router, "/api-docs");
+  RegisterRoutes(router);
 
-RegisterSwagger(router, "/api-docs");
-RegisterRoutes(router);
+  app
+    .use(errorHandler)
+    .use(router.routes())
+    .use(router.allowedMethods())
+    .use(notFoundHandler)
+    .listen(PORT, HOST, () => {
+      console.info(`REST API Server running on : http://localhost:${PORT}`);
+    });
+};
 
-app
-  .use(errorHandler)
-  .use(router.routes())
-  .use(router.allowedMethods())
-  .use(notFoundHandler);
-
-export const server = app.listen(PORT, "0.0.0.0", () => {
-  console.info(`REST API Server running on : http://localhost:${PORT}`);
-});
+bootstrap();

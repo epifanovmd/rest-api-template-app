@@ -1,7 +1,9 @@
 {
   "compilerOptions": {
-    "module": "commonjs",
+    "module": "esnext",
     "target": "es6",
+    "types": ["reflect-metadata"],
+    "lib": ["es6"],
     "noImplicitAny": false,
     "sourceMap": true,
     "outDir": "build",
@@ -9,7 +11,9 @@
     "allowSyntheticDefaultImports": true,
     "experimentalDecorators": true,
     "resolveJsonModule": true,
-    "strictNullChecks": true
+    "moduleResolution": "node",
+    "strictNullChecks": true,
+    "emitDecoratorMetadata": true
   },
   "files.exclude": {
     "**/.git": true,

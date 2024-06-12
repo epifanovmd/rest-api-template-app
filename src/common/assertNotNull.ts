@@ -1,16 +1,11 @@
-import { ErrorType } from "./errorType";
-import { ApiError } from "./handlers/errorHandler";
+import { ApiError } from "./handlers";
 
 export function assertNotNull<T>(
   item: T | null | undefined,
   message?: string,
 ): T {
   if (item === null || item === undefined) {
-    throw new ApiError(
-      500,
-      ErrorType.ServerErrorException,
-      message ? message : "",
-    );
+    throw new ApiError(message ? message : "", 500);
   }
 
   return item;

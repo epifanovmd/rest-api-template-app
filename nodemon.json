@@ -2,5 +2,5 @@
   "watch": ["src"],
   "ext": "ts",
   "ignore": ["src/**/*.spec.ts", "src/routes.ts"],
-  "exec": "ts-node ./src/server.ts"
+  "exec": "ts-node --project tsconfig.dev.json -r dotenv/config ./src/server.ts"
 }

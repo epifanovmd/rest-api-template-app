@@ -12,16 +12,17 @@
         "in": "query"
       }
     },
-    "host": "test.epifanov-it.ru",
+    "host": "localhost:8181",
     "outputDirectory": "./",
     "specMerging": "recursive",
     "specVersion": 3
   },
   "routes": {
-    "authenticationModule": "./src/middleware/authentication.ts",
+    "authenticationModule": "./src/middleware/jwt.middleware.ts",
     "entryFile": "./src/controllers.ts",
     "routesDir": "./src",
     "basePath": "/",
-    "middleware": "koa"
+    "middleware": "koa",
+    "iocModule": "./src/modules.ts"
   }
 }

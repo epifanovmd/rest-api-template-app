@@ -3,133 +3,65 @@
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
   import { Controller, ValidationService, FieldErrors, ValidateError, TsoaRoute, HttpStatusCodeLiteral, TsoaResponse, fetchMiddlewares } from '@tsoa/runtime';
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-import { CommentsController } from './Services/Comments/CommentsController';
-// WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-import { PostsController } from './Services/Posts/PostsController';
-// WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-import { AuthController } from './Services/Users/AuthController';
-// WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-import { UsersController } from './Services/Users/UsersController';
-import { koaAuthentication } from './middleware/authentication';
+import { AuthController } from './services/auth/auth.controller';
+import { koaAuthentication } from './middleware/jwt.middleware';
 // @ts-ignore - no great way to install types from subpackage
 const promiseAny = require('promise.any');
+import { iocContainer } from './modules';
+import { IocContainer, IocContainerFactory } from '@tsoa/runtime';
 import type { Middleware } from 'koa';
 import * as KoaRouter from '@koa/router';
 
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 
 const models: TsoaRoute.Models = {
-    "CommentDto": {
+    "Tokens": {
+        "dataType": "refObject",
+        "properties": {
+            "accessToken": {"dataType":"string","required":true},
+            "refreshToken": {"dataType":"string","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "Pick_Profile.Exclude_keyofProfile.salt-or-password__": {
+        "dataType": "refAlias",
+        "type": {"dataType":"nestedObjectLiteral","nestedProperties":{"id":{"dataType":"string","required":true},"username":{"dataType":"string","required":true},"name":{"dataType":"string","required":true},"email":{"dataType":"string"}},"validators":{}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "Omit_Profile.salt-or-password_": {
+        "dataType": "refAlias",
+        "type": {"ref":"Pick_Profile.Exclude_keyofProfile.salt-or-password__","validators":{}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "ProfileDto": {
         "dataType": "refObject",
         "properties": {
             "id": {"dataType":"string","required":true},
-            "comment": {"dataType":"string","required":true},
-        },
-        "additionalProperties": false,
-    },
-    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "BasePageResult_CommentDto-Array_": {
-        "dataType": "refObject",
-        "properties": {
-            "count": {"dataType":"double","required":true},
-            "page": {"dataType":"double"},
-            "limit": {"dataType":"double"},
-            "data": {"dataType":"array","array":{"dataType":"refObject","ref":"CommentDto"},"required":true},
-        },
-        "additionalProperties": false,
-    },
-    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "Comment": {
-        "dataType": "refObject",
-        "properties": {
-            "comment": {"dataType":"string","required":true},
-        },
-        "additionalProperties": false,
-    },
-    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "PostDto": {
-        "dataType": "refObject",
-        "properties": {
-            "id": {"dataType":"string","required":true},
+            "username": {"dataType":"string","required":true},
             "name": {"dataType":"string","required":true},
-            "subject": {"dataType":"string","required":true},
-            "body": {"dataType":"string","required":true},
-        },
-        "additionalProperties": false,
-    },
-    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "BasePageResult_PostDto-Array_": {
-        "dataType": "refObject",
-        "properties": {
-            "count": {"dataType":"double","required":true},
-            "page": {"dataType":"double"},
-            "limit": {"dataType":"double"},
-            "data": {"dataType":"array","array":{"dataType":"refObject","ref":"PostDto"},"required":true},
-        },
-        "additionalProperties": false,
-    },
-    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "IPost": {
-        "dataType": "refObject",
-        "properties": {
-            "name": {"dataType":"string","required":true},
-            "subject": {"dataType":"string","required":true},
-            "body": {"dataType":"string","required":true},
-        },
-        "additionalProperties": false,
-    },
-    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "UserDto": {
-        "dataType": "refObject",
-        "properties": {
-            "id": {"dataType":"string","required":true},
-            "username": {"dataType":"string","required":true},
-            "firstName": {"dataType":"string","required":true},
-            "lastName": {"dataType":"string","required":true},
-            "email": {"dataType":"string","required":true},
-        },
-        "additionalProperties": false,
-    },
-    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "Registration": {
-        "dataType": "refObject",
-        "properties": {
-            "username": {"dataType":"string","required":true},
-            "firstName": {"dataType":"string","required":true},
-            "lastName": {"dataType":"string","required":true},
-            "email": {"dataType":"string","required":true},
-            "password": {"dataType":"string","required":true},
-        },
-        "additionalProperties": false,
-    },
-    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "Login": {
-        "dataType": "refObject",
-        "properties": {
-            "username": {"dataType":"string","required":true},
-            "password": {"dataType":"string","required":true},
-        },
-        "additionalProperties": false,
-    },
-    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "BasePageResult_UserDto-Array_": {
-        "dataType": "refObject",
-        "properties": {
-            "count": {"dataType":"double","required":true},
-            "page": {"dataType":"double"},
-            "limit": {"dataType":"double"},
-            "data": {"dataType":"array","array":{"dataType":"refObject","ref":"UserDto"},"required":true},
-        },
-        "additionalProperties": false,
-    },
-    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "UpdateUser": {
-        "dataType": "refObject",
-        "properties": {
-            "firstName": {"dataType":"string"},
-            "lastName": {"dataType":"string"},
             "email": {"dataType":"string"},
-            "role": {"dataType":"string"},
+            "tokens": {"ref":"Tokens","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "CreateProfileDto": {
+        "dataType": "refObject",
+        "properties": {
+            "username": {"dataType":"string","required":true},
+            "password": {"dataType":"string","required":true},
+            "name": {"dataType":"string","required":true},
+            "email": {"dataType":"string"},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "AuthDto": {
+        "dataType": "refObject",
+        "properties": {
+            "username": {"dataType":"string","required":true},
+            "password": {"dataType":"string","required":true},
         },
         "additionalProperties": false,
     },
@@ -144,278 +76,13 @@ export function RegisterRoutes(router: KoaRouter) {
     //  NOTE: If you do not see routes for all of your controllers in this file, then you might not have informed tsoa of where to look
     //      Please look into the "controllerPathGlobs" config option described in the readme: https://github.com/lukeautry/tsoa
     // ###########################################################################################################
-        router.get('/api/comments',
-            authenticateMiddleware([{"jwt":[]}]),
-            ...(fetchMiddlewares<Middleware>(CommentsController)),
-            ...(fetchMiddlewares<Middleware>(CommentsController.prototype.getAllComments)),
-
-            async function CommentsController_getAllComments(context: any, next: any) {
-            const args = {
-                    req: {"in":"request","name":"req","required":true,"dataType":"object"},
-                    page: {"in":"query","name":"page","dataType":"double"},
-                    limit: {"in":"query","name":"limit","dataType":"double"},
-                    my: {"in":"query","name":"my","dataType":"boolean"},
-                    PostId: {"in":"query","name":"postId","dataType":"string"},
-            };
-
-            let validatedArgs: any[] = [];
-            try {
-              validatedArgs = getValidatedArgs(args, context, next);
-            } catch (err) {
-              const error = err as any;
-              context.status = error.status;
-              context.throw(error.status, JSON.stringify({ fields: error.fields }));
-            }
-
-            const controller = new CommentsController();
-
-            const promise = controller.getAllComments.apply(controller, validatedArgs as any);
-            return promiseHandler(controller, promise, context, undefined, undefined);
-        });
-        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-        router.get('/api/comments/:id',
-            authenticateMiddleware([{"jwt":[]}]),
-            ...(fetchMiddlewares<Middleware>(CommentsController)),
-            ...(fetchMiddlewares<Middleware>(CommentsController.prototype.getCommentById)),
-
-            async function CommentsController_getCommentById(context: any, next: any) {
-            const args = {
-                    id: {"in":"path","name":"id","required":true,"dataType":"string"},
-            };
-
-            let validatedArgs: any[] = [];
-            try {
-              validatedArgs = getValidatedArgs(args, context, next);
-            } catch (err) {
-              const error = err as any;
-              context.status = error.status;
-              context.throw(error.status, JSON.stringify({ fields: error.fields }));
-            }
-
-            const controller = new CommentsController();
-
-            const promise = controller.getCommentById.apply(controller, validatedArgs as any);
-            return promiseHandler(controller, promise, context, undefined, undefined);
-        });
-        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-        router.post('/api/comments',
-            authenticateMiddleware([{"jwt":[]}]),
-            ...(fetchMiddlewares<Middleware>(CommentsController)),
-            ...(fetchMiddlewares<Middleware>(CommentsController.prototype.createComment)),
-
-            async function CommentsController_createComment(context: any, next: any) {
-            const args = {
-                    body: {"in":"body","name":"body","required":true,"ref":"Comment"},
-                    postId: {"in":"query","name":"postId","required":true,"dataType":"string"},
-                    req: {"in":"request","name":"req","required":true,"dataType":"object"},
-            };
-
-            let validatedArgs: any[] = [];
-            try {
-              validatedArgs = getValidatedArgs(args, context, next);
-            } catch (err) {
-              const error = err as any;
-              context.status = error.status;
-              context.throw(error.status, JSON.stringify({ fields: error.fields }));
-            }
-
-            const controller = new CommentsController();
-
-            const promise = controller.createComment.apply(controller, validatedArgs as any);
-            return promiseHandler(controller, promise, context, undefined, undefined);
-        });
-        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-        router.put('/api/comments/:id',
-            authenticateMiddleware([{"jwt":[]}]),
-            ...(fetchMiddlewares<Middleware>(CommentsController)),
-            ...(fetchMiddlewares<Middleware>(CommentsController.prototype.updateComment)),
-
-            async function CommentsController_updateComment(context: any, next: any) {
-            const args = {
-                    id: {"in":"path","name":"id","required":true,"dataType":"string"},
-                    body: {"in":"body","name":"body","required":true,"ref":"Comment"},
-                    req: {"in":"request","name":"req","required":true,"dataType":"object"},
-            };
-
-            let validatedArgs: any[] = [];
-            try {
-              validatedArgs = getValidatedArgs(args, context, next);
-            } catch (err) {
-              const error = err as any;
-              context.status = error.status;
-              context.throw(error.status, JSON.stringify({ fields: error.fields }));
-            }
-
-            const controller = new CommentsController();
-
-            const promise = controller.updateComment.apply(controller, validatedArgs as any);
-            return promiseHandler(controller, promise, context, undefined, undefined);
-        });
-        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-        router.delete('/api/comments/:id',
-            authenticateMiddleware([{"jwt":[]}]),
-            ...(fetchMiddlewares<Middleware>(CommentsController)),
-            ...(fetchMiddlewares<Middleware>(CommentsController.prototype.deleteComment)),
-
-            async function CommentsController_deleteComment(context: any, next: any) {
-            const args = {
-                    id: {"in":"path","name":"id","required":true,"dataType":"string"},
-                    req: {"in":"request","name":"req","required":true,"dataType":"object"},
-            };
-
-            let validatedArgs: any[] = [];
-            try {
-              validatedArgs = getValidatedArgs(args, context, next);
-            } catch (err) {
-              const error = err as any;
-              context.status = error.status;
-              context.throw(error.status, JSON.stringify({ fields: error.fields }));
-            }
-
-            const controller = new CommentsController();
-
-            const promise = controller.deleteComment.apply(controller, validatedArgs as any);
-            return promiseHandler(controller, promise, context, undefined, undefined);
-        });
-        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-        router.get('/api/posts',
-            authenticateMiddleware([{"jwt":[]}]),
-            ...(fetchMiddlewares<Middleware>(PostsController)),
-            ...(fetchMiddlewares<Middleware>(PostsController.prototype.getAllPosts)),
-
-            async function PostsController_getAllPosts(context: any, next: any) {
-            const args = {
-                    req: {"in":"request","name":"req","required":true,"dataType":"object"},
-                    page: {"in":"query","name":"page","dataType":"double"},
-                    limit: {"in":"query","name":"limit","dataType":"double"},
-                    my: {"in":"query","name":"my","dataType":"boolean"},
-            };
-
-            let validatedArgs: any[] = [];
-            try {
-              validatedArgs = getValidatedArgs(args, context, next);
-            } catch (err) {
-              const error = err as any;
-              context.status = error.status;
-              context.throw(error.status, JSON.stringify({ fields: error.fields }));
-            }
-
-            const controller = new PostsController();
-
-            const promise = controller.getAllPosts.apply(controller, validatedArgs as any);
-            return promiseHandler(controller, promise, context, undefined, undefined);
-        });
-        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-        router.get('/api/posts/:id',
-            ...(fetchMiddlewares<Middleware>(PostsController)),
-            ...(fetchMiddlewares<Middleware>(PostsController.prototype.getPostById)),
-
-            async function PostsController_getPostById(context: any, next: any) {
-            const args = {
-                    id: {"in":"path","name":"id","required":true,"dataType":"string"},
-            };
-
-            let validatedArgs: any[] = [];
-            try {
-              validatedArgs = getValidatedArgs(args, context, next);
-            } catch (err) {
-              const error = err as any;
-              context.status = error.status;
-              context.throw(error.status, JSON.stringify({ fields: error.fields }));
-            }
-
-            const controller = new PostsController();
-
-            const promise = controller.getPostById.apply(controller, validatedArgs as any);
-            return promiseHandler(controller, promise, context, undefined, undefined);
-        });
-        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-        router.post('/api/posts',
-            authenticateMiddleware([{"jwt":[]}]),
-            ...(fetchMiddlewares<Middleware>(PostsController)),
-            ...(fetchMiddlewares<Middleware>(PostsController.prototype.createPost)),
-
-            async function PostsController_createPost(context: any, next: any) {
-            const args = {
-                    body: {"in":"body","name":"body","required":true,"ref":"IPost"},
-                    req: {"in":"request","name":"req","required":true,"dataType":"object"},
-            };
-
-            let validatedArgs: any[] = [];
-            try {
-              validatedArgs = getValidatedArgs(args, context, next);
-            } catch (err) {
-              const error = err as any;
-              context.status = error.status;
-              context.throw(error.status, JSON.stringify({ fields: error.fields }));
-            }
-
-            const controller = new PostsController();
-
-            const promise = controller.createPost.apply(controller, validatedArgs as any);
-            return promiseHandler(controller, promise, context, undefined, undefined);
-        });
-        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-        router.put('/api/posts/:id',
-            authenticateMiddleware([{"jwt":[]}]),
-            ...(fetchMiddlewares<Middleware>(PostsController)),
-            ...(fetchMiddlewares<Middleware>(PostsController.prototype.updatePost)),
-
-            async function PostsController_updatePost(context: any, next: any) {
-            const args = {
-                    id: {"in":"path","name":"id","required":true,"dataType":"string"},
-                    body: {"in":"body","name":"body","required":true,"ref":"IPost"},
-                    req: {"in":"request","name":"req","required":true,"dataType":"object"},
-            };
-
-            let validatedArgs: any[] = [];
-            try {
-              validatedArgs = getValidatedArgs(args, context, next);
-            } catch (err) {
-              const error = err as any;
-              context.status = error.status;
-              context.throw(error.status, JSON.stringify({ fields: error.fields }));
-            }
-
-            const controller = new PostsController();
-
-            const promise = controller.updatePost.apply(controller, validatedArgs as any);
-            return promiseHandler(controller, promise, context, undefined, undefined);
-        });
-        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-        router.delete('/api/posts/:id',
-            authenticateMiddleware([{"jwt":[]}]),
-            ...(fetchMiddlewares<Middleware>(PostsController)),
-            ...(fetchMiddlewares<Middleware>(PostsController.prototype.deletePost)),
-
-            async function PostsController_deletePost(context: any, next: any) {
-            const args = {
-                    id: {"in":"path","name":"id","required":true,"dataType":"string"},
-                    req: {"in":"request","name":"req","required":true,"dataType":"object"},
-            };
-
-            let validatedArgs: any[] = [];
-            try {
-              validatedArgs = getValidatedArgs(args, context, next);
-            } catch (err) {
-              const error = err as any;
-              context.status = error.status;
-              context.throw(error.status, JSON.stringify({ fields: error.fields }));
-            }
-
-            const controller = new PostsController();
-
-            const promise = controller.deletePost.apply(controller, validatedArgs as any);
-            return promiseHandler(controller, promise, context, undefined, undefined);
-        });
-        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-        router.post('/api/auth/registration',
+        router.post('/api/auth/signUp',
             ...(fetchMiddlewares<Middleware>(AuthController)),
-            ...(fetchMiddlewares<Middleware>(AuthController.prototype.registration)),
+            ...(fetchMiddlewares<Middleware>(AuthController.prototype.signUp)),
 
-            async function AuthController_registration(context: any, next: any) {
+            async function AuthController_signUp(context: any, next: any) {
             const args = {
-                    body: {"in":"body","name":"body","required":true,"ref":"Registration"},
+                    body: {"in":"body","name":"body","required":true,"ref":"CreateProfileDto"},
             };
 
             let validatedArgs: any[] = [];
@@ -427,19 +94,24 @@ export function RegisterRoutes(router: KoaRouter) {
               context.throw(error.status, JSON.stringify({ fields: error.fields }));
             }
 
-            const controller = new AuthController();
+            const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(context.request) : iocContainer;
 
-            const promise = controller.registration.apply(controller, validatedArgs as any);
+            const controller: any = await container.get<AuthController>(AuthController);
+            if (typeof controller['setStatus'] === 'function') {
+                controller.setStatus(undefined);
+            }
+
+            const promise = controller.signUp.apply(controller, validatedArgs as any);
             return promiseHandler(controller, promise, context, undefined, undefined);
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-        router.post('/api/auth/login',
+        router.post('/api/auth/signIn',
             ...(fetchMiddlewares<Middleware>(AuthController)),
-            ...(fetchMiddlewares<Middleware>(AuthController.prototype.login)),
+            ...(fetchMiddlewares<Middleware>(AuthController.prototype.signIn)),
 
-            async function AuthController_login(context: any, next: any) {
+            async function AuthController_signIn(context: any, next: any) {
             const args = {
-                    body: {"in":"body","name":"body","required":true,"ref":"Login"},
+                    body: {"in":"body","name":"body","required":true,"ref":"AuthDto"},
             };
 
             let validatedArgs: any[] = [];
@@ -451,20 +123,23 @@ export function RegisterRoutes(router: KoaRouter) {
               context.throw(error.status, JSON.stringify({ fields: error.fields }));
             }
 
-            const controller = new AuthController();
+            const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(context.request) : iocContainer;
 
-            const promise = controller.login.apply(controller, validatedArgs as any);
+            const controller: any = await container.get<AuthController>(AuthController);
+            if (typeof controller['setStatus'] === 'function') {
+                controller.setStatus(undefined);
+            }
+
+            const promise = controller.signIn.apply(controller, validatedArgs as any);
             return promiseHandler(controller, promise, context, undefined, undefined);
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-        router.get('/api/users',
-            ...(fetchMiddlewares<Middleware>(UsersController)),
-            ...(fetchMiddlewares<Middleware>(UsersController.prototype.getAllUsers)),
+        router.post('/api/auth/logout',
+            ...(fetchMiddlewares<Middleware>(AuthController)),
+            ...(fetchMiddlewares<Middleware>(AuthController.prototype.logout)),
 
-            async function UsersController_getAllUsers(context: any, next: any) {
+            async function AuthController_logout(context: any, next: any) {
             const args = {
-                    page: {"in":"query","name":"page","dataType":"double"},
-                    limit: {"in":"query","name":"limit","dataType":"double"},
             };
 
             let validatedArgs: any[] = [];
@@ -476,19 +151,25 @@ export function RegisterRoutes(router: KoaRouter) {
               context.throw(error.status, JSON.stringify({ fields: error.fields }));
             }
 
-            const controller = new UsersController();
+            const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(context.request) : iocContainer;
 
-            const promise = controller.getAllUsers.apply(controller, validatedArgs as any);
+            const controller: any = await container.get<AuthController>(AuthController);
+            if (typeof controller['setStatus'] === 'function') {
+                controller.setStatus(undefined);
+            }
+
+            const promise = controller.logout.apply(controller, validatedArgs as any);
             return promiseHandler(controller, promise, context, undefined, undefined);
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-        router.get('/api/users/:id',
-            ...(fetchMiddlewares<Middleware>(UsersController)),
-            ...(fetchMiddlewares<Middleware>(UsersController.prototype.getUserById)),
+        router.get('/api/auth/refresh',
+            authenticateMiddleware([{"jwt":[]}]),
+            ...(fetchMiddlewares<Middleware>(AuthController)),
+            ...(fetchMiddlewares<Middleware>(AuthController.prototype.refresh)),
 
-            async function UsersController_getUserById(context: any, next: any) {
+            async function AuthController_refresh(context: any, next: any) {
             const args = {
-                    id: {"in":"path","name":"id","required":true,"dataType":"string"},
+                    req: {"in":"request","name":"req","required":true,"dataType":"object"},
             };
 
             let validatedArgs: any[] = [];
@@ -500,58 +181,14 @@ export function RegisterRoutes(router: KoaRouter) {
               context.throw(error.status, JSON.stringify({ fields: error.fields }));
             }
 
-            const controller = new UsersController();
+            const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(context.request) : iocContainer;
 
-            const promise = controller.getUserById.apply(controller, validatedArgs as any);
-            return promiseHandler(controller, promise, context, undefined, undefined);
-        });
-        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-        router.put('/api/users/:id',
-            ...(fetchMiddlewares<Middleware>(UsersController)),
-            ...(fetchMiddlewares<Middleware>(UsersController.prototype.updateUser)),
-
-            async function UsersController_updateUser(context: any, next: any) {
-            const args = {
-                    id: {"in":"path","name":"id","required":true,"dataType":"string"},
-                    body: {"in":"body","name":"body","required":true,"ref":"UpdateUser"},
-            };
-
-            let validatedArgs: any[] = [];
-            try {
-              validatedArgs = getValidatedArgs(args, context, next);
-            } catch (err) {
-              const error = err as any;
-              context.status = error.status;
-              context.throw(error.status, JSON.stringify({ fields: error.fields }));
+            const controller: any = await container.get<AuthController>(AuthController);
+            if (typeof controller['setStatus'] === 'function') {
+                controller.setStatus(undefined);
             }
 
-            const controller = new UsersController();
-
-            const promise = controller.updateUser.apply(controller, validatedArgs as any);
-            return promiseHandler(controller, promise, context, undefined, undefined);
-        });
-        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-        router.delete('/api/users/:id',
-            ...(fetchMiddlewares<Middleware>(UsersController)),
-            ...(fetchMiddlewares<Middleware>(UsersController.prototype.deleteUser)),
-
-            async function UsersController_deleteUser(context: any, next: any) {
-            const args = {
-                    id: {"in":"path","name":"id","required":true,"dataType":"string"},
-            };
-
-            let validatedArgs: any[] = [];
-            try {
-              validatedArgs = getValidatedArgs(args, context, next);
-            } catch (err) {
-              const error = err as any;
-              context.status = error.status;
-              context.throw(error.status, JSON.stringify({ fields: error.fields }));
-            }
-
-            const controller = new UsersController();
-
-            const promise = controller.deleteUser.apply(controller, validatedArgs as any);
+            const promise = controller.refresh.apply(controller, validatedArgs as any);
             return promiseHandler(controller, promise, context, undefined, undefined);
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa

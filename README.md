@@ -1,13 +1,9 @@
-# REST-full API
+# WIREGUARD API
 
 ##### Stack:
   - Typescript
   - Koa
   - Tsoa (Swagger generator)
-  - Sequelize (ORM)
-  - JWT
-  - Postgre SQL
-  - WebSocket
   
 
 ### Installation
@@ -22,16 +18,13 @@ $ yarn
 $ yarn server
 ```
 ```sh
-REST API Server running on : http://localhost:5000
+REST API Server running on : http://localhost:8181
 ```
 
-### Start in docker container with postgres
+### Run in docker container with postgres
 ```sh
-$ docker compose -f compose-postgres.yml up --force-recreate -d
-$
-$ docker build -f Dockerfile -t backend:latest .
 $ [[ $(docker ps -f name=backend_container -q -a) != '' ]] && docker rm --force $(docker ps -f name=backend_container -q -a)
-$ docker run -u root -d --restart=always --network server-net -p 8085:8181 --name backend_container backend:latest
+$ docker compose up -d --no-deps --build --force-recreate
 $ docker image prune -a --force
 ```
 
