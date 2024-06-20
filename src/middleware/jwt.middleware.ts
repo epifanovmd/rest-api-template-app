@@ -8,7 +8,7 @@ export const koaAuthentication = (
   securityName: string,
   scopes?: string[],
 ): Promise<PrivateProfile | null> => {
-  const token = request.ctx.cookies.get("access_token");
+  const token = request.headers.authorization?.split(" ")[1];
 
   if (securityName === "jwt") {
     return new Promise((resolve, reject) => {

@@ -5,7 +5,8 @@ import jwt from "jsonwebtoken";
 import { Server } from "socket.io";
 import { app } from "../../app";
 import { jwtSecretKey } from "../../common";
-import { ProfileDto } from "../auth";
+import { verifyToken } from "../../common/helpers";
+import { PrivateProfile, ProfileDto } from "../auth";
 import { Socket, SocketEmitEvents, SocketEvents } from "./socket.types";
 
 @Injectable()
@@ -44,32 +45,30 @@ export class SocketService {
     return this._socket;
   }
 
-  onConnection = (listener: (client: ProfileDto, socket: Socket) => void) => {
+  onConnection = (
+    listener: (client: PrivateProfile, socket: Socket) => void,
+  ) => {
     this.socket?.on("connection", clientSocket => {
       const { headers } = clientSocket.request;
       const cookie = parse(headers.cookie || "");
       const token = cookie?.token ?? clientSocket.handshake.query.token;
 
       if (token) {
-        jwt.verify(token, jwtSecretKey, (err, decoded) => {
-          if (err) {
+        verifyToken(token)
+          .then(decoded => {
+            listener?.(decoded, clientSocket);
+
+            clientSocket.on("disconnect", () => {
+              const id = decoded.id;
+
+              if (this.clients.has(id)) {
+                this.clients.delete(id);
+              }
+            });
+          })
+          .catch(() => {
             clientSocket.disconnect(true);
-
-            return;
-          }
-
-          const client = decoded as ProfileDto;
-
-          listener?.(client, clientSocket);
-
-          clientSocket.on("disconnect", () => {
-            const id = client.id;
-
-            if (this.clients.has(id)) {
-              this.clients.delete(id);
-            }
           });
-        });
       } else {
         clientSocket._error("UnauthorizedException");
         clientSocket.disconnect(true);
