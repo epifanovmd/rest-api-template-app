@@ -1,4 +1,5 @@
 import { Container } from "inversify";
+
 import { Module } from "../../modules";
 import { AuthController } from "./auth.controller";
 import { AuthService } from "./auth.service";

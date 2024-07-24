@@ -1,28 +1,31 @@
-export type Profile = {
-  id: string;
+export interface IProfileData {
   username: string;
   name: string;
   email?: string;
-  salt: string;
-  password: string;
-};
+}
 
-export interface AuthDto {
-  username: string;
+export interface IProfilePassword {
   password: string;
 }
 
-export type PrivateProfile = Omit<Profile, "salt" | "password">;
-
-export interface ProfileDto extends PrivateProfile {
-  tokens: Tokens;
+export interface IProfileDto extends IProfileData {
+  id: string;
 }
 
-export interface Tokens {
+export interface IProfileModel extends IProfileDto, IProfilePassword {}
+
+export interface ITokensDto {
   accessToken: string;
   refreshToken: string;
 }
 
-export interface CreateProfileDto
-  extends AuthDto,
-    Pick<Profile, "email" | "name"> {}
+export interface IProfileWithTokensDto extends IProfileDto {
+  tokens: ITokensDto;
+}
+
+export interface ISignInRequestDto {
+  username: string;
+  password: string;
+}
+
+export interface ISignUpRequestDto extends ISignInRequestDto, IProfileData {}

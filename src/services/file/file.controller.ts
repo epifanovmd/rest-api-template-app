@@ -11,8 +11,9 @@ import {
   Tags,
   UploadedFile,
 } from "tsoa";
+
 import { FileService } from "./file.service";
-import { FileDto } from "./file.types";
+import { IFileDto } from "./file.types";
 
 @injectable()
 @Tags("Files")
@@ -24,13 +25,13 @@ export class FileController extends Controller {
 
   @Security("jwt")
   @Get()
-  getFileById(@Query("id") id: string): Promise<FileDto> {
+  getFileById(@Query("id") id: string): Promise<IFileDto> {
     return this._fileService.getFileById(id);
   }
 
   @Security("jwt")
   @Post()
-  uploadFile(@UploadedFile() file: File): Promise<FileDto[]> {
+  uploadFile(@UploadedFile() file: File): Promise<IFileDto[]> {
     return this._fileService.uploadFile([file]);
   }
 

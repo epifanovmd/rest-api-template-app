@@ -1,4 +1,4 @@
-export interface FileDto {
+export interface IFileDto {
   id: string;
   name: string;
   type: string;

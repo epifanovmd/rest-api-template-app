@@ -1,4 +1,5 @@
 import { Container } from "inversify";
+
 import { Module } from "../../modules";
 import { FileController } from "./file.controller";
 import { FileService } from "./file.service";

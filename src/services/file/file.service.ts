@@ -3,17 +3,18 @@ import { inject, injectable } from "inversify";
 import path from "path";
 import { File } from "tsoa";
 import { v4 } from "uuid";
+
 import { SERVER_FILES_FOLDER_PATH } from "../../../config";
 import { ApiError } from "../../common";
 import { RedisService } from "../redis";
-import { FileDto } from "./file.types";
+import { IFileDto } from "./file.types";
 
 @injectable()
 export class FileService {
   constructor(@inject(RedisService) private _redisService: RedisService) {}
 
-  async getFileById(id: string): Promise<FileDto> {
-    const file = await this._redisService.get<FileDto>(id);
+  async getFileById(id: string): Promise<IFileDto> {
+    const file = await this._redisService.get<IFileDto>(id);
 
     if (!file) {
       throw new ApiError("Файл не найден", 404);

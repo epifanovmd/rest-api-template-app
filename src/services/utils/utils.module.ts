@@ -1,4 +1,5 @@
 import { Container } from "inversify";
+
 import { Module } from "../../modules";
 import { UtilsService } from "./utils.service";
 

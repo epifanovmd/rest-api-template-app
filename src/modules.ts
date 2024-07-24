@@ -1,6 +1,8 @@
-import { Container, decorate, injectable } from "inversify";
 import "reflect-metadata";
+
+import { Container, decorate, injectable } from "inversify";
 import { Controller } from "tsoa";
+
 import { ServicesModule } from "./services";
 
 decorate(injectable(), Controller);

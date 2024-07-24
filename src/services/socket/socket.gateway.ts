@@ -1,4 +1,5 @@
 import { inject, injectable as Injectable } from "inversify";
+
 import { SocketService } from "./socket.service";
 
 @Injectable()
@@ -8,7 +9,7 @@ export class SocketGateway {
   constructor(@inject(SocketService) private _socketService: SocketService) {}
 
   start = () => {
-    this._socketService.onConnection((client, clientSocket) => {
+    this._socketService.onConnection((_client, _clientSocket) => {
       // some subscribes for new connection client
     });
   };

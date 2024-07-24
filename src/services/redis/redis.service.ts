@@ -1,5 +1,6 @@
 import { injectable as Injectable } from "inversify";
 import { createClient } from "redis";
+
 import { ApiError } from "../../common";
 
 const rediscl = createClient({
@@ -18,6 +19,8 @@ rediscl.on("connect", () => {
 export class RedisService {
   async set<Data>(key: string, data: Data) {
     const status = await rediscl.set(key, JSON.stringify(data));
+
+    await rediscl.persist(key);
 
     if (status === "OK") {
       return data;

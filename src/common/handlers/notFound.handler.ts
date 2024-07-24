@@ -1,4 +1,5 @@
 import { Context, Next } from "koa";
+
 import { ApiError } from "./error.handler";
 
 export const notFoundHandler = (ctx: Context, next: Next) => {

@@ -20,7 +20,7 @@ const upload = multer(multerOpts);
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 
 const models: TsoaRoute.Models = {
-    "Tokens": {
+    "ITokensDto": {
         "dataType": "refObject",
         "properties": {
             "accessToken": {"dataType":"string","required":true},
@@ -29,29 +29,19 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "Pick_Profile.Exclude_keyofProfile.salt-or-password__": {
-        "dataType": "refAlias",
-        "type": {"dataType":"nestedObjectLiteral","nestedProperties":{"id":{"dataType":"string","required":true},"username":{"dataType":"string","required":true},"name":{"dataType":"string","required":true},"email":{"dataType":"string"}},"validators":{}},
-    },
-    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "Omit_Profile.salt-or-password_": {
-        "dataType": "refAlias",
-        "type": {"ref":"Pick_Profile.Exclude_keyofProfile.salt-or-password__","validators":{}},
-    },
-    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "ProfileDto": {
+    "IProfileWithTokensDto": {
         "dataType": "refObject",
         "properties": {
+            "username": {"dataType":"string","required":true},
+            "name": {"dataType":"string","required":true},
+            "email": {"dataType":"string"},
             "id": {"dataType":"string","required":true},
-            "username": {"dataType":"string","required":true},
-            "name": {"dataType":"string","required":true},
-            "email": {"dataType":"string"},
-            "tokens": {"ref":"Tokens","required":true},
+            "tokens": {"ref":"ITokensDto","required":true},
         },
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "CreateProfileDto": {
+    "ISignUpRequestDto": {
         "dataType": "refObject",
         "properties": {
             "username": {"dataType":"string","required":true},
@@ -62,7 +52,7 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "AuthDto": {
+    "ISignInRequestDto": {
         "dataType": "refObject",
         "properties": {
             "username": {"dataType":"string","required":true},
@@ -71,7 +61,7 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "FileDto": {
+    "IFileDto": {
         "dataType": "refObject",
         "properties": {
             "id": {"dataType":"string","required":true},
@@ -99,7 +89,7 @@ export function RegisterRoutes(router: KoaRouter) {
 
             async function AuthController_signUp(context: any, next: any) {
             const args = {
-                    body: {"in":"body","name":"body","required":true,"ref":"CreateProfileDto"},
+                    body: {"in":"body","name":"body","required":true,"ref":"ISignUpRequestDto"},
             };
 
             let validatedArgs: any[] = [];
@@ -128,7 +118,7 @@ export function RegisterRoutes(router: KoaRouter) {
 
             async function AuthController_signIn(context: any, next: any) {
             const args = {
-                    body: {"in":"body","name":"body","required":true,"ref":"AuthDto"},
+                    body: {"in":"body","name":"body","required":true,"ref":"ISignInRequestDto"},
             };
 
             let validatedArgs: any[] = [];
@@ -151,42 +141,13 @@ export function RegisterRoutes(router: KoaRouter) {
             return promiseHandler(controller, promise, context, undefined, undefined);
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-        router.post('/api/auth/logout',
-            ...(fetchMiddlewares<Middleware>(AuthController)),
-            ...(fetchMiddlewares<Middleware>(AuthController.prototype.logout)),
-
-            async function AuthController_logout(context: any, next: any) {
-            const args = {
-            };
-
-            let validatedArgs: any[] = [];
-            try {
-              validatedArgs = getValidatedArgs(args, context, next);
-            } catch (err) {
-              const error = err as any;
-              context.status = error.status;
-              context.throw(error.status, JSON.stringify({ fields: error.fields }));
-            }
-
-            const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(context.request) : iocContainer;
-
-            const controller: any = await container.get<AuthController>(AuthController);
-            if (typeof controller['setStatus'] === 'function') {
-                controller.setStatus(undefined);
-            }
-
-            const promise = controller.logout.apply(controller, validatedArgs as any);
-            return promiseHandler(controller, promise, context, undefined, undefined);
-        });
-        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-        router.get('/api/auth/refresh',
-            authenticateMiddleware([{"jwt":[]}]),
+        router.post('/api/auth/refresh',
             ...(fetchMiddlewares<Middleware>(AuthController)),
             ...(fetchMiddlewares<Middleware>(AuthController.prototype.refresh)),
 
             async function AuthController_refresh(context: any, next: any) {
             const args = {
-                    req: {"in":"request","name":"req","required":true,"dataType":"object"},
+                    body: {"in":"body","name":"body","required":true,"dataType":"nestedObjectLiteral","nestedProperties":{"refreshToken":{"dataType":"string","required":true}}},
             };
 
             let validatedArgs: any[] = [];

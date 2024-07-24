@@ -1,22 +1,23 @@
 import { inject as Inject, injectable as Injectable } from "inversify";
 import sha256 from "sha256";
 import { v4 } from "uuid";
+
 import { ApiError } from "../../common";
 import { createTokenAsync, verifyToken } from "../../common/helpers";
 import { RedisService } from "../redis";
 import {
-  AuthDto,
-  CreateProfileDto,
-  PrivateProfile,
-  Profile,
-  ProfileDto,
+  IProfileDto,
+  IProfileModel,
+  IProfileWithTokensDto,
+  ISignInRequestDto,
+  ISignUpRequestDto,
 } from "./auth.types";
 
 @Injectable()
 export class AuthService {
   constructor(@Inject(RedisService) private _redisService: RedisService) {}
 
-  async signUp(body: CreateProfileDto): Promise<ProfileDto> {
+  async signUp(body: ISignUpRequestDto): Promise<IProfileWithTokensDto> {
     const client = await this._getProfile(body.username);
 
     if (client) {
@@ -25,14 +26,11 @@ export class AuthService {
         500,
       );
     } else {
-      const salt = v4();
-
       return this._setProfile(body.username, {
         id: v4(),
         username: body.username,
         name: body.name,
-        password: sha256(body.password + salt),
-        salt,
+        password: sha256(body.password),
       }).then(() =>
         this.signIn({
           username: body.username,
@@ -42,13 +40,13 @@ export class AuthService {
     }
   }
 
-  async signIn(body: AuthDto): Promise<ProfileDto> {
+  async signIn(body: ISignInRequestDto): Promise<IProfileWithTokensDto> {
     const client = await this._getProfile(body.username);
 
     if (client) {
-      const { password, salt, ...rest } = client;
+      const { password, ...rest } = client;
 
-      if (password === sha256(body.password + salt)) {
+      if (password === sha256(body.password)) {
         return {
           ...rest,
           tokens: await this.getTokens(rest),
@@ -59,13 +57,13 @@ export class AuthService {
     throw new ApiError("Неверный логин или пароль", 500);
   }
 
-  async updateTokens(refreshToken?: string) {
-    const { iat, exp, ...profile } = await verifyToken(refreshToken);
+  async updateTokens(token?: string) {
+    const { iat, exp, ...profile } = await verifyToken(token);
 
     return this.getTokens(profile);
   }
 
-  async getTokens(profile: PrivateProfile) {
+  async getTokens(profile: IProfileDto) {
     const [accessToken, refreshToken] = await createTokenAsync([
       {
         profile,
@@ -83,11 +81,11 @@ export class AuthService {
     };
   }
 
-  private _getProfile(username: string): Promise<Profile | null> {
-    return this._redisService.get<Profile>(username);
+  private _getProfile(username: string): Promise<IProfileModel | null> {
+    return this._redisService.get<IProfileModel>(username);
   }
 
-  private _setProfile(username: string, body: Profile) {
+  private _setProfile(username: string, body: IProfileModel) {
     return this._redisService.set(username, body).catch(() => {
       throw new ApiError("Клиент не найден в базе данных", 500);
     });

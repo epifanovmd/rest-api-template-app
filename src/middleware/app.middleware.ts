@@ -16,7 +16,7 @@ export const RegisterAppMiddlewares = (
     )
     .use(
       bodyParser({
-        detectJSON: ctx => /\.json$/i.test(ctx.path),
+        detectJSON: ctx => (/\.json$/i).test(ctx.path),
       }),
     )
     .use(

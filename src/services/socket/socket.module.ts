@@ -1,4 +1,5 @@
 import { Container } from "inversify";
+
 import { Module } from "../../modules";
 import { SocketGateway } from "./socket.gateway";
 import { SocketService } from "./socket.service";

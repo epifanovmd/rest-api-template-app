@@ -1,13 +1,14 @@
 import { Request } from "koa";
+
 import { ApiError } from "../common";
 import { verifyToken } from "../common/helpers";
-import { PrivateProfile } from "../services/auth";
+import { IProfileDto } from "../services/auth";
 
 export const koaAuthentication = (
   request: Request,
   securityName: string,
   scopes?: string[],
-): Promise<PrivateProfile | null> => {
+): Promise<IProfileDto | null> => {
   const token = request.headers.authorization?.split(" ")[1];
 
   if (securityName === "jwt") {

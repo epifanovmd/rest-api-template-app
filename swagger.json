@@ -6,7 +6,7 @@
 		"requestBodies": {},
 		"responses": {},
 		"schemas": {
-			"Tokens": {
+			"ITokensDto": {
 				"properties": {
 					"accessToken": {
 						"type": "string"
@@ -22,11 +22,8 @@
 				"type": "object",
 				"additionalProperties": false
 			},
-			"Pick_Profile.Exclude_keyofProfile.salt-or-password__": {
+			"IProfileWithTokensDto": {
 				"properties": {
-					"id": {
-						"type": "string"
-					},
 					"username": {
 						"type": "string"
 					},
@@ -35,48 +32,24 @@
 					},
 					"email": {
 						"type": "string"
-					}
-				},
-				"required": [
-					"id",
-					"username",
-					"name"
-				],
-				"type": "object",
-				"description": "From T, pick a set of properties whose keys are in the union K"
-			},
-			"Omit_Profile.salt-or-password_": {
-				"$ref": "#/components/schemas/Pick_Profile.Exclude_keyofProfile.salt-or-password__",
-				"description": "Construct a type with the properties of T except for those in type K."
-			},
-			"ProfileDto": {
-				"properties": {
+					},
 					"id": {
-						"type": "string"
-					},
-					"username": {
-						"type": "string"
-					},
-					"name": {
-						"type": "string"
-					},
-					"email": {
 						"type": "string"
 					},
 					"tokens": {
-						"$ref": "#/components/schemas/Tokens"
+						"$ref": "#/components/schemas/ITokensDto"
 					}
 				},
 				"required": [
-					"id",
 					"username",
 					"name",
+					"id",
 					"tokens"
 				],
 				"type": "object",
 				"additionalProperties": false
 			},
-			"CreateProfileDto": {
+			"ISignUpRequestDto": {
 				"properties": {
 					"username": {
 						"type": "string"
@@ -99,7 +72,7 @@
 				"type": "object",
 				"additionalProperties": false
 			},
-			"AuthDto": {
+			"ISignInRequestDto": {
 				"properties": {
 					"username": {
 						"type": "string"
@@ -115,7 +88,7 @@
 				"type": "object",
 				"additionalProperties": false
 			},
-			"FileDto": {
+			"IFileDto": {
 				"properties": {
 					"id": {
 						"type": "string"
@@ -176,23 +149,27 @@
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/ProfileDto"
+									"$ref": "#/components/schemas/IProfileWithTokensDto"
 								}
 							}
 						}
 					}
 				},
+				"description": "Endpoint description",
+				"summary": "Endpoint summary.",
 				"tags": [
 					"Authorization"
 				],
 				"security": [],
 				"parameters": [],
 				"requestBody": {
+					"description": "Body param",
 					"required": true,
 					"content": {
 						"application/json": {
 							"schema": {
-								"$ref": "#/components/schemas/CreateProfileDto"
+								"$ref": "#/components/schemas/ISignUpRequestDto",
+								"description": "Body param"
 							}
 						}
 					}
@@ -208,7 +185,7 @@
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/ProfileDto"
+									"$ref": "#/components/schemas/IProfileWithTokensDto"
 								}
 							}
 						}
@@ -224,23 +201,23 @@
 					"content": {
 						"application/json": {
 							"schema": {
-								"$ref": "#/components/schemas/AuthDto"
+								"$ref": "#/components/schemas/ISignInRequestDto"
 							}
 						}
 					}
 				}
 			}
 		},
-		"/api/auth/logout": {
+		"/api/auth/refresh": {
 			"post": {
-				"operationId": "Logout",
+				"operationId": "Refresh",
 				"responses": {
 					"200": {
 						"description": "Ok",
 						"content": {
 							"application/json": {
 								"schema": {
-									"type": "string"
+									"$ref": "#/components/schemas/ITokensDto"
 								}
 							}
 						}
@@ -250,33 +227,25 @@
 					"Authorization"
 				],
 				"security": [],
-				"parameters": []
-			}
-		},
-		"/api/auth/refresh": {
-			"get": {
-				"operationId": "Refresh",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/Tokens"
-								}
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"properties": {
+									"refreshToken": {
+										"type": "string"
+									}
+								},
+								"required": [
+									"refreshToken"
+								],
+								"type": "object"
 							}
 						}
 					}
-				},
-				"tags": [
-					"Authorization"
-				],
-				"security": [
-					{
-						"jwt": []
-					}
-				],
-				"parameters": []
+				}
 			}
 		},
 		"/api/file": {
@@ -288,7 +257,7 @@
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/FileDto"
+									"$ref": "#/components/schemas/IFileDto"
 								}
 							}
 						}
@@ -322,7 +291,7 @@
 							"application/json": {
 								"schema": {
 									"items": {
-										"$ref": "#/components/schemas/FileDto"
+										"$ref": "#/components/schemas/IFileDto"
 									},
 									"type": "array"
 								}
@@ -399,7 +368,8 @@
 	},
 	"servers": [
 		{
-			"url": "http://localhost:8181/"
+			"url": "http://localhost:8181",
+			"description": "Local dev"
 		}
 	]
 }

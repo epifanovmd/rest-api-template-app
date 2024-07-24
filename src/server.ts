@@ -1,6 +1,5 @@
 import { SERVER_HOST, SERVER_PORT } from "../config";
 import { app, router } from "./app";
-
 import { errorHandler, notFoundHandler } from "./common";
 import { RegisterAppMiddlewares, RegisterSwagger } from "./middleware";
 import { iocContainer } from "./modules";

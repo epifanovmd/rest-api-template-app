@@ -12,7 +12,14 @@
         "in": "query"
       }
     },
-    "host": "localhost:8181",
+    "spec": {
+      "servers": [
+        {
+          "url": "http://localhost:8181",
+          "description": "Local dev"
+        }
+      ]
+    },
     "outputDirectory": "./",
     "specMerging": "recursive",
     "specVersion": 3
