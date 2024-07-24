@@ -2,17 +2,9 @@
   "extends": [
     "eslint:recommended"
   ],
-  "env": {
-    "browser": true,
-    "node": true,
-    "es6": true
-  },
   "parser": "@typescript-eslint/parser",
   "parserOptions": {
     "sourceType": "module"
-  },
-  "globals": {
-    "NodeJS": true
   },
   "plugins": [
     "@typescript-eslint",
@@ -22,6 +14,10 @@
     // simple-import-sort
     "simple-import-sort/imports": "error",
     "simple-import-sort/exports": "error",
+
+    "no-undef": "off",
+    "no-unused-vars": "off",
+
     // Stylistic
     "no-redeclare": "off",
     "semi": "error",
@@ -88,7 +84,6 @@
     "spaced-comment": ["error"],
     "switch-colon-spacing": ["error", { "after": true, "before": false }],
     "template-tag-spacing": ["error", "never"],
-    "wrap-regex": ["error"],
-    "no-unused-vars": ["warn", { "argsIgnorePattern": "^_", "destructuredArrayIgnorePattern": "^_", "ignoreRestSiblings": true, "args": "after-used" }]
+    "wrap-regex": ["error"]
   }
 }
