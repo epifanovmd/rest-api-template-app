@@ -5,7 +5,7 @@ import { ApiError } from "../../common";
 
 const rediscl = createClient({
   password: "redisPass",
-  url: "redis://localhost:6379",
+  url: "redis://redis:6379",
 });
 
 rediscl.connect().catch(err => {
