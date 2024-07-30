@@ -4,6 +4,7 @@ import { createClient } from "redis";
 import { ApiError } from "../../common";
 
 const rediscl = createClient({
+  password: "redisPass",
   url: "redis://localhost:6379",
 });
 
