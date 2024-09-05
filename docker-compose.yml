@@ -44,4 +44,6 @@ services:
       - redis
 
 volumes:
-  wireguard:
+  postgres:
+  redis:
+  backend:
