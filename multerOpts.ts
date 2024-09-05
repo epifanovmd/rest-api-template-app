@@ -1,11 +1,12 @@
 import multer from "multer";
 import { v4 } from "uuid";
-import { SERVER_FILES_FOLDER_PATH } from "./config";
+
+import { config } from "./config";
 
 const multerOpts: multer.Options = {
   storage: multer.diskStorage({
     destination(req, file, cb) {
-      cb(null, SERVER_FILES_FOLDER_PATH);
+      cb(null, config.SERVER_FILES_FOLDER_PATH);
     },
     filename(req, file, cb) {
       const fileFormat = file.originalname.split(".");

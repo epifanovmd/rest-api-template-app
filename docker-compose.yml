@@ -2,8 +2,8 @@ version: "3.8"
 
 services:
   redis:
-    env_file: .env
-    container_name: redis_container
+    env_file: .env.development
+    container_name: redis
     image: redis:latest
     command:
       - 'redis-server'
@@ -22,9 +22,9 @@ services:
     restart: unless-stopped
 
   backend:
-    env_file: .env
+    env_file: .env.development
     build: .
-    container_name: backend_container
+    container_name: backend
     ports:
       - "8181:8181"
       - "3232:3232"

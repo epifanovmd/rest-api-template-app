@@ -1,9 +1,11 @@
 import jwt, { sign, SignOptions, VerifyErrors } from "jsonwebtoken";
 
+import { config } from "../../../config";
 import { IProfileDto } from "../../services/auth";
 import { JWTDecoded } from "../../types/koa";
-import { jwtSecretKey } from "../constants";
 import { ApiError } from "../handlers";
+
+export const { JWT_SECRET_KEY } = config;
 
 export const verifyToken = (
   token?: string,
@@ -15,7 +17,7 @@ export const verifyToken = (
     } else {
       return jwt.verify(
         token,
-        jwtSecretKey,
+        JWT_SECRET_KEY,
         (err: VerifyErrors, decoded: JWTDecoded) => {
           if (err) {
             reject(err);
@@ -36,7 +38,7 @@ export const verifyToken = (
 
 export const createToken = (profile: IProfileDto, opts?: SignOptions) =>
   new Promise<string>(resolve => {
-    resolve(sign(profile, jwtSecretKey, opts));
+    resolve(sign(profile, JWT_SECRET_KEY, opts));
   });
 
 export const createTokenAsync = (

@@ -3,10 +3,13 @@ import { createServer } from "http";
 import { injectable as Injectable } from "inversify";
 import { Server } from "socket.io";
 
+import { config } from "../../../config";
 import { app } from "../../app";
 import { verifyToken } from "../../common/helpers";
 import { IProfileDto } from "../auth";
 import { ISocketEmitEvents, ISocketEvents, TSocket } from "./socket.types";
+
+const { SOCKET_PORT, CORS_ALLOW_IPS } = config;
 
 @Injectable()
 export class SocketService {
@@ -19,10 +22,7 @@ export class SocketService {
 
     this._socket = new Server(server, {
       cors: {
-        origin: [
-          "http://localhost:3000",
-          "https://socket-test-client.netlify.app",
-        ],
+        origin: CORS_ALLOW_IPS.split(","),
         methods: ["GET", "POST"],
         credentials: true,
       },
@@ -32,8 +32,8 @@ export class SocketService {
       this.clients.set(client.id, { clientSocket });
     });
 
-    console.log("Socket listen on PORT: ", 3232);
-    server.listen("3232");
+    console.log("Socket listen on PORT: ", SOCKET_PORT);
+    server.listen(`${SOCKET_PORT}`);
   }
 
   get socket() {

@@ -4,7 +4,7 @@ import path from "path";
 import { File } from "tsoa";
 import { v4 } from "uuid";
 
-import { SERVER_FILES_FOLDER_PATH } from "../../../config";
+import { config } from "../../../config";
 import { ApiError } from "../../common";
 import { RedisService } from "../redis";
 import { IFileDto } from "./file.types";
@@ -54,14 +54,14 @@ export class FileService {
 
   private _deleteMediaFromServer(url: string) {
     try {
-      fs.readdir(SERVER_FILES_FOLDER_PATH, err => {
+      fs.readdir(config.SERVER_FILES_FOLDER_PATH, err => {
         if (err) {
           throw Promise.resolve(err);
         }
 
         const file = url.split("/")?.[1];
 
-        fs.unlink(path.join(SERVER_FILES_FOLDER_PATH, file), err => {
+        fs.unlink(path.join(config.SERVER_FILES_FOLDER_PATH, file), err => {
           if (err) {
             throw Promise.resolve(err);
           }

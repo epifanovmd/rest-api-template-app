@@ -1,0 +1,13 @@
+dist
+build
+.vscode/
+.idea
+yarn-error.log
+start.sh
+README.md
+nodemon.json
+.prettierrc.json
+.gitignore
+.eslintrc
+.git
+.husky
