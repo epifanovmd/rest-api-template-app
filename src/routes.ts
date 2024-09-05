@@ -11,8 +11,6 @@ import { FileController } from './services/file/file.controller';
 import { koaAuthentication } from './middleware/jwt.middleware';
 // @ts-ignore - no great way to install types from subpackage
 const promiseAny = require('promise.any');
-import { iocContainer } from './modules';
-import { IocContainer, IocContainerFactory } from '@tsoa/runtime';
 import type { Middleware } from 'koa';
 import * as KoaRouter from '@koa/router';
 const multer = require('@koa/multer');
@@ -53,14 +51,14 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "Partial_Omit_TProfileCreateModel.id-or-passwordHash__": {
+    "Partial_TProfileCreateModel_": {
         "dataType": "refAlias",
-        "type": {"dataType":"nestedObjectLiteral","nestedProperties":{"username":{"dataType":"string"},"firstName":{"dataType":"string"},"lastName":{"dataType":"string"},"email":{"dataType":"string"},"phone":{"dataType":"string"}},"validators":{}},
+        "type": {"dataType":"nestedObjectLiteral","nestedProperties":{"id":{"dataType":"string"},"username":{"dataType":"string"},"firstName":{"dataType":"string"},"lastName":{"dataType":"string"},"email":{"dataType":"string"},"phone":{"dataType":"string"},"passwordHash":{"dataType":"string"}},"validators":{}},
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "TProfileRequest": {
+    "TProfileUpdateModel": {
         "dataType": "refAlias",
-        "type": {"ref":"Partial_Omit_TProfileCreateModel.id-or-passwordHash__","validators":{}},
+        "type": {"ref":"Partial_TProfileCreateModel_","validators":{}},
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "ITokensDto": {
@@ -157,12 +155,7 @@ export function RegisterRoutes(router: KoaRouter) {
               context.throw(error.status, JSON.stringify({ fields: error.fields }));
             }
 
-            const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(context.request) : iocContainer;
-
-            const controller: any = await container.get<ProfileController>(ProfileController);
-            if (typeof controller['setStatus'] === 'function') {
-                controller.setStatus(undefined);
-            }
+            const controller = new ProfileController();
 
             const promise = controller.getAllProfiles.apply(controller, validatedArgs as any);
             return promiseHandler(controller, promise, context, undefined, undefined);
@@ -187,12 +180,7 @@ export function RegisterRoutes(router: KoaRouter) {
               context.throw(error.status, JSON.stringify({ fields: error.fields }));
             }
 
-            const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(context.request) : iocContainer;
-
-            const controller: any = await container.get<ProfileController>(ProfileController);
-            if (typeof controller['setStatus'] === 'function') {
-                controller.setStatus(undefined);
-            }
+            const controller = new ProfileController();
 
             const promise = controller.getProfileById.apply(controller, validatedArgs as any);
             return promiseHandler(controller, promise, context, undefined, undefined);
@@ -217,12 +205,7 @@ export function RegisterRoutes(router: KoaRouter) {
               context.throw(error.status, JSON.stringify({ fields: error.fields }));
             }
 
-            const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(context.request) : iocContainer;
-
-            const controller: any = await container.get<ProfileController>(ProfileController);
-            if (typeof controller['setStatus'] === 'function') {
-                controller.setStatus(undefined);
-            }
+            const controller = new ProfileController();
 
             const promise = controller.getMyProfile.apply(controller, validatedArgs as any);
             return promiseHandler(controller, promise, context, undefined, undefined);
@@ -236,7 +219,7 @@ export function RegisterRoutes(router: KoaRouter) {
             async function ProfileController_updateProfile(context: any, next: any) {
             const args = {
                     id: {"in":"path","name":"id","required":true,"dataType":"string"},
-                    body: {"in":"body","name":"body","required":true,"ref":"TProfileRequest"},
+                    body: {"in":"body","name":"body","required":true,"ref":"TProfileUpdateModel"},
             };
 
             let validatedArgs: any[] = [];
@@ -248,12 +231,7 @@ export function RegisterRoutes(router: KoaRouter) {
               context.throw(error.status, JSON.stringify({ fields: error.fields }));
             }
 
-            const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(context.request) : iocContainer;
-
-            const controller: any = await container.get<ProfileController>(ProfileController);
-            if (typeof controller['setStatus'] === 'function') {
-                controller.setStatus(undefined);
-            }
+            const controller = new ProfileController();
 
             const promise = controller.updateProfile.apply(controller, validatedArgs as any);
             return promiseHandler(controller, promise, context, undefined, undefined);
@@ -278,12 +256,7 @@ export function RegisterRoutes(router: KoaRouter) {
               context.throw(error.status, JSON.stringify({ fields: error.fields }));
             }
 
-            const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(context.request) : iocContainer;
-
-            const controller: any = await container.get<ProfileController>(ProfileController);
-            if (typeof controller['setStatus'] === 'function') {
-                controller.setStatus(undefined);
-            }
+            const controller = new ProfileController();
 
             const promise = controller.deleteProfile.apply(controller, validatedArgs as any);
             return promiseHandler(controller, promise, context, undefined, undefined);
@@ -307,12 +280,7 @@ export function RegisterRoutes(router: KoaRouter) {
               context.throw(error.status, JSON.stringify({ fields: error.fields }));
             }
 
-            const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(context.request) : iocContainer;
-
-            const controller: any = await container.get<AuthController>(AuthController);
-            if (typeof controller['setStatus'] === 'function') {
-                controller.setStatus(undefined);
-            }
+            const controller = new AuthController();
 
             const promise = controller.signUp.apply(controller, validatedArgs as any);
             return promiseHandler(controller, promise, context, undefined, undefined);
@@ -336,12 +304,7 @@ export function RegisterRoutes(router: KoaRouter) {
               context.throw(error.status, JSON.stringify({ fields: error.fields }));
             }
 
-            const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(context.request) : iocContainer;
-
-            const controller: any = await container.get<AuthController>(AuthController);
-            if (typeof controller['setStatus'] === 'function') {
-                controller.setStatus(undefined);
-            }
+            const controller = new AuthController();
 
             const promise = controller.signIn.apply(controller, validatedArgs as any);
             return promiseHandler(controller, promise, context, undefined, undefined);
@@ -365,12 +328,7 @@ export function RegisterRoutes(router: KoaRouter) {
               context.throw(error.status, JSON.stringify({ fields: error.fields }));
             }
 
-            const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(context.request) : iocContainer;
-
-            const controller: any = await container.get<AuthController>(AuthController);
-            if (typeof controller['setStatus'] === 'function') {
-                controller.setStatus(undefined);
-            }
+            const controller = new AuthController();
 
             const promise = controller.refresh.apply(controller, validatedArgs as any);
             return promiseHandler(controller, promise, context, undefined, undefined);
@@ -395,12 +353,7 @@ export function RegisterRoutes(router: KoaRouter) {
               context.throw(error.status, JSON.stringify({ fields: error.fields }));
             }
 
-            const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(context.request) : iocContainer;
-
-            const controller: any = await container.get<FileController>(FileController);
-            if (typeof controller['setStatus'] === 'function') {
-                controller.setStatus(undefined);
-            }
+            const controller = new FileController();
 
             const promise = controller.getFileById.apply(controller, validatedArgs as any);
             return promiseHandler(controller, promise, context, undefined, undefined);
@@ -426,12 +379,7 @@ export function RegisterRoutes(router: KoaRouter) {
               context.throw(error.status, JSON.stringify({ fields: error.fields }));
             }
 
-            const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(context.request) : iocContainer;
-
-            const controller: any = await container.get<FileController>(FileController);
-            if (typeof controller['setStatus'] === 'function') {
-                controller.setStatus(undefined);
-            }
+            const controller = new FileController();
 
             const promise = controller.uploadFile.apply(controller, validatedArgs as any);
             return promiseHandler(controller, promise, context, undefined, undefined);
@@ -456,12 +404,7 @@ export function RegisterRoutes(router: KoaRouter) {
               context.throw(error.status, JSON.stringify({ fields: error.fields }));
             }
 
-            const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(context.request) : iocContainer;
-
-            const controller: any = await container.get<FileController>(FileController);
-            if (typeof controller['setStatus'] === 'function') {
-                controller.setStatus(undefined);
-            }
+            const controller = new FileController();
 
             const promise = controller.deleteFile.apply(controller, validatedArgs as any);
             return promiseHandler(controller, promise, context, undefined, undefined);

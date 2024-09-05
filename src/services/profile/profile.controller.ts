@@ -15,13 +15,17 @@ import {
 import { ApiError, assertNotNull } from "../../common";
 import { ListResponse } from "../../dto/ListResponse";
 import { KoaRequest } from "../../types/koa";
-import { IProfileDto, TProfileRequest } from "./profile.model";
+import {
+  IProfileDto,
+  TProfileRequest,
+  TProfileUpdateModel,
+} from "./profile.model";
 import { ProfileService } from "./profile.service";
 
 const { getProfile, deleteProfile, getAllProfile, updateProfile } =
   new ProfileService();
 
-@Injectable()
+// @injectable()
 @Tags("Profile")
 @Route("api/profile")
 export class ProfileController extends Controller {
@@ -60,7 +64,7 @@ export class ProfileController extends Controller {
   @Patch("/{id}")
   updateProfile(
     id: string,
-    @Body() body: TProfileRequest,
+    @Body() body: TProfileUpdateModel,
   ): Promise<IProfileDto> {
     return updateProfile(id, body);
   }

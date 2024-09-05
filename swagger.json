@@ -97,8 +97,11 @@
 				"type": "object",
 				"additionalProperties": false
 			},
-			"Partial_Omit_TProfileCreateModel.id-or-passwordHash__": {
+			"Partial_TProfileCreateModel_": {
 				"properties": {
+					"id": {
+						"type": "string"
+					},
 					"username": {
 						"type": "string"
 					},
@@ -113,13 +116,16 @@
 					},
 					"phone": {
 						"type": "string"
+					},
+					"passwordHash": {
+						"type": "string"
 					}
 				},
 				"type": "object",
 				"description": "Make all properties in T optional"
 			},
-			"TProfileRequest": {
-				"$ref": "#/components/schemas/Partial_Omit_TProfileCreateModel.id-or-passwordHash__"
+			"TProfileUpdateModel": {
+				"$ref": "#/components/schemas/Partial_TProfileCreateModel_"
 			},
 			"ITokensDto": {
 				"properties": {
@@ -405,7 +411,7 @@
 					"content": {
 						"application/json": {
 							"schema": {
-								"$ref": "#/components/schemas/TProfileRequest"
+								"$ref": "#/components/schemas/TProfileUpdateModel"
 							}
 						}
 					}

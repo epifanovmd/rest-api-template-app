@@ -3,7 +3,12 @@ import { Includeable, WhereOptions } from "sequelize";
 import { v1 as uuid } from "uuid";
 
 import { ApiError } from "../../common";
-import { Profile, ProfileModel, TProfileCreateModel } from "./profile.model";
+import {
+  Profile,
+  ProfileModel,
+  TProfileCreateModel,
+  TProfileUpdateModel,
+} from "./profile.model";
 
 export class ProfileService {
   getAllProfile = (offset?: number, limit?: number) =>
@@ -34,6 +39,7 @@ export class ProfileService {
       attributes: ProfileService.profileAttributes,
       include: ProfileService.include,
     }).then(result => {
+      console.log("getProfile");
       if (result === null) {
         return Promise.reject(
           new ApiError("Профиль пользователя не найден", 400),
@@ -44,13 +50,10 @@ export class ProfileService {
     });
 
   createProfile = (body: TProfileCreateModel) => {
-    return Profile.create({
-      id: uuid(),
-      ...body,
-    }).then(result => this.getProfile(result.id));
+    return Profile.create(body).then(result => this.getProfile(result.id));
   };
 
-  updateProfile = (id: string, body: TProfileCreateModel) =>
+  updateProfile = (id: string, body: TProfileUpdateModel) =>
     Profile.update(body, { where: { id } }).then(() => this.getProfile(id));
 
   deleteProfile = async (profileId: number) => {

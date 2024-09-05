@@ -11,7 +11,7 @@ import { ISocketEmitEvents, ISocketEvents, TSocket } from "./socket.types";
 
 const { SOCKET_PORT, CORS_ALLOW_IPS } = config;
 
-@Injectable()
+// @injectable()
 export class SocketService {
   public clients = new Map<string, { clientSocket: TSocket }>();
   private _socket: Server<ISocketEvents, ISocketEmitEvents, ISocketEmitEvents>;

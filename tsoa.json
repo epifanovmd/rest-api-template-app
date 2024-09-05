@@ -29,7 +29,6 @@
     "entryFile": "./src/controllers.ts",
     "routesDir": "./src",
     "basePath": "/",
-    "middleware": "koa",
-    "iocModule": "./src/modules.ts"
+    "middleware": "koa"
   }
 }

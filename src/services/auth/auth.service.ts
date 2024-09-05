@@ -5,7 +5,6 @@ import { v4 } from "uuid";
 import { ApiError } from "../../common";
 import { createTokenAsync, verifyToken } from "../../common/helpers";
 import { IProfileDto, ProfileService } from "../Profile";
-import { RedisService } from "../redis";
 import {
   IProfileWithTokensDto,
   ISignInRequestDto,
@@ -13,19 +12,16 @@ import {
   ITokensDto,
 } from "./auth.types";
 
-@Injectable()
-export class AuthService {
-  constructor(
-    @Inject(RedisService) private _redisService: RedisService,
-    @Inject(ProfileService) private _profileService: ProfileService,
-  ) {}
+const profileService = new ProfileService();
 
+// @injectable()
+export class AuthService {
   async signUp({
     username,
     password,
     ...rest
   }: ISignUpRequestDto): Promise<IProfileWithTokensDto> {
-    const client = await this._profileService
+    const client = await profileService
       .getProfileByAttr({
         username,
       })
@@ -37,10 +33,11 @@ export class AuthService {
         500,
       );
     } else {
-      return this._profileService
+      return profileService
         .createProfile({
           id: v4(),
           ...rest,
+          username,
           passwordHash: sha256(password),
         })
         .then(() =>
@@ -55,12 +52,12 @@ export class AuthService {
   async signIn(body: ISignInRequestDto): Promise<IProfileWithTokensDto> {
     const { username, password } = body;
 
-    const { id, passwordHash } = await this._profileService.getProfileByAttr({
+    const { id, passwordHash } = await profileService.getProfileByAttr({
       username,
     });
 
     if (passwordHash === sha256(password)) {
-      const profile = await this._profileService.getProfile(id);
+      const profile = (await profileService.getProfile(id)).toJSON();
 
       return {
         ...profile,

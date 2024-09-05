@@ -9,12 +9,14 @@ import { ApiError } from "../../common";
 import { RedisService } from "../redis";
 import { IFileDto } from "./file.types";
 
-@injectable()
+const redisService = new RedisService();
+
+// @injectable()
 export class FileService {
-  constructor(@inject(RedisService) private _redisService: RedisService) {}
+  constructor() {}
 
   async getFileById(id: string): Promise<IFileDto> {
-    const file = await this._redisService.get<IFileDto>(id);
+    const file = await redisService.get<IFileDto>(id);
 
     if (!file) {
       throw new ApiError("Файл не найден", 404);
@@ -33,7 +35,7 @@ export class FileService {
 
         const id = v4();
 
-        return this._redisService.set(id, {
+        return redisService.set(id, {
           id,
           name,
           type,
@@ -49,7 +51,7 @@ export class FileService {
 
     await this._deleteMediaFromServer(url);
 
-    return this._redisService.delete(id);
+    return redisService.delete(id);
   }
 
   private _deleteMediaFromServer(url: string) {

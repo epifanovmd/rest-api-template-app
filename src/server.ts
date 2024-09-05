@@ -2,13 +2,14 @@ import { config } from "../config";
 import { app, router } from "./app";
 import { errorHandler, notFoundHandler } from "./common";
 import { RegisterAppMiddlewares, RegisterSwagger } from "./middleware";
-import { iocContainer } from "./modules";
+// import { iocContainer } from "./modules";
 import { RegisterRoutes } from "./routes";
 import { SocketGateway } from "./services/socket/socket.gateway";
 
 const { SERVER_HOST, SERVER_PORT } = config;
 
-const socketGateway = iocContainer.get(SocketGateway);
+// const socketGateway = iocContainer.get(SocketGateway);
+const socketGateway = new SocketGateway();
 
 const bootstrap = () => {
   socketGateway.start();

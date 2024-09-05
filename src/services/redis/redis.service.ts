@@ -19,7 +19,7 @@ rediscl.on("connect", () => {
   console.log("Redis connected.");
 });
 
-@Injectable()
+// @injectable()
 export class RedisService {
   async set<Data>(key: string, data: Data) {
     const status = await rediscl.set(key, JSON.stringify(data));

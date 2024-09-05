@@ -14,9 +14,12 @@ export type TProfileRequest = Partial<
 >;
 
 export type ProfileModel = InferAttributes<Profile>;
-export type TProfileCreateModel = Partial<
-  InferCreationAttributes<Profile, { omit: "createdAt" | "updatedAt" }>
+export type TProfileCreateModel = InferCreationAttributes<
+  Profile,
+  { omit: "createdAt" | "updatedAt" }
 >;
+
+export type TProfileUpdateModel = Partial<TProfileCreateModel>;
 
 export class Profile extends Model<ProfileModel, TProfileCreateModel> {
   declare id: string;
