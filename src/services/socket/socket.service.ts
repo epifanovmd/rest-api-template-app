@@ -6,7 +6,7 @@ import { Server } from "socket.io";
 import { config } from "../../../config";
 import { app } from "../../app";
 import { verifyToken } from "../../common/helpers";
-import { IProfileDto } from "../auth";
+import { IProfileDto } from "../profile";
 import { ISocketEmitEvents, ISocketEvents, TSocket } from "./socket.types";
 
 const { SOCKET_PORT, CORS_ALLOW_IPS } = config;

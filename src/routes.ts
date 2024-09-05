@@ -3,6 +3,8 @@
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
   import { Controller, ValidationService, FieldErrors, ValidateError, TsoaRoute, HttpStatusCodeLiteral, TsoaResponse, fetchMiddlewares } from '@tsoa/runtime';
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+import { ProfileController } from './services/Profile/profile.controller';
+// WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 import { AuthController } from './services/auth/auth.controller';
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 import { FileController } from './services/file/file.controller';
@@ -20,6 +22,47 @@ const upload = multer(multerOpts);
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 
 const models: TsoaRoute.Models = {
+    "Pick_ProfileModel.Exclude_keyofProfileModel.passwordHash__": {
+        "dataType": "refAlias",
+        "type": {"dataType":"nestedObjectLiteral","nestedProperties":{"id":{"dataType":"string"},"username":{"dataType":"string"},"firstName":{"dataType":"string"},"lastName":{"dataType":"string"},"email":{"dataType":"string"},"phone":{"dataType":"string"},"createdAt":{"dataType":"datetime"},"updatedAt":{"dataType":"datetime"}},"validators":{}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "IProfileDto": {
+        "dataType": "refObject",
+        "properties": {
+            "id": {"dataType":"string"},
+            "username": {"dataType":"string"},
+            "firstName": {"dataType":"string"},
+            "lastName": {"dataType":"string"},
+            "email": {"dataType":"string"},
+            "phone": {"dataType":"string"},
+            "createdAt": {"dataType":"datetime"},
+            "updatedAt": {"dataType":"datetime"},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "ListResponse_IProfileDto-Array_": {
+        "dataType": "refObject",
+        "properties": {
+            "count": {"dataType":"double"},
+            "offset": {"dataType":"double"},
+            "limit": {"dataType":"double"},
+            "data": {"dataType":"array","array":{"dataType":"refObject","ref":"IProfileDto"},"required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "Partial_Omit_TProfileCreateModel.id-or-passwordHash__": {
+        "dataType": "refAlias",
+        "type": {"dataType":"nestedObjectLiteral","nestedProperties":{"username":{"dataType":"string"},"firstName":{"dataType":"string"},"lastName":{"dataType":"string"},"email":{"dataType":"string"},"phone":{"dataType":"string"}},"validators":{}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "TProfileRequest": {
+        "dataType": "refAlias",
+        "type": {"ref":"Partial_Omit_TProfileCreateModel.id-or-passwordHash__","validators":{}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "ITokensDto": {
         "dataType": "refObject",
         "properties": {
@@ -32,13 +75,22 @@ const models: TsoaRoute.Models = {
     "IProfileWithTokensDto": {
         "dataType": "refObject",
         "properties": {
-            "username": {"dataType":"string","required":true},
-            "name": {"dataType":"string","required":true},
+            "id": {"dataType":"string"},
+            "username": {"dataType":"string"},
+            "firstName": {"dataType":"string"},
+            "lastName": {"dataType":"string"},
             "email": {"dataType":"string"},
-            "id": {"dataType":"string","required":true},
+            "phone": {"dataType":"string"},
+            "createdAt": {"dataType":"datetime"},
+            "updatedAt": {"dataType":"datetime"},
             "tokens": {"ref":"ITokensDto","required":true},
         },
         "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "Pick_TProfileCreateModel.Exclude_keyofTProfileCreateModel.id-or-username-or-passwordHash__": {
+        "dataType": "refAlias",
+        "type": {"dataType":"nestedObjectLiteral","nestedProperties":{"firstName":{"dataType":"string"},"lastName":{"dataType":"string"},"email":{"dataType":"string"},"phone":{"dataType":"string"}},"validators":{}},
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "ISignUpRequestDto": {
@@ -46,8 +98,10 @@ const models: TsoaRoute.Models = {
         "properties": {
             "username": {"dataType":"string","required":true},
             "password": {"dataType":"string","required":true},
-            "name": {"dataType":"string","required":true},
+            "firstName": {"dataType":"string"},
+            "lastName": {"dataType":"string"},
             "email": {"dataType":"string"},
+            "phone": {"dataType":"string"},
         },
         "additionalProperties": false,
     },
@@ -83,6 +137,158 @@ export function RegisterRoutes(router: KoaRouter) {
     //  NOTE: If you do not see routes for all of your controllers in this file, then you might not have informed tsoa of where to look
     //      Please look into the "controllerPathGlobs" config option described in the readme: https://github.com/lukeautry/tsoa
     // ###########################################################################################################
+        router.get('/api/profile',
+            authenticateMiddleware([{"jwt":[]}]),
+            ...(fetchMiddlewares<Middleware>(ProfileController)),
+            ...(fetchMiddlewares<Middleware>(ProfileController.prototype.getAllProfiles)),
+
+            async function ProfileController_getAllProfiles(context: any, next: any) {
+            const args = {
+                    offset: {"in":"query","name":"offset","dataType":"double"},
+                    limit: {"in":"query","name":"limit","dataType":"double"},
+            };
+
+            let validatedArgs: any[] = [];
+            try {
+              validatedArgs = getValidatedArgs(args, context, next);
+            } catch (err) {
+              const error = err as any;
+              context.status = error.status;
+              context.throw(error.status, JSON.stringify({ fields: error.fields }));
+            }
+
+            const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(context.request) : iocContainer;
+
+            const controller: any = await container.get<ProfileController>(ProfileController);
+            if (typeof controller['setStatus'] === 'function') {
+                controller.setStatus(undefined);
+            }
+
+            const promise = controller.getAllProfiles.apply(controller, validatedArgs as any);
+            return promiseHandler(controller, promise, context, undefined, undefined);
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        router.get('/api/profile/:id',
+            authenticateMiddleware([{"jwt":[]}]),
+            ...(fetchMiddlewares<Middleware>(ProfileController)),
+            ...(fetchMiddlewares<Middleware>(ProfileController.prototype.getProfileById)),
+
+            async function ProfileController_getProfileById(context: any, next: any) {
+            const args = {
+                    id: {"in":"path","name":"id","required":true,"dataType":"string"},
+            };
+
+            let validatedArgs: any[] = [];
+            try {
+              validatedArgs = getValidatedArgs(args, context, next);
+            } catch (err) {
+              const error = err as any;
+              context.status = error.status;
+              context.throw(error.status, JSON.stringify({ fields: error.fields }));
+            }
+
+            const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(context.request) : iocContainer;
+
+            const controller: any = await container.get<ProfileController>(ProfileController);
+            if (typeof controller['setStatus'] === 'function') {
+                controller.setStatus(undefined);
+            }
+
+            const promise = controller.getProfileById.apply(controller, validatedArgs as any);
+            return promiseHandler(controller, promise, context, undefined, undefined);
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        router.get('/api/profile/my',
+            authenticateMiddleware([{"jwt":[]}]),
+            ...(fetchMiddlewares<Middleware>(ProfileController)),
+            ...(fetchMiddlewares<Middleware>(ProfileController.prototype.getMyProfile)),
+
+            async function ProfileController_getMyProfile(context: any, next: any) {
+            const args = {
+                    req: {"in":"request","name":"req","required":true,"dataType":"object"},
+            };
+
+            let validatedArgs: any[] = [];
+            try {
+              validatedArgs = getValidatedArgs(args, context, next);
+            } catch (err) {
+              const error = err as any;
+              context.status = error.status;
+              context.throw(error.status, JSON.stringify({ fields: error.fields }));
+            }
+
+            const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(context.request) : iocContainer;
+
+            const controller: any = await container.get<ProfileController>(ProfileController);
+            if (typeof controller['setStatus'] === 'function') {
+                controller.setStatus(undefined);
+            }
+
+            const promise = controller.getMyProfile.apply(controller, validatedArgs as any);
+            return promiseHandler(controller, promise, context, undefined, undefined);
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        router.patch('/api/profile/:id',
+            authenticateMiddleware([{"jwt":[]}]),
+            ...(fetchMiddlewares<Middleware>(ProfileController)),
+            ...(fetchMiddlewares<Middleware>(ProfileController.prototype.updateProfile)),
+
+            async function ProfileController_updateProfile(context: any, next: any) {
+            const args = {
+                    id: {"in":"path","name":"id","required":true,"dataType":"string"},
+                    body: {"in":"body","name":"body","required":true,"ref":"TProfileRequest"},
+            };
+
+            let validatedArgs: any[] = [];
+            try {
+              validatedArgs = getValidatedArgs(args, context, next);
+            } catch (err) {
+              const error = err as any;
+              context.status = error.status;
+              context.throw(error.status, JSON.stringify({ fields: error.fields }));
+            }
+
+            const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(context.request) : iocContainer;
+
+            const controller: any = await container.get<ProfileController>(ProfileController);
+            if (typeof controller['setStatus'] === 'function') {
+                controller.setStatus(undefined);
+            }
+
+            const promise = controller.updateProfile.apply(controller, validatedArgs as any);
+            return promiseHandler(controller, promise, context, undefined, undefined);
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        router.delete('/api/profile/:id',
+            authenticateMiddleware([{"jwt":[]}]),
+            ...(fetchMiddlewares<Middleware>(ProfileController)),
+            ...(fetchMiddlewares<Middleware>(ProfileController.prototype.deleteProfile)),
+
+            async function ProfileController_deleteProfile(context: any, next: any) {
+            const args = {
+                    id: {"in":"path","name":"id","required":true,"dataType":"double"},
+            };
+
+            let validatedArgs: any[] = [];
+            try {
+              validatedArgs = getValidatedArgs(args, context, next);
+            } catch (err) {
+              const error = err as any;
+              context.status = error.status;
+              context.throw(error.status, JSON.stringify({ fields: error.fields }));
+            }
+
+            const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(context.request) : iocContainer;
+
+            const controller: any = await container.get<ProfileController>(ProfileController);
+            if (typeof controller['setStatus'] === 'function') {
+                controller.setStatus(undefined);
+            }
+
+            const promise = controller.deleteProfile.apply(controller, validatedArgs as any);
+            return promiseHandler(controller, promise, context, undefined, undefined);
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         router.post('/api/auth/signUp',
             ...(fetchMiddlewares<Middleware>(AuthController)),
             ...(fetchMiddlewares<Middleware>(AuthController.prototype.signUp)),

@@ -1,8 +1,19 @@
 version: "3.8"
 
 services:
+  postgres:
+    container_name: postgres
+    image: postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-pg_user_name}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pg_password}
+    volumes:
+      - ./postgres:${PGDATA}
+    ports:
+      - "${POSTGRES_PORT}:5432"
+    restart: unless-stopped
+
   redis:
-    env_file: .env.development
     container_name: redis
     image: redis:latest
     command:
@@ -21,16 +32,15 @@ services:
       - ./redis/data:/data
     restart: unless-stopped
 
-  backend:
-    env_file: .env.development
-    build: .
-    container_name: backend
-    ports:
-      - "8181:8181"
-      - "3232:3232"
-    restart: unless-stopped
-    depends_on:
-      - redis
+#  backend:
+#    build: .
+#    container_name: backend
+#    ports:
+#      - "8181:8181"
+#      - "3232:3232"
+#    restart: unless-stopped
+#    depends_on:
+#      - redis
 
 volumes:
   wireguard:

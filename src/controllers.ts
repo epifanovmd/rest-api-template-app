@@ -1,1 +1,1 @@
-export { AuthController } from "./services";
+export { FileController } from "./services";

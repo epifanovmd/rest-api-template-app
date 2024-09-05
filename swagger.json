@@ -6,6 +6,121 @@
 		"requestBodies": {},
 		"responses": {},
 		"schemas": {
+			"Pick_ProfileModel.Exclude_keyofProfileModel.passwordHash__": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"username": {
+						"type": "string"
+					},
+					"firstName": {
+						"type": "string"
+					},
+					"lastName": {
+						"type": "string"
+					},
+					"email": {
+						"type": "string"
+					},
+					"phone": {
+						"type": "string"
+					},
+					"createdAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"updatedAt": {
+						"type": "string",
+						"format": "date-time"
+					}
+				},
+				"type": "object",
+				"description": "From T, pick a set of properties whose keys are in the union K"
+			},
+			"IProfileDto": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"username": {
+						"type": "string"
+					},
+					"firstName": {
+						"type": "string"
+					},
+					"lastName": {
+						"type": "string"
+					},
+					"email": {
+						"type": "string"
+					},
+					"phone": {
+						"type": "string"
+					},
+					"createdAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"updatedAt": {
+						"type": "string",
+						"format": "date-time"
+					}
+				},
+				"type": "object",
+				"additionalProperties": false
+			},
+			"ListResponse_IProfileDto-Array_": {
+				"properties": {
+					"count": {
+						"type": "number",
+						"format": "double"
+					},
+					"offset": {
+						"type": "number",
+						"format": "double"
+					},
+					"limit": {
+						"type": "number",
+						"format": "double"
+					},
+					"data": {
+						"items": {
+							"$ref": "#/components/schemas/IProfileDto"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"data"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"Partial_Omit_TProfileCreateModel.id-or-passwordHash__": {
+				"properties": {
+					"username": {
+						"type": "string"
+					},
+					"firstName": {
+						"type": "string"
+					},
+					"lastName": {
+						"type": "string"
+					},
+					"email": {
+						"type": "string"
+					},
+					"phone": {
+						"type": "string"
+					}
+				},
+				"type": "object",
+				"description": "Make all properties in T optional"
+			},
+			"TProfileRequest": {
+				"$ref": "#/components/schemas/Partial_Omit_TProfileCreateModel.id-or-passwordHash__"
+			},
 			"ITokensDto": {
 				"properties": {
 					"accessToken": {
@@ -24,30 +139,59 @@
 			},
 			"IProfileWithTokensDto": {
 				"properties": {
+					"id": {
+						"type": "string"
+					},
 					"username": {
 						"type": "string"
 					},
-					"name": {
+					"firstName": {
+						"type": "string"
+					},
+					"lastName": {
 						"type": "string"
 					},
 					"email": {
 						"type": "string"
 					},
-					"id": {
+					"phone": {
 						"type": "string"
+					},
+					"createdAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"updatedAt": {
+						"type": "string",
+						"format": "date-time"
 					},
 					"tokens": {
 						"$ref": "#/components/schemas/ITokensDto"
 					}
 				},
 				"required": [
-					"username",
-					"name",
-					"id",
 					"tokens"
 				],
 				"type": "object",
 				"additionalProperties": false
+			},
+			"Pick_TProfileCreateModel.Exclude_keyofTProfileCreateModel.id-or-username-or-passwordHash__": {
+				"properties": {
+					"firstName": {
+						"type": "string"
+					},
+					"lastName": {
+						"type": "string"
+					},
+					"email": {
+						"type": "string"
+					},
+					"phone": {
+						"type": "string"
+					}
+				},
+				"type": "object",
+				"description": "From T, pick a set of properties whose keys are in the union K"
 			},
 			"ISignUpRequestDto": {
 				"properties": {
@@ -57,17 +201,22 @@
 					"password": {
 						"type": "string"
 					},
-					"name": {
+					"firstName": {
+						"type": "string"
+					},
+					"lastName": {
 						"type": "string"
 					},
 					"email": {
+						"type": "string"
+					},
+					"phone": {
 						"type": "string"
 					}
 				},
 				"required": [
 					"username",
-					"password",
-					"name"
+					"password"
 				],
 				"type": "object",
 				"additionalProperties": false
@@ -140,6 +289,190 @@
 	},
 	"openapi": "3.0.0",
 	"paths": {
+		"/api/profile": {
+			"get": {
+				"operationId": "GetAllProfiles",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ListResponse_IProfileDto-Array_"
+								}
+							}
+						}
+					}
+				},
+				"tags": [
+					"Profile"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "query",
+						"name": "offset",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					},
+					{
+						"in": "query",
+						"name": "limit",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					}
+				]
+			}
+		},
+		"/api/profile/{id}": {
+			"get": {
+				"operationId": "GetProfileById",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IProfileDto"
+								}
+							}
+						}
+					}
+				},
+				"tags": [
+					"Profile"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			},
+			"patch": {
+				"operationId": "UpdateProfile",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IProfileDto"
+								}
+							}
+						}
+					}
+				},
+				"tags": [
+					"Profile"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/TProfileRequest"
+							}
+						}
+					}
+				}
+			},
+			"delete": {
+				"operationId": "DeleteProfile",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "number",
+									"format": "double"
+								}
+							}
+						}
+					}
+				},
+				"tags": [
+					"Profile"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					}
+				]
+			}
+		},
+		"/api/profile/my": {
+			"get": {
+				"operationId": "GetMyProfile",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IProfileDto"
+								}
+							}
+						}
+					}
+				},
+				"tags": [
+					"Profile"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": []
+			}
+		},
 		"/api/auth/signUp": {
 			"post": {
 				"operationId": "SignUp",

@@ -2,7 +2,7 @@ import { Request } from "koa";
 
 import { ApiError } from "../common";
 import { verifyToken } from "../common/helpers";
-import { IProfileDto } from "../services/auth";
+import { IProfileDto } from "../services/Profile";
 
 export const koaAuthentication = (
   request: Request,

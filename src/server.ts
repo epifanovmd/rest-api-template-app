@@ -6,8 +6,9 @@ import { iocContainer } from "./modules";
 import { RegisterRoutes } from "./routes";
 import { SocketGateway } from "./services/socket/socket.gateway";
 
-const socketGateway = iocContainer.get(SocketGateway);
 const { SERVER_HOST, SERVER_PORT } = config;
+
+const socketGateway = iocContainer.get(SocketGateway);
 
 const bootstrap = () => {
   socketGateway.start();
@@ -23,7 +24,7 @@ const bootstrap = () => {
   RegisterSwagger(router, "/api-docs");
   RegisterRoutes(router);
 
-  app
+  return app
     .use(errorHandler)
     .use(router.routes())
     .use(router.allowedMethods())
@@ -35,4 +36,4 @@ const bootstrap = () => {
     });
 };
 
-bootstrap();
+export const server = bootstrap();

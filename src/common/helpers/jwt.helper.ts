@@ -1,7 +1,7 @@
 import jwt, { sign, SignOptions, VerifyErrors } from "jsonwebtoken";
 
 import { config } from "../../../config";
-import { IProfileDto } from "../../services/auth";
+import { IProfileDto } from "../../services/Profile";
 import { JWTDecoded } from "../../types/koa";
 import { ApiError } from "../handlers";
 
