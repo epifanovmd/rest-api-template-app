@@ -32,15 +32,15 @@ services:
       - ./redis/data:/data
     restart: unless-stopped
 
-#  backend:
-#    build: .
-#    container_name: backend
-#    ports:
-#      - "8181:8181"
-#      - "3232:3232"
-#    restart: unless-stopped
-#    depends_on:
-#      - redis
+  backend:
+    build: .
+    container_name: backend
+    ports:
+      - "8181:8181"
+      - "3232:3232"
+    restart: unless-stopped
+    depends_on:
+      - redis
 
 volumes:
   wireguard:
