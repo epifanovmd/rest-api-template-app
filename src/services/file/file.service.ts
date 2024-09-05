@@ -6,15 +6,12 @@ import { v4 } from "uuid";
 
 import { config } from "../../../config";
 import { ApiError } from "../../common";
-import { RedisService } from "../redis";
-import { IFileDto } from "./file.types";
+import { Files, IFileDto } from "./file.model";
 
 @injectable()
 export class FileService {
-  constructor(@inject(RedisService) private _redisService: RedisService) {}
-
   async getFileById(id: string): Promise<IFileDto> {
-    const file = await this._redisService.get<IFileDto>(id);
+    const file = await Files.findByPk(id);
 
     if (!file) {
       throw new ApiError("Файл не найден", 404);
@@ -33,13 +30,7 @@ export class FileService {
 
         const id = v4();
 
-        return this._redisService.set(id, {
-          id,
-          name,
-          type,
-          url,
-          size,
-        });
+        return Files.create({ id, name, type, url, size });
       }),
     );
   }
@@ -47,12 +38,12 @@ export class FileService {
   async deleteFile(id: string): Promise<number> {
     const { url } = await this.getFileById(id);
 
-    await this._deleteMediaFromServer(url);
+    await this._deleteFileFromServer(url);
 
-    return this._redisService.delete(id);
+    return Files.destroy({ where: { id } });
   }
 
-  private _deleteMediaFromServer(url: string) {
+  private _deleteFileFromServer(url: string) {
     try {
       fs.readdir(config.SERVER_FILES_FOLDER_PATH, err => {
         if (err) {

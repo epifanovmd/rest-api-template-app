@@ -78,7 +78,7 @@ Profile.init(
   },
   {
     sequelize,
-    modelName: "Profiles",
+    modelName: "profiles",
     name: {
       singular: "profile",
       plural: "profiles",

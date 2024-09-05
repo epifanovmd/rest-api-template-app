@@ -243,6 +243,36 @@
 				"type": "object",
 				"additionalProperties": false
 			},
+			"InferAttributes_Files_": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"name": {
+						"type": "string"
+					},
+					"type": {
+						"type": "string"
+					},
+					"url": {
+						"type": "string"
+					},
+					"size": {
+						"type": "number",
+						"format": "double"
+					},
+					"createdAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"updatedAt": {
+						"type": "string",
+						"format": "date-time"
+					}
+				},
+				"type": "object",
+				"description": "Utility type to extract Attributes of a given Model class.\n\nIt returns all instance properties defined in the Model, except:\n- those inherited from Model (intermediate inheritance works),\n- the ones whose type is a function,\n- the ones manually excluded using the second parameter.\n- the ones branded using {@link NonAttribute}\n\nIt cannot detect whether something is a getter or not, you should use the `Excluded`\nparameter to exclude getter & setters from the attribute list."
+			},
 			"IFileDto": {
 				"properties": {
 					"id": {
@@ -260,24 +290,25 @@
 					"size": {
 						"type": "number",
 						"format": "double"
+					},
+					"createdAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"updatedAt": {
+						"type": "string",
+						"format": "date-time"
 					}
 				},
-				"required": [
-					"id",
-					"name",
-					"type",
-					"url",
-					"size"
-				],
 				"type": "object",
 				"additionalProperties": false
 			}
 		},
 		"securitySchemes": {
-			"api_key": {
-				"type": "apiKey",
-				"name": "access_token",
-				"in": "query"
+			"jwt": {
+				"type": "http",
+				"scheme": "bearer",
+				"bearerFormat": "JWT"
 			}
 		}
 	},

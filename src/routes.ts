@@ -115,14 +115,21 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "InferAttributes_Files_": {
+        "dataType": "refAlias",
+        "type": {"dataType":"nestedObjectLiteral","nestedProperties":{"id":{"dataType":"string"},"name":{"dataType":"string"},"type":{"dataType":"string"},"url":{"dataType":"string"},"size":{"dataType":"double"},"createdAt":{"dataType":"datetime"},"updatedAt":{"dataType":"datetime"}},"validators":{}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "IFileDto": {
         "dataType": "refObject",
         "properties": {
-            "id": {"dataType":"string","required":true},
-            "name": {"dataType":"string","required":true},
-            "type": {"dataType":"string","required":true},
-            "url": {"dataType":"string","required":true},
-            "size": {"dataType":"double","required":true},
+            "id": {"dataType":"string"},
+            "name": {"dataType":"string"},
+            "type": {"dataType":"string"},
+            "url": {"dataType":"string"},
+            "size": {"dataType":"double"},
+            "createdAt": {"dataType":"datetime"},
+            "updatedAt": {"dataType":"datetime"},
         },
         "additionalProperties": false,
     },

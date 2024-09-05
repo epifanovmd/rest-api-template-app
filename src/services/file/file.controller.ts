@@ -12,8 +12,8 @@ import {
   UploadedFile,
 } from "tsoa";
 
+import { IFileDto } from "./file.model";
 import { FileService } from "./file.service";
-import { IFileDto } from "./file.types";
 
 @injectable()
 @Tags("Files")
