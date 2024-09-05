@@ -3,7 +3,7 @@ import { Container } from "inversify";
 import { Module } from "../modules";
 import { AuthModule } from "./auth";
 import { FileModule } from "./file";
-import { ProfileModule } from "./Profile";
+import { ProfileModule } from "./profile";
 import { RedisModule } from "./redis";
 import { SocketModule } from "./socket";
 import { UtilsModule } from "./utils";

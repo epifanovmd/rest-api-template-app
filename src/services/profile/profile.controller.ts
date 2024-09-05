@@ -1,4 +1,4 @@
-import { injectable as Injectable } from "inversify/lib/annotation/injectable";
+import { inject, injectable } from "inversify";
 import {
   Body,
   Controller,
@@ -15,27 +15,23 @@ import {
 import { ApiError, assertNotNull } from "../../common";
 import { ListResponse } from "../../dto/ListResponse";
 import { KoaRequest } from "../../types/koa";
-import {
-  IProfileDto,
-  TProfileRequest,
-  TProfileUpdateModel,
-} from "./profile.model";
+import { IProfileDto, TProfileUpdateModel } from "./profile.model";
 import { ProfileService } from "./profile.service";
 
-const { getProfile, deleteProfile, getAllProfile, updateProfile } =
-  new ProfileService();
-
-// @injectable()
+@injectable()
 @Tags("Profile")
 @Route("api/profile")
 export class ProfileController extends Controller {
+  constructor(@inject(ProfileService) private _profileService: ProfileService) {
+    super();
+  }
   @Security("jwt")
   @Get()
   getAllProfiles(
     @Query("offset") offset?: number,
     @Query("limit") limit?: number,
   ): Promise<ListResponse<IProfileDto[]>> {
-    return getAllProfile(offset, limit).then(result => ({
+    return this._profileService.getAllProfile(offset, limit).then(result => ({
       offset,
       limit,
       count: result.length,
@@ -46,7 +42,7 @@ export class ProfileController extends Controller {
   @Security("jwt")
   @Get("{id}")
   getProfileById(id: string): Promise<IProfileDto> {
-    return getProfile(id);
+    return this._profileService.getProfile(id);
   }
 
   @Security("jwt")
@@ -57,7 +53,7 @@ export class ProfileController extends Controller {
       new ApiError("No token provided", 401),
     );
 
-    return getProfile(profileId);
+    return this._profileService.getProfile(profileId);
   }
 
   @Security("jwt")
@@ -66,12 +62,12 @@ export class ProfileController extends Controller {
     id: string,
     @Body() body: TProfileUpdateModel,
   ): Promise<IProfileDto> {
-    return updateProfile(id, body);
+    return this._profileService.updateProfile(id, body);
   }
 
   @Security("jwt")
   @Delete("/{id}")
   deleteProfile(id: number): Promise<number> {
-    return deleteProfile(id);
+    return this._profileService.deleteProfile(id);
   }
 }

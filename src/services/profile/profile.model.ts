@@ -92,6 +92,4 @@ Profile.init(
   },
 );
 
-console.log("Profile.sync");
-
-Profile.sync({ force: true }).then();
+Profile.sync({ force: false }).then();

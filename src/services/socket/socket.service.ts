@@ -1,6 +1,6 @@
 import { parse } from "cookie";
 import { createServer } from "http";
-import { injectable as Injectable } from "inversify";
+import { injectable } from "inversify";
 import { Server } from "socket.io";
 
 import { config } from "../../../config";
@@ -11,13 +11,12 @@ import { ISocketEmitEvents, ISocketEvents, TSocket } from "./socket.types";
 
 const { SOCKET_PORT, CORS_ALLOW_IPS } = config;
 
-// @injectable()
+@injectable()
 export class SocketService {
   public clients = new Map<string, { clientSocket: TSocket }>();
   private _socket: Server<ISocketEvents, ISocketEmitEvents, ISocketEmitEvents>;
 
   constructor() {
-    console.log("SocketService constructor ");
     const server = createServer(app.callback());
 
     this._socket = new Server(server, {

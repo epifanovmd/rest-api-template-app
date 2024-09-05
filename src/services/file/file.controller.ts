@@ -15,27 +15,29 @@ import {
 import { FileService } from "./file.service";
 import { IFileDto } from "./file.types";
 
-const { getFileById, uploadFile, deleteFile } = new FileService();
-
-// @injectable()
+@injectable()
 @Tags("Files")
 @Route("api/file")
 export class FileController extends Controller {
+  constructor(@inject(FileService) private _fileService: FileService) {
+    super();
+  }
+
   @Security("jwt")
   @Get()
   getFileById(@Query("id") id: string): Promise<IFileDto> {
-    return getFileById(id);
+    return this._fileService.getFileById(id);
   }
 
   @Security("jwt")
   @Post()
   uploadFile(@UploadedFile() file: File): Promise<IFileDto[]> {
-    return uploadFile([file]);
+    return this._fileService.uploadFile([file]);
   }
 
   @Security("jwt")
   @Delete("/{id}")
   deleteFile(id: string): Promise<number> {
-    return deleteFile(id);
+    return this._fileService.deleteFile(id);
   }
 }

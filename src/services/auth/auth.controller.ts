@@ -12,12 +12,14 @@ import {
 const PHONE_REGEX = /^[\d+][\d() -]{4,14}\d$/;
 const EMAIL_REGEX = /^(\S+)@([a-z0-9-]+)(\.)([a-z]{2,4})(\.?)([a-z]{0,4})+$/;
 
-const authService = new AuthService();
-
-// @injectable()
+@injectable()
 @Tags("Authorization")
 @Route("api/auth")
 export class AuthController extends Controller {
+  constructor(@inject(AuthService) private _authService: AuthService) {
+    super();
+  }
+
   /**
    * Endpoint description
    * @param body Body param
@@ -25,16 +27,16 @@ export class AuthController extends Controller {
    */
   @Post("/signUp")
   signUp(@Body() body: ISignUpRequestDto): Promise<IProfileWithTokensDto> {
-    return authService.signUp(body);
+    return this._authService.signUp(body);
   }
 
   @Post("/signIn")
   signIn(@Body() body: ISignInRequestDto): Promise<IProfileWithTokensDto> {
-    return authService.signIn(body);
+    return this._authService.signIn(body);
   }
 
   @Post("/refresh")
   refresh(@Body() body: { refreshToken: string }): Promise<ITokensDto> {
-    return authService.updateTokens(body.refreshToken);
+    return this._authService.updateTokens(body.refreshToken);
   }
 }

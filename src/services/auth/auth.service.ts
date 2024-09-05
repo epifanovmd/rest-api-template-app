@@ -1,10 +1,10 @@
-import { inject as Inject, injectable as Injectable } from "inversify";
+import { inject, injectable } from "inversify";
 import sha256 from "sha256";
 import { v4 } from "uuid";
 
 import { ApiError } from "../../common";
 import { createTokenAsync, verifyToken } from "../../common/helpers";
-import { IProfileDto, ProfileService } from "../Profile";
+import { IProfileDto, ProfileService } from "../profile";
 import {
   IProfileWithTokensDto,
   ISignInRequestDto,
@@ -12,16 +12,18 @@ import {
   ITokensDto,
 } from "./auth.types";
 
-const profileService = new ProfileService();
-
-// @injectable()
+@injectable()
 export class AuthService {
+  constructor(
+    @inject(ProfileService) private _profileService: ProfileService,
+  ) {}
+
   async signUp({
     username,
     password,
     ...rest
   }: ISignUpRequestDto): Promise<IProfileWithTokensDto> {
-    const client = await profileService
+    const client = await this._profileService
       .getProfileByAttr({
         username,
       })
@@ -33,7 +35,7 @@ export class AuthService {
         500,
       );
     } else {
-      return profileService
+      return this._profileService
         .createProfile({
           id: v4(),
           ...rest,
@@ -52,12 +54,12 @@ export class AuthService {
   async signIn(body: ISignInRequestDto): Promise<IProfileWithTokensDto> {
     const { username, password } = body;
 
-    const { id, passwordHash } = await profileService.getProfileByAttr({
+    const { id, passwordHash } = await this._profileService.getProfileByAttr({
       username,
     });
 
     if (passwordHash === sha256(password)) {
-      const profile = (await profileService.getProfile(id)).toJSON();
+      const profile = (await this._profileService.getProfile(id)).toJSON();
 
       return {
         ...profile,

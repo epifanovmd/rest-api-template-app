@@ -1,6 +1,5 @@
 import { injectable } from "inversify";
 import { Includeable, WhereOptions } from "sequelize";
-import { v1 as uuid } from "uuid";
 
 import { ApiError } from "../../common";
 import {
@@ -10,6 +9,7 @@ import {
   TProfileUpdateModel,
 } from "./profile.model";
 
+@injectable()
 export class ProfileService {
   getAllProfile = (offset?: number, limit?: number) =>
     Profile.findAll({

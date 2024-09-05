@@ -1,4 +1,4 @@
-import { IProfileDto, TProfileCreateModel } from "../Profile";
+import { IProfileDto, TProfileCreateModel } from "../profile";
 
 export interface IProfilePassword {
   password: string;
