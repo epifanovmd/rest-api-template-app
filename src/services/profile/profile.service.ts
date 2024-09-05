@@ -39,7 +39,6 @@ export class ProfileService {
       attributes: ProfileService.profileAttributes,
       include: ProfileService.include,
     }).then(result => {
-      console.log("getProfile");
       if (result === null) {
         return Promise.reject(
           new ApiError("Профиль пользователя не найден", 400),

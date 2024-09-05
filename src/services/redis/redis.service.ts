@@ -16,7 +16,7 @@ rediscl.connect().catch(err => {
 });
 
 rediscl.on("connect", () => {
-  console.log("Redis connected.");
+  console.log("Redis connection has been established successfully.");
 });
 
 @injectable()
