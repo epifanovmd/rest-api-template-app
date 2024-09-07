@@ -3,10 +3,10 @@ import { Includeable, WhereOptions } from "sequelize";
 
 import { ApiError } from "../../common";
 import {
+  IProfileUpdateRequest,
   Profile,
   ProfileModel,
   TProfileCreateModel,
-  TProfileUpdateModel,
 } from "./profile.model";
 
 @injectable()
@@ -52,10 +52,10 @@ export class ProfileService {
     return Profile.create(body).then(result => this.getProfile(result.id));
   };
 
-  updateProfile = (id: string, body: TProfileUpdateModel) =>
+  updateProfile = (id: string, body: IProfileUpdateRequest) =>
     Profile.update(body, { where: { id } }).then(() => this.getProfile(id));
 
-  deleteProfile = async (profileId: number) => {
+  deleteProfile = async (profileId: string) => {
     return Profile.destroy({ where: { id: profileId } }).then(() => profileId);
   };
 

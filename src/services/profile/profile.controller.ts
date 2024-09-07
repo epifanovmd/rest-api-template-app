@@ -13,9 +13,12 @@ import {
 } from "tsoa";
 
 import { ApiError, assertNotNull } from "../../common";
-import { ListResponse } from "../../dto/ListResponse";
 import { KoaRequest } from "../../types/koa";
-import { IProfileDto, TProfileUpdateModel } from "./profile.model";
+import {
+  IProfileDto,
+  IProfileListDto,
+  IProfileUpdateRequest,
+} from "./profile.model";
 import { ProfileService } from "./profile.service";
 
 @injectable()
@@ -30,7 +33,7 @@ export class ProfileController extends Controller {
   getAllProfiles(
     @Query("offset") offset?: number,
     @Query("limit") limit?: number,
-  ): Promise<ListResponse<IProfileDto[]>> {
+  ): Promise<IProfileListDto> {
     return this._profileService.getAllProfile(offset, limit).then(result => ({
       offset,
       limit,
@@ -60,14 +63,14 @@ export class ProfileController extends Controller {
   @Patch("/{id}")
   updateProfile(
     id: string,
-    @Body() body: TProfileUpdateModel,
+    @Body() body: IProfileUpdateRequest,
   ): Promise<IProfileDto> {
     return this._profileService.updateProfile(id, body);
   }
 
   @Security("jwt")
   @Delete("/{id}")
-  deleteProfile(id: number): Promise<number> {
+  deleteProfile(id: string): Promise<string> {
     return this._profileService.deleteProfile(id);
   }
 }
