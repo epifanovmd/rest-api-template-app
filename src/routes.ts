@@ -16,8 +16,7 @@ import { IocContainer, IocContainerFactory } from '@tsoa/runtime';
 import type { Middleware } from 'koa';
 import * as KoaRouter from '@koa/router';
 const multer = require('@koa/multer');
-import multerOpts from '../multerOpts';
-const upload = multer(multerOpts);
+const upload = multer();
 
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 
