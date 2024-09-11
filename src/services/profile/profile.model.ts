@@ -5,7 +5,7 @@ import {
   Model,
 } from "sequelize";
 
-import { sequelize } from "../../db/db";
+import { sequelize } from "../../db";
 import { ListResponse } from "../../dto/ListResponse";
 
 export interface IProfileUpdateRequest

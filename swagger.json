@@ -70,7 +70,7 @@
 				"type": "object",
 				"additionalProperties": false
 			},
-			"ListResponse_IProfileDto-Array_": {
+			"IProfileListDto": {
 				"properties": {
 					"count": {
 						"type": "number",
@@ -97,11 +97,8 @@
 				"type": "object",
 				"additionalProperties": false
 			},
-			"Partial_TProfileCreateModel_": {
+			"Pick_TProfileCreateModel.Exclude_keyofTProfileCreateModel.id-or-passwordHash__": {
 				"properties": {
-					"id": {
-						"type": "string"
-					},
 					"username": {
 						"type": "string"
 					},
@@ -116,16 +113,31 @@
 					},
 					"phone": {
 						"type": "string"
+					}
+				},
+				"type": "object",
+				"description": "From T, pick a set of properties whose keys are in the union K"
+			},
+			"IProfileUpdateRequest": {
+				"properties": {
+					"username": {
+						"type": "string"
 					},
-					"passwordHash": {
+					"firstName": {
+						"type": "string"
+					},
+					"lastName": {
+						"type": "string"
+					},
+					"email": {
+						"type": "string"
+					},
+					"phone": {
 						"type": "string"
 					}
 				},
 				"type": "object",
-				"description": "Make all properties in T optional"
-			},
-			"TProfileUpdateModel": {
-				"$ref": "#/components/schemas/Partial_TProfileCreateModel_"
+				"additionalProperties": false
 			},
 			"ITokensDto": {
 				"properties": {
@@ -335,7 +347,7 @@
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/ListResponse_IProfileDto-Array_"
+									"$ref": "#/components/schemas/IProfileListDto"
 								}
 							}
 						}
@@ -442,7 +454,7 @@
 					"content": {
 						"application/json": {
 							"schema": {
-								"$ref": "#/components/schemas/TProfileUpdateModel"
+								"$ref": "#/components/schemas/IProfileUpdateRequest"
 							}
 						}
 					}
@@ -456,8 +468,7 @@
 						"content": {
 							"application/json": {
 								"schema": {
-									"type": "number",
-									"format": "double"
+									"type": "string"
 								}
 							}
 						}
@@ -477,8 +488,7 @@
 						"name": "id",
 						"required": true,
 						"schema": {
-							"format": "double",
-							"type": "number"
+							"type": "string"
 						}
 					}
 				]

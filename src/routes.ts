@@ -42,7 +42,7 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "ListResponse_IProfileDto-Array_": {
+    "IProfileListDto": {
         "dataType": "refObject",
         "properties": {
             "count": {"dataType":"double"},
@@ -53,14 +53,21 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "Partial_TProfileCreateModel_": {
+    "Pick_TProfileCreateModel.Exclude_keyofTProfileCreateModel.id-or-passwordHash__": {
         "dataType": "refAlias",
-        "type": {"dataType":"nestedObjectLiteral","nestedProperties":{"id":{"dataType":"string"},"username":{"dataType":"string"},"firstName":{"dataType":"string"},"lastName":{"dataType":"string"},"email":{"dataType":"string"},"phone":{"dataType":"string"},"passwordHash":{"dataType":"string"}},"validators":{}},
+        "type": {"dataType":"nestedObjectLiteral","nestedProperties":{"username":{"dataType":"string"},"firstName":{"dataType":"string"},"lastName":{"dataType":"string"},"email":{"dataType":"string"},"phone":{"dataType":"string"}},"validators":{}},
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "TProfileUpdateModel": {
-        "dataType": "refAlias",
-        "type": {"ref":"Partial_TProfileCreateModel_","validators":{}},
+    "IProfileUpdateRequest": {
+        "dataType": "refObject",
+        "properties": {
+            "username": {"dataType":"string"},
+            "firstName": {"dataType":"string"},
+            "lastName": {"dataType":"string"},
+            "email": {"dataType":"string"},
+            "phone": {"dataType":"string"},
+        },
+        "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "ITokensDto": {
@@ -243,7 +250,7 @@ export function RegisterRoutes(router: KoaRouter) {
             async function ProfileController_updateProfile(context: any, next: any) {
             const args = {
                     id: {"in":"path","name":"id","required":true,"dataType":"string"},
-                    body: {"in":"body","name":"body","required":true,"ref":"TProfileUpdateModel"},
+                    body: {"in":"body","name":"body","required":true,"ref":"IProfileUpdateRequest"},
             };
 
             let validatedArgs: any[] = [];
@@ -273,7 +280,7 @@ export function RegisterRoutes(router: KoaRouter) {
 
             async function ProfileController_deleteProfile(context: any, next: any) {
             const args = {
-                    id: {"in":"path","name":"id","required":true,"dataType":"double"},
+                    id: {"in":"path","name":"id","required":true,"dataType":"string"},
             };
 
             let validatedArgs: any[] = [];

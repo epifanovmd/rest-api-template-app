@@ -5,7 +5,7 @@ import {
   Model,
 } from "sequelize";
 
-import { sequelize } from "../../db/db";
+import { sequelize } from "../../db";
 
 export interface IFileDto extends FileModel {}
 
