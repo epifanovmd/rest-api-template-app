@@ -13,8 +13,10 @@ export const config = {
   SERVER_FILES_FOLDER_PATH:
     process.env.SERVER_FILES_FOLDER_PATH ?? "./upload_files",
 
-  RATE_LIMIT: process.env.RATE_LIMIT || 1000,
-  RATE_LIMIT_INTERVAL: process.env.RATE_LIMIT_INTERVAL || 15 * 60 * 1000, // 15 minutes
+  RATE_LIMIT: Number(process.env.RATE_LIMIT || 1000),
+  RATE_LIMIT_INTERVAL: Number(
+    process.env.RATE_LIMIT_INTERVAL || 15 * 60 * 1000,
+  ), // 15 minutes
   CORS_ALLOW_IPS:
     process.env.CORS_ALLOW_IPS ||
     "http://localhost:3000,https://socket-test-client.netlify.app",

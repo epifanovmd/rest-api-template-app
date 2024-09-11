@@ -1,34 +1,35 @@
 import commonjs from "@rollup/plugin-commonjs";
+import json from "@rollup/plugin-json";
 import resolve from "@rollup/plugin-node-resolve";
 import terser from "@rollup/plugin-terser";
-import typescript from 'rollup-plugin-typescript2';
-import json from '@rollup/plugin-json';
-
 import { defineConfig } from "rollup";
-// @ts-ignore
-import peerDepsExternal from "rollup-plugin-peer-deps-external";
+import typescript from "rollup-plugin-typescript2";
 
-const config = defineConfig({
-  input: "src/server.ts",
-  output: [
-    {
-      dir: "./build",
-      format: "cjs",
-      exports: "named",
-      preserveModules: false,
-      preserveModulesRoot: "src",
-      sourcemap: true,
-    },
-  ],
-  external: /node_modules/,
-  plugins: [
-    peerDepsExternal(),
-    resolve(),
-    commonjs(),
-    terser(),
-    json(),
-    typescript({ useTsconfigDeclarationDir: true }),
-  ],
+const config = defineConfig(() => {
+  return {
+    input: "src/server.ts",
+    output: [
+      {
+        dir: "./build",
+        format: "cjs",
+        exports: "named",
+        preserveModules: false,
+        preserveModulesRoot: "src",
+        sourcemap: true,
+      },
+    ],
+    external: /node_modules/,
+    plugins: [
+      resolve(),
+      commonjs(),
+      terser(),
+      json(),
+      typescript({
+        useTsconfigDeclarationDir: true,
+        tsconfig: "./tsconfig.production.json",
+      }),
+    ],
+  };
 });
 
 export default config;

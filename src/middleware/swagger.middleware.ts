@@ -1,4 +1,4 @@
-import KoaRouter from "koa-router";
+import KoaRouter from "@koa/router";
 import { koaSwagger } from "koa2-swagger-ui";
 
 import swaggerDoc from "../../swagger.json";

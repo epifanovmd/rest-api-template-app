@@ -1,7 +1,7 @@
+import cors from "@koa/cors";
 import Koa from "koa";
 import bodyParser from "koa-bodyparser";
 import helmet from "koa-helmet";
-import cors from "koa2-cors";
 import { RateLimit } from "koa2-ratelimit";
 
 import { config } from "../../config";
@@ -38,7 +38,7 @@ export const RegisterAppMiddlewares = (
             return ctx.request.header.origin;
           }
 
-          return false;
+          return "";
         },
         exposeHeaders: ["WWW-Authenticate", "Server-Authorization"],
         maxAge: 5,
