@@ -25,7 +25,7 @@
     "specVersion": 3
   },
   "routes": {
-    "authenticationModule": "./src/middleware/jwt.middleware.ts",
+    "authenticationModule": "./src/middleware/authenticate.middleware.ts",
     "entryFile": "./src/controllers.ts",
     "routesDir": "./src",
     "basePath": "/",

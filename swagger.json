@@ -193,32 +193,11 @@
 				"type": "object",
 				"additionalProperties": false
 			},
-			"Pick_TProfileCreateModel.Exclude_keyofTProfileCreateModel.id-or-username-or-passwordHash__": {
-				"properties": {
-					"firstName": {
-						"type": "string"
-					},
-					"lastName": {
-						"type": "string"
-					},
-					"email": {
-						"type": "string"
-					},
-					"phone": {
-						"type": "string"
-					}
-				},
-				"type": "object",
-				"description": "From T, pick a set of properties whose keys are in the union K"
-			},
-			"ISignUpRequestDto": {
+			"ISignUpRequest": {
 				"properties": {
 					"username": {
 						"type": "string"
 					},
-					"password": {
-						"type": "string"
-					},
 					"firstName": {
 						"type": "string"
 					},
@@ -230,16 +209,18 @@
 					},
 					"phone": {
 						"type": "string"
+					},
+					"password": {
+						"type": "string"
 					}
 				},
 				"required": [
-					"username",
 					"password"
 				],
 				"type": "object",
 				"additionalProperties": false
 			},
-			"ISignInRequestDto": {
+			"ISignInRequest": {
 				"properties": {
 					"username": {
 						"type": "string"
@@ -548,7 +529,7 @@
 					"content": {
 						"application/json": {
 							"schema": {
-								"$ref": "#/components/schemas/ISignUpRequestDto",
+								"$ref": "#/components/schemas/ISignUpRequest",
 								"description": "Body param"
 							}
 						}
@@ -581,7 +562,7 @@
 					"content": {
 						"application/json": {
 							"schema": {
-								"$ref": "#/components/schemas/ISignInRequestDto"
+								"$ref": "#/components/schemas/ISignInRequest"
 							}
 						}
 					}

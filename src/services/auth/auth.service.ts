@@ -2,13 +2,17 @@ import { inject, injectable } from "inversify";
 import sha256 from "sha256";
 import { v4 } from "uuid";
 
-import { ApiError } from "../../common";
-import { createTokenAsync, verifyToken } from "../../common/helpers";
+import {
+  BadRequestException,
+  createTokenAsync,
+  UnauthorizedException,
+  verifyToken,
+} from "../../common";
 import { IProfileDto, ProfileService } from "../profile";
 import {
   IProfileWithTokensDto,
-  ISignInRequestDto,
-  ISignUpRequestDto,
+  ISignInRequest,
+  ISignUpRequest,
   ITokensDto,
 } from "./auth.types";
 
@@ -22,7 +26,7 @@ export class AuthService {
     username,
     password,
     ...rest
-  }: ISignUpRequestDto): Promise<IProfileWithTokensDto> {
+  }: ISignUpRequest): Promise<IProfileWithTokensDto> {
     const client = await this._profileService
       .getProfileByAttr({
         username,
@@ -30,9 +34,8 @@ export class AuthService {
       .catch(() => null);
 
     if (client) {
-      throw new ApiError(
+      throw new BadRequestException(
         `Клиент с логином - ${username}, уже зарегистрирован`,
-        500,
       );
     } else {
       return this._profileService
@@ -51,23 +54,27 @@ export class AuthService {
     }
   }
 
-  async signIn(body: ISignInRequestDto): Promise<IProfileWithTokensDto> {
+  async signIn(body: ISignInRequest): Promise<IProfileWithTokensDto> {
     const { username, password } = body;
 
-    const { id, passwordHash } = await this._profileService.getProfileByAttr({
-      username,
-    });
+    try {
+      const { id, passwordHash } = await this._profileService.getProfileByAttr({
+        username,
+      });
 
-    if (passwordHash === sha256(password)) {
-      const profile = (await this._profileService.getProfile(id)).toJSON();
+      if (passwordHash === sha256(password)) {
+        const profile = (await this._profileService.getProfile(id)).toJSON();
 
-      return {
-        ...profile,
-        tokens: await this.getTokens(profile),
-      };
+        return {
+          ...profile,
+          tokens: await this.getTokens(profile),
+        };
+      }
+    } catch {
+      /* empty */
     }
 
-    throw new ApiError("Неверный логин или пароль", 500);
+    throw new UnauthorizedException("Не верный логин или пароль");
   }
 
   async updateTokens(token?: string) {

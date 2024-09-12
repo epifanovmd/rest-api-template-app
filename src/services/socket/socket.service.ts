@@ -5,7 +5,7 @@ import { Server } from "socket.io";
 
 import { config } from "../../../config";
 import { app } from "../../app";
-import { verifyToken } from "../../common/helpers";
+import { verifyToken } from "../../common";
 import { IProfileDto } from "../profile";
 import { ISocketEmitEvents, ISocketEvents, TSocket } from "./socket.types";
 

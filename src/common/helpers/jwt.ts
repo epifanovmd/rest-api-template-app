@@ -3,7 +3,7 @@ import jwt, { sign, SignOptions, VerifyErrors } from "jsonwebtoken";
 import { config } from "../../../config";
 import { IProfileDto } from "../../services/profile";
 import { JWTDecoded } from "../../types/koa";
-import { ApiError } from "../handlers";
+import { UnauthorizedException } from "../exceptions";
 
 export const { JWT_SECRET_KEY } = config;
 
@@ -13,7 +13,7 @@ export const verifyToken = (
 ): Promise<JWTDecoded> =>
   new Promise((resolve, reject) => {
     if (!token) {
-      reject(new ApiError("Access restricted", 401));
+      reject(new UnauthorizedException());
     } else {
       return jwt.verify(
         token,
@@ -38,7 +38,7 @@ export const verifyToken = (
 
 export const createToken = (profile: IProfileDto, opts?: SignOptions) =>
   new Promise<string>(resolve => {
-    resolve(sign(profile, JWT_SECRET_KEY, opts));
+    resolve(sign(profile, JWT_SECRET_KEY));
   });
 
 export const createTokenAsync = (

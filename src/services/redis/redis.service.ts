@@ -2,7 +2,7 @@ import { injectable } from "inversify";
 import { createClient } from "redis";
 
 import { config } from "../../../config";
-import { ApiError } from "../../common";
+import { InternalServerErrorException } from "../../common";
 
 const { REDIS_HOST, REDIS_PORT, REDIS_PASS } = config;
 
@@ -30,7 +30,7 @@ export class RedisService {
       return data;
     }
 
-    throw new ApiError("Ошибка записи в базу данных", 500);
+    throw new InternalServerErrorException("Ошибка записи в Redis");
   }
 
   async get<Data>(key: string) {

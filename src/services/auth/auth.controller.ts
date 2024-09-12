@@ -4,8 +4,8 @@ import { Body, Controller, Post, Route, Tags } from "tsoa";
 import { AuthService } from "./auth.service";
 import {
   IProfileWithTokensDto,
-  ISignInRequestDto,
-  ISignUpRequestDto,
+  ISignInRequest,
+  ISignUpRequest,
   ITokensDto,
 } from "./auth.types";
 
@@ -26,12 +26,12 @@ export class AuthController extends Controller {
    * @summary Endpoint summary.
    */
   @Post("/signUp")
-  signUp(@Body() body: ISignUpRequestDto): Promise<IProfileWithTokensDto> {
+  signUp(@Body() body: ISignUpRequest): Promise<IProfileWithTokensDto> {
     return this._authService.signUp(body);
   }
 
   @Post("/signIn")
-  signIn(@Body() body: ISignInRequestDto): Promise<IProfileWithTokensDto> {
+  signIn(@Body() body: ISignInRequest): Promise<IProfileWithTokensDto> {
     return this._authService.signIn(body);
   }
 

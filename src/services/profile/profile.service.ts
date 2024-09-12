@@ -1,7 +1,7 @@
 import { injectable } from "inversify";
 import { Includeable, WhereOptions } from "sequelize";
 
-import { ApiError } from "../../common";
+import { NotFoundException } from "../../common";
 import {
   IProfileUpdateRequest,
   Profile,
@@ -27,7 +27,7 @@ export class ProfileService {
     }).then(result => {
       if (result === null) {
         return Promise.reject(
-          new ApiError("Профиль пользователя не найден", 400),
+          new NotFoundException("Профиль пользователя не найден"),
         );
       }
 
@@ -41,7 +41,7 @@ export class ProfileService {
     }).then(result => {
       if (result === null) {
         return Promise.reject(
-          new ApiError("Профиль пользователя не найден", 400),
+          new NotFoundException("Профиль пользователя не найден"),
         );
       }
 

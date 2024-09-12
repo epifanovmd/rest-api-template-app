@@ -1,50 +1,18 @@
-import cors from "@koa/cors";
 import Koa from "koa";
-import bodyParser from "koa-bodyparser";
-import helmet from "koa-helmet";
-import { RateLimit } from "koa2-ratelimit";
 
-import { config } from "../../config";
-
-const jsonRegexp = new RegExp(/\.json$/i);
+import { bodyParserMiddleware } from "./body-parser.middleware";
+import { corsMiddleware } from "./cors.middleware";
+import { errorMiddleware } from "./error.middleware";
+import { helmetMiddleware } from "./helmet.middleware";
+import { rateLimitMiddleware } from "./rate-limit.middleware";
 
 export const RegisterAppMiddlewares = (
   app: Koa<Koa.DefaultState, Koa.DefaultContext>,
 ) => {
   app
-    .use(
-      RateLimit.middleware({
-        interval: config.RATE_LIMIT_INTERVAL,
-        max: config.RATE_LIMIT,
-      }),
-    )
-    .use(
-      bodyParser({
-        detectJSON: ctx => jsonRegexp.test(ctx.path),
-      }),
-    )
-    .use(
-      helmet({
-        contentSecurityPolicy: false,
-      }),
-    )
-    .use(
-      cors({
-        origin(ctx) {
-          if (
-            ctx.request.header.origin &&
-            config.CORS_ALLOW_IPS.includes(ctx.request.header.origin)
-          ) {
-            return ctx.request.header.origin;
-          }
-
-          return "";
-        },
-        exposeHeaders: ["WWW-Authenticate", "Server-Authorization"],
-        maxAge: 5,
-        credentials: true,
-        allowMethods: ["GET", "POST", "PATCH", "DELETE"],
-        allowHeaders: ["Content-Type", "Authorization", "Accept"],
-      }),
-    );
+    .use(errorMiddleware)
+    // .use(corsMiddleware)
+    // .use(rateLimitMiddleware)
+    .use(bodyParserMiddleware);
+  // .use(helmetMiddleware)
 };

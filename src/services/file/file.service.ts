@@ -1,11 +1,11 @@
 import fs from "fs";
-import { inject, injectable } from "inversify";
+import { injectable } from "inversify";
 import path from "path";
 import { File } from "tsoa";
 import { v4 } from "uuid";
 
 import { config } from "../../../config";
-import { ApiError } from "../../common";
+import { NotFoundException } from "../../common";
 import { Files, IFileDto } from "./file.model";
 
 @injectable()
@@ -14,7 +14,7 @@ export class FileService {
     const file = await Files.findByPk(id);
 
     if (!file) {
-      throw new ApiError("Файл не найден", 404);
+      throw new NotFoundException("Файл не найден");
     }
 
     return file;
@@ -30,7 +30,13 @@ export class FileService {
 
         const id = v4();
 
-        return Files.create({ id, name, type, url, size });
+        return Files.create({
+          id,
+          name,
+          type,
+          url,
+          size,
+        });
       }),
     );
   }

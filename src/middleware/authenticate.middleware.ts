@@ -1,7 +1,6 @@
 import { Request } from "koa";
 
-import { ApiError } from "../common";
-import { verifyToken } from "../common/helpers";
+import { UnauthorizedException, verifyToken } from "../common";
 import { IProfileDto } from "../services/profile";
 
 export const koaAuthentication = (
@@ -14,7 +13,7 @@ export const koaAuthentication = (
   if (securityName === "jwt") {
     return new Promise((resolve, reject) => {
       if (!token) {
-        reject(new ApiError("No token provided", 401));
+        reject(new UnauthorizedException());
       } else {
         resolve(verifyToken(token, scopes));
       }

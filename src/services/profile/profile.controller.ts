@@ -12,7 +12,7 @@ import {
   Tags,
 } from "tsoa";
 
-import { ApiError, assertNotNull } from "../../common";
+import { assertNotNull, getContextProfile } from "../../common";
 import { KoaRequest } from "../../types/koa";
 import {
   IProfileDto,
@@ -51,10 +51,7 @@ export class ProfileController extends Controller {
   @Security("jwt")
   @Get("/my")
   getMyProfile(@Request() req: KoaRequest): Promise<IProfileDto> {
-    const profileId = assertNotNull(
-      req.ctx.request.user?.id,
-      new ApiError("No token provided", 401),
-    );
+    const profileId = getContextProfile(req);
 
     return this._profileService.getProfile(profileId);
   }

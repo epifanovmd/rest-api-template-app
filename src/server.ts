@@ -1,14 +1,21 @@
+import logger from "koa-logger";
+
 import { config } from "../config";
 import { app, router } from "./app";
-import { errorHandler, notFoundHandler } from "./common";
-import { RegisterAppMiddlewares, RegisterSwagger } from "./middleware";
+import {
+  notFoundMiddleware,
+  RegisterAppMiddlewares,
+  RegisterSwagger,
+} from "./middleware";
 import { iocContainer } from "./modules";
 import { RegisterRoutes } from "./routes";
-import { SocketGateway } from "./services/socket/socket.gateway";
+import { SocketGateway } from "./services/socket";
 
 const { SERVER_HOST, SERVER_PORT } = config;
 
 const socketGateway = iocContainer.get(SocketGateway);
+
+const isDevelopment = process.env.NODE_ENV;
 
 const bootstrap = () => {
   socketGateway.start();
@@ -20,16 +27,19 @@ const bootstrap = () => {
     };
   });
 
+  if (isDevelopment) {
+    app.use(logger());
+  }
+
   RegisterAppMiddlewares(app);
   RegisterSwagger(router, "/api-docs");
   RegisterRoutes(router);
 
   return app
-    .use(errorHandler)
     .use(router.routes())
     .use(router.allowedMethods())
-    .use(notFoundHandler)
-    .listen(SERVER_PORT, SERVER_HOST, () => {
+    .use(notFoundMiddleware)
+    .listen(SERVER_PORT, SERVER_HOST, async () => {
       const url = `http://${SERVER_HOST}:${SERVER_PORT}`;
 
       console.info(`REST API Server running on: ${url}`);

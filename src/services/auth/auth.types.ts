@@ -13,12 +13,11 @@ export interface IProfileWithTokensDto extends IProfileDto {
   tokens: ITokensDto;
 }
 
-export interface ISignInRequestDto {
+export interface ISignInRequest {
   username: string;
   password: string;
 }
 
-export interface ISignUpRequestDto
-  extends ISignInRequestDto,
-    Omit<TProfileCreateModel, "id" | "username" | "passwordHash">,
+export interface ISignUpRequest
+  extends Omit<TProfileCreateModel, "id" | "passwordHash">,
     IProfilePassword {}
