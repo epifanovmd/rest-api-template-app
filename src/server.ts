@@ -30,9 +30,10 @@ const bootstrap = () => {
     .use(router.allowedMethods())
     .use(notFoundHandler)
     .listen(SERVER_PORT, SERVER_HOST, () => {
-      console.info(
-        `REST API Server running on : http://${SERVER_HOST}:${SERVER_PORT}`,
-      );
+      const url = `http://${SERVER_HOST}:${SERVER_PORT}`;
+
+      console.info(`REST API Server running on: ${url}`);
+      console.info(`Swagger on: ${url}/api-docs`);
     });
 };
 
