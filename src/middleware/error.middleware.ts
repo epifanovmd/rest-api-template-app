@@ -7,12 +7,8 @@ export const errorMiddleware = async (ctx: Context, next: Next) => {
     await next();
   } catch (err) {
     if (err instanceof HttpException) {
-      ctx.status = err.getStatus();
-      const exception = new HttpException(
-        err.getResponse(),
-        err.getStatus(),
-        err.getOptions(),
-      );
+      ctx.status = err.status;
+      const exception = new HttpException(err.message, err.status, err.reason);
 
       exception.name = err.name;
 
@@ -21,11 +17,7 @@ export const errorMiddleware = async (ctx: Context, next: Next) => {
       const status = err.statusCode || err.status || 500;
 
       ctx.status = status;
-      ctx.body = new HttpException(
-        HttpException.createBody(err.message, undefined, status),
-        status,
-        { cause: err },
-      );
+      ctx.body = new HttpException(err.message, status, err);
     }
   }
 };
