@@ -21,7 +21,7 @@
   "scripts": {
     "dev": "yarn generate && nodemon",
     "build": "yarn generate && rollup -c",
-    "server": "NODE_ENV=production node build/server.js",
+    "server": "NODE_ENV=production node build/app.server.js",
     "generate": "tsoa routes && tsoa swagger",
     "test": "mocha -r ts-node/register src/**/*.test.ts",
     "lint": "eslint \"src/**\"",
