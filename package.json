@@ -33,6 +33,7 @@
   "dependencies": {
     "@force-dev/utils": "^1.1.80",
     "@koa/cors": "^5.0.0",
+    "@koa/multer": "^3.0.2",
     "@koa/router": "^13.0.0",
     "@rollup/plugin-commonjs": "^26.0.1",
     "@rollup/plugin-json": "^6.1.0",

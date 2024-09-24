@@ -7,7 +7,7 @@ import typescript from "rollup-plugin-typescript2";
 
 const config = defineConfig(() => {
   return {
-    input: "src/server.ts",
+    input: "src/app.server.ts",
     output: [
       {
         dir: "./build",

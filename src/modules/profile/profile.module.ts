@@ -1,6 +1,6 @@
 import { Container } from "inversify";
 
-import { Module } from "../../modules";
+import { Module } from "../../app.module";
 import { ProfileController } from "./profile.controller";
 import { ProfileService } from "./profile.service";
 

@@ -1,6 +1,6 @@
 import { Container } from "inversify";
 
-import { Module } from "../../modules";
+import { Module } from "../../app.module";
 import { UtilsService } from "./utils.service";
 
 export class UtilsModule implements Module {

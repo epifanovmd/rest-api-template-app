@@ -3,7 +3,7 @@ import "reflect-metadata";
 import { Container, decorate, injectable } from "inversify";
 import { Controller } from "tsoa";
 
-import { ServicesModule } from "./services";
+import { ModulesModule } from "./modules";
 
 decorate(injectable(), Controller);
 
@@ -15,7 +15,7 @@ export const iocContainer = new Container();
 
 class AppModule implements Module {
   Configure(ioc: Container) {
-    new ServicesModule().Configure(ioc);
+    new ModulesModule().Configure(ioc);
   }
 }
 

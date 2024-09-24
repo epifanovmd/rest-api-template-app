@@ -1,6 +1,6 @@
 import Koa from "koa";
 
-import { IProfileDto } from "../services/profile";
+import { IProfileDto } from "../modules/profile";
 
 export type JWTDecoded = IProfileDto & { iat: number; exp: number };
 

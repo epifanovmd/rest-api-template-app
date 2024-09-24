@@ -2,14 +2,14 @@ import logger from "koa-logger";
 
 import { config } from "../config";
 import { app, router } from "./app";
+import { iocContainer } from "./app.module";
 import {
   notFoundMiddleware,
   RegisterAppMiddlewares,
   RegisterSwagger,
 } from "./middleware";
-import { iocContainer } from "./modules";
+import { SocketGateway } from "./modules/socket";
 import { RegisterRoutes } from "./routes";
-import { SocketGateway } from "./services/socket";
 
 const { SERVER_HOST, SERVER_PORT } = config;
 

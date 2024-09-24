@@ -1,4 +1,4 @@
-export { ServicesModule } from "./services.module";
+export { ModulesModule } from "./modules.module";
 
 // exports controllers
 export { AuthController } from "./auth";

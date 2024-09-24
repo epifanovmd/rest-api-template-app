@@ -1,6 +1,6 @@
 import { Container } from "inversify";
 
-import { Module } from "../../modules";
+import { Module } from "../../app.module";
 import { RedisService } from "./redis.service";
 
 export class RedisModule implements Module {
