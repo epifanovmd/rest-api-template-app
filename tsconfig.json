@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    "noEmit": true,
     "module": "esnext",
     "target": "es6",
     "types": ["reflect-metadata", "jest"],
@@ -15,4 +16,11 @@
     "strictNullChecks": true,
     "emitDecoratorMetadata": true
   },
+  "include": [
+    "src/**/*.ts"
+  ],
+  "exclude": [
+    "build",
+    "node_modules"
+  ]
 }

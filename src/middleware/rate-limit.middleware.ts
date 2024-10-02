@@ -1,10 +1,15 @@
-import { RateLimit } from "koa2-ratelimit";
+import RateLimit from "koa-ratelimit";
 
 import { config } from "../../config";
 
-const { RATE_LIMIT, RATE_LIMIT_INTERVAL, CORS_ALLOW_IPS } = config;
+const { RATE_LIMIT, RATE_LIMIT_INTERVAL } = config;
 
-export const rateLimitMiddleware = RateLimit.middleware({
-  interval: RATE_LIMIT_INTERVAL,
+// apply rate limit
+const db = new Map();
+
+export const rateLimitMiddleware = RateLimit({
+  driver: "memory",
+  db: db,
+  duration: RATE_LIMIT_INTERVAL,
   max: RATE_LIMIT,
 });
