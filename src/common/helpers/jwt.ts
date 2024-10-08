@@ -41,12 +41,13 @@ export const verifyToken = (
             const roles = extractRoles(scopes);
             const permissions = extractPermissions(scopes);
 
-            if (!hasRole(decoded, roles)) {
-              throw new ForbiddenException("Role not found");
-            }
-
-            if (!hasPermission(decoded, permissions)) {
-              throw new ForbiddenException("Permission not found");
+            if (
+              !hasRole(decoded, roles) ||
+              !hasPermission(decoded, permissions)
+            ) {
+              throw new ForbiddenException(
+                "Access denied: You do not have permission to perform this action.",
+              );
             }
           }
 
