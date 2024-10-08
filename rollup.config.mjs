@@ -22,7 +22,12 @@ const config = defineConfig(() => {
     plugins: [
       resolve(),
       commonjs(),
-      terser(),
+      terser({
+        mangle: {
+          keep_fnames: true,
+          keep_classnames: true,
+        },
+      }),
       json(),
       typescript({
         useTsconfigDeclarationDir: true,
