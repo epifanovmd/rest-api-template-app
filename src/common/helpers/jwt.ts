@@ -33,14 +33,14 @@ export const verifyToken = (
           }
 
           if (scopes && scopes.length > 0) {
-            const roles = _extractRoles(scopes);
-            const permissions = _extractPermissions(scopes);
+            const roles = extractRoles(scopes);
+            const permissions = extractPermissions(scopes);
 
-            if (!_hasRole(decoded, roles)) {
+            if (!hasRole(decoded, roles)) {
               throw new ForbiddenException("Role not found");
             }
 
-            if (!_hasPermission(decoded, permissions)) {
+            if (!hasPermission(decoded, permissions)) {
               throw new ForbiddenException("Permission not found");
             }
           }
@@ -51,22 +51,27 @@ export const verifyToken = (
     }
   });
 
-const _extractRoles = (scopes: string[]) =>
-  scopes
-    .filter(scope => scope.startsWith("role:"))
-    .map(scope => scope.replace("role:", ""));
+const extractRoles = (scopes: string[]): string[] =>
+  scopes.reduce<string[]>((roles, scope) => {
+    if (scope.startsWith("role:")) {
+      roles.push(scope.slice(5));
+    }
 
-const _extractPermissions = (scopes: string[]) =>
-  scopes
-    .filter(scope => scope.startsWith("permission:"))
-    .map(scope => scope.replace("permission:", ""));
+    return roles;
+  }, []);
 
-const _hasRole = (decoded: JWTDecoded, roles: string[]) =>
-  roles.length > 0
-    ? roles.some(roleName => roleName === decoded.role.name)
-    : true;
+const extractPermissions = (scopes: string[]): string[] =>
+  scopes.reduce<string[]>((permissions, scope) => {
+    if (scope.startsWith("permission:")) {
+      permissions.push(scope.slice(11));
+    }
 
-const _hasPermission = (decoded: JWTDecoded, permissions: string[]) =>
-  permissions.length > 0
-    ? decoded.role.permissions.some(({ name }) => permissions.includes(name))
-    : true;
+    return permissions;
+  }, []);
+
+const hasRole = (decoded: JWTDecoded, roles: string[]): boolean =>
+  roles.length === 0 || roles.includes(decoded.role.name);
+
+const hasPermission = (decoded: JWTDecoded, permissions: string[]): boolean =>
+  permissions.length === 0 ||
+  decoded.role.permissions.some(({ name }) => permissions.includes(name));
