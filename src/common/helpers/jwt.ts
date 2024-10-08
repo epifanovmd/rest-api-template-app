@@ -3,6 +3,7 @@ import jwt, { sign, SignOptions, VerifyErrors } from "jsonwebtoken";
 
 import { config } from "../../../config";
 import { IProfileDto } from "../../modules/profile";
+import { ERole } from "../../modules/role";
 import { JWTDecoded } from "../../types/koa";
 
 export const { JWT_SECRET_KEY } = config;
@@ -32,7 +33,11 @@ export const verifyToken = (
             reject(err);
           }
 
-          if (scopes && scopes.length > 0) {
+          if (
+            decoded.role.name !== ERole.ADMIN &&
+            scopes &&
+            scopes.length > 0
+          ) {
             const roles = extractRoles(scopes);
             const permissions = extractPermissions(scopes);
 
