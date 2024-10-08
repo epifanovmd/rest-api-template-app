@@ -1,13 +1,9 @@
+import { BadRequestException, UnauthorizedException } from "@force-dev/utils";
 import { inject, injectable } from "inversify";
 import sha256 from "sha256";
 import { v4 } from "uuid";
 
-import {
-  BadRequestException,
-  createTokenAsync,
-  UnauthorizedException,
-  verifyToken,
-} from "../../common";
+import { createTokenAsync, verifyToken } from "../../common";
 import { IProfileDto, ProfileService } from "../profile";
 import {
   IProfileWithTokensDto,

@@ -1,3 +1,4 @@
+import { NotFoundException } from "@force-dev/utils";
 import fs from "fs";
 import { injectable } from "inversify";
 import path from "path";
@@ -5,7 +6,6 @@ import { File } from "tsoa";
 import { v4 } from "uuid";
 
 import { config } from "../../../config";
-import { NotFoundException } from "../../common";
 import { Files, IFileDto } from "./file.model";
 
 @injectable()

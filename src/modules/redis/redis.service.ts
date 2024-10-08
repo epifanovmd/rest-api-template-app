@@ -1,6 +1,6 @@
+import { InternalServerErrorException } from "@force-dev/utils";
 import { injectable } from "inversify";
 
-import { InternalServerErrorException } from "../../common";
 import { redisClient } from "../../db";
 
 @injectable()

@@ -1,10 +1,9 @@
-import { ForbiddenException } from "@force-dev/utils";
+import { ForbiddenException, UnauthorizedException } from "@force-dev/utils";
 import jwt, { sign, SignOptions, VerifyErrors } from "jsonwebtoken";
 
 import { config } from "../../../config";
 import { IProfileDto } from "../../modules/profile";
 import { JWTDecoded } from "../../types/koa";
-import { UnauthorizedException } from "../exceptions";
 
 export const { JWT_SECRET_KEY } = config;
 

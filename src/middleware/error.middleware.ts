@@ -1,6 +1,5 @@
+import { HttpException } from "@force-dev/utils";
 import { Context, Next } from "koa";
-
-import { HttpException } from "../common";
 
 export const errorMiddleware = async (ctx: Context, next: Next) => {
   try {

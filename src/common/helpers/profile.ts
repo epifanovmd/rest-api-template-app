@@ -1,5 +1,6 @@
+import { UnauthorizedException } from "@force-dev/utils";
+
 import { KoaRequest } from "../../types/koa";
-import { UnauthorizedException } from "../exceptions";
 import { assertNotNull } from "./assertNotNull";
 
 export const getContextProfile = (req: KoaRequest) => {

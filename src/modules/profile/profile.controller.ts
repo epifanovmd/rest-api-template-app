@@ -31,30 +31,6 @@ export class ProfileController extends Controller {
   constructor(@inject(ProfileService) private _profileService: ProfileService) {
     super();
   }
-  @Get("createTest")
-  test(): Promise<IProfileDto> {
-    return this._profileService
-      .createProfile({
-        username: "string",
-        passwordHash: "124",
-        email: "string@string.com",
-        firstName: "",
-        lastName: "",
-        phone: "",
-        id: v4(),
-      })
-      .then(res => {
-        console.log("res", res);
-
-        return this._profileService.setPrivilegesToUser(res.id, ERole.ADMIN, [
-          EPermissions.WRITE,
-          EPermissions.READ,
-        ]);
-      })
-      .then(res => {
-        return res;
-      });
-  }
 
   @Security("jwt", ["role:user", "permission:read"])
   @Get()

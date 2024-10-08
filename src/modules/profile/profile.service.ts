@@ -1,7 +1,7 @@
+import { NotFoundException } from "@force-dev/utils";
 import { injectable } from "inversify";
 import { Includeable, WhereOptions } from "sequelize";
 
-import { NotFoundException } from "../../common";
 import { EPermissions, Permission } from "../permission";
 import { ERole, Role } from "../role";
 import {

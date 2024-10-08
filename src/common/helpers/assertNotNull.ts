@@ -1,4 +1,4 @@
-import { HttpException, InternalServerErrorException } from "../exceptions";
+import { HttpException, InternalServerErrorException } from "@force-dev/utils";
 
 export function assertNotNull<T>(
   item: T | null | undefined,
