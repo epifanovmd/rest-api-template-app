@@ -8,7 +8,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-pg_user_name}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pg_password}
     volumes:
-      - ./postgres:${PGDATA}
+      - ./postgres:${POSTGRES_DATA}
     ports:
       - "${POSTGRES_PORT}:5432"
     restart: unless-stopped

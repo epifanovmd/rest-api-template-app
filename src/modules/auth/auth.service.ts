@@ -63,11 +63,18 @@ export class AuthService {
       });
 
       if (passwordHash === sha256(password)) {
-        const profile = (await this._profileService.getProfile(id)).toJSON();
+        const profile = await this._profileService.getProfile(id);
+
+        const role = profile.role;
+
+        const data = {
+          ...profile.toJSON(),
+          role,
+        };
 
         return {
-          ...profile,
-          tokens: await this.getTokens(profile),
+          ...data,
+          tokens: await this.getTokens(data),
         };
       }
     } catch {

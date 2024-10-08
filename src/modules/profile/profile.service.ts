@@ -2,6 +2,8 @@ import { injectable } from "inversify";
 import { Includeable, WhereOptions } from "sequelize";
 
 import { NotFoundException } from "../../common";
+import { EPermissions, Permission } from "../permission";
+import { ERole, Role } from "../role";
 import {
   IProfileUpdateRequest,
   Profile,
@@ -49,11 +51,50 @@ export class ProfileService {
     });
 
   createProfile = (body: TProfileCreateModel) => {
-    return Profile.create(body).then(result => this.getProfile(result.id));
+    return Profile.create(body).then(result => {
+      return this.setPrivilegesToUser(result.id, ERole.USER, [
+        EPermissions.READ,
+        EPermissions.WRITE,
+      ]);
+    });
   };
 
   updateProfile = (id: string, body: IProfileUpdateRequest) =>
     Profile.update(body, { where: { id } }).then(() => this.getProfile(id));
+
+  setPrivilegesToUser = async (
+    profileId: string,
+    roleName: ERole,
+    permissions: EPermissions[],
+  ) => {
+    const profile = await Profile.findByPk(profileId);
+
+    if (!profile) {
+      return Promise.reject(
+        new NotFoundException("Профиль пользователя не найден"),
+      );
+    }
+
+    const [role, success] = await Role.findOrCreate({
+      where: { name: roleName },
+    });
+
+    if (success && role) {
+      await profile.setRole(role);
+
+      const permissionInstances = await Promise.all(
+        permissions.map(permissionName =>
+          Permission.findOrCreate({ where: { name: permissionName } }).then(
+            ([permission]) => permission,
+          ),
+        ),
+      );
+
+      await role.setPermissions(permissionInstances);
+    }
+
+    return this.getProfile(profileId);
+  };
 
   deleteProfile = async (profileId: string) => {
     return Profile.destroy({ where: { id: profileId } }).then(() => profileId);
@@ -73,6 +114,20 @@ export class ProfileService {
   }
 
   static get include(): Includeable[] {
-    return [];
+    return [
+      {
+        model: Role,
+        attributes: { exclude: ["createdAt", "updatedAt"] },
+        include: [
+          {
+            model: Permission,
+            attributes: { exclude: ["createdAt", "updatedAt"] },
+            through: {
+              attributes: [], // Исключаем атрибуты связывающей таблицы
+            },
+          },
+        ],
+      },
+    ];
   }
 }

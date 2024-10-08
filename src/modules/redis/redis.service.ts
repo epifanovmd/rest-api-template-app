@@ -1,30 +1,14 @@
 import { injectable } from "inversify";
-import { createClient } from "redis";
 
-import { config } from "../../../config";
 import { InternalServerErrorException } from "../../common";
-
-const { REDIS_HOST, REDIS_PORT, REDIS_PASS } = config;
-
-const rediscl = createClient({
-  password: REDIS_PASS,
-  url: `redis://${REDIS_HOST}:${REDIS_PORT}`,
-});
-
-rediscl.connect().catch(err => {
-  console.log("EROR CONNECT REDIS", err);
-});
-
-rediscl.on("connect", () => {
-  console.log("Redis connection has been established successfully.");
-});
+import { redisClient } from "../../db";
 
 @injectable()
 export class RedisService {
   async set<Data>(key: string, data: Data) {
-    const status = await rediscl.set(key, JSON.stringify(data));
+    const status = await redisClient.set(key, JSON.stringify(data));
 
-    await rediscl.persist(key);
+    await redisClient.persist(key);
 
     if (status === "OK") {
       return data;
@@ -34,7 +18,7 @@ export class RedisService {
   }
 
   async get<Data>(key: string) {
-    const data = await rediscl.get(key);
+    const data = await redisClient.get(key);
 
     if (data) {
       return JSON.parse(data) as Data;
@@ -44,6 +28,6 @@ export class RedisService {
   }
 
   delete(key: string) {
-    return rediscl.del(key);
+    return redisClient.del(key);
   }
 }

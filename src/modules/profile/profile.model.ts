@@ -1,16 +1,24 @@
 import {
+  BelongsToGetAssociationMixin,
+  BelongsToSetAssociationMixin,
   DataTypes,
   InferAttributes,
   InferCreationAttributes,
   Model,
+  NonAttribute,
 } from "sequelize";
 
 import { sequelize } from "../../db";
 import { ListResponse } from "../../dto/ListResponse";
+import { IRoleDto, Role } from "../role";
 
 export interface IProfileUpdateRequest
   extends Omit<TProfileCreateModel, "id" | "passwordHash"> {}
-export interface IProfileDto extends Omit<ProfileModel, "passwordHash"> {}
+
+export interface IProfileDto extends Omit<ProfileModel, "passwordHash"> {
+  role: IRoleDto;
+}
+
 export interface IProfileListDto extends ListResponse<IProfileDto[]> {}
 
 export type ProfileModel = InferAttributes<Profile>;
@@ -29,12 +37,18 @@ export class Profile extends Model<ProfileModel, TProfileCreateModel> {
   declare phone: string;
 
   declare passwordHash: string;
+  declare roleId?: string;
 
   // timestamps!
   declare readonly createdAt: Date;
   declare readonly updatedAt: Date;
 
+  // mixins
+  declare setRole: BelongsToSetAssociationMixin<Role, number>;
+  declare getRole: BelongsToGetAssociationMixin<Role>;
+
   // associations
+  declare role: NonAttribute<Role>;
 }
 
 Profile.init(
@@ -71,6 +85,14 @@ Profile.init(
       type: DataTypes.STRING(100),
     },
 
+    roleId: {
+      type: DataTypes.UUID,
+      references: {
+        model: Role,
+        key: "id",
+      },
+    },
+
     createdAt: DataTypes.DATE,
     updatedAt: DataTypes.DATE,
   },
@@ -89,5 +111,3 @@ Profile.init(
     ],
   },
 );
-
-Profile.sync({ force: false }).then(() => {});

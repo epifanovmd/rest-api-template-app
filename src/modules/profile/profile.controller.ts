@@ -11,9 +11,12 @@ import {
   Security,
   Tags,
 } from "tsoa";
+import { v4 } from "uuid";
 
-import { assertNotNull, getContextProfile } from "../../common";
+import { getContextProfile } from "../../common";
 import { KoaRequest } from "../../types/koa";
+import { EPermissions } from "../permission";
+import { ERole } from "../role";
 import {
   IProfileDto,
   IProfileListDto,
@@ -28,7 +31,32 @@ export class ProfileController extends Controller {
   constructor(@inject(ProfileService) private _profileService: ProfileService) {
     super();
   }
-  @Security("jwt")
+  @Get("createTest")
+  test(): Promise<IProfileDto> {
+    return this._profileService
+      .createProfile({
+        username: "string",
+        passwordHash: "124",
+        email: "string@string.com",
+        firstName: "",
+        lastName: "",
+        phone: "",
+        id: v4(),
+      })
+      .then(res => {
+        console.log("res", res);
+
+        return this._profileService.setPrivilegesToUser(res.id, ERole.ADMIN, [
+          EPermissions.WRITE,
+          EPermissions.READ,
+        ]);
+      })
+      .then(res => {
+        return res;
+      });
+  }
+
+  @Security("jwt", ["role:user", "permission:read"])
   @Get()
   getAllProfiles(
     @Query("offset") offset?: number,
@@ -42,7 +70,7 @@ export class ProfileController extends Controller {
     }));
   }
 
-  @Security("jwt")
+  // @Security("jwt")
   @Get("{id}")
   getProfileById(id: string): Promise<IProfileDto> {
     return this._profileService.getProfile(id);

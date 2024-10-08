@@ -67,5 +67,3 @@ Files.init(
     },
   },
 );
-
-Files.sync({ force: false }).then();

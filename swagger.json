@@ -6,6 +6,120 @@
 		"requestBodies": {},
 		"responses": {},
 		"schemas": {
+			"EPermissions": {
+				"enum": [
+					"read",
+					"write",
+					"delete"
+				],
+				"type": "string"
+			},
+			"Pick_PermissionModel.Exclude_keyofPermissionModel.passwordHash__": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"createdAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"updatedAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"name": {
+						"$ref": "#/components/schemas/EPermissions"
+					}
+				},
+				"type": "object",
+				"description": "From T, pick a set of properties whose keys are in the union K"
+			},
+			"IPermissionDto": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"createdAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"updatedAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"name": {
+						"$ref": "#/components/schemas/EPermissions"
+					}
+				},
+				"type": "object",
+				"additionalProperties": false
+			},
+			"ERole": {
+				"enum": [
+					"admin",
+					"user",
+					"guest"
+				],
+				"type": "string"
+			},
+			"InferAttributes_Role_": {
+				"properties": {
+					"permissions": {
+						"items": {
+							"$ref": "#/components/schemas/IPermissionDto"
+						},
+						"type": "array"
+					},
+					"id": {
+						"type": "string"
+					},
+					"name": {
+						"$ref": "#/components/schemas/ERole"
+					},
+					"createdAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"updatedAt": {
+						"type": "string",
+						"format": "date-time"
+					}
+				},
+				"required": [
+					"permissions"
+				],
+				"type": "object",
+				"description": "Utility type to extract Attributes of a given Model class.\n\nIt returns all instance properties defined in the Model, except:\n- those inherited from Model (intermediate inheritance works),\n- the ones whose type is a function,\n- the ones manually excluded using the second parameter.\n- the ones branded using {@link NonAttribute}\n\nIt cannot detect whether something is a getter or not, you should use the `Excluded`\nparameter to exclude getter & setters from the attribute list."
+			},
+			"IRoleDto": {
+				"properties": {
+					"permissions": {
+						"items": {
+							"$ref": "#/components/schemas/IPermissionDto"
+						},
+						"type": "array"
+					},
+					"id": {
+						"type": "string"
+					},
+					"name": {
+						"$ref": "#/components/schemas/ERole"
+					},
+					"createdAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"updatedAt": {
+						"type": "string",
+						"format": "date-time"
+					}
+				},
+				"required": [
+					"permissions"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
 			"Pick_ProfileModel.Exclude_keyofProfileModel.passwordHash__": {
 				"properties": {
 					"id": {
@@ -24,6 +138,9 @@
 						"type": "string"
 					},
 					"phone": {
+						"type": "string"
+					},
+					"roleId": {
 						"type": "string"
 					},
 					"createdAt": {
@@ -58,6 +175,9 @@
 					"phone": {
 						"type": "string"
 					},
+					"roleId": {
+						"type": "string"
+					},
 					"createdAt": {
 						"type": "string",
 						"format": "date-time"
@@ -65,8 +185,14 @@
 					"updatedAt": {
 						"type": "string",
 						"format": "date-time"
+					},
+					"role": {
+						"$ref": "#/components/schemas/IRoleDto"
 					}
 				},
+				"required": [
+					"role"
+				],
 				"type": "object",
 				"additionalProperties": false
 			},
@@ -113,6 +239,9 @@
 					},
 					"phone": {
 						"type": "string"
+					},
+					"roleId": {
+						"type": "string"
 					}
 				},
 				"type": "object",
@@ -133,6 +262,9 @@
 						"type": "string"
 					},
 					"phone": {
+						"type": "string"
+					},
+					"roleId": {
 						"type": "string"
 					}
 				},
@@ -175,6 +307,9 @@
 					"phone": {
 						"type": "string"
 					},
+					"roleId": {
+						"type": "string"
+					},
 					"createdAt": {
 						"type": "string",
 						"format": "date-time"
@@ -183,11 +318,15 @@
 						"type": "string",
 						"format": "date-time"
 					},
+					"role": {
+						"$ref": "#/components/schemas/IRoleDto"
+					},
 					"tokens": {
 						"$ref": "#/components/schemas/ITokensDto"
 					}
 				},
 				"required": [
+					"role",
 					"tokens"
 				],
 				"type": "object",
@@ -208,6 +347,9 @@
 						"type": "string"
 					},
 					"phone": {
+						"type": "string"
+					},
+					"roleId": {
 						"type": "string"
 					},
 					"password": {
@@ -319,6 +461,28 @@
 	},
 	"openapi": "3.0.0",
 	"paths": {
+		"/api/profile/createTest": {
+			"get": {
+				"operationId": "Test",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IProfileDto"
+								}
+							}
+						}
+					}
+				},
+				"tags": [
+					"Profile"
+				],
+				"security": [],
+				"parameters": []
+			}
+		},
 		"/api/profile": {
 			"get": {
 				"operationId": "GetAllProfiles",
@@ -339,7 +503,10 @@
 				],
 				"security": [
 					{
-						"jwt": []
+						"jwt": [
+							"role:user",
+							"permission:read"
+						]
 					}
 				],
 				"parameters": [
@@ -382,11 +549,7 @@
 				"tags": [
 					"Profile"
 				],
-				"security": [
-					{
-						"jwt": []
-					}
-				],
+				"security": [],
 				"parameters": [
 					{
 						"in": "path",

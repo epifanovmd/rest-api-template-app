@@ -3,6 +3,7 @@ import logger from "koa-logger";
 import { config } from "../config";
 import { app, router } from "./app";
 import { iocContainer } from "./app.module";
+import { sequelize } from "./db";
 import {
   notFoundMiddleware,
   RegisterAppMiddlewares,
@@ -40,6 +41,8 @@ const bootstrap = () => {
     .use(router.allowedMethods())
     .use(notFoundMiddleware)
     .listen(SERVER_PORT, SERVER_HOST, async () => {
+      await sequelize.sync({ force: false });
+
       const url = `http://${SERVER_HOST}:${SERVER_PORT}`;
 
       console.info(`REST API Server running on: ${url}`);
