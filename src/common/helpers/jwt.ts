@@ -24,7 +24,7 @@ export const createTokenAsync = (
   data: { profileId: string; opts?: SignOptions }[],
 ) => Promise.all(data.map(value => createToken(value.profileId, value.opts)));
 
-export const verifyToken = (
+export const verifyToken = async (
   token?: string,
   scopes?: SecurityScopes,
 ): Promise<IProfileDto> =>
@@ -32,19 +32,21 @@ export const verifyToken = (
     if (!token) {
       reject(new UnauthorizedException());
     } else {
-      return jwt.verify(
+      jwt.verify(
         token,
         JWT_SECRET_KEY,
-        (err: VerifyErrors, decoded: JWTDecoded) => {
+        async (err: VerifyErrors, decoded: JWTDecoded) => {
           if (err) {
             reject(err);
           }
 
-          const profileService = new ProfileService();
+          try {
+            const profile = await new ProfileService()
+              .getProfile(decoded.profileId)
+              .catch(() => null);
 
-          profileService.getProfile(decoded.profileId).then(profile => {
             if (!profile) {
-              throw new UnauthorizedException();
+              return reject(new UnauthorizedException());
             }
 
             if (
@@ -59,14 +61,18 @@ export const verifyToken = (
                 !hasRole(profile.role, roles) ||
                 !hasPermission(profile.role, permissions)
               ) {
-                throw new ForbiddenException(
-                  "Access denied: You do not have permission to perform this action.",
+                return reject(
+                  new ForbiddenException(
+                    "Access denied: You do not have permission to perform this action.",
+                  ),
                 );
               }
             }
 
             resolve(profile);
-          });
+          } catch (e) {
+            reject(e);
+          }
         },
       );
     }
