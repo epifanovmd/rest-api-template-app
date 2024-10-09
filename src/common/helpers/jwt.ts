@@ -49,18 +49,14 @@ export const verifyToken = async (
               return reject(new UnauthorizedException());
             }
 
-            if (
-              profile.role.name !== ERole.ADMIN &&
-              scopes &&
-              scopes.length > 0
-            ) {
+            const role = profile.role;
+            const isAdmin = role.name !== ERole.ADMIN;
+
+            if (isAdmin && scopes && scopes.length) {
               const roles = extractRoles(scopes);
               const permissions = extractPermissions(scopes);
 
-              if (
-                !hasRole(profile.role, roles) ||
-                !hasPermission(profile.role, permissions)
-              ) {
+              if (!hasRole(role, roles) || !hasPermission(role, permissions)) {
                 return reject(
                   new ForbiddenException(
                     "Access denied: You do not have permission to perform this action.",
