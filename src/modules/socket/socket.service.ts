@@ -43,6 +43,10 @@ export class SocketService {
     return this._socket;
   }
 
+  close() {
+    this._socket.close();
+  }
+
   onConnection = (listener: (client: IProfileDto, socket: TSocket) => void) => {
     this.socket?.on("connection", clientSocket => {
       const { headers } = clientSocket.request;
@@ -52,11 +56,11 @@ export class SocketService {
 
       if (token) {
         verifyToken(token)
-          .then(decoded => {
-            listener?.(decoded, clientSocket);
+          .then(profile => {
+            listener?.(profile, clientSocket);
 
             clientSocket.on("disconnect", () => {
-              const id = decoded.id;
+              const id = profile.id;
 
               if (this.clients.has(id)) {
                 this.clients.delete(id);

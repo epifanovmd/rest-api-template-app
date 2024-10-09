@@ -4,7 +4,7 @@ import sha256 from "sha256";
 import { v4 } from "uuid";
 
 import { createTokenAsync, verifyToken } from "../../common";
-import { IProfileDto, ProfileService } from "../profile";
+import { ProfileService } from "../profile";
 import {
   IProfileWithTokensDto,
   ISignInRequest,
@@ -70,7 +70,7 @@ export class AuthService {
 
         return {
           ...data,
-          tokens: await this.getTokens(data),
+          tokens: await this.getTokens(data.id),
         };
       }
     } catch {
@@ -81,19 +81,19 @@ export class AuthService {
   }
 
   async updateTokens(token?: string) {
-    const { iat, exp, ...profile } = await verifyToken(token);
+    const profile = await verifyToken(token);
 
-    return this.getTokens(profile);
+    return this.getTokens(profile.id);
   }
 
-  async getTokens(profile: IProfileDto): Promise<ITokensDto> {
+  async getTokens(profileId: string): Promise<ITokensDto> {
     const [accessToken, refreshToken] = await createTokenAsync([
       {
-        profile,
+        profileId,
         opts: { expiresIn: "15m" },
       },
       {
-        profile,
+        profileId,
         opts: { expiresIn: "7d" },
       },
     ]);

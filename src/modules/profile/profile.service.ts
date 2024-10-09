@@ -117,11 +117,11 @@ export class ProfileService {
     return [
       {
         model: Role,
-        attributes: { exclude: ["createdAt", "updatedAt"] },
+        // attributes: { exclude: ["createdAt", "updatedAt"] },
         include: [
           {
             model: Permission,
-            attributes: { exclude: ["createdAt", "updatedAt"] },
+            // attributes: { exclude: ["createdAt", "updatedAt"] },
             through: {
               attributes: [], // Исключаем атрибуты связывающей таблицы
             },
