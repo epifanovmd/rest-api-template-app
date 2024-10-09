@@ -1,4 +1,5 @@
 import logger from "koa-logger";
+import sha256 from "sha256";
 
 import { config } from "../config";
 import { app, router } from "./app";
@@ -9,16 +10,27 @@ import {
   RegisterAppMiddlewares,
   RegisterSwagger,
 } from "./middleware";
-import { SocketGateway } from "./modules/socket";
+import { ProfileService } from "./modules/profile";
+import { SocketGateway } from "./modules/socket/socket.gateway";
 import { RegisterRoutes } from "./routes";
 
-const { SERVER_HOST, SERVER_PORT } = config;
+const { SERVER_HOST, SERVER_PORT, ADMIN_USERNAME, ADMIN_PASSWORD } = config;
 
+const profileService = iocContainer.get(ProfileService);
 const socketGateway = iocContainer.get(SocketGateway);
 
 const isDevelopment = process.env.NODE_ENV;
 
 const bootstrap = () => {
+  sequelize.sync({ force: false }).then();
+
+  sequelize.afterBulkSync(async () => {
+    await profileService.createAdmin({
+      username: ADMIN_USERNAME,
+      passwordHash: sha256(ADMIN_PASSWORD),
+    });
+  });
+
   socketGateway.start();
 
   router.get("/ping", context => {
@@ -41,8 +53,6 @@ const bootstrap = () => {
     .use(router.allowedMethods())
     .use(notFoundMiddleware)
     .listen(SERVER_PORT, SERVER_HOST, async () => {
-      await sequelize.sync({ force: false });
-
       const url = `http://${SERVER_HOST}:${SERVER_PORT}`;
 
       console.info(`REST API Server running on: ${url}`);
@@ -50,4 +60,4 @@ const bootstrap = () => {
     });
 };
 
-export const server = bootstrap();
+export const appServer = bootstrap();

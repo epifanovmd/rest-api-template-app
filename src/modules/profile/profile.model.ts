@@ -24,17 +24,17 @@ export interface IProfileListDto extends ListResponse<IProfileDto[]> {}
 export type ProfileModel = InferAttributes<Profile>;
 export type TProfileCreateModel = InferCreationAttributes<
   Profile,
-  { omit: "createdAt" | "updatedAt" }
+  { omit: "createdAt" | "updatedAt" | "id" }
 >;
 
 export class Profile extends Model<ProfileModel, TProfileCreateModel> {
   declare id: string;
 
   declare username: string;
-  declare firstName: string;
-  declare lastName: string;
-  declare email: string;
-  declare phone: string;
+  declare firstName?: string;
+  declare lastName?: string;
+  declare email?: string;
+  declare phone?: string;
 
   declare passwordHash: string;
   declare roleId?: string;
@@ -55,6 +55,7 @@ Profile.init(
   {
     id: {
       type: DataTypes.UUID(),
+      defaultValue: DataTypes.UUIDV4,
       primaryKey: true,
       allowNull: false,
     },

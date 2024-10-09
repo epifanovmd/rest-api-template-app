@@ -52,7 +52,7 @@ export const verifyToken = async (
             const role = profile.role;
             const isAdmin = role.name !== ERole.ADMIN;
 
-            if (isAdmin && scopes && scopes.length) {
+            if (!isAdmin && scopes && scopes.length) {
               const roles = extractRoles(scopes);
               const permissions = extractPermissions(scopes);
 

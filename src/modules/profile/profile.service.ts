@@ -52,9 +52,23 @@ export class ProfileService {
 
   createProfile = (body: TProfileCreateModel) => {
     return Profile.create(body).then(result => {
-      return this.setPrivilegesToUser(result.id, ERole.USER, [
+      return this.setPrivileges(result.id, ERole.USER, [
         EPermissions.READ,
         EPermissions.WRITE,
+      ]);
+    });
+  };
+
+  createAdmin = (body: TProfileCreateModel) => {
+    const profile = this.getProfileByAttr({ username: body.username }).catch(
+      () => Profile.create(body),
+    );
+
+    return profile.then(result => {
+      return this.setPrivileges(result.id, ERole.ADMIN, [
+        EPermissions.READ,
+        EPermissions.WRITE,
+        EPermissions.DELETE,
       ]);
     });
   };
@@ -62,7 +76,7 @@ export class ProfileService {
   updateProfile = (id: string, body: IProfileUpdateRequest) =>
     Profile.update(body, { where: { id } }).then(() => this.getProfile(id));
 
-  setPrivilegesToUser = async (
+  setPrivileges = async (
     profileId: string,
     roleName: ERole,
     permissions: EPermissions[],
