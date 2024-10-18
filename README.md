@@ -23,8 +23,11 @@ sudo apt-get install docker-compose
 
 
 - ### На стороне клинета
-
-ssh-copy-id root@<remote_host>
+Создание ssh ключей и копирование на сервер
+```
+ssh-keygen -t rsa -b 4096 -C "ssh-comment" -f ssh_name
+ssh-copy-id -i ~/.ssh/ssh_name.pub root@147.45.133.109  
+```
 
 - ### На стороне сервера
 
