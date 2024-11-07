@@ -59,6 +59,15 @@ module.exports = plop => {
           // eslint-disable-next-line quotes
           "new {{properCase name}}Module().Configure(ioc);\n$1",
       },
+
+      {
+        type: "modify",
+        path: "src/app.controllers.ts",
+        pattern: /(\/\/ EXPORT CONTROLLER HERE)/gi,
+        template:
+          // eslint-disable-next-line quotes
+          "{{properCase name}}Controller,\n$1",
+      },
     ],
   });
 };

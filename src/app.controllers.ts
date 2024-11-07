@@ -1,1 +1,6 @@
-export { AuthController, FileController, ProfileController } from "./modules";
+export {
+  AuthController,
+  FileController,
+  ProfileController,
+  // EXPORT CONTROLLER HERE
+} from "./modules";
