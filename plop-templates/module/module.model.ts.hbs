@@ -1,0 +1,54 @@
+import {
+  DataTypes,
+  InferAttributes,
+  InferCreationAttributes,
+  Model,
+} from "sequelize";
+
+import { sequelize } from "../../db";
+
+export interface I{{properCase name}}Dto extends {{properCase name}}Model {}
+
+export type {{properCase name}}Model = InferAttributes<{{properCase name}}>;
+
+export type T{{properCase name}}CreateModel = InferCreationAttributes<
+  {{properCase name}},
+  { omit: "createdAt" | "updatedAt" }
+>;
+
+export type T{{properCase name}}UpdateModel = Partial<T{{properCase name}}CreateModel>;
+
+export class {{properCase name}} extends Model<{{properCase name}}Model, T{{properCase name}}CreateModel> {
+  declare id: string;
+
+  declare name: string;
+
+  // timestamps!
+  declare readonly createdAt: Date;
+  declare readonly updatedAt: Date;
+
+  // associations
+}
+
+{{properCase name}}.init(
+  {
+    id: {
+      type: DataTypes.UUID(),
+      primaryKey: true,
+    },
+    name: {
+      type: DataTypes.STRING(255),
+    },
+
+    createdAt: DataTypes.DATE,
+    updatedAt: DataTypes.DATE,
+  },
+  {
+    sequelize,
+    modelName: "{{lowerCase name}}",
+    name: {
+      singular: "{{lowerCase name}}",
+      plural: "{{lowerCase name}}",
+    },
+  },
+);

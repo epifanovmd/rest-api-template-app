@@ -1,0 +1,17 @@
+import { NotFoundException } from "@force-dev/utils";
+import { injectable } from "inversify";
+
+import { {{properCase name}}, I{{properCase name}}Dto } from "./{{dashCase name}}.model";
+
+@injectable()
+export class {{properCase name}}Service {
+  async get{{properCase name}}ById(id: string): Promise<I{{properCase name}}Dto> {
+    const {{camelCase name}} = await {{properCase name}}.findByPk(id);
+
+    if (!{{camelCase name}}) {
+      throw new NotFoundException();
+    }
+
+    return {{camelCase name}};
+  }
+}

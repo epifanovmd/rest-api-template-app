@@ -1,0 +1,10 @@
+import { HttpException } from "@force-dev/utils";
+import { Context, Next } from "koa";
+
+export const {{camelCase name}} = async (ctx: Context, next: Next) => {
+  try {
+    await next();
+  } catch (err) {
+    throw new HttpException(err.message, 500, err);
+  }
+};

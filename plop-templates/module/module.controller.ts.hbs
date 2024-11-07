@@ -1,0 +1,20 @@
+import { inject, injectable } from "inversify";
+import { Controller, Get, Query, Route, Security, Tags } from "tsoa";
+
+import { I{{properCase name}}Dto } from "./{{dashCase name}}.model";
+import { {{properCase name}}Service } from "./{{dashCase name}}.service";
+
+@injectable()
+@Tags("{{properCase name}}")
+@Route("api/{{camelCase name}}")
+export class {{properCase name}}Controller extends Controller {
+  constructor(@inject({{properCase name}}Service) private _{{camelCase name}}Service: {{properCase name}}Service) {
+    super();
+  }
+
+  @Security("jwt")
+  @Get()
+  get{{properCase name}}ById(@Query("id") id: string): Promise<I{{properCase name}}Dto> {
+    return this._{{camelCase name}}Service.get{{properCase name}}ById(id);
+  }
+}

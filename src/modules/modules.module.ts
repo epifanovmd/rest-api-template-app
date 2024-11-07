@@ -11,6 +11,7 @@ import { RedisModule } from "./redis";
 import { RoleModule } from "./role";
 import { SocketModule } from "./socket";
 import { UtilsModule } from "./utils";
+// IMPORT MODULE HERE
 
 export class ModulesModule implements Module {
   Configure(ioc: Container) {
@@ -22,5 +23,6 @@ export class ModulesModule implements Module {
     new RedisModule().Configure(ioc);
     new SocketModule().Configure(ioc);
     new UtilsModule().Configure(ioc);
+    // CONFIGURE MODULE HERE
   }
 }
