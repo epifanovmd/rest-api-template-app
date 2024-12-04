@@ -55,9 +55,9 @@ export class ProfileController extends Controller {
   @Security("jwt")
   @Get("/my")
   getMyProfile(@Request() req: KoaRequest): Promise<IProfileDto> {
-    const profileId = getContextProfile(req);
+    const profile = getContextProfile(req);
 
-    return this._profileService.getProfile(profileId);
+    return this._profileService.getProfile(profile.id);
   }
 
   @Security("jwt")
