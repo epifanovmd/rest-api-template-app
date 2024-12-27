@@ -8,9 +8,9 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-postgres}
       POSTGRES_USER: ${POSTGRES_USER:-pg_user_name}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pg_password}
-      PGDATA: ${POSTGRES_DATA:-/var/lib/postgresql/data/pgdata}
+      PGDATA: ${PGDATA:-/var/lib/postgresql/data/pgdata}
     volumes:
-      - ${POSTGRES_HOST_DATA:-./postgres}:${POSTGRES_DATA:-/var/lib/postgresql/data/pgdata}
+      - ${POSTGRES_HOST_DATA:-./postgres}:${PGDATA:-/var/lib/postgresql/data/pgdata}
     ports:
       - "${POSTGRES_PORT}:5432"
     restart: unless-stopped
