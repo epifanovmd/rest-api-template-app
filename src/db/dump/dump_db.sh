@@ -1,6 +1,6 @@
 #!/bin/bash
 
-SSH_HOST="147.45.133.109"
+SSH_HOST="138.124.99.61"
 TIMESTAMP=$(date +"%F_%H:%M:%S")
 BACKUP_DIR="."
 CONTAINER_NAME="postgres"

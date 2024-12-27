@@ -1,12 +1,12 @@
 #!/bin/bash
 
-SSH_HOST="147.45.133.109"
-SSH_PROJECT_DIR="/root/development/wireguard-server"
+SSH_HOST="138.124.99.61"
 BACKUP_DIR="."
 CONTAINER_NAME="postgres"
 PG_USER="epifanovmd"
 PG_DB="postgres"
-CONTAINER_BACKUP_DIR="/data/postgres"
+HOST_BACKUP_DIR="/var/lib/postgresql/wireguard/data"
+CONTAINER_BACKUP_DIR="/var/lib/postgresql/data/pgdata"
 
 BACKUP_FILE=$(ls -t "$BACKUP_DIR"/db_backup_*.dump | head -n 1)
 
@@ -16,8 +16,8 @@ if [ -z "$BACKUP_FILE" ]; then
   exit 1
 fi
 
-scp "$BACKUP_FILE" root@$SSH_HOST:"$SSH_PROJECT_DIR/postgres/"
+scp "$BACKUP_FILE" root@$SSH_HOST:"$HOST_BACKUP_DIR"
 
 ssh root@$SSH_HOST docker exec -i $CONTAINER_NAME pg_restore -U $PG_USER -d $PG_DB -c "$CONTAINER_BACKUP_DIR/$(basename "$BACKUP_FILE")"
 
-ssh root@$SSH_HOST rm "$SSH_PROJECT_DIR/postgres/$(basename "$BACKUP_FILE")"
+ssh root@$SSH_HOST rm "$HOST_BACKUP_DIR/$(basename "$BACKUP_FILE")"
