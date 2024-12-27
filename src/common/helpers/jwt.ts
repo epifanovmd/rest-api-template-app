@@ -3,7 +3,6 @@ import jwt, { sign, SignOptions, VerifyErrors } from "jsonwebtoken";
 
 import { config } from "../../../config";
 import { EPermissions } from "../../modules/permission/permission.model";
-// импортируем прямяком из файла что бы не было циклической зависимости
 import { IProfileDto, Profile } from "../../modules/profile/profile.model";
 import { ERole, IRoleDto } from "../../modules/role/role.model";
 import { JWTDecoded } from "../../types/koa";
