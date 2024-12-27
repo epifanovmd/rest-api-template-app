@@ -39,8 +39,9 @@ export const config = {
     "https://domain/reset-password?token={{token}}",
 
   WEB_AUTHN_RP_NAME: process.env.WEB_AUTHN_RP_NAME || "wireguard",
-  WEB_AUTHN_RP_ID: process.env.WEB_AUTHN_RP_ID || "wireguard.force-dev.ru",
+  WEB_AUTHN_RP_HOST: process.env.WEB_AUTHN_RP_HOST || "wireguard.force-dev.ru",
   WEB_AUTHN_RP_SCHEMA: process.env.WEB_AUTHN_RP_SCHEMA || "https",
+  WEB_AUTHN_RP_PORT: process.env.WEB_AUTHN_RP_PORT || "",
 
   SMTP_USER: process.env.SMTP_USER || "",
   SMTP_PASS: process.env.SMTP_PASS || "",

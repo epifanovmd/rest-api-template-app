@@ -20,11 +20,19 @@ import {
   Passkeys,
 } from "./passkeys.model";
 
-const { WEB_AUTHN_RP_NAME, WEB_AUTHN_RP_ID, WEB_AUTHN_RP_SCHEMA } = config;
+const {
+  WEB_AUTHN_RP_NAME,
+  WEB_AUTHN_RP_HOST,
+  WEB_AUTHN_RP_SCHEMA,
+  WEB_AUTHN_RP_PORT,
+} = config;
+
+const schema = WEB_AUTHN_RP_SCHEMA;
+const port = WEB_AUTHN_RP_PORT ? `:${WEB_AUTHN_RP_PORT}` : "";
 
 const rpName = WEB_AUTHN_RP_NAME;
-const rpID = WEB_AUTHN_RP_ID;
-const origin = `${WEB_AUTHN_RP_SCHEMA}://${rpID}`;
+const rpID = WEB_AUTHN_RP_HOST;
+const origin = `${schema}://${rpID}${port}`;
 
 @injectable()
 export class PasskeysService {
