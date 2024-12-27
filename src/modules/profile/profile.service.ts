@@ -1,10 +1,15 @@
-import { NotFoundException } from "@force-dev/utils";
-import { injectable } from "inversify";
-import { Includeable, WhereOptions } from "sequelize";
+import { ConflictException, NotFoundException } from "@force-dev/utils";
+import { inject, injectable } from "inversify";
+import { Includeable, Op, WhereOptions } from "sequelize";
+import sha256 from "sha256";
 
-import { EPermissions, Permission } from "../permission";
-import { ERole, Role } from "../role";
+import { ApiResponse } from "../../dto/ApiResponse";
+import { MailerService } from "../mailer";
+import { OtpService } from "../otp";
+import { EPermissions, Permission } from "../permission/permission.model";
+import { ERole, Role } from "../role/role.model";
 import {
+  IProfilePrivilegesRequest,
   IProfileUpdateRequest,
   Profile,
   ProfileModel,
@@ -13,6 +18,11 @@ import {
 
 @injectable()
 export class ProfileService {
+  constructor(
+    @inject(MailerService) private _mailerService: MailerService,
+    @inject(OtpService) private _otpService: OtpService,
+  ) {}
+
   getAllProfile = (offset?: number, limit?: number) =>
     Profile.findAll({
       limit,
@@ -22,7 +32,7 @@ export class ProfileService {
       include: ProfileService.include,
     });
 
-  getProfileByAttr = (where: WhereOptions) =>
+  getProfileByAttr = (where: WhereOptions<Profile>) =>
     Profile.findOne({
       where,
       include: ProfileService.include,
@@ -55,14 +65,15 @@ export class ProfileService {
       return this.setPrivileges(result.id, ERole.USER, [
         EPermissions.READ,
         EPermissions.WRITE,
+        EPermissions.DELETE,
       ]);
     });
   };
 
   createAdmin = (body: TProfileCreateModel) => {
-    const profile = this.getProfileByAttr({ username: body.username }).catch(
-      () => Profile.create(body),
-    );
+    const profile = this.getProfileByAttr({
+      [Op.or]: [{ email: body.email ?? "" }, { phone: body.phone ?? "" }],
+    }).catch(() => Profile.create(body));
 
     return profile.then(result => {
       return this.setPrivileges(result.id, ERole.ADMIN, [
@@ -78,8 +89,8 @@ export class ProfileService {
 
   setPrivileges = async (
     profileId: string,
-    roleName: ERole,
-    permissions: EPermissions[],
+    roleName: IProfilePrivilegesRequest["roleName"],
+    permissions: IProfilePrivilegesRequest["permissions"],
   ) => {
     const profile = await Profile.findByPk(profileId);
 
@@ -89,11 +100,11 @@ export class ProfileService {
       );
     }
 
-    const [role, success] = await Role.findOrCreate({
+    const [role] = await Role.findOrCreate({
       where: { name: roleName },
     });
 
-    if (success && role) {
+    if (role) {
       await profile.setRole(role);
 
       const permissionInstances = await Promise.all(
@@ -110,6 +121,52 @@ export class ProfileService {
     return this.getProfile(profileId);
   };
 
+  requestVerifyEmail = async (profileId: string, email?: string) => {
+    const profile = await this.getProfile(profileId);
+
+    if (profile.emailVerified) {
+      throw new ConflictException("Email уже подтвержден.");
+    }
+
+    if (!email) {
+      throw new NotFoundException("У пользователя отсутсвует email.");
+    }
+
+    const otp = await this._otpService.create(profileId);
+
+    await this._mailerService.sendCodeMail(email, otp.code);
+
+    return otp.code as any;
+  };
+
+  verifyEmail = async (profileId: string, code: string) => {
+    const profile = await this.getProfile(profileId);
+
+    if (profile.emailVerified) {
+      throw new ConflictException("Email уже подтвержден.");
+    }
+
+    if (await this._otpService.check(profileId, code)) {
+      profile.emailVerified = true;
+      await profile.save();
+    }
+
+    return new ApiResponse({
+      message: "Email успешно подтвержден.",
+      data: {},
+    });
+  };
+
+  changePassword = async (profileId: string, password: string) => {
+    const profile = await this.getProfile(profileId);
+
+    profile.passwordHash = sha256(password);
+
+    await profile.save();
+
+    return new ApiResponse({ message: "Пароль успешно изменен." });
+  };
+
   deleteProfile = async (profileId: string) => {
     return Profile.destroy({ where: { id: profileId } }).then(() => profileId);
   };
@@ -119,9 +176,10 @@ export class ProfileService {
       "id",
       "phone",
       "email",
+      "emailVerified",
       "firstName",
       "lastName",
-      "username",
+      "challenge",
       "createdAt",
       "updatedAt",
     ];

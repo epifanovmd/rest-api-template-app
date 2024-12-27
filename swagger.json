@@ -125,9 +125,6 @@
 					"id": {
 						"type": "string"
 					},
-					"username": {
-						"type": "string"
-					},
 					"firstName": {
 						"type": "string"
 					},
@@ -137,10 +134,16 @@
 					"email": {
 						"type": "string"
 					},
+					"emailVerified": {
+						"type": "boolean"
+					},
 					"phone": {
 						"type": "string"
 					},
 					"roleId": {
+						"type": "string"
+					},
+					"challenge": {
 						"type": "string"
 					},
 					"createdAt": {
@@ -160,9 +163,6 @@
 					"id": {
 						"type": "string"
 					},
-					"username": {
-						"type": "string"
-					},
 					"firstName": {
 						"type": "string"
 					},
@@ -172,10 +172,16 @@
 					"email": {
 						"type": "string"
 					},
+					"emailVerified": {
+						"type": "boolean"
+					},
 					"phone": {
 						"type": "string"
 					},
 					"roleId": {
+						"type": "string"
+					},
+					"challenge": {
 						"type": "string"
 					},
 					"createdAt": {
@@ -193,6 +199,54 @@
 				"required": [
 					"role"
 				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"Pick_TProfileCreateModel.Exclude_keyofTProfileCreateModel.id-or-passwordHash__": {
+				"properties": {
+					"firstName": {
+						"type": "string"
+					},
+					"lastName": {
+						"type": "string"
+					},
+					"email": {
+						"type": "string"
+					},
+					"phone": {
+						"type": "string"
+					},
+					"roleId": {
+						"type": "string"
+					},
+					"challenge": {
+						"type": "string"
+					}
+				},
+				"type": "object",
+				"description": "From T, pick a set of properties whose keys are in the union K"
+			},
+			"IProfileUpdateRequest": {
+				"properties": {
+					"firstName": {
+						"type": "string"
+					},
+					"lastName": {
+						"type": "string"
+					},
+					"email": {
+						"type": "string"
+					},
+					"phone": {
+						"type": "string"
+					},
+					"roleId": {
+						"type": "string"
+					},
+					"challenge": {
+						"type": "string"
+					}
+				},
 				"type": "object",
 				"additionalProperties": false
 			},
@@ -223,51 +277,44 @@
 				"type": "object",
 				"additionalProperties": false
 			},
-			"Pick_TProfileCreateModel.Exclude_keyofTProfileCreateModel.id-or-passwordHash__": {
+			"IProfilePrivilegesRequest": {
 				"properties": {
-					"username": {
-						"type": "string"
+					"roleName": {
+						"$ref": "#/components/schemas/ERole"
 					},
-					"firstName": {
-						"type": "string"
-					},
-					"lastName": {
-						"type": "string"
-					},
-					"email": {
-						"type": "string"
-					},
-					"phone": {
-						"type": "string"
-					},
-					"roleId": {
-						"type": "string"
+					"permissions": {
+						"items": {
+							"$ref": "#/components/schemas/EPermissions"
+						},
+						"type": "array"
 					}
+				},
+				"required": [
+					"roleName",
+					"permissions"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"ApiResponse": {
+				"properties": {
+					"message": {
+						"type": "string"
+					},
+					"data": {}
 				},
 				"type": "object",
-				"description": "From T, pick a set of properties whose keys are in the union K"
+				"additionalProperties": false
 			},
-			"IProfileUpdateRequest": {
+			"IProfilePassword": {
 				"properties": {
-					"username": {
-						"type": "string"
-					},
-					"firstName": {
-						"type": "string"
-					},
-					"lastName": {
-						"type": "string"
-					},
-					"email": {
-						"type": "string"
-					},
-					"phone": {
-						"type": "string"
-					},
-					"roleId": {
+					"password": {
 						"type": "string"
 					}
 				},
+				"required": [
+					"password"
+				],
 				"type": "object",
 				"additionalProperties": false
 			},
@@ -292,9 +339,6 @@
 					"id": {
 						"type": "string"
 					},
-					"username": {
-						"type": "string"
-					},
 					"firstName": {
 						"type": "string"
 					},
@@ -304,10 +348,16 @@
 					"email": {
 						"type": "string"
 					},
+					"emailVerified": {
+						"type": "boolean"
+					},
 					"phone": {
 						"type": "string"
 					},
 					"roleId": {
+						"type": "string"
+					},
+					"challenge": {
 						"type": "string"
 					},
 					"createdAt": {
@@ -332,11 +382,8 @@
 				"type": "object",
 				"additionalProperties": false
 			},
-			"ISignUpRequest": {
+			"Pick_TProfileCreateModel.Exclude_keyofTProfileCreateModel.passwordHash-or-roleId-or-challenge__": {
 				"properties": {
-					"username": {
-						"type": "string"
-					},
 					"firstName": {
 						"type": "string"
 					},
@@ -348,8 +395,23 @@
 					},
 					"phone": {
 						"type": "string"
+					}
+				},
+				"type": "object",
+				"description": "From T, pick a set of properties whose keys are in the union K"
+			},
+			"ISignUpRequest": {
+				"properties": {
+					"firstName": {
+						"type": "string"
 					},
-					"roleId": {
+					"lastName": {
+						"type": "string"
+					},
+					"email": {
+						"type": "string"
+					},
+					"phone": {
 						"type": "string"
 					},
 					"password": {
@@ -364,16 +426,46 @@
 			},
 			"ISignInRequest": {
 				"properties": {
-					"username": {
-						"type": "string"
+					"login": {
+						"type": "string",
+						"description": "Может быть телефоном, email-ом и username-ом"
 					},
 					"password": {
 						"type": "string"
 					}
 				},
 				"required": [
-					"username",
+					"login",
 					"password"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IProfileLogin": {
+				"properties": {
+					"login": {
+						"type": "string",
+						"description": "Может быть телефоном, email-ом и username-ом"
+					}
+				},
+				"required": [
+					"login"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IProfileResetPasswordRequest": {
+				"properties": {
+					"password": {
+						"type": "string"
+					},
+					"token": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"password",
+					"token"
 				],
 				"type": "object",
 				"additionalProperties": false
@@ -437,6 +529,313 @@
 				},
 				"type": "object",
 				"additionalProperties": false
+			},
+			"Base64URLString": {
+				"type": "string",
+				"description": "An attempt to communicate that this isn't just any string, but a Base64URL-encoded string"
+			},
+			"PublicKeyCredentialType": {
+				"type": "string",
+				"enum": [
+					"public-key"
+				],
+				"nullable": false
+			},
+			"AuthenticatorTransportFuture": {
+				"type": "string",
+				"enum": [
+					"ble",
+					"cable",
+					"hybrid",
+					"internal",
+					"nfc",
+					"smart-card",
+					"usb"
+				],
+				"description": "A super class of TypeScript's `AuthenticatorTransport` that includes support for the latest\ntransports. Should eventually be replaced by TypeScript's when TypeScript gets updated to\nknow about it (sometime after 4.6.3)"
+			},
+			"PublicKeyCredentialDescriptorJSON": {
+				"description": "https://w3c.github.io/webauthn/#dictdef-publickeycredentialdescriptorjson",
+				"properties": {
+					"id": {
+						"$ref": "#/components/schemas/Base64URLString"
+					},
+					"type": {
+						"$ref": "#/components/schemas/PublicKeyCredentialType"
+					},
+					"transports": {
+						"items": {
+							"$ref": "#/components/schemas/AuthenticatorTransportFuture"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"id",
+					"type"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"UserVerificationRequirement": {
+				"type": "string",
+				"enum": [
+					"discouraged",
+					"preferred",
+					"required"
+				]
+			},
+			"AuthenticationExtensionsClientInputs": {
+				"properties": {
+					"appid": {
+						"type": "string"
+					},
+					"credProps": {
+						"type": "boolean"
+					},
+					"hmacCreateSecret": {
+						"type": "boolean"
+					},
+					"minPinLength": {
+						"type": "boolean"
+					}
+				},
+				"type": "object",
+				"additionalProperties": false
+			},
+			"PublicKeyCredentialRequestOptionsJSON": {
+				"description": "A variant of PublicKeyCredentialRequestOptions suitable for JSON transmission to the browser to\n(eventually) get passed into navigator.credentials.get(...) in the browser.",
+				"properties": {
+					"challenge": {
+						"$ref": "#/components/schemas/Base64URLString"
+					},
+					"timeout": {
+						"type": "number",
+						"format": "double"
+					},
+					"rpId": {
+						"type": "string"
+					},
+					"allowCredentials": {
+						"items": {
+							"$ref": "#/components/schemas/PublicKeyCredentialDescriptorJSON"
+						},
+						"type": "array"
+					},
+					"userVerification": {
+						"$ref": "#/components/schemas/UserVerificationRequirement"
+					},
+					"extensions": {
+						"$ref": "#/components/schemas/AuthenticationExtensionsClientInputs"
+					}
+				},
+				"required": [
+					"challenge"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"COSEAlgorithmIdentifier": {
+				"type": "number",
+				"format": "double"
+			},
+			"AuthenticatorAttestationResponseJSON": {
+				"description": "A slightly-modified AuthenticatorAttestationResponse to simplify working with ArrayBuffers that\nare Base64URL-encoded in the browser so that they can be sent as JSON to the server.\n\nhttps://w3c.github.io/webauthn/#dictdef-authenticatorattestationresponsejson",
+				"properties": {
+					"clientDataJSON": {
+						"$ref": "#/components/schemas/Base64URLString"
+					},
+					"attestationObject": {
+						"$ref": "#/components/schemas/Base64URLString"
+					},
+					"authenticatorData": {
+						"$ref": "#/components/schemas/Base64URLString"
+					},
+					"transports": {
+						"items": {
+							"$ref": "#/components/schemas/AuthenticatorTransportFuture"
+						},
+						"type": "array"
+					},
+					"publicKeyAlgorithm": {
+						"$ref": "#/components/schemas/COSEAlgorithmIdentifier"
+					},
+					"publicKey": {
+						"$ref": "#/components/schemas/Base64URLString"
+					}
+				},
+				"required": [
+					"clientDataJSON",
+					"attestationObject"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"AuthenticatorAttachment": {
+				"type": "string",
+				"enum": [
+					"cross-platform",
+					"platform"
+				]
+			},
+			"CredentialPropertiesOutput": {
+				"properties": {
+					"rk": {
+						"type": "boolean"
+					}
+				},
+				"type": "object",
+				"additionalProperties": false
+			},
+			"AuthenticationExtensionsClientOutputs": {
+				"properties": {
+					"appid": {
+						"type": "boolean"
+					},
+					"credProps": {
+						"$ref": "#/components/schemas/CredentialPropertiesOutput"
+					},
+					"hmacCreateSecret": {
+						"type": "boolean"
+					}
+				},
+				"type": "object",
+				"additionalProperties": false
+			},
+			"RegistrationResponseJSON": {
+				"description": "A slightly-modified RegistrationCredential to simplify working with ArrayBuffers that\nare Base64URL-encoded in the browser so that they can be sent as JSON to the server.\n\nhttps://w3c.github.io/webauthn/#dictdef-registrationresponsejson",
+				"properties": {
+					"id": {
+						"$ref": "#/components/schemas/Base64URLString"
+					},
+					"rawId": {
+						"$ref": "#/components/schemas/Base64URLString"
+					},
+					"response": {
+						"$ref": "#/components/schemas/AuthenticatorAttestationResponseJSON"
+					},
+					"authenticatorAttachment": {
+						"$ref": "#/components/schemas/AuthenticatorAttachment"
+					},
+					"clientExtensionResults": {
+						"$ref": "#/components/schemas/AuthenticationExtensionsClientOutputs"
+					},
+					"type": {
+						"$ref": "#/components/schemas/PublicKeyCredentialType"
+					}
+				},
+				"required": [
+					"id",
+					"rawId",
+					"response",
+					"clientExtensionResults",
+					"type"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IVerifyRegistrationRequest": {
+				"properties": {
+					"profileId": {
+						"type": "string"
+					},
+					"data": {
+						"$ref": "#/components/schemas/RegistrationResponseJSON"
+					}
+				},
+				"required": [
+					"profileId",
+					"data"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IVerifyAuthenticationResponse": {
+				"properties": {
+					"verified": {
+						"type": "boolean"
+					},
+					"tokens": {
+						"$ref": "#/components/schemas/ITokensDto"
+					}
+				},
+				"required": [
+					"verified"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"AuthenticatorAssertionResponseJSON": {
+				"description": "A slightly-modified AuthenticatorAssertionResponse to simplify working with ArrayBuffers that\nare Base64URL-encoded in the browser so that they can be sent as JSON to the server.\n\nhttps://w3c.github.io/webauthn/#dictdef-authenticatorassertionresponsejson",
+				"properties": {
+					"clientDataJSON": {
+						"$ref": "#/components/schemas/Base64URLString"
+					},
+					"authenticatorData": {
+						"$ref": "#/components/schemas/Base64URLString"
+					},
+					"signature": {
+						"$ref": "#/components/schemas/Base64URLString"
+					},
+					"userHandle": {
+						"$ref": "#/components/schemas/Base64URLString"
+					}
+				},
+				"required": [
+					"clientDataJSON",
+					"authenticatorData",
+					"signature"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"AuthenticationResponseJSON": {
+				"description": "A slightly-modified AuthenticationCredential to simplify working with ArrayBuffers that\nare Base64URL-encoded in the browser so that they can be sent as JSON to the server.\n\nhttps://w3c.github.io/webauthn/#dictdef-authenticationresponsejson",
+				"properties": {
+					"id": {
+						"$ref": "#/components/schemas/Base64URLString"
+					},
+					"rawId": {
+						"$ref": "#/components/schemas/Base64URLString"
+					},
+					"response": {
+						"$ref": "#/components/schemas/AuthenticatorAssertionResponseJSON"
+					},
+					"authenticatorAttachment": {
+						"$ref": "#/components/schemas/AuthenticatorAttachment"
+					},
+					"clientExtensionResults": {
+						"$ref": "#/components/schemas/AuthenticationExtensionsClientOutputs"
+					},
+					"type": {
+						"$ref": "#/components/schemas/PublicKeyCredentialType"
+					}
+				},
+				"required": [
+					"id",
+					"rawId",
+					"response",
+					"clientExtensionResults",
+					"type"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IVerifyAuthenticationRequest": {
+				"properties": {
+					"profileId": {
+						"type": "string"
+					},
+					"data": {
+						"$ref": "#/components/schemas/AuthenticationResponseJSON"
+					}
+				},
+				"required": [
+					"profileId",
+					"data"
+				],
+				"type": "object",
+				"additionalProperties": false
 			}
 		},
 		"securitySchemes": {
@@ -461,7 +860,95 @@
 	},
 	"openapi": "3.0.0",
 	"paths": {
-		"/api/profile": {
+		"/api/profile/my": {
+			"get": {
+				"operationId": "GetMyProfile",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IProfileDto"
+								}
+							}
+						}
+					}
+				},
+				"tags": [
+					"Profile"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": []
+			}
+		},
+		"/api/profile/my/update": {
+			"patch": {
+				"operationId": "UpdateMyProfile",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IProfileDto"
+								}
+							}
+						}
+					}
+				},
+				"tags": [
+					"Profile"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IProfileUpdateRequest"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/profile/my/delete": {
+			"delete": {
+				"operationId": "DeleteMyProfile",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "string"
+								}
+							}
+						}
+					}
+				},
+				"tags": [
+					"Profile"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": []
+			}
+		},
+		"/api/profile/all": {
 			"get": {
 				"operationId": "GetAllProfiles",
 				"responses": {
@@ -481,10 +968,7 @@
 				],
 				"security": [
 					{
-						"jwt": [
-							"role:user",
-							"permission:read"
-						]
+						"jwt": []
 					}
 				],
 				"parameters": [
@@ -527,7 +1011,11 @@
 				"tags": [
 					"Profile"
 				],
-				"security": [],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
 				"parameters": [
 					{
 						"in": "path",
@@ -538,7 +1026,110 @@
 						}
 					}
 				]
-			},
+			}
+		},
+		"/api/profile/setPrivileges/{id}": {
+			"patch": {
+				"operationId": "SetPrivileges",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IProfileDto"
+								}
+							}
+						}
+					}
+				},
+				"tags": [
+					"Profile"
+				],
+				"security": [
+					{
+						"jwt": [
+							"role:admin"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IProfilePrivilegesRequest"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/profile/requestVerifyEmail": {
+			"post": {
+				"operationId": "RequestVerifyEmail",
+				"responses": {
+					"204": {
+						"description": "No content"
+					}
+				},
+				"tags": [
+					"Profile"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": []
+			}
+		},
+		"/api/profile/verifyEmail/{code}": {
+			"get": {
+				"operationId": "VerifyEmail",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse"
+								}
+							}
+						}
+					}
+				},
+				"tags": [
+					"Profile"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "code",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/profile/update/{id}": {
 			"patch": {
 				"operationId": "UpdateProfile",
 				"responses": {
@@ -558,7 +1149,9 @@
 				],
 				"security": [
 					{
-						"jwt": []
+						"jwt": [
+							"role:admin"
+						]
 					}
 				],
 				"parameters": [
@@ -581,7 +1174,45 @@
 						}
 					}
 				}
-			},
+			}
+		},
+		"/api/profile/changePassword": {
+			"post": {
+				"operationId": "ChangePassword",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse"
+								}
+							}
+						}
+					}
+				},
+				"tags": [
+					"Profile"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IProfilePassword"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/profile/delete/{id}": {
 			"delete": {
 				"operationId": "DeleteProfile",
 				"responses": {
@@ -601,7 +1232,9 @@
 				],
 				"security": [
 					{
-						"jwt": []
+						"jwt": [
+							"role:admin"
+						]
 					}
 				],
 				"parameters": [
@@ -614,32 +1247,6 @@
 						}
 					}
 				]
-			}
-		},
-		"/api/profile/my": {
-			"get": {
-				"operationId": "GetMyProfile",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/IProfileDto"
-								}
-							}
-						}
-					}
-				},
-				"tags": [
-					"Profile"
-				],
-				"security": [
-					{
-						"jwt": []
-					}
-				],
-				"parameters": []
 			}
 		},
 		"/api/auth/signUp": {
@@ -704,6 +1311,70 @@
 						"application/json": {
 							"schema": {
 								"$ref": "#/components/schemas/ISignInRequest"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/auth/requestResetPassword": {
+			"post": {
+				"operationId": "RequestResetPassword",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse"
+								}
+							}
+						}
+					}
+				},
+				"tags": [
+					"Authorization"
+				],
+				"security": [],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IProfileLogin"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/auth/resetPassword": {
+			"post": {
+				"operationId": "ResetPassword",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse"
+								}
+							}
+						}
+					}
+				},
+				"tags": [
+					"Authorization"
+				],
+				"security": [],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IProfileResetPasswordRequest"
 							}
 						}
 					}
@@ -865,6 +1536,158 @@
 						}
 					}
 				]
+			}
+		},
+		"/api/passkeys/generate-registration-options": {
+			"post": {
+				"operationId": "GenerateRegistrationOptions",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/PublicKeyCredentialRequestOptionsJSON"
+								}
+							}
+						}
+					}
+				},
+				"tags": [
+					"Passkeys"
+				],
+				"security": [],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"properties": {
+									"profileId": {
+										"type": "string"
+									}
+								},
+								"required": [
+									"profileId"
+								],
+								"type": "object"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/passkeys/verify-registration": {
+			"post": {
+				"operationId": "VerifyRegistration",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"verified": {
+											"type": "boolean"
+										}
+									},
+									"required": [
+										"verified"
+									],
+									"type": "object"
+								}
+							}
+						}
+					}
+				},
+				"tags": [
+					"Passkeys"
+				],
+				"security": [],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IVerifyRegistrationRequest"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/passkeys/generate-authentication-options": {
+			"post": {
+				"operationId": "GenerateAuthenticationOptions",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/PublicKeyCredentialRequestOptionsJSON"
+								}
+							}
+						}
+					}
+				},
+				"tags": [
+					"Passkeys"
+				],
+				"security": [],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"properties": {
+									"profileId": {
+										"type": "string"
+									}
+								},
+								"required": [
+									"profileId"
+								],
+								"type": "object"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/passkeys/verify-authentication": {
+			"post": {
+				"operationId": "VerifyAuthentication",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IVerifyAuthenticationResponse"
+								}
+							}
+						}
+					}
+				},
+				"tags": [
+					"Passkeys"
+				],
+				"security": [],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IVerifyAuthenticationRequest"
+							}
+						}
+					}
+				}
 			}
 		}
 	},

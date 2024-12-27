@@ -10,7 +10,7 @@ import {
 
 import { sequelize } from "../../db";
 import { ListResponse } from "../../dto/ListResponse";
-import { IPermissionDto, Permission } from "../permission";
+import { IPermissionDto, Permission } from "../permission/permission.model";
 
 export enum ERole {
   ADMIN = "admin",

@@ -1,6 +1,6 @@
 import Koa from "koa";
 
-import { IProfileDto } from "../modules/profile";
+import { IProfileDto } from "../modules/profile/profile.model";
 
 export type JWTDecoded = {
   profileId: string;

@@ -9,10 +9,8 @@ export const config = {
   SERVER_HOST: process.env.SERVER_HOST || "0.0.0.0",
   SERVER_PORT: Number(process.env.SERVER_PORT || 8181),
   SOCKET_PORT: process.env.SOCKET_PORT || 3232,
-
   SERVER_FILES_FOLDER_PATH:
     process.env.SERVER_FILES_FOLDER_PATH ?? "./upload_files",
-
   RATE_LIMIT: Number(process.env.RATE_LIMIT || 1000),
   RATE_LIMIT_INTERVAL: Number(
     process.env.RATE_LIMIT_INTERVAL || 15 * 60 * 1000,
@@ -21,10 +19,9 @@ export const config = {
     process.env.CORS_ALLOW_IPS ||
     "http://localhost:3000,https://socket-test-client.netlify.app",
 
-  JWT_SECRET_KEY: process.env.SOCKET_PORT || "rest-api--auth-secret-key",
+  JWT_SECRET_KEY: process.env.JWT_SECRET_KEY || "rest-api--auth-secret-key",
 
   REDIS_PASS: process.env.REDIS_PASS || "redisPass",
-
   REDIS_HOST: process.env.REDIS_HOST || "localhost",
   REDIS_PORT: process.env.REDIS_PORT || 6379,
 
@@ -35,6 +32,20 @@ export const config = {
   POSTGRES_PASSWORD: process.env.POSTGRES_PASSWORD || "pg_password",
   POSTGRES_DATA: process.env.POSTGRES_DATA || "/data/postgres",
 
-  ADMIN_USERNAME: process.env.ADMIN_USERNAME || "admin",
+  ADMIN_EMAIL: process.env.ADMIN_EMAIL || "admin@admin.com",
   ADMIN_PASSWORD: process.env.ADMIN_PASSWORD || "admin",
+  WEB_URL_RESET_PASSWORD:
+    process.env.WEB_URL_RESET_PASSWORD ||
+    "https://domain/reset-password?token={{token}}",
+
+  WEB_AUTHN_RP_NAME: process.env.WEB_AUTHN_RP_NAME || "wireguard",
+  WEB_AUTHN_RP_ID: process.env.WEB_AUTHN_RP_ID || "wireguard.force-dev.ru",
+  WEB_AUTHN_RP_SCHEMA: process.env.WEB_AUTHN_RP_SCHEMA || "https",
+
+  SMTP_USER: process.env.SMTP_USER || "",
+  SMTP_PASS: process.env.SMTP_PASS || "",
+  OTP_EXPIRE_MINUTES: Number(process.env.OTP_EXPIRE_MINUTES || 10),
+  RESET_PASS_TOKEN_EXPIRE_MINUTES: Number(
+    process.env.RESET_PASS_TOKEN_EXPIRE_MINUTES || 60,
+  ),
 };

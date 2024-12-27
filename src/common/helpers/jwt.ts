@@ -2,11 +2,10 @@ import { ForbiddenException, UnauthorizedException } from "@force-dev/utils";
 import jwt, { sign, SignOptions, VerifyErrors } from "jsonwebtoken";
 
 import { config } from "../../../config";
-import { EPermissions } from "../../modules/permission";
-import { IProfileDto } from "../../modules/profile";
+import { EPermissions } from "../../modules/permission/permission.model";
 // импортируем прямяком из файла что бы не было циклической зависимости
-import { ProfileService } from "../../modules/profile/profile.service";
-import { ERole, IRoleDto } from "../../modules/role";
+import { IProfileDto, Profile } from "../../modules/profile/profile.model";
+import { ERole, IRoleDto } from "../../modules/role/role.model";
 import { JWTDecoded } from "../../types/koa";
 
 export const { JWT_SECRET_KEY } = config;
@@ -24,7 +23,23 @@ export const createTokenAsync = (
   data: { profileId: string; opts?: SignOptions }[],
 ) => Promise.all(data.map(value => createToken(value.profileId, value.opts)));
 
-export const verifyToken = async (
+export const verifyToken = (token: string) => {
+  return new Promise<JWTDecoded>((resolve, reject) => {
+    jwt.verify(
+      token,
+      JWT_SECRET_KEY,
+      async (err: VerifyErrors, decoded: JWTDecoded) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(decoded);
+        }
+      },
+    );
+  });
+};
+
+export const verifyAuthToken = async (
   token?: string,
   scopes?: SecurityScopes,
 ): Promise<IProfileDto> =>
@@ -41,9 +56,9 @@ export const verifyToken = async (
           }
 
           try {
-            const profile = await new ProfileService()
-              .getProfile(decoded.profileId)
-              .catch(() => null);
+            const profile = await Profile.findByPk(decoded.profileId).catch(
+              () => null,
+            );
 
             if (!profile) {
               return reject(new UnauthorizedException());
@@ -57,7 +72,7 @@ export const verifyToken = async (
               const permissions = extractPermissions(scopes);
 
               if (!hasRole(role, roles) || !hasPermission(role, permissions)) {
-                return reject(
+                reject(
                   new ForbiddenException(
                     "Access denied: You do not have permission to perform this action.",
                   ),

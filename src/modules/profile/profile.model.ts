@@ -2,6 +2,7 @@ import {
   BelongsToGetAssociationMixin,
   BelongsToSetAssociationMixin,
   DataTypes,
+  HasManyGetAssociationsMixin,
   InferAttributes,
   InferCreationAttributes,
   Model,
@@ -10,10 +11,17 @@ import {
 
 import { sequelize } from "../../db";
 import { ListResponse } from "../../dto/ListResponse";
-import { IRoleDto, Role } from "../role";
+import { Passkeys } from "../passkeys/passkeys.model";
+import { EPermissions } from "../permission/permission.model";
+import { ERole, IRoleDto, Role } from "../role/role.model";
 
 export interface IProfileUpdateRequest
   extends Omit<TProfileCreateModel, "id" | "passwordHash"> {}
+
+export interface IProfilePrivilegesRequest {
+  roleName: ERole;
+  permissions: EPermissions[];
+}
 
 export interface IProfileDto extends Omit<ProfileModel, "passwordHash"> {
   role: IRoleDto;
@@ -24,28 +32,33 @@ export interface IProfileListDto extends ListResponse<IProfileDto[]> {}
 export type ProfileModel = InferAttributes<Profile>;
 export type TProfileCreateModel = InferCreationAttributes<
   Profile,
-  { omit: "createdAt" | "updatedAt" | "id" }
+  { omit: "id" | "emailVerified" | "createdAt" | "updatedAt" }
 >;
 
 export class Profile extends Model<ProfileModel, TProfileCreateModel> {
   declare id: string;
 
-  declare username: string;
   declare firstName?: string;
   declare lastName?: string;
   declare email?: string;
+  declare emailVerified?: boolean;
   declare phone?: string;
 
   declare passwordHash: string;
+
   declare roleId?: string;
+  declare challenge?: string;
 
   // timestamps!
   declare readonly createdAt: Date;
   declare readonly updatedAt: Date;
 
   // mixins
-  declare setRole: BelongsToSetAssociationMixin<Role, number>;
+  declare setRole: BelongsToSetAssociationMixin<Role, string>;
   declare getRole: BelongsToGetAssociationMixin<Role>;
+
+  // mixins
+  declare getPasskeys: HasManyGetAssociationsMixin<Passkeys>;
 
   // associations
   declare role: NonAttribute<Role>;
@@ -57,10 +70,6 @@ Profile.init(
       type: DataTypes.UUID(),
       defaultValue: DataTypes.UUIDV4,
       primaryKey: true,
-      allowNull: false,
-    },
-    username: {
-      type: DataTypes.STRING(40),
       allowNull: false,
     },
     firstName: {
@@ -78,12 +87,21 @@ Profile.init(
         isEmail: true,
       },
     },
+    emailVerified: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+    },
     phone: {
       type: DataTypes.STRING(14),
       allowNull: true,
     },
     passwordHash: {
       type: DataTypes.STRING(100),
+    },
+
+    challenge: {
+      type: DataTypes.STRING,
+      allowNull: true,
     },
 
     roleId: {
@@ -107,7 +125,7 @@ Profile.init(
     indexes: [
       {
         unique: true,
-        fields: ["username"],
+        fields: ["email", "phone"],
       },
     ],
   },
