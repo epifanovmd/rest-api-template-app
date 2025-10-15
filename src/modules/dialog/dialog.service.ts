@@ -50,7 +50,6 @@ export class DialogService {
       group: [
         "dialog.id",
         "owner.id",
-        "owner->avatar.id",
         "owner->role.id",
         "owner->role->permissions.id",
       ],
@@ -105,7 +104,6 @@ export class DialogService {
       group: [
         "dialog.id",
         "owner.id",
-        "owner->avatar.id",
         "owner->role.id",
         "owner->role->permissions.id",
       ],
