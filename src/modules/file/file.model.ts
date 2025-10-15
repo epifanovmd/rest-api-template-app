@@ -7,11 +7,15 @@ import {
 
 import { sequelize } from "../../db";
 
-export interface IFileDto extends FileModel {}
-
-export type TFileRequest = Partial<
-  Omit<TFileCreateModel, "id" | "passwordHash">
->;
+export interface IFileDto {
+  id: string;
+  name: string;
+  type: string;
+  url: string;
+  size: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
 
 export type FileModel = InferAttributes<Files>;
 export type TFileCreateModel = InferCreationAttributes<
@@ -19,9 +23,10 @@ export type TFileCreateModel = InferCreationAttributes<
   { omit: "createdAt" | "updatedAt" }
 >;
 
-export type TFileUpdateModel = Partial<TFileCreateModel>;
-
-export class Files extends Model<FileModel, TFileCreateModel> {
+export class Files
+  extends Model<FileModel, TFileCreateModel>
+  implements IFileDto
+{
   declare id: string;
 
   declare name: string;

@@ -3,7 +3,7 @@ import { Sequelize } from "sequelize";
 import { config } from "../../config";
 
 const {
-  POSTGRES_DATABASE,
+  POSTGRES_DB,
   POSTGRES_HOST,
   POSTGRES_PORT,
   POSTGRES_USER,
@@ -11,7 +11,7 @@ const {
 } = config;
 
 export const sequelize = new Sequelize(
-  POSTGRES_DATABASE,
+  POSTGRES_DB,
   POSTGRES_USER,
   POSTGRES_PASSWORD,
   {

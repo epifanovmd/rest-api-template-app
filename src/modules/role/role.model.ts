@@ -20,7 +20,11 @@ export enum ERole {
 
 export interface IRoleUpdateRequest extends Omit<TRoleCreateModel, "id"> {}
 
-export interface IRoleDto extends RoleModel {
+export interface IRoleDto {
+  id: string;
+  name: ERole;
+  createdAt: Date;
+  updatedAt: Date;
   permissions: IPermissionDto[];
 }
 
@@ -32,7 +36,10 @@ export type TRoleCreateModel = InferCreationAttributes<
   { omit: "createdAt" | "updatedAt" }
 >;
 
-export class Role extends Model<RoleModel, TRoleCreateModel> {
+export class Role
+  extends Model<RoleModel, TRoleCreateModel>
+  implements IRoleDto
+{
   declare id: string;
   declare name: ERole;
 
@@ -46,6 +53,16 @@ export class Role extends Model<RoleModel, TRoleCreateModel> {
 
   // associations
   declare permissions: NonAttribute<Permission[]>;
+
+  toDTO(): IRoleDto {
+    return {
+      id: this.id,
+      name: this.name,
+      createdAt: this.createdAt,
+      updatedAt: this.updatedAt,
+      permissions: this.permissions,
+    };
+  }
 }
 
 Role.init(

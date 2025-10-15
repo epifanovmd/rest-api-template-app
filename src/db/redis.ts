@@ -1,13 +1,13 @@
-import { createClient } from "redis";
-
-import { config } from "../../config";
-
-const { REDIS_HOST, REDIS_PORT, REDIS_PASS } = config;
-
-export const redisClient = createClient({
-  password: REDIS_PASS,
-  url: `redis://localhost:${REDIS_PORT}`,
-});
+// import { createClient } from "redis";
+//
+// import { config } from "../../config";
+//
+// const { REDIS_HOST, REDIS_PORT, REDIS_PASS } = config;
+//
+// export const redisClient = createClient({
+//   password: REDIS_PASS,
+//   url: `redis://localhost:${REDIS_PORT}`,
+// });
 
 //
 // redisClient.on("connect", () => {

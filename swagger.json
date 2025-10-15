@@ -6,54 +6,6 @@
 		"requestBodies": {},
 		"responses": {},
 		"schemas": {
-			"EPermissions": {
-				"enum": [
-					"read",
-					"write",
-					"delete"
-				],
-				"type": "string"
-			},
-			"Pick_PermissionModel.Exclude_keyofPermissionModel.passwordHash__": {
-				"properties": {
-					"id": {
-						"type": "string"
-					},
-					"createdAt": {
-						"type": "string",
-						"format": "date-time"
-					},
-					"updatedAt": {
-						"type": "string",
-						"format": "date-time"
-					},
-					"name": {
-						"$ref": "#/components/schemas/EPermissions"
-					}
-				},
-				"type": "object",
-				"description": "From T, pick a set of properties whose keys are in the union K"
-			},
-			"IPermissionDto": {
-				"properties": {
-					"id": {
-						"type": "string"
-					},
-					"createdAt": {
-						"type": "string",
-						"format": "date-time"
-					},
-					"updatedAt": {
-						"type": "string",
-						"format": "date-time"
-					},
-					"name": {
-						"$ref": "#/components/schemas/EPermissions"
-					}
-				},
-				"type": "object",
-				"additionalProperties": false
-			},
 			"ERole": {
 				"enum": [
 					"admin",
@@ -62,19 +14,21 @@
 				],
 				"type": "string"
 			},
-			"InferAttributes_Role_": {
+			"EPermissions": {
+				"enum": [
+					"read",
+					"write",
+					"delete"
+				],
+				"type": "string"
+			},
+			"IPermissionDto": {
 				"properties": {
-					"permissions": {
-						"items": {
-							"$ref": "#/components/schemas/IPermissionDto"
-						},
-						"type": "array"
-					},
 					"id": {
 						"type": "string"
 					},
 					"name": {
-						"$ref": "#/components/schemas/ERole"
+						"$ref": "#/components/schemas/EPermissions"
 					},
 					"createdAt": {
 						"type": "string",
@@ -86,19 +40,16 @@
 					}
 				},
 				"required": [
-					"permissions"
+					"id",
+					"name",
+					"createdAt",
+					"updatedAt"
 				],
 				"type": "object",
-				"description": "Utility type to extract Attributes of a given Model class.\n\nIt returns all instance properties defined in the Model, except:\n- those inherited from Model (intermediate inheritance works),\n- the ones whose type is a function,\n- the ones manually excluded using the second parameter.\n- the ones branded using {@link NonAttribute}\n\nIt cannot detect whether something is a getter or not, you should use the `Excluded`\nparameter to exclude getter & setters from the attribute list."
+				"additionalProperties": false
 			},
 			"IRoleDto": {
 				"properties": {
-					"permissions": {
-						"items": {
-							"$ref": "#/components/schemas/IPermissionDto"
-						},
-						"type": "array"
-					},
 					"id": {
 						"type": "string"
 					},
@@ -112,23 +63,27 @@
 					"updatedAt": {
 						"type": "string",
 						"format": "date-time"
+					},
+					"permissions": {
+						"items": {
+							"$ref": "#/components/schemas/IPermissionDto"
+						},
+						"type": "array"
 					}
 				},
 				"required": [
+					"id",
+					"name",
+					"createdAt",
+					"updatedAt",
 					"permissions"
 				],
 				"type": "object",
 				"additionalProperties": false
 			},
-			"Pick_ProfileModel.Exclude_keyofProfileModel.passwordHash__": {
+			"IUserDto": {
 				"properties": {
 					"id": {
-						"type": "string"
-					},
-					"firstName": {
-						"type": "string"
-					},
-					"lastName": {
 						"type": "string"
 					},
 					"email": {
@@ -138,47 +93,6 @@
 						"type": "boolean"
 					},
 					"phone": {
-						"type": "string"
-					},
-					"roleId": {
-						"type": "string"
-					},
-					"challenge": {
-						"type": "string"
-					},
-					"createdAt": {
-						"type": "string",
-						"format": "date-time"
-					},
-					"updatedAt": {
-						"type": "string",
-						"format": "date-time"
-					}
-				},
-				"type": "object",
-				"description": "From T, pick a set of properties whose keys are in the union K"
-			},
-			"IProfileDto": {
-				"properties": {
-					"id": {
-						"type": "string"
-					},
-					"firstName": {
-						"type": "string"
-					},
-					"lastName": {
-						"type": "string"
-					},
-					"email": {
-						"type": "string"
-					},
-					"emailVerified": {
-						"type": "boolean"
-					},
-					"phone": {
-						"type": "string"
-					},
-					"roleId": {
 						"type": "string"
 					},
 					"challenge": {
@@ -197,36 +111,15 @@
 					}
 				},
 				"required": [
+					"id",
+					"createdAt",
+					"updatedAt",
 					"role"
 				],
 				"type": "object",
 				"additionalProperties": false
 			},
-			"Pick_TProfileCreateModel.Exclude_keyofTProfileCreateModel.id-or-passwordHash__": {
-				"properties": {
-					"firstName": {
-						"type": "string"
-					},
-					"lastName": {
-						"type": "string"
-					},
-					"email": {
-						"type": "string"
-					},
-					"phone": {
-						"type": "string"
-					},
-					"roleId": {
-						"type": "string"
-					},
-					"challenge": {
-						"type": "string"
-					}
-				},
-				"type": "object",
-				"description": "From T, pick a set of properties whose keys are in the union K"
-			},
-			"IProfileUpdateRequest": {
+			"IUserUpdateRequest": {
 				"properties": {
 					"firstName": {
 						"type": "string"
@@ -250,7 +143,7 @@
 				"type": "object",
 				"additionalProperties": false
 			},
-			"IProfileListDto": {
+			"IUserListDto": {
 				"properties": {
 					"count": {
 						"type": "number",
@@ -266,7 +159,7 @@
 					},
 					"data": {
 						"items": {
-							"$ref": "#/components/schemas/IProfileDto"
+							"$ref": "#/components/schemas/IUserDto"
 						},
 						"type": "array"
 					}
@@ -277,7 +170,7 @@
 				"type": "object",
 				"additionalProperties": false
 			},
-			"IProfilePrivilegesRequest": {
+			"IUserPrivilegesRequest": {
 				"properties": {
 					"roleName": {
 						"$ref": "#/components/schemas/ERole"
@@ -306,7 +199,7 @@
 				"type": "object",
 				"additionalProperties": false
 			},
-			"IProfilePassword": {
+			"IUserPassword": {
 				"properties": {
 					"password": {
 						"type": "string"
@@ -334,15 +227,9 @@
 				"type": "object",
 				"additionalProperties": false
 			},
-			"IProfileWithTokensDto": {
+			"IUserWithTokensDto": {
 				"properties": {
 					"id": {
-						"type": "string"
-					},
-					"firstName": {
-						"type": "string"
-					},
-					"lastName": {
 						"type": "string"
 					},
 					"email": {
@@ -352,9 +239,6 @@
 						"type": "boolean"
 					},
 					"phone": {
-						"type": "string"
-					},
-					"roleId": {
 						"type": "string"
 					},
 					"challenge": {
@@ -376,53 +260,67 @@
 					}
 				},
 				"required": [
+					"id",
+					"createdAt",
+					"updatedAt",
 					"role",
 					"tokens"
 				],
 				"type": "object",
 				"additionalProperties": false
 			},
-			"Pick_TProfileCreateModel.Exclude_keyofTProfileCreateModel.passwordHash-or-roleId-or-challenge__": {
-				"properties": {
-					"firstName": {
-						"type": "string"
+			"TSignUpRequest": {
+				"allOf": [
+					{
+						"properties": {
+							"password": {
+								"type": "string"
+							},
+							"lastName": {
+								"type": "string"
+							},
+							"firstName": {
+								"type": "string"
+							}
+						},
+						"required": [
+							"password"
+						],
+						"type": "object"
 					},
-					"lastName": {
-						"type": "string"
-					},
-					"email": {
-						"type": "string"
-					},
-					"phone": {
-						"type": "string"
+					{
+						"anyOf": [
+							{
+								"properties": {
+									"phone": {
+										"type": "string"
+									},
+									"email": {
+										"type": "string"
+									}
+								},
+								"required": [
+									"phone"
+								],
+								"type": "object"
+							},
+							{
+								"properties": {
+									"phone": {
+										"type": "string"
+									},
+									"email": {
+										"type": "string"
+									}
+								},
+								"required": [
+									"email"
+								],
+								"type": "object"
+							}
+						]
 					}
-				},
-				"type": "object",
-				"description": "From T, pick a set of properties whose keys are in the union K"
-			},
-			"ISignUpRequest": {
-				"properties": {
-					"firstName": {
-						"type": "string"
-					},
-					"lastName": {
-						"type": "string"
-					},
-					"email": {
-						"type": "string"
-					},
-					"phone": {
-						"type": "string"
-					},
-					"password": {
-						"type": "string"
-					}
-				},
-				"required": [
-					"password"
-				],
-				"type": "object",
-				"additionalProperties": false
+				]
 			},
 			"ISignInRequest": {
 				"properties": {
@@ -441,7 +339,7 @@
 				"type": "object",
 				"additionalProperties": false
 			},
-			"IProfileLogin": {
+			"IUserLogin": {
 				"properties": {
 					"login": {
 						"type": "string",
@@ -454,7 +352,7 @@
 				"type": "object",
 				"additionalProperties": false
 			},
-			"IProfileResetPasswordRequest": {
+			"IUserResetPasswordRequest": {
 				"properties": {
 					"password": {
 						"type": "string"
@@ -470,23 +368,182 @@
 				"type": "object",
 				"additionalProperties": false
 			},
-			"InferAttributes_Files_": {
+			"IRegisterBiometricResponse": {
 				"properties": {
-					"id": {
+					"registered": {
+						"type": "boolean"
+					}
+				},
+				"required": [
+					"registered"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IRegisterBiometricRequest": {
+				"properties": {
+					"userId": {
 						"type": "string"
 					},
-					"name": {
+					"deviceId": {
 						"type": "string"
 					},
-					"type": {
+					"deviceName": {
 						"type": "string"
 					},
-					"url": {
+					"publicKey": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"userId",
+					"deviceId",
+					"deviceName",
+					"publicKey"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IGenerateNonceResponse": {
+				"properties": {
+					"nonce": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"nonce"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IGenerateNonceRequest": {
+				"properties": {
+					"userId": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"userId"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IVerifyBiometricSignatureResponse": {
+				"properties": {
+					"verified": {
+						"type": "boolean"
+					},
+					"tokens": {
+						"properties": {
+							"refreshToken": {
+								"type": "string"
+							},
+							"accessToken": {
+								"type": "string"
+							}
+						},
+						"required": [
+							"refreshToken",
+							"accessToken"
+						],
+						"type": "object"
+					}
+				},
+				"required": [
+					"verified",
+					"tokens"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IVerifyBiometricSignatureRequest": {
+				"properties": {
+					"userId": {
 						"type": "string"
 					},
-					"size": {
+					"deviceId": {
+						"type": "string"
+					},
+					"signature": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"userId",
+					"deviceId",
+					"signature"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"FCMMessage": {
+				"properties": {
+					"dialogId": {
+						"type": "string"
+					},
+					"link": {
+						"type": "string"
+					},
+					"to": {
+						"type": "string"
+					},
+					"message": {
+						"properties": {
+							"sound": {
+								"type": "string"
+							},
+							"image": {
+								"type": "string"
+							},
+							"description": {
+								"type": "string"
+							},
+							"title": {
+								"type": "string"
+							}
+						},
+						"required": [
+							"title"
+						],
+						"type": "object"
+					},
+					"badge": {
 						"type": "number",
 						"format": "double"
+					},
+					"type": {
+						"type": "string",
+						"enum": [
+							"token",
+							"topic"
+						]
+					},
+					"data": {
+						"properties": {},
+						"additionalProperties": {
+							"type": "string"
+						},
+						"type": "object"
+					}
+				},
+				"required": [
+					"to",
+					"message"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"FcmTokenDto": {
+				"properties": {
+					"id": {
+						"type": "number",
+						"format": "double"
+					},
+					"userId": {
+						"type": "string"
+					},
+					"token": {
+						"type": "string"
 					},
 					"createdAt": {
 						"type": "string",
@@ -497,8 +554,61 @@
 						"format": "date-time"
 					}
 				},
+				"required": [
+					"id",
+					"userId",
+					"token",
+					"createdAt",
+					"updatedAt"
+				],
 				"type": "object",
-				"description": "Utility type to extract Attributes of a given Model class.\n\nIt returns all instance properties defined in the Model, except:\n- those inherited from Model (intermediate inheritance works),\n- the ones whose type is a function,\n- the ones manually excluded using the second parameter.\n- the ones branded using {@link NonAttribute}\n\nIt cannot detect whether something is a getter or not, you should use the `Excluded`\nparameter to exclude getter & setters from the attribute list."
+				"additionalProperties": false
+			},
+			"FcmTokenRequest": {
+				"properties": {
+					"token": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"token"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"DialogMembersDto": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"userId": {
+						"type": "string"
+					},
+					"dialogId": {
+						"type": "string"
+					},
+					"createdAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"updatedAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"user": {
+						"$ref": "#/components/schemas/IUserDto"
+					}
+				},
+				"required": [
+					"id",
+					"userId",
+					"dialogId",
+					"createdAt",
+					"updatedAt",
+					"user"
+				],
+				"type": "object",
+				"additionalProperties": false
 			},
 			"IFileDto": {
 				"properties": {
@@ -525,6 +635,327 @@
 					"updatedAt": {
 						"type": "string",
 						"format": "date-time"
+					}
+				},
+				"required": [
+					"id",
+					"name",
+					"type",
+					"url",
+					"size",
+					"createdAt",
+					"updatedAt"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IDialogMessagesDto": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"userId": {
+						"type": "string"
+					},
+					"dialogId": {
+						"type": "string"
+					},
+					"text": {
+						"type": "string"
+					},
+					"system": {
+						"type": "boolean"
+					},
+					"sent": {
+						"type": "boolean"
+					},
+					"received": {
+						"type": "boolean"
+					},
+					"replyId": {
+						"type": "string",
+						"nullable": true
+					},
+					"createdAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"updatedAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"user": {
+						"$ref": "#/components/schemas/IUserDto"
+					},
+					"images": {
+						"items": {
+							"$ref": "#/components/schemas/IFileDto"
+						},
+						"type": "array"
+					},
+					"videos": {
+						"items": {
+							"$ref": "#/components/schemas/IFileDto"
+						},
+						"type": "array"
+					},
+					"audios": {
+						"items": {
+							"$ref": "#/components/schemas/IFileDto"
+						},
+						"type": "array"
+					},
+					"reply": {
+						"$ref": "#/components/schemas/IDialogMessagesDto"
+					}
+				},
+				"required": [
+					"id",
+					"userId",
+					"dialogId",
+					"text",
+					"createdAt",
+					"updatedAt",
+					"user"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"DialogDto": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"ownerId": {
+						"type": "string"
+					},
+					"createdAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"updatedAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"owner": {
+						"$ref": "#/components/schemas/IUserDto"
+					},
+					"members": {
+						"items": {
+							"$ref": "#/components/schemas/DialogMembersDto"
+						},
+						"type": "array"
+					},
+					"lastMessage": {
+						"items": {
+							"$ref": "#/components/schemas/IDialogMessagesDto"
+						},
+						"type": "array",
+						"nullable": true
+					},
+					"unreadMessagesCount": {
+						"type": "number",
+						"format": "double"
+					}
+				},
+				"required": [
+					"id",
+					"ownerId",
+					"createdAt",
+					"updatedAt",
+					"owner",
+					"members",
+					"lastMessage",
+					"unreadMessagesCount"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IDialogListDto": {
+				"properties": {
+					"count": {
+						"type": "number",
+						"format": "double"
+					},
+					"offset": {
+						"type": "number",
+						"format": "double"
+					},
+					"limit": {
+						"type": "number",
+						"format": "double"
+					},
+					"data": {
+						"items": {
+							"$ref": "#/components/schemas/DialogDto"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"data"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"DialogFindRequest": {
+				"properties": {
+					"recipientId": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"recipientId"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"DialogCreateRequest": {
+				"properties": {
+					"recipientId": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"recipientId"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"DialogMembersAddRequest": {
+				"properties": {
+					"dialogId": {
+						"type": "string"
+					},
+					"members": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"dialogId",
+					"members"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IDialogListMessagesDto": {
+				"properties": {
+					"count": {
+						"type": "number",
+						"format": "double"
+					},
+					"offset": {
+						"type": "number",
+						"format": "double"
+					},
+					"limit": {
+						"type": "number",
+						"format": "double"
+					},
+					"data": {
+						"items": {
+							"$ref": "#/components/schemas/IDialogMessagesDto"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"data"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IMessagesRequest": {
+				"properties": {
+					"dialogId": {
+						"type": "string"
+					},
+					"text": {
+						"type": "string"
+					},
+					"system": {
+						"type": "boolean"
+					},
+					"received": {
+						"type": "boolean"
+					},
+					"replyId": {
+						"type": "string",
+						"nullable": true
+					},
+					"imageIds": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					},
+					"videoIds": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					},
+					"audioIds": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"dialogId",
+					"text"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IMessagesUpdateRequest": {
+				"properties": {
+					"text": {
+						"type": "string"
+					},
+					"system": {
+						"type": "boolean"
+					},
+					"received": {
+						"type": "boolean"
+					},
+					"replyId": {
+						"type": "string",
+						"nullable": true
+					},
+					"imageIds": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					},
+					"videoIds": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					},
+					"audioIds": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					},
+					"deleteFileIds": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
 					}
 				},
 				"type": "object",
@@ -736,7 +1167,7 @@
 			},
 			"IVerifyRegistrationRequest": {
 				"properties": {
-					"profileId": {
+					"userId": {
 						"type": "string"
 					},
 					"data": {
@@ -744,7 +1175,7 @@
 					}
 				},
 				"required": [
-					"profileId",
+					"userId",
 					"data"
 				],
 				"type": "object",
@@ -823,7 +1254,7 @@
 			},
 			"IVerifyAuthenticationRequest": {
 				"properties": {
-					"profileId": {
+					"userId": {
 						"type": "string"
 					},
 					"data": {
@@ -831,7 +1262,112 @@
 					}
 				},
 				"required": [
-					"profileId",
+					"userId",
+					"data"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IProfileDto": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"firstName": {
+						"type": "string"
+					},
+					"lastName": {
+						"type": "string"
+					},
+					"birthDate": {
+						"type": "string",
+						"format": "date-time",
+						"nullable": true
+					},
+					"gender": {
+						"type": "string"
+					},
+					"status": {
+						"type": "string"
+					},
+					"lastOnline": {
+						"type": "string",
+						"format": "date-time",
+						"nullable": true
+					},
+					"createdAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"updatedAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"avatar": {
+						"allOf": [
+							{
+								"$ref": "#/components/schemas/IFileDto"
+							}
+						],
+						"nullable": true
+					}
+				},
+				"required": [
+					"id",
+					"createdAt",
+					"updatedAt",
+					"avatar"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IProfileUpdateRequest": {
+				"properties": {
+					"firstName": {
+						"type": "string"
+					},
+					"lastName": {
+						"type": "string"
+					},
+					"bio": {
+						"type": "string"
+					},
+					"birthDate": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"gender": {
+						"type": "string"
+					},
+					"status": {
+						"type": "string"
+					}
+				},
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IProfileListDto": {
+				"properties": {
+					"count": {
+						"type": "number",
+						"format": "double"
+					},
+					"offset": {
+						"type": "number",
+						"format": "double"
+					},
+					"limit": {
+						"type": "number",
+						"format": "double"
+					},
+					"data": {
+						"items": {
+							"$ref": "#/components/schemas/IProfileDto"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
 					"data"
 				],
 				"type": "object",
@@ -860,23 +1396,25 @@
 	},
 	"openapi": "3.0.0",
 	"paths": {
-		"/api/profile/my": {
+		"/api/user/my": {
 			"get": {
-				"operationId": "GetMyProfile",
+				"operationId": "GetMyUser",
 				"responses": {
 					"200": {
-						"description": "Ok",
+						"description": "Пользователь",
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/IProfileDto"
+									"$ref": "#/components/schemas/IUserDto"
 								}
 							}
 						}
 					}
 				},
+				"description": "Получить пользователя.\nЭтот эндпоинт позволяет получить данные профиля пользователя, который выполнил запрос.\nИспользуется для получения информации о текущем пользователе, например, его имени, email, и других данных.",
+				"summary": "Получение профиля текущего пользователя",
 				"tags": [
-					"Profile"
+					"User"
 				],
 				"security": [
 					{
@@ -886,23 +1424,25 @@
 				"parameters": []
 			}
 		},
-		"/api/profile/my/update": {
+		"/api/user/my/update": {
 			"patch": {
-				"operationId": "UpdateMyProfile",
+				"operationId": "UpdateMyUser",
 				"responses": {
 					"200": {
-						"description": "Ok",
+						"description": "Обновленный пользователя",
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/IProfileDto"
+									"$ref": "#/components/schemas/IUserDto"
 								}
 							}
 						}
 					}
 				},
+				"description": "Обновить пользователя.\nЭтот эндпоинт позволяет пользователю обновить свои данные, такие как имя, email и другие параметры профиля.",
+				"summary": "Обновление профиля текущего пользователя",
 				"tags": [
-					"Profile"
+					"User"
 				],
 				"security": [
 					{
@@ -911,23 +1451,25 @@
 				],
 				"parameters": [],
 				"requestBody": {
+					"description": "Обновленные данные профиля",
 					"required": true,
 					"content": {
 						"application/json": {
 							"schema": {
-								"$ref": "#/components/schemas/IProfileUpdateRequest"
+								"$ref": "#/components/schemas/IUserUpdateRequest",
+								"description": "Обновленные данные профиля"
 							}
 						}
 					}
 				}
 			}
 		},
-		"/api/profile/my/delete": {
+		"/api/user/my/delete": {
 			"delete": {
-				"operationId": "DeleteMyProfile",
+				"operationId": "DeleteMyUser",
 				"responses": {
 					"200": {
-						"description": "Ok",
+						"description": "Сообщение об успешном удалении",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -937,8 +1479,10 @@
 						}
 					}
 				},
+				"description": "Удалить текущего пользователя.\nЭтот эндпоинт позволяет удалить пользователя из системы.",
+				"summary": "Удаление профиля текущего пользователя",
 				"tags": [
-					"Profile"
+					"User"
 				],
 				"security": [
 					{
@@ -948,23 +1492,25 @@
 				"parameters": []
 			}
 		},
-		"/api/profile/all": {
+		"/api/user/all": {
 			"get": {
-				"operationId": "GetAllProfiles",
+				"operationId": "GetUsers",
 				"responses": {
 					"200": {
-						"description": "Ok",
+						"description": "Список всех профилей с информацией о них",
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/IProfileListDto"
+									"$ref": "#/components/schemas/IUserListDto"
 								}
 							}
 						}
 					}
 				},
+				"description": "Получить все профили.\nЭтот эндпоинт позволяет администраторам получить список всех пользователей системы.\nОн поддерживает пагинацию через параметры `offset` и `limit`.",
+				"summary": "Получение всех профилей",
 				"tags": [
-					"Profile"
+					"User"
 				],
 				"security": [
 					{
@@ -973,6 +1519,7 @@
 				],
 				"parameters": [
 					{
+						"description": "Смещение для пагинации",
 						"in": "query",
 						"name": "offset",
 						"required": false,
@@ -982,6 +1529,7 @@
 						}
 					},
 					{
+						"description": "Лимит количества возвращаемых профилей",
 						"in": "query",
 						"name": "limit",
 						"required": false,
@@ -993,23 +1541,25 @@
 				]
 			}
 		},
-		"/api/profile/{id}": {
+		"/api/user/{id}": {
 			"get": {
-				"operationId": "GetProfileById",
+				"operationId": "GetUserById",
 				"responses": {
 					"200": {
-						"description": "Ok",
+						"description": "Пользователь по ID",
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/IProfileDto"
+									"$ref": "#/components/schemas/IUserDto"
 								}
 							}
 						}
 					}
 				},
+				"description": "Получить пользователя по ID.\nЭтот эндпоинт позволяет получить пользователя по его ID. Доступен только для администраторов.",
+				"summary": "Получение профиля по ID",
 				"tags": [
-					"Profile"
+					"User"
 				],
 				"security": [
 					{
@@ -1018,6 +1568,7 @@
 				],
 				"parameters": [
 					{
+						"description": "ID пользователя, которого нужно получить",
 						"in": "path",
 						"name": "id",
 						"required": true,
@@ -1028,23 +1579,25 @@
 				]
 			}
 		},
-		"/api/profile/setPrivileges/{id}": {
+		"/api/user/setPrivileges/{id}": {
 			"patch": {
 				"operationId": "SetPrivileges",
 				"responses": {
 					"200": {
-						"description": "Ok",
+						"description": "Обновленный пользователь с привилегиями",
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/IProfileDto"
+									"$ref": "#/components/schemas/IUserDto"
 								}
 							}
 						}
 					}
 				},
+				"description": "Установить привилегии для пользователя.\nЭтот эндпоинт позволяет администраторам устанавливать роль и права пользователя.",
+				"summary": "Установка привилегий для пользователя",
 				"tags": [
-					"Profile"
+					"User"
 				],
 				"security": [
 					{
@@ -1055,6 +1608,7 @@
 				],
 				"parameters": [
 					{
+						"description": "ID пользователя, для которого необходимо установить привилегии",
 						"in": "path",
 						"name": "id",
 						"required": true,
@@ -1064,18 +1618,20 @@
 					}
 				],
 				"requestBody": {
+					"description": "Запрос, содержащий роль и разрешения",
 					"required": true,
 					"content": {
 						"application/json": {
 							"schema": {
-								"$ref": "#/components/schemas/IProfilePrivilegesRequest"
+								"$ref": "#/components/schemas/IUserPrivilegesRequest",
+								"description": "Запрос, содержащий роль и разрешения"
 							}
 						}
 					}
 				}
 			}
 		},
-		"/api/profile/requestVerifyEmail": {
+		"/api/user/requestVerifyEmail": {
 			"post": {
 				"operationId": "RequestVerifyEmail",
 				"responses": {
@@ -1083,8 +1639,10 @@
 						"description": "No content"
 					}
 				},
+				"description": "Запросить подтверждение email-адреса для текущего пользователя.\nЭтот эндпоинт позволяет отправить пользователю письмо для подтверждения его email-адреса.",
+				"summary": "Запрос подтверждения email",
 				"tags": [
-					"Profile"
+					"User"
 				],
 				"security": [
 					{
@@ -1094,12 +1652,12 @@
 				"parameters": []
 			}
 		},
-		"/api/profile/verifyEmail/{code}": {
+		"/api/user/verifyEmail/{code}": {
 			"get": {
 				"operationId": "VerifyEmail",
 				"responses": {
 					"200": {
-						"description": "Ok",
+						"description": "Ответ о статусе подтверждения",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -1109,8 +1667,10 @@
 						}
 					}
 				},
+				"description": "Подтвердить email-адрес текущего пользователя по коду.\nЭтот эндпоинт позволяет пользователю подтвердить свой email, используя код, полученный в письме.",
+				"summary": "Подтверждение email-адреса",
 				"tags": [
-					"Profile"
+					"User"
 				],
 				"security": [
 					{
@@ -1119,6 +1679,7 @@
 				],
 				"parameters": [
 					{
+						"description": "Код подтверждения email, полученный пользователем",
 						"in": "path",
 						"name": "code",
 						"required": true,
@@ -1129,23 +1690,25 @@
 				]
 			}
 		},
-		"/api/profile/update/{id}": {
+		"/api/user/update/{id}": {
 			"patch": {
-				"operationId": "UpdateProfile",
+				"operationId": "UpdateUser",
 				"responses": {
 					"200": {
-						"description": "Ok",
+						"description": "Обновленный пользователь",
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/IProfileDto"
+									"$ref": "#/components/schemas/IUserDto"
 								}
 							}
 						}
 					}
 				},
+				"description": "Обновить пользователя.\nЭтот эндпоинт позволяет администраторам обновлять других пользователей.",
+				"summary": "Обновление профиля другого пользователя",
 				"tags": [
-					"Profile"
+					"User"
 				],
 				"security": [
 					{
@@ -1156,6 +1719,7 @@
 				],
 				"parameters": [
 					{
+						"description": "ID пользователя, которого необходимо обновить",
 						"in": "path",
 						"name": "id",
 						"required": true,
@@ -1165,23 +1729,25 @@
 					}
 				],
 				"requestBody": {
+					"description": "Данные для обновления профиля",
 					"required": true,
 					"content": {
 						"application/json": {
 							"schema": {
-								"$ref": "#/components/schemas/IProfileUpdateRequest"
+								"$ref": "#/components/schemas/IUserUpdateRequest",
+								"description": "Данные для обновления профиля"
 							}
 						}
 					}
 				}
 			}
 		},
-		"/api/profile/changePassword": {
+		"/api/user/changePassword": {
 			"post": {
 				"operationId": "ChangePassword",
 				"responses": {
 					"200": {
-						"description": "Ok",
+						"description": "Ответ о статусе изменения пароля",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -1191,8 +1757,10 @@
 						}
 					}
 				},
+				"description": "Изменить пароль текущего пользователя.\nЭтот эндпоинт позволяет пользователю изменить свой пароль.",
+				"summary": "Изменение пароля",
 				"tags": [
-					"Profile"
+					"User"
 				],
 				"security": [
 					{
@@ -1201,23 +1769,25 @@
 				],
 				"parameters": [],
 				"requestBody": {
+					"description": "Новый пароль для пользователя",
 					"required": true,
 					"content": {
 						"application/json": {
 							"schema": {
-								"$ref": "#/components/schemas/IProfilePassword"
+								"$ref": "#/components/schemas/IUserPassword",
+								"description": "Новый пароль для пользователя"
 							}
 						}
 					}
 				}
 			}
 		},
-		"/api/profile/delete/{id}": {
+		"/api/user/delete/{id}": {
 			"delete": {
-				"operationId": "DeleteProfile",
+				"operationId": "DeleteUser",
 				"responses": {
 					"200": {
-						"description": "Ok",
+						"description": "Сообщение об успешном удалении",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -1227,8 +1797,10 @@
 						}
 					}
 				},
+				"description": "Удалить другого пользователя.\nЭтот эндпоинт позволяет администраторам удалить другого пользователя из системы.",
+				"summary": "Удаление профиля другого пользователя",
 				"tags": [
-					"Profile"
+					"User"
 				],
 				"security": [
 					{
@@ -1239,6 +1811,7 @@
 				],
 				"parameters": [
 					{
+						"description": "ID пользователя, которого необходимо удалить",
 						"in": "path",
 						"name": "id",
 						"required": true,
@@ -1249,7 +1822,7 @@
 				]
 			}
 		},
-		"/api/auth/signUp": {
+		"/api/auth/sign-up": {
 			"post": {
 				"operationId": "SignUp",
 				"responses": {
@@ -1258,34 +1831,40 @@
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/IProfileWithTokensDto"
+									"$ref": "#/components/schemas/IUserWithTokensDto"
 								}
 							}
 						}
 					}
 				},
-				"description": "Endpoint description",
-				"summary": "Endpoint summary.",
+				"description": "Регистрация нового пользователя",
+				"summary": "Регистрация",
 				"tags": [
 					"Authorization"
 				],
 				"security": [],
 				"parameters": [],
 				"requestBody": {
-					"description": "Body param",
+					"description": "Данные для регистрации",
 					"required": true,
 					"content": {
 						"application/json": {
 							"schema": {
-								"$ref": "#/components/schemas/ISignUpRequest",
-								"description": "Body param"
+								"$ref": "#/components/schemas/TSignUpRequest",
+								"description": "Данные для регистрации"
+							},
+							"example": {
+								"email": "user@example.com",
+								"password": "password123",
+								"firstName": "John",
+								"lastName": "Doe"
 							}
 						}
 					}
 				}
 			}
 		},
-		"/api/auth/signIn": {
+		"/api/auth/sign-in": {
 			"post": {
 				"operationId": "SignIn",
 				"responses": {
@@ -1294,30 +1873,38 @@
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/IProfileWithTokensDto"
+									"$ref": "#/components/schemas/IUserWithTokensDto"
 								}
 							}
 						}
 					}
 				},
+				"description": "Авторизация пользователя",
+				"summary": "Вход в систему",
 				"tags": [
 					"Authorization"
 				],
 				"security": [],
 				"parameters": [],
 				"requestBody": {
+					"description": "Данные для входа",
 					"required": true,
 					"content": {
 						"application/json": {
 							"schema": {
-								"$ref": "#/components/schemas/ISignInRequest"
+								"$ref": "#/components/schemas/ISignInRequest",
+								"description": "Данные для входа"
+							},
+							"example": {
+								"login": "epifanovmd@gmail.com",
+								"password": "Epifan123"
 							}
 						}
 					}
 				}
 			}
 		},
-		"/api/auth/requestResetPassword": {
+		"/api/auth/request-reset-password": {
 			"post": {
 				"operationId": "RequestResetPassword",
 				"responses": {
@@ -1332,6 +1919,8 @@
 						}
 					}
 				},
+				"description": "Запрос на сброс пароля",
+				"summary": "Запрос сброса пароля",
 				"tags": [
 					"Authorization"
 				],
@@ -1342,14 +1931,14 @@
 					"content": {
 						"application/json": {
 							"schema": {
-								"$ref": "#/components/schemas/IProfileLogin"
+								"$ref": "#/components/schemas/IUserLogin"
 							}
 						}
 					}
 				}
 			}
 		},
-		"/api/auth/resetPassword": {
+		"/api/auth/reset-password": {
 			"post": {
 				"operationId": "ResetPassword",
 				"responses": {
@@ -1364,17 +1953,25 @@
 						}
 					}
 				},
+				"description": "Сброс пароля",
+				"summary": "Смена пароля",
 				"tags": [
 					"Authorization"
 				],
 				"security": [],
 				"parameters": [],
 				"requestBody": {
+					"description": "Токен и новый пароль",
 					"required": true,
 					"content": {
 						"application/json": {
 							"schema": {
-								"$ref": "#/components/schemas/IProfileResetPasswordRequest"
+								"$ref": "#/components/schemas/IUserResetPasswordRequest",
+								"description": "Токен и новый пароль"
+							},
+							"example": {
+								"token": "reset-token-123",
+								"password": "newSecurePassword"
 							}
 						}
 					}
@@ -1396,12 +1993,15 @@
 						}
 					}
 				},
+				"description": "Обновление токенов доступа",
+				"summary": "Обновление токенов",
 				"tags": [
 					"Authorization"
 				],
 				"security": [],
 				"parameters": [],
 				"requestBody": {
+					"description": "Тело запроса с refresh токеном",
 					"required": true,
 					"content": {
 						"application/json": {
@@ -1414,7 +2014,1035 @@
 								"required": [
 									"refreshToken"
 								],
-								"type": "object"
+								"type": "object",
+								"description": "Тело запроса с refresh токеном"
+							},
+							"example": {
+								"refreshToken": "old-refresh-token"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/biometric/register": {
+			"post": {
+				"operationId": "RegisterBiometric",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IRegisterBiometricResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Регистрирует биометрические ключи с устройства",
+				"tags": [
+					"Biometric"
+				],
+				"security": [],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IRegisterBiometricRequest"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/biometric/generate-nonce": {
+			"post": {
+				"operationId": "GenerateNonce",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IGenerateNonceResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Генерирует nonce, который необходимо подписать на устройстве",
+				"tags": [
+					"Biometric"
+				],
+				"security": [],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IGenerateNonceRequest"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/biometric/verify-signature": {
+			"post": {
+				"operationId": "VerifySignature",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IVerifyBiometricSignatureResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Проверяет подпись и авторизует пользователя",
+				"tags": [
+					"Biometric"
+				],
+				"security": [],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IVerifyBiometricSignatureRequest"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/fcm/register-apn-token": {
+			"post": {
+				"operationId": "RegisterApn",
+				"responses": {
+					"200": {
+						"description": "Список зарегистрированных APN-токенов.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"items": {
+										"type": "string"
+									},
+									"type": "array"
+								}
+							}
+						}
+					}
+				},
+				"description": "Регистрирует APN-токены (Apple Push Notification) для iOS-устройств.",
+				"summary": "Регистрация APN-токенов",
+				"tags": [
+					"FCM"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"description": "Объект, содержащий APN-токены, название приложения и флаг песочницы.",
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"properties": {
+									"sandbox": {
+										"type": "boolean"
+									},
+									"application": {
+										"type": "string"
+									},
+									"apns_tokens": {
+										"items": {
+											"type": "string"
+										},
+										"type": "array"
+									}
+								},
+								"required": [
+									"sandbox",
+									"application",
+									"apns_tokens"
+								],
+								"type": "object",
+								"description": "Объект, содержащий APN-токены, название приложения и флаг песочницы."
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/fcm/push": {
+			"post": {
+				"operationId": "SendPushNotification",
+				"responses": {
+					"200": {
+						"description": "ID отправленного уведомления.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "string"
+								}
+							}
+						}
+					}
+				},
+				"description": "Отправляет push-уведомление через Firebase Cloud Messaging (FCM).",
+				"summary": "Отправка push-уведомления",
+				"tags": [
+					"FCM"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"description": "Данные уведомления.",
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/FCMMessage",
+								"description": "Данные уведомления."
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/fcm/tokens": {
+			"get": {
+				"operationId": "GetTokens",
+				"responses": {
+					"200": {
+						"description": "Список токенов, зарегистрированных за этим профилем.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"items": {
+										"$ref": "#/components/schemas/FcmTokenDto"
+									},
+									"type": "array"
+								}
+							}
+						}
+					}
+				},
+				"description": "Получает все FCM-токены пользователя по его `userId`.",
+				"summary": "Получение токенов по `userId`",
+				"tags": [
+					"FCM"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"description": "ID профиля пользователя.",
+						"in": "query",
+						"name": "userId",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/fcm/my-tokens": {
+			"get": {
+				"operationId": "GetMyTokens",
+				"responses": {
+					"200": {
+						"description": "Список FCM-токенов пользователя.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"items": {
+										"$ref": "#/components/schemas/FcmTokenDto"
+									},
+									"type": "array"
+								}
+							}
+						}
+					}
+				},
+				"description": "Получает все FCM-токены текущего аутентифицированного пользователя.",
+				"summary": "Получение токенов текущего пользователя",
+				"tags": [
+					"FCM"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": []
+			},
+			"delete": {
+				"operationId": "DeleteTokens",
+				"responses": {
+					"200": {
+						"description": "Количество удалённых токенов.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "number",
+									"format": "double"
+								}
+							}
+						}
+					}
+				},
+				"description": "Удаляет все FCM-токены текущего пользователя.",
+				"summary": "Удаление всех токенов пользователя",
+				"tags": [
+					"FCM"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": []
+			}
+		},
+		"/api/fcm/token/{id}": {
+			"get": {
+				"operationId": "GetToken",
+				"responses": {
+					"200": {
+						"description": "Объект FCM-токена.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/FcmTokenDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Получает FCM-токен по его ID.",
+				"summary": "Получение токена по `id`",
+				"tags": [
+					"FCM"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"description": "Уникальный идентификатор токена.",
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					}
+				]
+			},
+			"delete": {
+				"operationId": "DeleteToken",
+				"responses": {
+					"200": {
+						"description": "Количество удалённых записей (1 или 0).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "number",
+									"format": "double"
+								}
+							}
+						}
+					}
+				},
+				"description": "Удаляет FCM-токен по его `id`.",
+				"summary": "Удаление токена",
+				"tags": [
+					"FCM"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"description": "Уникальный идентификатор токена.",
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					}
+				]
+			}
+		},
+		"/api/fcm/token": {
+			"post": {
+				"operationId": "AddToken",
+				"responses": {
+					"200": {
+						"description": "Зарегистрированный FCM-токен.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/FcmTokenDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Добавляет новый FCM-токен для текущего пользователя.",
+				"summary": "Добавление FCM-токена",
+				"tags": [
+					"FCM"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/FcmTokenRequest"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/dialog/unread-messages-count": {
+			"get": {
+				"operationId": "GetUnreadMessagesCount",
+				"responses": {
+					"200": {
+						"description": "Количество непрочитанных сообщений.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "number",
+									"format": "double"
+								}
+							}
+						}
+					}
+				},
+				"description": "Получает количество непрочитанных сообщений пользователя.",
+				"summary": "Количество непрочитанных сообщений",
+				"tags": [
+					"Dialog"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"description": "ID диалога (необязательно, если указано, то считает непрочитанные в конкретном диалоге).",
+						"in": "query",
+						"name": "dialogId",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/dialog/all": {
+			"get": {
+				"operationId": "GetDialogs",
+				"responses": {
+					"200": {
+						"description": "Список диалогов пользователя.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IDialogListDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Получает список всех диалогов пользователя.",
+				"summary": "Список диалогов",
+				"tags": [
+					"Dialog"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"description": "Смещение (пагинация).",
+						"in": "query",
+						"name": "offset",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					},
+					{
+						"description": "Количество элементов (пагинация).",
+						"in": "query",
+						"name": "limit",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					}
+				]
+			}
+		},
+		"/api/dialog/info/{id}": {
+			"get": {
+				"operationId": "GetDialogById",
+				"responses": {
+					"200": {
+						"description": "Объект диалога.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/DialogDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Получает информацию о конкретном диалоге по ID.",
+				"summary": "Информация о диалоге",
+				"tags": [
+					"Dialog"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"description": "ID диалога.",
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/dialog/find": {
+			"post": {
+				"operationId": "FindDialog",
+				"responses": {
+					"200": {
+						"description": "Массив найденных ID диалогов.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"items": {
+										"type": "string"
+									},
+									"type": "array"
+								}
+							}
+						}
+					}
+				},
+				"description": "Ищет диалог между текущим пользователем и другим участником.",
+				"summary": "Поиск диалога",
+				"tags": [
+					"Dialog"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"description": "Данные поиска (ID получателя).",
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/DialogFindRequest",
+								"description": "Данные поиска (ID получателя)."
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/dialog": {
+			"post": {
+				"operationId": "CreateDialog",
+				"responses": {
+					"200": {
+						"description": "Созданный диалог.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/DialogDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Создает новый диалог.",
+				"summary": "Создание диалога",
+				"tags": [
+					"Dialog"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"description": "Данные для создания диалога.",
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/DialogCreateRequest",
+								"description": "Данные для создания диалога."
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/dialog/members": {
+			"get": {
+				"operationId": "GetMembers",
+				"responses": {
+					"200": {
+						"description": "Список участников.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"items": {
+										"$ref": "#/components/schemas/DialogMembersDto"
+									},
+									"type": "array"
+								}
+							}
+						}
+					}
+				},
+				"description": "Получает список участников диалога.",
+				"summary": "Участники диалога",
+				"tags": [
+					"Dialog"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"description": "ID диалога.",
+						"in": "query",
+						"name": "dialogId",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/dialog/member": {
+			"post": {
+				"operationId": "AddMembers",
+				"responses": {
+					"200": {
+						"description": "Список обновленных участников.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"items": {
+										"$ref": "#/components/schemas/DialogMembersDto"
+									},
+									"type": "array"
+								}
+							}
+						}
+					}
+				},
+				"description": "Добавляет новых участников в диалог.",
+				"summary": "Добавление участников",
+				"tags": [
+					"Dialog"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"description": "Данные с ID диалога и участниками.",
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/DialogMembersAddRequest",
+								"description": "Данные с ID диалога и участниками."
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/dialog/member/{id}": {
+			"delete": {
+				"operationId": "DeleteMember",
+				"responses": {
+					"204": {
+						"description": "No content"
+					}
+				},
+				"description": "Удаляет участника из диалога.",
+				"summary": "Удаление участника",
+				"tags": [
+					"Dialog"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"description": "ID участника.",
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/dialog/{id}": {
+			"delete": {
+				"operationId": "RemoveDialog",
+				"responses": {
+					"204": {
+						"description": "No content"
+					}
+				},
+				"description": "Удаляет диалог.",
+				"summary": "Удаление диалога",
+				"tags": [
+					"Dialog"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"description": "ID диалога.",
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/dialog/message/all": {
+			"get": {
+				"operationId": "GetMessages",
+				"responses": {
+					"200": {
+						"description": "Список сообщений.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IDialogListMessagesDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Получает сообщения диалога с пагинацией.",
+				"summary": "Получение сообщений",
+				"tags": [
+					"Dialog"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"description": "ID диалога.",
+						"in": "query",
+						"name": "dialogId",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"description": "Смещение.",
+						"in": "query",
+						"name": "offset",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					},
+					{
+						"description": "Количество сообщений.",
+						"in": "query",
+						"name": "limit",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					}
+				]
+			}
+		},
+		"/api/dialog/message/last-message": {
+			"get": {
+				"operationId": "GetLastMessage",
+				"responses": {
+					"200": {
+						"description": "Последнее сообщение.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"items": {
+										"$ref": "#/components/schemas/IDialogMessagesDto"
+									},
+									"type": "array"
+								}
+							}
+						}
+					}
+				},
+				"description": "Получает последнее сообщение в диалоге.",
+				"summary": "Последнее сообщение",
+				"tags": [
+					"Dialog"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"description": "ID диалога.",
+						"in": "query",
+						"name": "dialogId",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/dialog/message/{id}": {
+			"get": {
+				"operationId": "GetMessageById",
+				"responses": {
+					"200": {
+						"description": "Сообщение.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IDialogMessagesDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Получает сообщение по ID.",
+				"summary": "Получение сообщения по ID",
+				"tags": [
+					"Dialog"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"description": "ID сообщения.",
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			},
+			"patch": {
+				"operationId": "UpdateMessage",
+				"responses": {
+					"200": {
+						"description": "Обновлённое сообщение.\n\nЭтот метод позволяет пользователю обновить сообщение в диалоге.\nТолько автор сообщения может его обновить.\nМетод принимает ID сообщения, данные для обновления и текущий JWT-токен, чтобы удостовериться,\nчто запрос исходит от пользователя, который имеет право на изменения.\nПосле успешного обновления, возвращается обновлённое сообщение.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IDialogMessagesDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Обновляет существующее сообщение в диалоге.",
+				"summary": "Обновление сообщения",
+				"tags": [
+					"Dialog"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"description": "ID сообщения, которое нужно обновить.",
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"description": "Данные для обновления сообщения.",
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IMessagesUpdateRequest",
+								"description": "Данные для обновления сообщения."
+							}
+						}
+					}
+				}
+			},
+			"delete": {
+				"operationId": "DeleteMessage",
+				"responses": {
+					"204": {
+						"description": "No content"
+					}
+				},
+				"description": "Удаляет сообщение из диалога.",
+				"summary": "Удаление сообщения",
+				"tags": [
+					"Dialog"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"description": "ID сообщения, которое нужно удалить.",
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/dialog/message": {
+			"post": {
+				"operationId": "NewMessage",
+				"responses": {
+					"200": {
+						"description": "Созданное сообщение.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IDialogMessagesDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Отправляет новое сообщение в диалог.",
+				"summary": "Отправка сообщения",
+				"tags": [
+					"Dialog"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"description": "Данные сообщения.",
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IMessagesRequest",
+								"description": "Данные сообщения."
 							}
 						}
 					}
@@ -1426,7 +3054,7 @@
 				"operationId": "GetFileById",
 				"responses": {
 					"200": {
-						"description": "Ok",
+						"description": "Информацию о файле, включая метаданные и его содержимое",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -1436,6 +3064,8 @@
 						}
 					}
 				},
+				"description": "Получить файл по ID.\nЭтот эндпоинт позволяет пользователю получить файл по его уникальному ID.\nОн защищен с использованием JWT-аутентификации, что означает, что только аутентифицированные пользователи могут получить доступ к этому ресурсу.",
+				"summary": "Получение файла по ID",
 				"tags": [
 					"Files"
 				],
@@ -1446,6 +3076,7 @@
 				],
 				"parameters": [
 					{
+						"description": "ID файла, который нужно получить",
 						"in": "query",
 						"name": "id",
 						"required": true,
@@ -1459,7 +3090,7 @@
 				"operationId": "UploadFile",
 				"responses": {
 					"200": {
-						"description": "Ok",
+						"description": "Массив объектов, представляющих загруженные файлы с их метаданными",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -1472,6 +3103,8 @@
 						}
 					}
 				},
+				"description": "Загрузить файл.\nЭтот эндпоинт позволяет пользователю загрузить один файл на сервер.\nОн защищен с использованием JWT-аутентификации, что означает, что только аутентифицированные пользователи могут загружать файлы.",
+				"summary": "Загрузка файла",
 				"tags": [
 					"Files"
 				],
@@ -1490,7 +3123,8 @@
 								"properties": {
 									"file": {
 										"type": "string",
-										"format": "binary"
+										"format": "binary",
+										"description": "Файл, который нужно загрузить"
 									}
 								},
 								"required": [
@@ -1507,7 +3141,7 @@
 				"operationId": "DeleteFile",
 				"responses": {
 					"200": {
-						"description": "Ok",
+						"description": "Количество удаленных файлов (обычно 1, если файл существует)",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -1518,6 +3152,8 @@
 						}
 					}
 				},
+				"description": "Удалить файл.\nЭтот эндпоинт позволяет пользователю удалить файл по его ID. Доступ разрешен только пользователю, который загрузил файл, либо администратору.",
+				"summary": "Удаление файла",
 				"tags": [
 					"Files"
 				],
@@ -1528,6 +3164,7 @@
 				],
 				"parameters": [
 					{
+						"description": "ID файла, который нужно удалить",
 						"in": "path",
 						"name": "id",
 						"required": true,
@@ -1543,7 +3180,7 @@
 				"operationId": "GenerateRegistrationOptions",
 				"responses": {
 					"200": {
-						"description": "Ok",
+						"description": "Параметры для регистрации устройства, соответствующие спецификации WebAuthn.",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -1553,6 +3190,8 @@
 						}
 					}
 				},
+				"description": "Генерирует параметры для регистрации нового устройства с использованием Passkeys.\nЭтот эндпоинт используется для создания параметров, которые будут отправлены клиенту для\nрегистрации нового устройства. Клиент должен будет выполнить регистрацию, используя данные\nсгенерированные этим запросом.",
+				"summary": "Генерация параметров регистрации",
 				"tags": [
 					"Passkeys"
 				],
@@ -1564,12 +3203,12 @@
 						"application/json": {
 							"schema": {
 								"properties": {
-									"profileId": {
+									"userId": {
 										"type": "string"
 									}
 								},
 								"required": [
-									"profileId"
+									"userId"
 								],
 								"type": "object"
 							}
@@ -1583,7 +3222,7 @@
 				"operationId": "VerifyRegistration",
 				"responses": {
 					"200": {
-						"description": "Ok",
+						"description": "Объект, который сообщает, был ли процесс регистрации успешным.",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -1601,6 +3240,8 @@
 						}
 					}
 				},
+				"description": "Проверяет данные регистрации для нового устройства.\nЭтот эндпоинт используется для подтверждения данных, которые были отправлены клиентом\nпосле попытки регистрации нового устройства. Он валидирует предоставленные данные\nи завершает процесс регистрации.",
+				"summary": "Проверка данных регистрации",
 				"tags": [
 					"Passkeys"
 				],
@@ -1623,7 +3264,7 @@
 				"operationId": "GenerateAuthenticationOptions",
 				"responses": {
 					"200": {
-						"description": "Ok",
+						"description": "Параметры для аутентификации устройства, соответствующие спецификации WebAuthn.",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -1633,6 +3274,8 @@
 						}
 					}
 				},
+				"description": "Генерирует параметры для аутентификации пользователя с использованием Passkeys.\nЭтот эндпоинт создает параметры аутентификации, которые будут отправлены клиенту для\nвыполнения аутентификации с помощью Passkeys. Эти параметры используются клиентом для\nвызова аутентификации на его устройстве.",
+				"summary": "Генерация параметров аутентификации",
 				"tags": [
 					"Passkeys"
 				],
@@ -1644,12 +3287,12 @@
 						"application/json": {
 							"schema": {
 								"properties": {
-									"profileId": {
+									"userId": {
 										"type": "string"
 									}
 								},
 								"required": [
-									"profileId"
+									"userId"
 								],
 								"type": "object"
 							}
@@ -1663,7 +3306,7 @@
 				"operationId": "VerifyAuthentication",
 				"responses": {
 					"200": {
-						"description": "Ok",
+						"description": "Ответ, который включает в себя результат аутентификации и другие данные.",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -1673,6 +3316,8 @@
 						}
 					}
 				},
+				"description": "Проверяет данные аутентификации для пользователя.\nЭтот эндпоинт проверяет данные аутентификации, которые были отправлены с клиентской стороны,\nи завершается успешной или неудачной аутентификацией в зависимости от результатов проверки.",
+				"summary": "Проверка данных аутентификации",
 				"tags": [
 					"Passkeys"
 				],
@@ -1688,6 +3333,357 @@
 						}
 					}
 				}
+			}
+		},
+		"/api/profile/my": {
+			"get": {
+				"operationId": "GetMyProfile",
+				"responses": {
+					"200": {
+						"description": "Пользователь",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IProfileDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Получить профиль текущего пользователя.\nЭтот эндпоинт позволяет получить данные профиля пользователя, который выполнил запрос.\nИспользуется для получения информации о текущем пользователе, например, его имени, email, и других данных.",
+				"summary": "Получение профиля текущего пользователя",
+				"tags": [
+					"Profile"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": []
+			}
+		},
+		"/api/profile/my/update": {
+			"patch": {
+				"operationId": "UpdateMyProfile",
+				"responses": {
+					"200": {
+						"description": "Обновленный профиль пользователя",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IProfileDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Обновить профиль текущего пользователя.\nЭтот эндпоинт позволяет пользователю обновить свои данные, такие как имя, email и другие параметры профиля.",
+				"summary": "Обновление профиля текущего пользователя",
+				"tags": [
+					"Profile"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"description": "Обновленные данные профиля",
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IProfileUpdateRequest",
+								"description": "Обновленные данные профиля"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/profile/my/delete": {
+			"delete": {
+				"operationId": "DeleteMyProfile",
+				"responses": {
+					"200": {
+						"description": "Сообщение об успешном удалении",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "string"
+								}
+							}
+						}
+					}
+				},
+				"description": "Удалить профиль текущего пользователя.\nЭтот эндпоинт позволяет пользователю удалить свой профиль из системы.",
+				"summary": "Удаление профиля текущего пользователя",
+				"tags": [
+					"Profile"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": []
+			}
+		},
+		"/api/profile/all": {
+			"get": {
+				"operationId": "GetProfiles",
+				"responses": {
+					"200": {
+						"description": "Список всех профилей с информацией о них",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IProfileListDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Получить все профили.\nЭтот эндпоинт позволяет администраторам получить список всех пользователей системы.\nОн поддерживает пагинацию через параметры `offset` и `limit`.",
+				"summary": "Получение всех профилей",
+				"tags": [
+					"Profile"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"description": "Смещение для пагинации",
+						"in": "query",
+						"name": "offset",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					},
+					{
+						"description": "Лимит количества возвращаемых профилей",
+						"in": "query",
+						"name": "limit",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					}
+				]
+			}
+		},
+		"/api/profile/{userId}": {
+			"get": {
+				"operationId": "GetProfileById",
+				"responses": {
+					"200": {
+						"description": "Пользователь по ID",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IProfileDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Получить профиль по ID.\nЭтот эндпоинт позволяет получить профиль другого пользователя по его ID. Доступен только для администраторов.",
+				"summary": "Получение профиля по ID",
+				"tags": [
+					"Profile"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"description": "ID пользователя, профиль которого нужно получить",
+						"in": "path",
+						"name": "userId",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/profile/update/{userId}": {
+			"patch": {
+				"operationId": "UpdateProfile",
+				"responses": {
+					"200": {
+						"description": "Обновленный профиль пользователя",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IProfileDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Обновить профиль другого пользователя.\nЭтот эндпоинт позволяет администраторам обновлять профиль других пользователей.",
+				"summary": "Обновление профиля другого пользователя",
+				"tags": [
+					"Profile"
+				],
+				"security": [
+					{
+						"jwt": [
+							"role:admin"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"description": "ID пользователя, профиль которого необходимо обновить",
+						"in": "path",
+						"name": "userId",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"description": "Данные для обновления профиля",
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IProfileUpdateRequest",
+								"description": "Данные для обновления профиля"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/profile/avatar/upload": {
+			"post": {
+				"operationId": "AddAvatar",
+				"responses": {
+					"200": {
+						"description": "Обновленный профиль с новым аватаром",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IProfileDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Загрузить аватар для текущего пользователя.\nЭтот эндпоинт позволяет пользователю загрузить аватар для своего профиля.",
+				"summary": "Загрузка аватара",
+				"tags": [
+					"Profile"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"multipart/form-data": {
+							"schema": {
+								"type": "object",
+								"properties": {
+									"file": {
+										"type": "string",
+										"format": "binary",
+										"description": "Файл изображения аватара"
+									}
+								},
+								"required": [
+									"file"
+								]
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/profile/avatar": {
+			"delete": {
+				"operationId": "RemoveAvatar",
+				"responses": {
+					"200": {
+						"description": "Обновленный профиль без аватара",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IProfileDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Удалить аватар пользователя.\nЭтот эндпоинт позволяет пользователю удалить свой аватар.",
+				"summary": "Удаление аватара",
+				"tags": [
+					"Profile"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": []
+			}
+		},
+		"/api/profile/delete/{userId}": {
+			"delete": {
+				"operationId": "DeleteProfile",
+				"responses": {
+					"200": {
+						"description": "Сообщение об успешном удалении",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "string"
+								}
+							}
+						}
+					}
+				},
+				"description": "Удалить профиль другого пользователя.\nЭтот эндпоинт позволяет администраторам удалить профиль другого пользователя из системы.",
+				"summary": "Удаление профиля другого пользователя",
+				"tags": [
+					"Profile"
+				],
+				"security": [
+					{
+						"jwt": [
+							"role:admin"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"description": "ID пользователя, профиль которого необходимо удалить",
+						"in": "path",
+						"name": "userId",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
 			}
 		}
 	},

@@ -14,15 +14,15 @@ import {
 
 import { sequelize } from "../../db";
 import { ITokensDto } from "../auth";
-import { Profile } from "../profile/profile.model";
+import { User } from "../user/user.model";
 
 export interface IVerifyRegistrationRequest {
-  profileId: string;
+  userId: string;
   data: RegistrationResponseJSON;
 }
 
 export interface IVerifyAuthenticationRequest {
-  profileId: string;
+  userId: string;
   data: AuthenticationResponseJSON;
 }
 
@@ -44,7 +44,7 @@ export type TPasskeysCreateModel = InferCreationAttributes<
 export class Passkeys extends Model<PasskeysModel, TPasskeysCreateModel> {
   declare id: Base64URLString;
   declare publicKey: Uint8Array;
-  declare profileId: string;
+  declare userId: string;
   declare counter: number;
   declare deviceType: CredentialDeviceType;
   declare transports?: AuthenticatorTransportFuture[];
@@ -65,12 +65,8 @@ Passkeys.init(
       type: DataTypes.BLOB,
       allowNull: false,
     },
-    profileId: {
+    userId: {
       type: DataTypes.UUID,
-      references: {
-        model: Profile,
-        key: "id",
-      },
     },
     counter: {
       type: DataTypes.INTEGER,
@@ -104,7 +100,7 @@ Passkeys.init(
     timestamps: false,
     indexes: [
       {
-        fields: ["profileId", "id"],
+        fields: ["userId", "id"],
       },
       {
         fields: ["id"],

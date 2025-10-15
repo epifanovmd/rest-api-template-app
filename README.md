@@ -1,4 +1,4 @@
-# WIREGUARD API
+# REST API TEMPLATE
 
 ##### Stack:
   - Typescript

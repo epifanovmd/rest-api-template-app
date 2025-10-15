@@ -6,8 +6,8 @@ import {
   EPermissions,
   Permission,
 } from "../../modules/permission/permission.model";
-import { IProfileDto, Profile } from "../../modules/profile/profile.model";
 import { ERole, IRoleDto, Role } from "../../modules/role/role.model";
+import { IUserDto, User } from "../../modules/user/user.model";
 import { JWTDecoded } from "../../types/koa";
 
 export const { JWT_SECRET_KEY } = config;
@@ -16,14 +16,14 @@ type RoleStrings = `role:${ERole}`;
 type PermissionStrings = `permission:${EPermissions}`;
 export type SecurityScopes = (RoleStrings | PermissionStrings)[];
 
-export const createToken = (profileId: string, opts?: SignOptions) =>
+export const createToken = (userId: string, opts?: SignOptions) =>
   new Promise<string>(resolve => {
-    resolve(sign({ profileId }, JWT_SECRET_KEY, opts));
+    resolve(sign({ userId }, JWT_SECRET_KEY, opts));
   });
 
 export const createTokenAsync = (
-  data: { profileId: string; opts?: SignOptions }[],
-) => Promise.all(data.map(value => createToken(value.profileId, value.opts)));
+  data: { userId: string; opts?: SignOptions }[],
+) => Promise.all(data.map(value => createToken(value.userId, value.opts)));
 
 export const verifyToken = (token: string) => {
   return new Promise<JWTDecoded>((resolve, reject) => {
@@ -44,7 +44,7 @@ export const verifyToken = (token: string) => {
 export const verifyAuthToken = async (
   token?: string,
   scopes?: SecurityScopes,
-): Promise<IProfileDto> =>
+): Promise<IUserDto> =>
   new Promise((resolve, reject) => {
     if (!token) {
       reject(new UnauthorizedException());
@@ -58,7 +58,7 @@ export const verifyAuthToken = async (
           }
 
           try {
-            const profile = await Profile.findByPk(decoded.profileId, {
+            const user = await User.findByPk(decoded.userId, {
               include: {
                 model: Role,
                 include: [
@@ -72,11 +72,11 @@ export const verifyAuthToken = async (
               },
             }).catch(() => null);
 
-            if (!profile) {
+            if (!user) {
               return reject(new UnauthorizedException());
             }
 
-            const role = profile.role;
+            const role = user.role;
             const isAdmin = role.name === ERole.ADMIN;
 
             if (!isAdmin && scopes && scopes.length) {
@@ -92,7 +92,7 @@ export const verifyAuthToken = async (
               }
             }
 
-            resolve(profile);
+            resolve(user);
           } catch (e) {
             reject(e);
           }

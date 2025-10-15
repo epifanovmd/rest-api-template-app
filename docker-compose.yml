@@ -1,39 +1,4 @@
-version: "3.8"
-
 services:
-  postgres:
-    container_name: postgres
-    image: postgres
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB:-postgres}
-      POSTGRES_USER: ${POSTGRES_USER:-pg_user_name}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pg_password}
-      PGDATA: ${PGDATA:-/var/lib/postgresql/data/pgdata}
-    volumes:
-      - ${POSTGRES_HOST_DATA:-./postgres}:${PGDATA:-/var/lib/postgresql/data/pgdata}
-    ports:
-      - "${POSTGRES_PORT}:5432"
-    restart: unless-stopped
-
-  redis:
-    container_name: redis
-    image: redis:latest
-    command:
-      - 'redis-server'
-      - '--loglevel ${REDIS_LOGLEVEL}'
-      - '--databases 2'
-      - '--save 900 1'
-      - '--save 300 10'
-      - '--save 60 10000'
-      - '--maxmemory ${REDIS_MAXMEM}'
-      - '--maxmemory-policy ${REDIS_POLICY}'
-      - '--requirepass ${REDIS_PASS}'
-    ports:
-      - "6379:6379"
-    volumes:
-      - ./redis/data:/data
-    restart: unless-stopped
-
   backend:
     build: .
     container_name: backend
@@ -41,11 +6,9 @@ services:
       - "8181:8181"
       - "3232:3232"
     restart: unless-stopped
-    depends_on:
-      - postgres
-      - redis
+#    depends_on:
+#      - postgres
+#      - redis
 
 volumes:
-  postgres:
-  redis:
   backend:

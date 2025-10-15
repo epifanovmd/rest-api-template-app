@@ -15,19 +15,19 @@ import {
 } from "../../common";
 import { ApiResponse } from "../../dto/ApiResponse";
 import { MailerService } from "../mailer";
-import { ProfileService } from "../profile";
-import { ResetPasswordTokensService } from "../reset-password-tokens/reset-password-tokens.service";
+import { ResetPasswordTokensService } from "../reset-password-tokens";
+import { UserService } from "../user";
 import {
-  IProfileWithTokensDto,
   ISignInRequest,
-  ISignUpRequest,
   ITokensDto,
+  IUserWithTokensDto,
+  TSignUpRequest,
 } from "./auth.types";
 
 @injectable()
 export class AuthService {
   constructor(
-    @inject(ProfileService) private _profileService: ProfileService,
+    @inject(UserService) private _userService: UserService,
     @inject(MailerService) private _mailerService: MailerService,
     @inject(ResetPasswordTokensService)
     private _resetPasswordTokensService: ResetPasswordTokensService,
@@ -38,7 +38,7 @@ export class AuthService {
     phone,
     password,
     ...rest
-  }: ISignUpRequest): Promise<IProfileWithTokensDto> {
+  }: TSignUpRequest): Promise<IUserWithTokensDto> {
     const login = email || phone;
 
     if (!login) {
@@ -54,8 +54,8 @@ export class AuthService {
       validatePhone(phone);
     }
 
-    const client = await this._profileService
-      .getProfileByAttr({
+    const client = await this._userService
+      .getUserByAttr({
         [Op.or]: [{ email: email ?? "" }, { phone: phone ?? "" }],
       })
       .catch(() => null);
@@ -63,8 +63,8 @@ export class AuthService {
     if (client) {
       throw new BadRequestException(`Клиент - ${login}, уже зарегистрирован`);
     } else {
-      return this._profileService
-        .createProfile({
+      return this._userService
+        .createUser({
           ...rest,
           phone,
           email,
@@ -79,21 +79,21 @@ export class AuthService {
     }
   }
 
-  async signIn(body: ISignInRequest): Promise<IProfileWithTokensDto> {
+  async signIn(body: ISignInRequest): Promise<IUserWithTokensDto> {
     const { login, password } = body;
 
     try {
-      const { id, passwordHash } = await this._profileService.getProfileByAttr({
+      const { id, passwordHash } = await this._userService.getUserByAttr({
         [Op.or]: [{ email: login ?? "" }, { phone: login ?? "" }],
       });
 
       if (passwordHash === sha256(password)) {
-        const profile = await this._profileService.getProfile(id);
+        const user = await this._userService.getUser(id);
 
-        const role = profile.role;
+        const role = user.role;
 
         const data = {
-          ...profile.toJSON(),
+          ...user.toJSON(),
           role,
         };
 
@@ -110,7 +110,7 @@ export class AuthService {
   }
 
   async requestResetPassword(login: string) {
-    const { id, email } = await this._profileService.getProfileByAttr({
+    const { id, email } = await this._userService.getUserByAttr({
       [Op.or]: [{ email: login ?? "" }, { phone: login ?? "" }],
     });
 
@@ -119,8 +119,6 @@ export class AuthService {
     }
 
     const { token } = await this._resetPasswordTokensService.create(id);
-
-    console.log("token", token);
 
     await this._mailerService.sendResetPasswordMail(email, token);
 
@@ -131,27 +129,27 @@ export class AuthService {
   }
 
   async resetPassword(token: string, password: string) {
-    const { profileId } = await this._resetPasswordTokensService.check(token);
+    const { userId } = await this._resetPasswordTokensService.check(token);
 
-    await this._profileService.changePassword(profileId, password);
+    await this._userService.changePassword(userId, password);
 
     return new ApiResponse({ message: "Пароль успешно сброшен." });
   }
 
   async updateTokens(token?: string) {
-    const profile = await verifyAuthToken(token);
+    const user = await verifyAuthToken(token);
 
-    return this.getTokens(profile.id);
+    return this.getTokens(user.id);
   }
 
-  async getTokens(profileId: string): Promise<ITokensDto> {
+  async getTokens(userId: string): Promise<ITokensDto> {
     const [accessToken, refreshToken] = await createTokenAsync([
       {
-        profileId,
+        userId,
         opts: { expiresIn: "15m" },
       },
       {
-        profileId,
+        userId,
         opts: { expiresIn: "7d" },
       },
     ]);

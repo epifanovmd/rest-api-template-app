@@ -4,3 +4,4 @@ build
 node_modules
 .idea
 yarn-error.log
+firebaseAccount.json

@@ -10,9 +10,9 @@ const { OTP_EXPIRE_MINUTES } = config;
 
 @injectable()
 export class OtpService {
-  create = async (profileId: string) => {
+  create = async (userId: string) => {
     const code = generateOtp();
-    const findOtp = await Otp.findOne({ where: { profileId } });
+    const findOtp = await Otp.findOne({ where: { userId } });
 
     if (findOtp) {
       findOtp.code = code;
@@ -21,15 +21,15 @@ export class OtpService {
       return await findOtp.save();
     } else {
       return Otp.create({
-        profileId,
+        userId,
         code,
         expireAt: moment().add(OTP_EXPIRE_MINUTES, "minutes").toDate(),
       });
     }
   };
 
-  check = async (profileId: string, code: string) => {
-    const otp = await Otp.findOne({ where: { profileId, code } });
+  check = async (userId: string, code: string) => {
+    const otp = await Otp.findOne({ where: { userId, code } });
 
     if (!otp) {
       throw new BadRequestException(

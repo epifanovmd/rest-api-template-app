@@ -8,13 +8,17 @@ import {
 
 import { sequelize } from "../../db";
 import { ListResponse } from "../../dto/ListResponse";
-import { Profile } from "../profile/profile.model";
+import { User } from "../user/user.model";
 
 export interface IResetPasswordTokensUpdateRequest
-  extends Omit<TResetPasswordTokensCreateModel, "profileId"> {}
+  extends Omit<TResetPasswordTokensCreateModel, "userId"> {}
 
-export interface IResetPasswordTokensDto
-  extends ResetPasswordTokensTokensModel {}
+export interface IResetPasswordTokensDto {
+  userId: string;
+  token: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
 
 export interface IResetPasswordTokensListDto
   extends ListResponse<IResetPasswordTokensDto[]> {}
@@ -26,11 +30,11 @@ export type TResetPasswordTokensCreateModel = InferCreationAttributes<
   { omit: "createdAt" | "updatedAt" }
 >;
 
-export class ResetPasswordTokens extends Model<
-  ResetPasswordTokensTokensModel,
-  TResetPasswordTokensCreateModel
-> {
-  declare profileId: string;
+export class ResetPasswordTokens
+  extends Model<ResetPasswordTokensTokensModel, TResetPasswordTokensCreateModel>
+  implements IResetPasswordTokensDto
+{
+  declare userId: string;
   declare token: string;
 
   // timestamps!
@@ -40,12 +44,8 @@ export class ResetPasswordTokens extends Model<
 
 ResetPasswordTokens.init(
   {
-    profileId: {
+    userId: {
       type: DataTypes.UUID,
-      references: {
-        model: Profile,
-        key: "id",
-      },
     },
     token: {
       type: DataTypes.STRING,

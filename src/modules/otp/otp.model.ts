@@ -7,11 +7,16 @@ import {
 
 import { sequelize } from "../../db";
 import { ListResponse } from "../../dto/ListResponse";
-import { Profile } from "../profile/profile.model";
 
-export interface IOtpUpdateRequest extends Omit<TOtpCreateModel, "profileId"> {}
+export interface IOtpUpdateRequest extends Omit<TOtpCreateModel, "userId"> {}
 
-export interface IOtpDto extends OtpModel {}
+export interface IOtpDto {
+  userId: string;
+  code: string;
+  expireAt: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}
 
 export interface IOtpListDto extends ListResponse<IOtpDto[]> {}
 
@@ -21,8 +26,8 @@ export type TOtpCreateModel = InferCreationAttributes<
   { omit: "createdAt" | "updatedAt" }
 >;
 
-export class Otp extends Model<OtpModel, TOtpCreateModel> {
-  declare profileId: string;
+export class Otp extends Model<OtpModel, TOtpCreateModel> implements IOtpDto {
+  declare userId: string;
   declare code: string;
 
   // timestamps!
@@ -33,12 +38,8 @@ export class Otp extends Model<OtpModel, TOtpCreateModel> {
 
 Otp.init(
   {
-    profileId: {
+    userId: {
       type: DataTypes.UUID,
-      references: {
-        model: Profile,
-        key: "id",
-      },
     },
     code: {
       type: DataTypes.STRING(6),

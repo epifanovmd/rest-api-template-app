@@ -2,7 +2,6 @@ import {
   BelongsToGetAssociationMixin,
   BelongsToSetAssociationMixin,
   DataTypes,
-  HasManyGetAssociationsMixin,
   InferAttributes,
   InferCreationAttributes,
   Model,
@@ -11,57 +10,70 @@ import {
 
 import { sequelize } from "../../db";
 import { ListResponse } from "../../dto/ListResponse";
-import { Passkeys } from "../passkeys/passkeys.model";
-import { EPermissions } from "../permission/permission.model";
-import { ERole, IRoleDto, Role } from "../role/role.model";
+import { Files, IFileDto } from "../file/file.model";
+import { User } from "../user/user.model";
 
-export interface IProfileUpdateRequest
-  extends Omit<TProfileCreateModel, "id" | "passwordHash"> {}
-
-export interface IProfilePrivilegesRequest {
-  roleName: ERole;
-  permissions: EPermissions[];
+export interface IProfileUpdateRequest {
+  firstName?: string;
+  lastName?: string;
+  bio?: string;
+  birthDate?: Date;
+  gender?: string;
+  status?: string;
 }
 
-export interface IProfileDto extends Omit<ProfileModel, "passwordHash"> {
-  role: IRoleDto;
+export interface IProfileDto {
+  id: string;
+  firstName?: string;
+  lastName?: string;
+  birthDate?: Date | null;
+  gender?: string;
+  status?: string;
+  lastOnline?: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+  avatar: IFileDto | null;
 }
 
 export interface IProfileListDto extends ListResponse<IProfileDto[]> {}
 
 export type ProfileModel = InferAttributes<Profile>;
-export type TProfileCreateModel = InferCreationAttributes<
+export type ProfileCreateModel = InferCreationAttributes<
   Profile,
-  { omit: "id" | "emailVerified" | "createdAt" | "updatedAt" }
+  { omit: "id" | "createdAt" | "updatedAt" }
 >;
 
-export class Profile extends Model<ProfileModel, TProfileCreateModel> {
+export class Profile
+  extends Model<ProfileModel, ProfileCreateModel>
+  implements IProfileDto
+{
   declare id: string;
+  declare userId: string; // FK to User
 
+  // Персональные данные
   declare firstName?: string;
   declare lastName?: string;
-  declare email?: string;
-  declare emailVerified?: boolean;
-  declare phone?: string;
+  declare birthDate?: Date | null;
+  declare gender?: string;
 
-  declare passwordHash: string;
+  // Онлайн-статус
+  declare status?: string;
+  declare lastOnline?: Date | null;
 
-  declare roleId?: string;
-  declare challenge?: string;
+  // Аватар
+  declare avatarId?: string | null;
+  declare setAvatar: BelongsToSetAssociationMixin<Files, string>;
+  declare getAvatar: BelongsToGetAssociationMixin<Files>;
+  declare avatar: NonAttribute<Files | null>;
 
-  // timestamps!
+  // Таймстампы
   declare readonly createdAt: Date;
   declare readonly updatedAt: Date;
 
-  // mixins
-  declare setRole: BelongsToSetAssociationMixin<Role, string>;
-  declare getRole: BelongsToGetAssociationMixin<Role>;
-
-  // mixins
-  declare getPasskeys: HasManyGetAssociationsMixin<Passkeys>;
-
-  // associations
-  declare role: NonAttribute<Role>;
+  // Связь с пользователем
+  declare setUser: BelongsToSetAssociationMixin<User, string>;
+  declare getUser: BelongsToGetAssociationMixin<User>;
+  declare user: NonAttribute<User>;
 }
 
 Profile.init(
@@ -72,6 +84,10 @@ Profile.init(
       primaryKey: true,
       allowNull: false,
     },
+    userId: {
+      type: DataTypes.UUID(),
+      allowNull: false,
+    },
     firstName: {
       type: DataTypes.STRING(40),
       allowNull: true,
@@ -80,38 +96,26 @@ Profile.init(
       type: DataTypes.STRING(40),
       allowNull: true,
     },
-    email: {
+    birthDate: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    gender: {
+      type: DataTypes.STRING(20),
+      allowNull: true,
+    },
+    status: {
       type: DataTypes.STRING(50),
       allowNull: true,
-      validate: {
-        isEmail: true,
-      },
     },
-    emailVerified: {
-      type: DataTypes.BOOLEAN,
-      defaultValue: false,
-    },
-    phone: {
-      type: DataTypes.STRING(14),
+    lastOnline: {
+      type: DataTypes.DATE,
       allowNull: true,
     },
-    passwordHash: {
-      type: DataTypes.STRING(100),
-    },
-
-    challenge: {
-      type: DataTypes.STRING,
+    avatarId: {
+      type: DataTypes.UUID(),
       allowNull: true,
     },
-
-    roleId: {
-      type: DataTypes.UUID,
-      references: {
-        model: Role,
-        key: "id",
-      },
-    },
-
     createdAt: DataTypes.DATE,
     updatedAt: DataTypes.DATE,
   },
@@ -124,8 +128,11 @@ Profile.init(
     },
     indexes: [
       {
-        unique: true,
-        fields: ["email", "phone"],
+        fields: ["userId"],
+        unique: true, // Один профиль на пользователя
+      },
+      {
+        fields: ["lastOnline"], // Для быстрого поиска активных пользователей
       },
     ],
   },

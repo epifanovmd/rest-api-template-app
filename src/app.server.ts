@@ -10,28 +10,26 @@ import {
   RegisterAppMiddlewares,
   RegisterSwagger,
 } from "./middleware";
-// import { ProfileService } from "./modules/profile";
 import { SocketGateway } from "./modules/socket/socket.gateway";
+import { UserService } from "./modules/user";
 import { RegisterRoutes } from "./routes";
 
 const { SERVER_HOST, SERVER_PORT, ADMIN_EMAIL, ADMIN_PASSWORD } = config;
 
-// const profileService = iocContainer.get(ProfileService);
+const userService = iocContainer.get(UserService);
 const socketGateway = iocContainer.get(SocketGateway);
 
 const isDevelopment = process.env.NODE_ENV;
 
 const bootstrap = () => {
-  sequelize.sync({ force: false }).then();
-
-  sequelize.afterBulkSync(async () => {
-    // await profileService.createAdmin({
-    //   email: ADMIN_EMAIL,
-    //   passwordHash: sha256(ADMIN_PASSWORD),
-    // });
+  sequelize.sync({ force: false }).then(async () => {
+    await userService.createAdmin({
+      email: ADMIN_EMAIL,
+      passwordHash: sha256(ADMIN_PASSWORD),
+    });
   });
 
-  socketGateway.start();
+  socketGateway.initialize();
 
   router.get("/ping", context => {
     context.status = 200;

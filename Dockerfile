@@ -8,6 +8,7 @@ WORKDIR /app
 
 # Копируем необходимые файлы для установки зависимостей
 COPY package*.json yarn.lock ./
+COPY ./patches ./patches
 
 # Устанавливаем зависимости
 RUN yarn install --production

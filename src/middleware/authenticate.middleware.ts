@@ -2,13 +2,13 @@ import { UnauthorizedException } from "@force-dev/utils";
 import { Request } from "koa";
 
 import { SecurityScopes, verifyAuthToken } from "../common";
-import { IProfileDto } from "../modules/profile/profile.model";
+import { IUserDto } from "../modules/user/user.model";
 
 export const koaAuthentication = (
   request: Request,
   securityName: string,
   scopes?: string[],
-): Promise<IProfileDto | null> => {
+): Promise<IUserDto | null> => {
   const token = request.headers.authorization?.split(" ")[1];
 
   if (securityName === "jwt") {

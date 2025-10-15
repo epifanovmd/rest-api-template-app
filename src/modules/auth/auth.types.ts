@@ -1,7 +1,6 @@
-import { IProfilePassword } from "../profile";
-import { IProfileDto, TProfileCreateModel } from "../profile/profile.model";
+import { IUserDto, IUserPassword } from "../user/user.model";
 
-export interface IProfileResetPasswordRequest extends IProfilePassword {
+export interface IUserResetPasswordRequest extends IUserPassword {
   token: string;
 }
 
@@ -10,19 +9,31 @@ export interface ITokensDto {
   refreshToken: string;
 }
 
-export interface IProfileWithTokensDto extends IProfileDto {
+export interface IUserWithTokensDto extends IUserDto {
   tokens: ITokensDto;
 }
 
-export interface IProfileLogin {
+export interface IUserLogin {
   /** Может быть телефоном, email-ом и username-ом  */
   login: string;
 }
 
-export interface ISignInRequest extends IProfileLogin {
+export interface ISignInRequest extends IUserLogin {
   password: string;
 }
 
-export interface ISignUpRequest
-  extends Omit<TProfileCreateModel, "passwordHash" | "roleId" | "challenge">,
-    IProfilePassword {}
+export type TSignUpRequest =
+  | {
+      firstName?: string;
+      lastName?: string;
+      password: string;
+    } & (
+      | {
+          email?: string;
+          phone: string;
+        }
+      | {
+          email: string;
+          phone?: string;
+        }
+    );

@@ -27,7 +27,7 @@ export const config = {
 
   POSTGRES_HOST: process.env.POSTGRES_HOST || "localhost",
   POSTGRES_PORT: Number(process.env.POSTGRES_PORT || 5432),
-  POSTGRES_DATABASE: process.env.POSTGRES_DATABASE || "postgres",
+  POSTGRES_DB: process.env.POSTGRES_DB || "postgres",
   POSTGRES_USER: process.env.POSTGRES_USER || "pg_user_name",
   POSTGRES_PASSWORD: process.env.POSTGRES_PASSWORD || "pg_password",
   POSTGRES_DATA: process.env.POSTGRES_DATA || "/data/postgres",
@@ -38,8 +38,8 @@ export const config = {
     process.env.WEB_URL_RESET_PASSWORD ||
     "https://domain/reset-password?token={{token}}",
 
-  WEB_AUTHN_RP_NAME: process.env.WEB_AUTHN_RP_NAME || "wireguard",
-  WEB_AUTHN_RP_HOST: process.env.WEB_AUTHN_RP_HOST || "wireguard.force-dev.ru",
+  WEB_AUTHN_RP_NAME: process.env.WEB_AUTHN_RP_NAME || "domain",
+  WEB_AUTHN_RP_HOST: process.env.WEB_AUTHN_RP_HOST || "domain.ru",
   WEB_AUTHN_RP_SCHEMA: process.env.WEB_AUTHN_RP_SCHEMA || "https",
   WEB_AUTHN_RP_PORT: process.env.WEB_AUTHN_RP_PORT || "",
 

@@ -9,12 +9,12 @@ const { RESET_PASS_TOKEN_EXPIRE_MINUTES } = config;
 
 @injectable()
 export class ResetPasswordTokensService {
-  create = async (profileId: string) => {
-    const token = await createToken(profileId, {
+  create = async (userId: string) => {
+    const token = await createToken(userId, {
       expiresIn: `${RESET_PASS_TOKEN_EXPIRE_MINUTES}m`,
     });
     const findResetPasswordTokens = await ResetPasswordTokens.findOne({
-      where: { profileId },
+      where: { userId },
     });
 
     if (findResetPasswordTokens) {
@@ -23,18 +23,18 @@ export class ResetPasswordTokensService {
       return await findResetPasswordTokens.save();
     } else {
       return ResetPasswordTokens.create({
-        profileId,
+        userId,
         token,
       });
     }
   };
 
   check = async (token: string) => {
-    const { profileId } = await verifyToken(token);
+    const { userId } = await verifyToken(token);
 
     const resetPasswordToken = await ResetPasswordTokens.findOne({
       where: {
-        profileId,
+        userId,
         token,
       },
     });
@@ -47,6 +47,6 @@ export class ResetPasswordTokensService {
 
     await resetPasswordToken.destroy();
 
-    return { profileId, token };
+    return { userId, token };
   };
 }

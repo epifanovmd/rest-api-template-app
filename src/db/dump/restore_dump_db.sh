@@ -5,7 +5,7 @@ BACKUP_DIR="."
 CONTAINER_NAME="postgres"
 PG_USER="epifanovmd"
 PG_DB="postgres"
-HOST_BACKUP_DIR="/var/lib/postgresql/wireguard/data"
+HOST_BACKUP_DIR="/var/lib/postgresql/rest-api-template/data"
 CONTAINER_BACKUP_DIR="/var/lib/postgresql/data/pgdata"
 
 BACKUP_FILE=$(ls -t "$BACKUP_DIR"/db_backup_*.dump | head -n 1)

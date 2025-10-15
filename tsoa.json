@@ -17,6 +17,14 @@
         {
           "url": "http://localhost:8181",
           "description": "Local dev"
+        },
+        {
+          "url": "http://0.0.0.0:8181",
+          "description": "Local dev"
+        },
+        {
+          "url": "http://147.45.245.104:8181",
+          "description": "Host"
         }
       ]
     },

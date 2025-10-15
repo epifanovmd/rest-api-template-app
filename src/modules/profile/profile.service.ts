@@ -1,33 +1,23 @@
-import { ConflictException, NotFoundException } from "@force-dev/utils";
+import { NotFoundException } from "@force-dev/utils";
 import { inject, injectable } from "inversify";
-import { Includeable, Op, WhereOptions } from "sequelize";
-import sha256 from "sha256";
+import { Includeable, WhereOptions } from "sequelize";
+import { File } from "tsoa";
 
-import { ApiResponse } from "../../dto/ApiResponse";
-import { MailerService } from "../mailer";
-import { OtpService } from "../otp";
-import { EPermissions, Permission } from "../permission/permission.model";
-import { ERole, Role } from "../role/role.model";
+import { FileService } from "../file";
+import { Files } from "../file/file.model";
 import {
-  IProfilePrivilegesRequest,
   IProfileUpdateRequest,
   Profile,
-  ProfileModel,
-  TProfileCreateModel,
+  ProfileCreateModel,
 } from "./profile.model";
 
 @injectable()
 export class ProfileService {
-  constructor(
-    @inject(MailerService) private _mailerService: MailerService,
-    @inject(OtpService) private _otpService: OtpService,
-  ) {}
-
-  getAllProfile = (offset?: number, limit?: number) =>
+  constructor(@inject(FileService) private _fileService: FileService) {}
+  getProfiles = (offset?: number, limit?: number) =>
     Profile.findAll({
       limit,
       offset,
-      attributes: ProfileService.profileAttributes,
       order: [["createdAt", "DESC"]],
       include: ProfileService.include,
     });
@@ -38,167 +28,71 @@ export class ProfileService {
       include: ProfileService.include,
     }).then(result => {
       if (result === null) {
-        return Promise.reject(
-          new NotFoundException("Профиль пользователя не найден"),
-        );
+        return Promise.reject(new NotFoundException("Пользователь не найден"));
       }
 
       return result;
     });
 
-  getProfile = (id: string) =>
-    Profile.findByPk(id, {
-      attributes: ProfileService.profileAttributes,
+  getProfileByUserId = (userId: string) =>
+    Profile.findOne({
+      where: {
+        userId,
+      },
       include: ProfileService.include,
     }).then(result => {
       if (result === null) {
-        return Promise.reject(
-          new NotFoundException("Профиль пользователя не найден"),
-        );
+        return Promise.reject(new NotFoundException("Пользователь не найден"));
       }
 
       return result;
     });
 
-  createProfile = (body: TProfileCreateModel) => {
-    return Profile.create(body).then(result => {
-      return this.setPrivileges(result.id, ERole.USER, [
-        EPermissions.READ,
-        EPermissions.WRITE,
-        EPermissions.DELETE,
-      ]);
+  createProfile = async (body: ProfileCreateModel) => {
+    return Profile.create(body);
+  };
+
+  updateProfile = async (userId: string, body: IProfileUpdateRequest) => {
+    await Profile.update(body, { where: { userId } });
+
+    return this.getProfileByUserId(userId);
+  };
+
+  addAvatar = async (userId: string, file: File) => {
+    const profile = await this.getProfileByUserId(userId);
+
+    return this._fileService.uploadFile([file]).then(async uploadedFile => {
+      if (profile.avatarId) {
+        await this._fileService.deleteFile(profile.avatarId);
+      }
+
+      await profile.update({ avatarId: uploadedFile[0].id });
+
+      return this.getProfileByUserId(userId);
     });
   };
 
-  createAdmin = (body: TProfileCreateModel) => {
-    const profile = this.getProfileByAttr({
-      [Op.or]: [{ email: body.email ?? "" }, { phone: body.phone ?? "" }],
-    }).catch(() => Profile.create(body));
+  removeAvatar = async (userId: string) => {
+    const profile = await this.getProfileByUserId(userId);
 
-    return profile.then(result => {
-      return this.setPrivileges(result.id, ERole.ADMIN, [
-        EPermissions.READ,
-        EPermissions.WRITE,
-        EPermissions.DELETE,
-      ]);
-    });
-  };
-
-  updateProfile = (id: string, body: IProfileUpdateRequest) =>
-    Profile.update(body, { where: { id } }).then(() => this.getProfile(id));
-
-  setPrivileges = async (
-    profileId: string,
-    roleName: IProfilePrivilegesRequest["roleName"],
-    permissions: IProfilePrivilegesRequest["permissions"],
-  ) => {
-    const profile = await Profile.findByPk(profileId);
-
-    if (!profile) {
-      return Promise.reject(
-        new NotFoundException("Профиль пользователя не найден"),
-      );
+    if (profile.avatarId) {
+      await this._fileService.deleteFile(profile.avatarId);
     }
 
-    const [role] = await Role.findOrCreate({
-      where: { name: roleName },
-    });
+    await profile.update({ avatarId: null });
 
-    if (role) {
-      await profile.setRole(role);
-
-      const permissionInstances = await Promise.all(
-        permissions.map(permissionName =>
-          Permission.findOrCreate({ where: { name: permissionName } }).then(
-            ([permission]) => permission,
-          ),
-        ),
-      );
-
-      await role.setPermissions(permissionInstances);
-    }
-
-    return this.getProfile(profileId);
+    return this.getProfileByUserId(userId);
   };
 
-  requestVerifyEmail = async (profileId: string, email?: string) => {
-    const profile = await this.getProfile(profileId);
-
-    if (profile.emailVerified) {
-      throw new ConflictException("Email уже подтвержден.");
-    }
-
-    if (!email) {
-      throw new NotFoundException("У пользователя отсутсвует email.");
-    }
-
-    const otp = await this._otpService.create(profileId);
-
-    await this._mailerService.sendCodeMail(email, otp.code);
-
-    return otp.code as any;
+  deleteProfile = async (userId: string) => {
+    return Profile.destroy({ where: { userId } }).then(() => userId);
   };
-
-  verifyEmail = async (profileId: string, code: string) => {
-    const profile = await this.getProfile(profileId);
-
-    if (profile.emailVerified) {
-      throw new ConflictException("Email уже подтвержден.");
-    }
-
-    if (await this._otpService.check(profileId, code)) {
-      profile.emailVerified = true;
-      await profile.save();
-    }
-
-    return new ApiResponse({
-      message: "Email успешно подтвержден.",
-      data: {},
-    });
-  };
-
-  changePassword = async (profileId: string, password: string) => {
-    const profile = await this.getProfile(profileId);
-
-    profile.passwordHash = sha256(password);
-
-    await profile.save();
-
-    return new ApiResponse({ message: "Пароль успешно изменен." });
-  };
-
-  deleteProfile = async (profileId: string) => {
-    return Profile.destroy({ where: { id: profileId } }).then(() => profileId);
-  };
-
-  static get profileAttributes(): (keyof ProfileModel)[] {
-    return [
-      "id",
-      "phone",
-      "email",
-      "emailVerified",
-      "firstName",
-      "lastName",
-      "challenge",
-      "createdAt",
-      "updatedAt",
-    ];
-  }
 
   static get include(): Includeable[] {
     return [
       {
-        model: Role,
-        // attributes: { exclude: ["createdAt", "updatedAt"] },
-        include: [
-          {
-            model: Permission,
-            // attributes: { exclude: ["createdAt", "updatedAt"] },
-            through: {
-              attributes: [], // Исключаем атрибуты связывающей таблицы
-            },
-          },
-        ],
+        model: Files,
+        as: "avatar",
       },
     ];
   }

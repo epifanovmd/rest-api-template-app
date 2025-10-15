@@ -17,7 +17,12 @@ export enum EPermissions {
 export interface IPermissionUpdateRequest
   extends Omit<TPermissionCreateModel, "id"> {}
 
-export interface IPermissionDto extends Omit<PermissionModel, "passwordHash"> {}
+export interface IPermissionDto {
+  id: string;
+  name: EPermissions;
+  createdAt: Date;
+  updatedAt: Date;
+}
 
 export interface IPermissionListDto extends ListResponse<IPermissionDto[]> {}
 
@@ -27,7 +32,10 @@ export type TPermissionCreateModel = InferCreationAttributes<
   { omit: "createdAt" | "updatedAt" }
 >;
 
-export class Permission extends Model<PermissionModel, TPermissionCreateModel> {
+export class Permission
+  extends Model<PermissionModel, TPermissionCreateModel>
+  implements IPermissionDto
+{
   declare id: string;
   declare name: EPermissions;
 

@@ -1,9 +1,9 @@
 import Koa from "koa";
 
-import { IProfileDto } from "../modules/profile/profile.model";
+import { IUserDto } from "../modules/user/user.model";
 
 export type JWTDecoded = {
-  profileId: string;
+  userId: string;
   iat: number;
   exp: number;
 };
@@ -11,7 +11,7 @@ export type JWTDecoded = {
 interface RequestClient {
   ctx: {
     request: {
-      user: IProfileDto | undefined;
+      user: IUserDto | undefined;
     };
   };
 }
