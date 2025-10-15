@@ -1,6 +1,6 @@
 const { readFile, writeFile, mkdirSync, existsSync } = require("fs");
 
-const files_folder = process.env.SERVER_FILES_FOLDER_PATH ?? "./upload_files";
+const files_folder = process.env.SERVER_FILES_FOLDER_PATH ?? "./files";
 
 const pathToKoaHbsFile =
   "./node_modules/@tsoa/cli/dist/routeGeneration/templates/koa.hbs";

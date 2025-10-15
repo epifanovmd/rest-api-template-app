@@ -9,8 +9,7 @@ export const config = {
   SERVER_HOST: process.env.SERVER_HOST || "0.0.0.0",
   SERVER_PORT: Number(process.env.SERVER_PORT || 8181),
   SOCKET_PORT: process.env.SOCKET_PORT || 3232,
-  SERVER_FILES_FOLDER_PATH:
-    process.env.SERVER_FILES_FOLDER_PATH ?? "./upload_files",
+  SERVER_FILES_FOLDER_PATH: process.env.SERVER_FILES_FOLDER_PATH ?? "./files",
   RATE_LIMIT: Number(process.env.RATE_LIMIT || 1000),
   RATE_LIMIT_INTERVAL: Number(
     process.env.RATE_LIMIT_INTERVAL || 15 * 60 * 1000,
