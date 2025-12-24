@@ -57,6 +57,22 @@ export class AuthController extends Controller {
   }
 
   /**
+   * Авторизация пользователя через OAuth code GitHub
+   * @summary Вход в систему
+   * @description Проверяет учетные данные и возвращает токены доступа.
+   * @param body Данные для входа
+   * @example body {
+   *   "code": "30d2d5e372a3f828254d"
+   * }
+   * @response 200 - Успешный вход
+   * @response 401 - Не найден пользователь
+   */
+  @Post("/authenticate")
+  authenticate(@Body() body: { code: string }): Promise<IUserWithTokensDto> {
+    return this._authService.authenticate(body);
+  }
+
+  /**
    * Запрос на сброс пароля
    * @summary Запрос сброса пароля
    * @description Отправляет письмо со ссылкой для восстановления пароля.

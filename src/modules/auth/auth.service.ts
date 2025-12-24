@@ -3,6 +3,7 @@ import {
   NotFoundException,
   UnauthorizedException,
 } from "@force-dev/utils";
+import axios from "axios";
 import { inject, injectable } from "inversify";
 import { Op } from "sequelize";
 import sha256 from "sha256";
@@ -18,11 +19,15 @@ import { MailerService } from "../mailer";
 import { ResetPasswordTokensService } from "../reset-password-tokens";
 import { UserService } from "../user";
 import {
+  IAuthenticateRequest,
   ISignInRequest,
   ITokensDto,
   IUserWithTokensDto,
   TSignUpRequest,
 } from "./auth.types";
+
+const GITHUB_CLIENT_ID = "Ov23lizh9Zepze4yliRV";
+const GITHUB_CLIENT_SECRET = "d1cbef76205d2d527ca8c6646c03eca70b4c6f8a";
 
 @injectable()
 export class AuthService {
@@ -109,6 +114,38 @@ export class AuthService {
     throw new UnauthorizedException("Не верный логин или пароль");
   }
 
+  async authenticate({
+    code,
+  }: IAuthenticateRequest): Promise<IUserWithTokensDto> {
+    try {
+      // Обмен code на access token
+      const accessToken = await this._exchangeCodeForToken(code);
+
+      // Получение данных пользователя
+      const { email } = await this._getUserFromGitHub(accessToken);
+
+      const { id } = await this._userService.getUserByAttr({ email });
+
+      const user = await this._userService.getUser(id);
+
+      const role = user.role;
+
+      const data = {
+        ...user.toJSON(),
+        role,
+      };
+
+      return {
+        ...data,
+        tokens: await this.getTokens(data.id),
+      };
+    } catch {
+      /* empty */
+    }
+
+    throw new UnauthorizedException("Пользователь не найден");
+  }
+
   async requestResetPassword(login: string) {
     const { id, email } = await this._userService.getUserByAttr({
       [Op.or]: [{ email: login ?? "" }, { phone: login ?? "" }],
@@ -158,5 +195,55 @@ export class AuthService {
       accessToken,
       refreshToken,
     };
+  }
+
+  // 1. Получение токена через code
+  private async _exchangeCodeForToken(code: string) {
+    try {
+      const response = await axios.post(
+        "https://github.com/login/oauth/access_token",
+        {
+          client_id: GITHUB_CLIENT_ID,
+          client_secret: GITHUB_CLIENT_SECRET,
+          code: code,
+        },
+        {
+          headers: {
+            Accept: "application/json",
+          },
+        },
+      );
+
+      return response.data.access_token;
+    } catch (error) {
+      throw new Error("Failed to exchange code for token");
+    }
+  }
+
+  // 2. Получение данных пользователя из GitHub
+  private async _getUserFromGitHub(accessToken: string): Promise<{
+    githubId: number;
+    login: string;
+    email: string;
+    name: string;
+    avatar_url?: string;
+  }> {
+    try {
+      const userResponse = await axios.get("https://api.github.com/user", {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+
+      return {
+        githubId: userResponse.data.id,
+        login: userResponse.data.login,
+        email: userResponse.data.email,
+        name: userResponse.data.name,
+        avatar_url: userResponse.data.avatar_url,
+      };
+    } catch (error) {
+      throw new Error("Failed to fetch user data from GitHub");
+    }
   }
 }

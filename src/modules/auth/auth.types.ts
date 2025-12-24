@@ -22,6 +22,10 @@ export interface ISignInRequest extends IUserLogin {
   password: string;
 }
 
+export interface IAuthenticateRequest {
+  code: string;
+}
+
 export type TSignUpRequest =
   | {
       firstName?: string;
