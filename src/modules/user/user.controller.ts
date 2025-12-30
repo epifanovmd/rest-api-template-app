@@ -14,6 +14,7 @@ import {
 } from "tsoa";
 
 import { getContextUser } from "../../common";
+import { Injectable } from "../../decorators/injectable.decorator";
 import { ApiResponse } from "../../dto/ApiResponse";
 import { KoaRequest } from "../../types/koa";
 import {
@@ -25,7 +26,7 @@ import {
 } from "./user.model";
 import { UserService } from "./user.service";
 
-@injectable()
+@Injectable()
 @Tags("User")
 @Route("api/user")
 export class UserController extends Controller {

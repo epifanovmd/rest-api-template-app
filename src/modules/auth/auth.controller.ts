@@ -1,6 +1,7 @@
-import { inject, injectable } from "inversify";
+import { inject } from "inversify";
 import { Body, Controller, Post, Route, Tags } from "tsoa";
 
+import { Injectable } from "../../decorators/injectable.decorator";
 import { ApiResponse } from "../../dto/ApiResponse";
 import { AuthService } from "./auth.service";
 import {
@@ -12,7 +13,7 @@ import {
   TSignUpRequest,
 } from "./auth.types";
 
-@injectable()
+@Injectable()
 @Tags("Authorization")
 @Route("api/auth")
 export class AuthController extends Controller {

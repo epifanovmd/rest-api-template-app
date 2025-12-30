@@ -4,8 +4,9 @@ import { injectable } from "inversify";
 import { createTransport, SendMailOptions } from "nodemailer";
 
 import { config } from "../../../config";
+import { Injectable } from "../../decorators/injectable.decorator";
 
-@injectable()
+@Injectable()
 export class MailerService {
   transport: ReturnType<typeof createTransport>;
 

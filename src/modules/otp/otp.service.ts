@@ -4,11 +4,12 @@ import moment from "moment";
 
 import { config } from "../../../config";
 import { generateOtp } from "../../common";
+import { Injectable } from "../../decorators/injectable.decorator";
 import { Otp } from "./otp.model";
 
 const { OTP_EXPIRE_MINUTES } = config;
 
-@injectable()
+@Injectable()
 export class OtpService {
   create = async (userId: string) => {
     const code = generateOtp();

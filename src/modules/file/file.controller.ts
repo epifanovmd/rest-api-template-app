@@ -12,10 +12,11 @@ import {
   UploadedFile,
 } from "tsoa";
 
+import { Injectable } from "../../decorators/injectable.decorator";
 import { IFileDto } from "./file.model";
 import { FileService } from "./file.service";
 
-@injectable()
+@Injectable()
 @Tags("Files")
 @Route("api/file")
 export class FileController extends Controller {

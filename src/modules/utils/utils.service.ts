@@ -1,7 +1,8 @@
 import * as child_process from "child_process";
-import { injectable } from "inversify";
 
-@injectable()
+import { Injectable } from "../../decorators/injectable.decorator";
+
+@Injectable()
 export class UtilsService {
   isValidIPv4(str) {
     const blocks = str.split(".");

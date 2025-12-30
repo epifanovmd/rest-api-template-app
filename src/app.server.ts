@@ -23,10 +23,10 @@ const isDevelopment = process.env.NODE_ENV;
 
 const bootstrap = () => {
   sequelize.sync({ force: false }).then(async () => {
-    await userService.createAdmin({
-      email: ADMIN_EMAIL,
-      passwordHash: sha256(ADMIN_PASSWORD),
-    });
+    //   await userService.createAdmin({
+    //     email: ADMIN_EMAIL,
+    //     passwordHash: sha256(ADMIN_PASSWORD),
+    //   });
   });
 
   socketGateway.initialize();

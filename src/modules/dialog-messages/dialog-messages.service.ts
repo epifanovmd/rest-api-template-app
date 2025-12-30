@@ -2,6 +2,7 @@ import { NotFoundException } from "@force-dev/utils";
 import { inject, injectable } from "inversify";
 import { Includeable, Op, WhereOptions } from "sequelize";
 
+import { Injectable } from "../../decorators/injectable.decorator";
 // TODO: решить проблему с циклической зависимостью
 import { DialogService } from "../dialog/dialog.service";
 import { FcmTokenService } from "../fcm-token";
@@ -16,7 +17,7 @@ import {
   IMessagesUpdateRequest,
 } from "./dialog-messages.model";
 
-@injectable()
+@Injectable()
 export class DialogMessagesService {
   constructor(
     @inject(SocketService) private _socketService: SocketService,

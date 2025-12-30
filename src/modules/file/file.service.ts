@@ -1,14 +1,14 @@
 import { NotFoundException } from "@force-dev/utils";
 import fs from "fs";
-import { injectable } from "inversify";
 import path from "path";
 import { File } from "tsoa";
 import { v4 } from "uuid";
 
 import { config } from "../../../config";
+import { Injectable } from "../../decorators/injectable.decorator";
 import { Files, IFileDto } from "./file.model";
 
-@injectable()
+@Injectable()
 export class FileService {
   async getFileById(id: string): Promise<IFileDto> {
     const file = await Files.findByPk(id);

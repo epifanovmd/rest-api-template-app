@@ -1,6 +1,7 @@
 import { inject, injectable } from "inversify";
 import { Body, Controller, Post, Route, Tags } from "tsoa";
 
+import { Injectable } from "../../decorators/injectable.decorator";
 import {
   IGenerateNonceRequest,
   IGenerateNonceResponse,
@@ -11,7 +12,7 @@ import {
 } from "./biometric.model";
 import { BiometricService } from "./biometric.service";
 
-@injectable()
+@Injectable()
 @Tags("Biometric")
 @Route("api/biometric")
 export class BiometricController extends Controller {

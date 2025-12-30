@@ -15,6 +15,7 @@ import {
 } from "tsoa";
 
 import { getContextUser } from "../../common";
+import { Injectable } from "../../decorators/injectable.decorator";
 import { KoaRequest } from "../../types/koa";
 import { DialogMembersService } from "../dialog-members";
 import {
@@ -36,7 +37,7 @@ import {
 } from "./dialog.model";
 import { DialogService } from "./dialog.service";
 
-@injectable()
+@Injectable()
 @Tags("Dialog")
 @Route("api/dialog")
 export class DialogController extends Controller {

@@ -2,11 +2,12 @@ import { InternalServerErrorException } from "@force-dev/utils";
 import { createVerify, randomBytes } from "crypto";
 import { inject, injectable } from "inversify";
 
+import { Injectable } from "../../decorators/injectable.decorator";
 import { AuthService } from "../auth";
 import { UserService } from "../user";
 import { Biometric } from "./biometric.model";
 
-@injectable()
+@Injectable()
 export class BiometricService {
   constructor(
     @inject(UserService) private _userService: UserService,

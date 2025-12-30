@@ -2,6 +2,7 @@ import { PublicKeyCredentialRequestOptionsJSON } from "@simplewebauthn/types";
 import { inject, injectable } from "inversify";
 import { Body, Controller, Post, Route, Tags } from "tsoa";
 
+import { Injectable } from "../../decorators/injectable.decorator";
 import {
   IVerifyAuthenticationRequest,
   IVerifyAuthenticationResponse,
@@ -9,7 +10,7 @@ import {
 } from "./passkeys.model";
 import { PasskeysService } from "./passkeys.service";
 
-@injectable()
+@Injectable()
 @Tags("Passkeys")
 @Route("api/passkeys")
 export class PasskeysController extends Controller {

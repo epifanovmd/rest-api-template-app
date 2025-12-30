@@ -9,6 +9,7 @@ import fs from "fs";
 import { injectable } from "inversify";
 import path from "path";
 
+import { Injectable } from "../../decorators/injectable.decorator";
 import { FcmToken } from "./fcm-token.model";
 import { ApnRegisterTokenResponse, FCMMessage } from "./fcm-token.types";
 
@@ -37,7 +38,7 @@ try {
   console.error("Ошибка инициализации Firebase Admin:", error);
 }
 
-@injectable()
+@Injectable()
 export class FcmTokenService {
   private _accessToken: string | undefined = undefined;
   private _fetch = axios.create({

@@ -1,10 +1,12 @@
-import { inject, injectable } from "inversify";
+import { inject } from "inversify";
 import { Controller, Get, Query, Route, Security, Tags } from "tsoa";
+
+import { Injectable } from "../../decorators/injectable.decorator";
 
 import { I{{properCase name}}Dto } from "./{{dashCase name}}.model";
 import { {{properCase name}}Service } from "./{{dashCase name}}.service";
 
-@injectable()
+@Injectable()
 @Tags("{{properCase name}}")
 @Route("api/{{camelCase name}}")
 export class {{properCase name}}Controller extends Controller {

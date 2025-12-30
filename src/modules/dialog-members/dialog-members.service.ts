@@ -2,12 +2,13 @@ import { NotFoundException } from "@force-dev/utils";
 import { inject, injectable } from "inversify";
 import { Includeable } from "sequelize/types/model";
 
+import { Injectable } from "../../decorators/injectable.decorator";
 import { SocketService } from "../socket";
 import { UserService } from "../user";
 import { User } from "../user/user.model";
 import { DialogMembers } from "./dialog-members.model";
 
-@injectable()
+@Injectable()
 export class DialogMembersService {
   constructor(@inject(SocketService) private _socketService: SocketService) {}
 

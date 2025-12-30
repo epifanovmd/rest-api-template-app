@@ -1,3 +1,5 @@
+import "./modules/modules.associations";
+
 import KoaRouter from "@koa/router";
 import Koa from "koa";
 

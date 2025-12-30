@@ -3,7 +3,7 @@
 //
 // import { redisClient } from "../../db";
 //
-// @injectable()
+// @Injectable()
 // export class RedisService {
 //   async set<Data>(key: string, data: Data) {
 //     const status = await redisClient.set(key, JSON.stringify(data));

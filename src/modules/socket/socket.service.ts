@@ -7,6 +7,7 @@ import { Server } from "socket.io";
 import { config } from "../../../config";
 import { app } from "../../app";
 import { verifyAuthToken } from "../../common";
+import { Injectable } from "../../decorators/injectable.decorator";
 import { IUserDto } from "../user/user.model";
 import {
   ISocketEmitEvents,
@@ -25,7 +26,7 @@ const { SOCKET_PORT, CORS_ALLOW_IPS } = config;
 //   duration: 1, // за 1 секунду
 // });
 
-@injectable()
+@Injectable()
 export class SocketService {
   private _server = createServer(app.callback());
   private _io: TServer;

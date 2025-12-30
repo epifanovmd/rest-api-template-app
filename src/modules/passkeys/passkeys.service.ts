@@ -12,6 +12,7 @@ import type {
 import { inject, injectable } from "inversify";
 
 import { config } from "../../../config";
+import { Injectable } from "../../decorators/injectable.decorator";
 import { AuthService } from "../auth";
 import { UserService } from "../user";
 import {
@@ -34,7 +35,7 @@ const rpName = WEB_AUTHN_RP_NAME;
 const rpID = WEB_AUTHN_RP_HOST;
 const origin = `${schema}://${rpID}${port}`;
 
-@injectable()
+@Injectable()
 export class PasskeysService {
   constructor(
     @inject(UserService) private _userService: UserService,

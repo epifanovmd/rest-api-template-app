@@ -16,6 +16,7 @@ import {
 } from "tsoa";
 
 import { getContextUser } from "../../common";
+import { Injectable } from "../../decorators/injectable.decorator";
 import { KoaRequest } from "../../types/koa";
 import {
   IProfileDto,
@@ -24,7 +25,7 @@ import {
 } from "./profile.model";
 import { ProfileService } from "./profile.service";
 
-@injectable()
+@Injectable()
 @Tags("Profile")
 @Route("api/profile")
 export class ProfileController extends Controller {

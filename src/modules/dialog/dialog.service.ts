@@ -2,6 +2,7 @@ import { NotFoundException } from "@force-dev/utils";
 import { inject, injectable } from "inversify";
 import { col, fn, Includeable, Op, Sequelize, where } from "sequelize";
 
+import { Injectable } from "../../decorators/injectable.decorator";
 import { DialogMembersService } from "../dialog-members";
 import { DialogMembers } from "../dialog-members/dialog-members.model";
 import { DialogMessages } from "../dialog-messages/dialog-messages.model";
@@ -11,7 +12,7 @@ import { UserService } from "../user";
 import { User } from "../user/user.model";
 import { Dialog, DialogCreateRequest } from "./dialog.model";
 
-@injectable()
+@Injectable()
 export class DialogService {
   constructor(
     @inject(DialogMembersService)

@@ -26,11 +26,6 @@ module.exports = plop => {
       },
       {
         type: "add",
-        path: "src/modules/{{dashCase name}}/{{dashCase name}}.module.ts",
-        templateFile: "plop-templates/module/module.module.ts.hbs",
-      },
-      {
-        type: "add",
         path: "src/modules/{{dashCase name}}/{{dashCase name}}.service.ts",
         templateFile: "plop-templates/module/module.service.ts.hbs",
       },

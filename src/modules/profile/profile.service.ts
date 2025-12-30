@@ -3,6 +3,7 @@ import { inject, injectable } from "inversify";
 import { Includeable, WhereOptions } from "sequelize";
 import { File } from "tsoa";
 
+import { Injectable } from "../../decorators/injectable.decorator";
 import { FileService } from "../file";
 import { Files } from "../file/file.model";
 import {
@@ -11,7 +12,7 @@ import {
   ProfileCreateModel,
 } from "./profile.model";
 
-@injectable()
+@Injectable()
 export class ProfileService {
   constructor(@inject(FileService) private _fileService: FileService) {}
   getProfiles = (offset?: number, limit?: number) =>

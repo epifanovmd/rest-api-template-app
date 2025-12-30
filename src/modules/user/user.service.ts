@@ -4,6 +4,7 @@ import { Includeable, Op, WhereOptions } from "sequelize";
 import sha256 from "sha256";
 
 import { sequelize } from "../../db";
+import { Injectable } from "../../decorators/injectable.decorator";
 import { ApiResponse } from "../../dto/ApiResponse";
 import { MailerService } from "../mailer";
 import { OtpService } from "../otp";
@@ -18,7 +19,7 @@ import {
   UserModel,
 } from "./user.model";
 
-@injectable()
+@Injectable()
 export class UserService {
   constructor(
     @inject(MailerService) private _mailerService: MailerService,

@@ -1,11 +1,12 @@
 import { inject, injectable } from "inversify";
 
+import { Injectable } from "../../decorators/injectable.decorator";
 import { DialogMessages } from "../dialog-messages/dialog-messages.model";
 import { IUserDto } from "../user/user.model";
 import { SocketService } from "./socket.service";
 import { TSocket } from "./socket.types";
 
-@injectable()
+@Injectable()
 export class SocketGateway {
   private typingTimeouts = new Map<string, NodeJS.Timeout>();
   private readonly TYPING_DEBOUNCE_TIME = 2000;

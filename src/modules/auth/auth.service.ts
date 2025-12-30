@@ -14,6 +14,7 @@ import {
   validatePhone,
   verifyAuthToken,
 } from "../../common";
+import { Injectable } from "../../decorators/injectable.decorator";
 import { ApiResponse } from "../../dto/ApiResponse";
 import { MailerService } from "../mailer";
 import { ResetPasswordTokensService } from "../reset-password-tokens";
@@ -29,7 +30,7 @@ import {
 const GITHUB_CLIENT_ID = "Ov23lizh9Zepze4yliRV";
 const GITHUB_CLIENT_SECRET = "d1cbef76205d2d527ca8c6646c03eca70b4c6f8a";
 
-@injectable()
+@Injectable()
 export class AuthService {
   constructor(
     @inject(UserService) private _userService: UserService,

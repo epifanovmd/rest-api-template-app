@@ -121,12 +121,6 @@
 			},
 			"IUserUpdateRequest": {
 				"properties": {
-					"firstName": {
-						"type": "string"
-					},
-					"lastName": {
-						"type": "string"
-					},
 					"email": {
 						"type": "string"
 					},
@@ -961,313 +955,6 @@
 				"type": "object",
 				"additionalProperties": false
 			},
-			"Base64URLString": {
-				"type": "string",
-				"description": "An attempt to communicate that this isn't just any string, but a Base64URL-encoded string"
-			},
-			"PublicKeyCredentialType": {
-				"type": "string",
-				"enum": [
-					"public-key"
-				],
-				"nullable": false
-			},
-			"AuthenticatorTransportFuture": {
-				"type": "string",
-				"enum": [
-					"ble",
-					"cable",
-					"hybrid",
-					"internal",
-					"nfc",
-					"smart-card",
-					"usb"
-				],
-				"description": "A super class of TypeScript's `AuthenticatorTransport` that includes support for the latest\ntransports. Should eventually be replaced by TypeScript's when TypeScript gets updated to\nknow about it (sometime after 4.6.3)"
-			},
-			"PublicKeyCredentialDescriptorJSON": {
-				"description": "https://w3c.github.io/webauthn/#dictdef-publickeycredentialdescriptorjson",
-				"properties": {
-					"id": {
-						"$ref": "#/components/schemas/Base64URLString"
-					},
-					"type": {
-						"$ref": "#/components/schemas/PublicKeyCredentialType"
-					},
-					"transports": {
-						"items": {
-							"$ref": "#/components/schemas/AuthenticatorTransportFuture"
-						},
-						"type": "array"
-					}
-				},
-				"required": [
-					"id",
-					"type"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"UserVerificationRequirement": {
-				"type": "string",
-				"enum": [
-					"discouraged",
-					"preferred",
-					"required"
-				]
-			},
-			"AuthenticationExtensionsClientInputs": {
-				"properties": {
-					"appid": {
-						"type": "string"
-					},
-					"credProps": {
-						"type": "boolean"
-					},
-					"hmacCreateSecret": {
-						"type": "boolean"
-					},
-					"minPinLength": {
-						"type": "boolean"
-					}
-				},
-				"type": "object",
-				"additionalProperties": false
-			},
-			"PublicKeyCredentialRequestOptionsJSON": {
-				"description": "A variant of PublicKeyCredentialRequestOptions suitable for JSON transmission to the browser to\n(eventually) get passed into navigator.credentials.get(...) in the browser.",
-				"properties": {
-					"challenge": {
-						"$ref": "#/components/schemas/Base64URLString"
-					},
-					"timeout": {
-						"type": "number",
-						"format": "double"
-					},
-					"rpId": {
-						"type": "string"
-					},
-					"allowCredentials": {
-						"items": {
-							"$ref": "#/components/schemas/PublicKeyCredentialDescriptorJSON"
-						},
-						"type": "array"
-					},
-					"userVerification": {
-						"$ref": "#/components/schemas/UserVerificationRequirement"
-					},
-					"extensions": {
-						"$ref": "#/components/schemas/AuthenticationExtensionsClientInputs"
-					}
-				},
-				"required": [
-					"challenge"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"COSEAlgorithmIdentifier": {
-				"type": "number",
-				"format": "double"
-			},
-			"AuthenticatorAttestationResponseJSON": {
-				"description": "A slightly-modified AuthenticatorAttestationResponse to simplify working with ArrayBuffers that\nare Base64URL-encoded in the browser so that they can be sent as JSON to the server.\n\nhttps://w3c.github.io/webauthn/#dictdef-authenticatorattestationresponsejson",
-				"properties": {
-					"clientDataJSON": {
-						"$ref": "#/components/schemas/Base64URLString"
-					},
-					"attestationObject": {
-						"$ref": "#/components/schemas/Base64URLString"
-					},
-					"authenticatorData": {
-						"$ref": "#/components/schemas/Base64URLString"
-					},
-					"transports": {
-						"items": {
-							"$ref": "#/components/schemas/AuthenticatorTransportFuture"
-						},
-						"type": "array"
-					},
-					"publicKeyAlgorithm": {
-						"$ref": "#/components/schemas/COSEAlgorithmIdentifier"
-					},
-					"publicKey": {
-						"$ref": "#/components/schemas/Base64URLString"
-					}
-				},
-				"required": [
-					"clientDataJSON",
-					"attestationObject"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"AuthenticatorAttachment": {
-				"type": "string",
-				"enum": [
-					"cross-platform",
-					"platform"
-				]
-			},
-			"CredentialPropertiesOutput": {
-				"properties": {
-					"rk": {
-						"type": "boolean"
-					}
-				},
-				"type": "object",
-				"additionalProperties": false
-			},
-			"AuthenticationExtensionsClientOutputs": {
-				"properties": {
-					"appid": {
-						"type": "boolean"
-					},
-					"credProps": {
-						"$ref": "#/components/schemas/CredentialPropertiesOutput"
-					},
-					"hmacCreateSecret": {
-						"type": "boolean"
-					}
-				},
-				"type": "object",
-				"additionalProperties": false
-			},
-			"RegistrationResponseJSON": {
-				"description": "A slightly-modified RegistrationCredential to simplify working with ArrayBuffers that\nare Base64URL-encoded in the browser so that they can be sent as JSON to the server.\n\nhttps://w3c.github.io/webauthn/#dictdef-registrationresponsejson",
-				"properties": {
-					"id": {
-						"$ref": "#/components/schemas/Base64URLString"
-					},
-					"rawId": {
-						"$ref": "#/components/schemas/Base64URLString"
-					},
-					"response": {
-						"$ref": "#/components/schemas/AuthenticatorAttestationResponseJSON"
-					},
-					"authenticatorAttachment": {
-						"$ref": "#/components/schemas/AuthenticatorAttachment"
-					},
-					"clientExtensionResults": {
-						"$ref": "#/components/schemas/AuthenticationExtensionsClientOutputs"
-					},
-					"type": {
-						"$ref": "#/components/schemas/PublicKeyCredentialType"
-					}
-				},
-				"required": [
-					"id",
-					"rawId",
-					"response",
-					"clientExtensionResults",
-					"type"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"IVerifyRegistrationRequest": {
-				"properties": {
-					"userId": {
-						"type": "string"
-					},
-					"data": {
-						"$ref": "#/components/schemas/RegistrationResponseJSON"
-					}
-				},
-				"required": [
-					"userId",
-					"data"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"IVerifyAuthenticationResponse": {
-				"properties": {
-					"verified": {
-						"type": "boolean"
-					},
-					"tokens": {
-						"$ref": "#/components/schemas/ITokensDto"
-					}
-				},
-				"required": [
-					"verified"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"AuthenticatorAssertionResponseJSON": {
-				"description": "A slightly-modified AuthenticatorAssertionResponse to simplify working with ArrayBuffers that\nare Base64URL-encoded in the browser so that they can be sent as JSON to the server.\n\nhttps://w3c.github.io/webauthn/#dictdef-authenticatorassertionresponsejson",
-				"properties": {
-					"clientDataJSON": {
-						"$ref": "#/components/schemas/Base64URLString"
-					},
-					"authenticatorData": {
-						"$ref": "#/components/schemas/Base64URLString"
-					},
-					"signature": {
-						"$ref": "#/components/schemas/Base64URLString"
-					},
-					"userHandle": {
-						"$ref": "#/components/schemas/Base64URLString"
-					}
-				},
-				"required": [
-					"clientDataJSON",
-					"authenticatorData",
-					"signature"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"AuthenticationResponseJSON": {
-				"description": "A slightly-modified AuthenticationCredential to simplify working with ArrayBuffers that\nare Base64URL-encoded in the browser so that they can be sent as JSON to the server.\n\nhttps://w3c.github.io/webauthn/#dictdef-authenticationresponsejson",
-				"properties": {
-					"id": {
-						"$ref": "#/components/schemas/Base64URLString"
-					},
-					"rawId": {
-						"$ref": "#/components/schemas/Base64URLString"
-					},
-					"response": {
-						"$ref": "#/components/schemas/AuthenticatorAssertionResponseJSON"
-					},
-					"authenticatorAttachment": {
-						"$ref": "#/components/schemas/AuthenticatorAttachment"
-					},
-					"clientExtensionResults": {
-						"$ref": "#/components/schemas/AuthenticationExtensionsClientOutputs"
-					},
-					"type": {
-						"$ref": "#/components/schemas/PublicKeyCredentialType"
-					}
-				},
-				"required": [
-					"id",
-					"rawId",
-					"response",
-					"clientExtensionResults",
-					"type"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"IVerifyAuthenticationRequest": {
-				"properties": {
-					"userId": {
-						"type": "string"
-					},
-					"data": {
-						"$ref": "#/components/schemas/AuthenticationResponseJSON"
-					}
-				},
-				"required": [
-					"userId",
-					"data"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
 			"IProfileDto": {
 				"properties": {
 					"id": {
@@ -1384,7 +1071,7 @@
 	},
 	"info": {
 		"title": "rest-api",
-		"version": "1.0.0",
+		"version": "1.0.1",
 		"description": "REST API Template App",
 		"license": {
 			"name": "MIT"
@@ -1411,8 +1098,8 @@
 						}
 					}
 				},
-				"description": "Получить пользователя.\nЭтот эндпоинт позволяет получить данные профиля пользователя, который выполнил запрос.\nИспользуется для получения информации о текущем пользователе, например, его имени, email, и других данных.",
-				"summary": "Получение профиля текущего пользователя",
+				"description": "Получить пользователя.\nЭтот эндпоинт позволяет получить данные пользователя, который выполнил запрос.",
+				"summary": "Получение данных текущего пользователя",
 				"tags": [
 					"User"
 				],
@@ -1439,8 +1126,8 @@
 						}
 					}
 				},
-				"description": "Обновить пользователя.\nЭтот эндпоинт позволяет пользователю обновить свои данные, такие как имя, email и другие параметры профиля.",
-				"summary": "Обновление профиля текущего пользователя",
+				"description": "Обновить пользователя.\nЭтот эндпоинт позволяет пользователю обновить свои данные, такие как email, телефон и другие параметры пользователя.",
+				"summary": "Обновление данных текущего пользователя",
 				"tags": [
 					"User"
 				],
@@ -1451,13 +1138,13 @@
 				],
 				"parameters": [],
 				"requestBody": {
-					"description": "Обновленные данные профиля",
+					"description": "Обновленные данные пользователя",
 					"required": true,
 					"content": {
 						"application/json": {
 							"schema": {
 								"$ref": "#/components/schemas/IUserUpdateRequest",
-								"description": "Обновленные данные профиля"
+								"description": "Обновленные данные пользователя"
 							}
 						}
 					}
@@ -1480,7 +1167,7 @@
 					}
 				},
 				"description": "Удалить текущего пользователя.\nЭтот эндпоинт позволяет удалить пользователя из системы.",
-				"summary": "Удаление профиля текущего пользователя",
+				"summary": "Удаление текущего пользователя",
 				"tags": [
 					"User"
 				],
@@ -1497,7 +1184,7 @@
 				"operationId": "GetUsers",
 				"responses": {
 					"200": {
-						"description": "Список всех профилей с информацией о них",
+						"description": "Список всех пользователей с информацией о них",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -1507,14 +1194,16 @@
 						}
 					}
 				},
-				"description": "Получить все профили.\nЭтот эндпоинт позволяет администраторам получить список всех пользователей системы.\nОн поддерживает пагинацию через параметры `offset` и `limit`.",
-				"summary": "Получение всех профилей",
+				"description": "Получить всех пользователей.\nЭтот эндпоинт позволяет администраторам получить список всех пользователей системы.\nОн поддерживает пагинацию через параметры `offset` и `limit`.",
+				"summary": "Получение всех пользователей",
 				"tags": [
 					"User"
 				],
 				"security": [
 					{
-						"jwt": []
+						"jwt": [
+							"role:admin"
+						]
 					}
 				],
 				"parameters": [
@@ -1529,7 +1218,7 @@
 						}
 					},
 					{
-						"description": "Лимит количества возвращаемых профилей",
+						"description": "Лимит количества возвращаемых пользователей",
 						"in": "query",
 						"name": "limit",
 						"required": false,
@@ -1557,13 +1246,15 @@
 					}
 				},
 				"description": "Получить пользователя по ID.\nЭтот эндпоинт позволяет получить пользователя по его ID. Доступен только для администраторов.",
-				"summary": "Получение профиля по ID",
+				"summary": "Получение пользователя по ID",
 				"tags": [
 					"User"
 				],
 				"security": [
 					{
-						"jwt": []
+						"jwt": [
+							"role:admin"
+						]
 					}
 				],
 				"parameters": [
@@ -1706,7 +1397,7 @@
 					}
 				},
 				"description": "Обновить пользователя.\nЭтот эндпоинт позволяет администраторам обновлять других пользователей.",
-				"summary": "Обновление профиля другого пользователя",
+				"summary": "Обновление другого пользователя",
 				"tags": [
 					"User"
 				],
@@ -1729,13 +1420,13 @@
 					}
 				],
 				"requestBody": {
-					"description": "Данные для обновления профиля",
+					"description": "Данные для обновления пользователя",
 					"required": true,
 					"content": {
 						"application/json": {
 							"schema": {
 								"$ref": "#/components/schemas/IUserUpdateRequest",
-								"description": "Данные для обновления профиля"
+								"description": "Данные для обновления пользователя"
 							}
 						}
 					}
@@ -1798,7 +1489,7 @@
 					}
 				},
 				"description": "Удалить другого пользователя.\nЭтот эндпоинт позволяет администраторам удалить другого пользователя из системы.",
-				"summary": "Удаление профиля другого пользователя",
+				"summary": "Удаление другого пользователя",
 				"tags": [
 					"User"
 				],
@@ -1898,6 +1589,53 @@
 							"example": {
 								"login": "epifanovmd@gmail.com",
 								"password": "Epifan123"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/auth/authenticate": {
+			"post": {
+				"operationId": "Authenticate",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IUserWithTokensDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Авторизация пользователя через OAuth code GitHub",
+				"summary": "Вход в систему",
+				"tags": [
+					"Authorization"
+				],
+				"security": [],
+				"parameters": [],
+				"requestBody": {
+					"description": "Данные для входа",
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"properties": {
+									"code": {
+										"type": "string"
+									}
+								},
+								"required": [
+									"code"
+								],
+								"type": "object",
+								"description": "Данные для входа"
+							},
+							"example": {
+								"code": "30d2d5e372a3f828254d"
 							}
 						}
 					}
@@ -3175,166 +2913,6 @@
 				]
 			}
 		},
-		"/api/passkeys/generate-registration-options": {
-			"post": {
-				"operationId": "GenerateRegistrationOptions",
-				"responses": {
-					"200": {
-						"description": "Параметры для регистрации устройства, соответствующие спецификации WebAuthn.",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/PublicKeyCredentialRequestOptionsJSON"
-								}
-							}
-						}
-					}
-				},
-				"description": "Генерирует параметры для регистрации нового устройства с использованием Passkeys.\nЭтот эндпоинт используется для создания параметров, которые будут отправлены клиенту для\nрегистрации нового устройства. Клиент должен будет выполнить регистрацию, используя данные\nсгенерированные этим запросом.",
-				"summary": "Генерация параметров регистрации",
-				"tags": [
-					"Passkeys"
-				],
-				"security": [],
-				"parameters": [],
-				"requestBody": {
-					"required": true,
-					"content": {
-						"application/json": {
-							"schema": {
-								"properties": {
-									"userId": {
-										"type": "string"
-									}
-								},
-								"required": [
-									"userId"
-								],
-								"type": "object"
-							}
-						}
-					}
-				}
-			}
-		},
-		"/api/passkeys/verify-registration": {
-			"post": {
-				"operationId": "VerifyRegistration",
-				"responses": {
-					"200": {
-						"description": "Объект, который сообщает, был ли процесс регистрации успешным.",
-						"content": {
-							"application/json": {
-								"schema": {
-									"properties": {
-										"verified": {
-											"type": "boolean"
-										}
-									},
-									"required": [
-										"verified"
-									],
-									"type": "object"
-								}
-							}
-						}
-					}
-				},
-				"description": "Проверяет данные регистрации для нового устройства.\nЭтот эндпоинт используется для подтверждения данных, которые были отправлены клиентом\nпосле попытки регистрации нового устройства. Он валидирует предоставленные данные\nи завершает процесс регистрации.",
-				"summary": "Проверка данных регистрации",
-				"tags": [
-					"Passkeys"
-				],
-				"security": [],
-				"parameters": [],
-				"requestBody": {
-					"required": true,
-					"content": {
-						"application/json": {
-							"schema": {
-								"$ref": "#/components/schemas/IVerifyRegistrationRequest"
-							}
-						}
-					}
-				}
-			}
-		},
-		"/api/passkeys/generate-authentication-options": {
-			"post": {
-				"operationId": "GenerateAuthenticationOptions",
-				"responses": {
-					"200": {
-						"description": "Параметры для аутентификации устройства, соответствующие спецификации WebAuthn.",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/PublicKeyCredentialRequestOptionsJSON"
-								}
-							}
-						}
-					}
-				},
-				"description": "Генерирует параметры для аутентификации пользователя с использованием Passkeys.\nЭтот эндпоинт создает параметры аутентификации, которые будут отправлены клиенту для\nвыполнения аутентификации с помощью Passkeys. Эти параметры используются клиентом для\nвызова аутентификации на его устройстве.",
-				"summary": "Генерация параметров аутентификации",
-				"tags": [
-					"Passkeys"
-				],
-				"security": [],
-				"parameters": [],
-				"requestBody": {
-					"required": true,
-					"content": {
-						"application/json": {
-							"schema": {
-								"properties": {
-									"userId": {
-										"type": "string"
-									}
-								},
-								"required": [
-									"userId"
-								],
-								"type": "object"
-							}
-						}
-					}
-				}
-			}
-		},
-		"/api/passkeys/verify-authentication": {
-			"post": {
-				"operationId": "VerifyAuthentication",
-				"responses": {
-					"200": {
-						"description": "Ответ, который включает в себя результат аутентификации и другие данные.",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/IVerifyAuthenticationResponse"
-								}
-							}
-						}
-					}
-				},
-				"description": "Проверяет данные аутентификации для пользователя.\nЭтот эндпоинт проверяет данные аутентификации, которые были отправлены с клиентской стороны,\nи завершается успешной или неудачной аутентификацией в зависимости от результатов проверки.",
-				"summary": "Проверка данных аутентификации",
-				"tags": [
-					"Passkeys"
-				],
-				"security": [],
-				"parameters": [],
-				"requestBody": {
-					"required": true,
-					"content": {
-						"application/json": {
-							"schema": {
-								"$ref": "#/components/schemas/IVerifyAuthenticationRequest"
-							}
-						}
-					}
-				}
-			}
-		},
 		"/api/profile/my": {
 			"get": {
 				"operationId": "GetMyProfile",
@@ -3691,6 +3269,14 @@
 		{
 			"url": "http://localhost:8181",
 			"description": "Local dev"
+		},
+		{
+			"url": "http://0.0.0.0:8181",
+			"description": "Local dev"
+		},
+		{
+			"url": "http://147.45.245.104:8181",
+			"description": "Host"
 		}
 	]
 }

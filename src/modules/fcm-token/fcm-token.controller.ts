@@ -14,13 +14,14 @@ import {
 } from "tsoa";
 
 import { getContextUser } from "../../common";
+import { Injectable } from "../../decorators/injectable.decorator";
 import { ApiResponse } from "../../dto/ApiResponse";
 import { KoaRequest } from "../../types/koa";
 import { FcmTokenDto, FcmTokenRequest } from "./fcm-token.model";
 import { FcmTokenService } from "./fcm-token.service";
 import { FCMMessage } from "./fcm-token.types";
 
-@injectable()
+@Injectable()
 @Tags("FCM")
 @Route("api/fcm")
 export class FcmTokenController extends Controller {
