@@ -1,13 +1,12 @@
 import { ForbiddenException } from "@force-dev/utils";
 import { createServer } from "http";
-import { injectable } from "inversify";
+import Koa from "koa";
 import { Server } from "socket.io";
 
 // import { RateLimiterMemory } from "rate-limiter-flexible";
 import { config } from "../../../config";
-import { app } from "../../app";
 import { verifyAuthToken } from "../../common";
-import { Injectable } from "../../decorators/injectable.decorator";
+import { Injectable } from "../../core";
 import { IUserDto } from "../user/user.model";
 import {
   ISocketEmitEvents,
@@ -18,7 +17,7 @@ import {
 
 const NODE_ENV = process.env.NODE_ENV;
 
-const { SOCKET_PORT, CORS_ALLOW_IPS } = config;
+const { socket, cors } = config;
 
 // // Ограничитель запросов
 // const rateLimiter = new RateLimiterMemory({
@@ -28,11 +27,13 @@ const { SOCKET_PORT, CORS_ALLOW_IPS } = config;
 
 @Injectable()
 export class SocketService {
-  private _server = createServer(app.callback());
+  private _server: ReturnType<typeof createServer>;
   private _io: TServer;
   public _clients = new Map<string, { socket: TSocket; user: IUserDto }>();
 
-  constructor() {
+  constructor(app: Koa) {
+    this._server = createServer(app.callback());
+
     this._io = new Server(this._server, {
       cors: {
         origin: this.parseCorsOrigins(),
@@ -49,18 +50,18 @@ export class SocketService {
     this.setupConnectionHandling();
     this.startServer().then();
 
-    console.info(`Socket server listening on port ${SOCKET_PORT}`);
+    console.info(`Socket server listening on port ${socket.port}`);
   }
 
   private parseCorsOrigins(): string[] | boolean {
-    if (CORS_ALLOW_IPS === "*") return true;
+    if (cors.allowedIps.join() === "*") return true;
 
-    return CORS_ALLOW_IPS.split(",").map(ip => ip.trim());
+    return cors.allowedIps;
   }
 
   private async startServer(): Promise<void> {
     return new Promise(resolve => {
-      this._server.listen(SOCKET_PORT, () => resolve());
+      this._server.listen(socket.port, () => resolve());
     });
   }
 

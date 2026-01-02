@@ -1,6 +1,6 @@
 import * as child_process from "child_process";
 
-import { Injectable } from "../../decorators/injectable.decorator";
+import { Injectable } from "../../core";
 
 @Injectable()
 export class UtilsService {

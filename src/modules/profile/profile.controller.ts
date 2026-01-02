@@ -16,7 +16,7 @@ import {
 } from "tsoa";
 
 import { getContextUser } from "../../common";
-import { Injectable } from "../../decorators/injectable.decorator";
+import { Injectable } from "../../core";
 import { KoaRequest } from "../../types/koa";
 import {
   IProfileDto,

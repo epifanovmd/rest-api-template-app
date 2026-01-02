@@ -1,4 +1,4 @@
-import { inject, injectable } from "inversify";
+import { inject } from "inversify";
 import {
   Body,
   Controller,
@@ -14,8 +14,7 @@ import {
 } from "tsoa";
 
 import { getContextUser } from "../../common";
-import { Injectable } from "../../decorators/injectable.decorator";
-import { ApiResponse } from "../../dto/ApiResponse";
+import { ApiResponse, AuthGuard, Injectable, UseGuards } from "../../core";
 import { KoaRequest } from "../../types/koa";
 import {
   IUserDto,
@@ -41,6 +40,7 @@ export class UserController extends Controller {
    * @summary Получение данных текущего пользователя
    * @returns Пользователь
    */
+  // @UseGuards(AuthGuard)
   @Security("jwt")
   @Get("my")
   getMyUser(@Request() req: KoaRequest): Promise<IUserDto> {

@@ -3,7 +3,7 @@ import { inject, injectable } from "inversify";
 import { Includeable, WhereOptions } from "sequelize";
 import { File } from "tsoa";
 
-import { Injectable } from "../../decorators/injectable.decorator";
+import { Injectable } from "../../core";
 import { FileService } from "../file";
 import { Files } from "../file/file.model";
 import {

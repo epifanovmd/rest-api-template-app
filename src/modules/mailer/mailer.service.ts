@@ -4,7 +4,7 @@ import { injectable } from "inversify";
 import { createTransport, SendMailOptions } from "nodemailer";
 
 import { config } from "../../../config";
-import { Injectable } from "../../decorators/injectable.decorator";
+import { Injectable } from "../../core";
 
 @Injectable()
 export class MailerService {
@@ -14,8 +14,8 @@ export class MailerService {
     this.transport = createTransport({
       service: "gmail",
       auth: {
-        user: config.SMTP_USER,
-        pass: config.SMTP_PASS,
+        user: config.email.smtp.user,
+        pass: config.email.smtp.pass,
       },
     });
   }
@@ -39,7 +39,7 @@ export class MailerService {
       to: email,
       subject: "Ваша ссылка для востановления пароля",
       html: render(codeTemplate, {
-        resetLink: config.WEB_URL_RESET_PASSWORD.replace("{{token}}", token),
+        resetLink: config.auth.resetPassword.webUrl.replace("{{token}}", token),
       }),
     });
   };
@@ -49,7 +49,7 @@ export class MailerService {
       this.transport.sendMail(
         {
           ...options,
-          from: config.SMTP_USER,
+          from: config.email.smtp.user,
         },
         (error, info) => {
           if (error) {

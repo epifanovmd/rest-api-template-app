@@ -1,6 +1,6 @@
 import { injectable } from "inversify";
 
-import { container } from "./container";
+import { container } from "../container";
 
 export function Injectable() {
   return <T extends new (...args: any[]) => any>(constructor: T) => {

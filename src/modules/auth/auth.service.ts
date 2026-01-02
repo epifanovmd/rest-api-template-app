@@ -14,8 +14,7 @@ import {
   validatePhone,
   verifyAuthToken,
 } from "../../common";
-import { Injectable } from "../../decorators/injectable.decorator";
-import { ApiResponse } from "../../dto/ApiResponse";
+import { ApiResponse, Injectable } from "../../core";
 import { MailerService } from "../mailer";
 import { ResetPasswordTokensService } from "../reset-password-tokens";
 import { UserService } from "../user";
@@ -88,6 +87,8 @@ export class AuthService {
   async signIn(body: ISignInRequest): Promise<IUserWithTokensDto> {
     const { login, password } = body;
 
+    console.log("body", body);
+
     try {
       const { id, passwordHash } = await this._userService.getUserByAttr({
         [Op.or]: [{ email: login ?? "" }, { phone: login ?? "" }],
@@ -108,7 +109,8 @@ export class AuthService {
           tokens: await this.getTokens(data.id),
         };
       }
-    } catch {
+    } catch (error) {
+      console.log("error", error);
       /* empty */
     }
 

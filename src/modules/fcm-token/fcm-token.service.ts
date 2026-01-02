@@ -9,7 +9,7 @@ import fs from "fs";
 import { injectable } from "inversify";
 import path from "path";
 
-import { Injectable } from "../../decorators/injectable.decorator";
+import { Injectable } from "../../core";
 import { FcmToken } from "./fcm-token.model";
 import { ApnRegisterTokenResponse, FCMMessage } from "./fcm-token.types";
 

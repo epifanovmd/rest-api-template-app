@@ -15,8 +15,8 @@ import {
   NonAttribute,
 } from "sequelize";
 
+import { ListResponse } from "../../core";
 import { sequelize } from "../../db";
-import { ListResponse } from "../../dto/ListResponse";
 import {
   DialogMembers,
   DialogMembersDto,

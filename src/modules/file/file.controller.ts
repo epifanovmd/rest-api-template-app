@@ -12,7 +12,7 @@ import {
   UploadedFile,
 } from "tsoa";
 
-import { Injectable } from "../../decorators/injectable.decorator";
+import { Injectable } from "../../core";
 import { IFileDto } from "./file.model";
 import { FileService } from "./file.service";
 

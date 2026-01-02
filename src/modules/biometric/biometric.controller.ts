@@ -1,7 +1,7 @@
 import { inject, injectable } from "inversify";
 import { Body, Controller, Post, Route, Tags } from "tsoa";
 
-import { Injectable } from "../../decorators/injectable.decorator";
+import { Injectable } from "../../core";
 import {
   IGenerateNonceRequest,
   IGenerateNonceResponse,

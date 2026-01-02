@@ -4,10 +4,12 @@ import moment from "moment";
 
 import { config } from "../../../config";
 import { generateOtp } from "../../common";
-import { Injectable } from "../../decorators/injectable.decorator";
+import { Injectable } from "../../core";
 import { Otp } from "./otp.model";
 
-const { OTP_EXPIRE_MINUTES } = config;
+const {
+  auth: { otp },
+} = config;
 
 @Injectable()
 export class OtpService {
@@ -17,14 +19,14 @@ export class OtpService {
 
     if (findOtp) {
       findOtp.code = code;
-      findOtp.expireAt = moment().add(OTP_EXPIRE_MINUTES, "minutes").toDate();
+      findOtp.expireAt = moment().add(otp.expireMinutes, "minutes").toDate();
 
       return await findOtp.save();
     } else {
       return Otp.create({
         userId,
         code,
-        expireAt: moment().add(OTP_EXPIRE_MINUTES, "minutes").toDate(),
+        expireAt: moment().add(otp.expireMinutes, "minutes").toDate(),
       });
     }
   };

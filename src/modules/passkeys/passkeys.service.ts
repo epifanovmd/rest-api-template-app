@@ -12,7 +12,7 @@ import type {
 import { inject, injectable } from "inversify";
 
 import { config } from "../../../config";
-import { Injectable } from "../../decorators/injectable.decorator";
+import { Injectable } from "../../core";
 import { AuthService } from "../auth";
 import { UserService } from "../user";
 import {
@@ -22,17 +22,14 @@ import {
 } from "./passkeys.model";
 
 const {
-  WEB_AUTHN_RP_NAME,
-  WEB_AUTHN_RP_HOST,
-  WEB_AUTHN_RP_SCHEMA,
-  WEB_AUTHN_RP_PORT,
+  auth: { webAuthn },
 } = config;
 
-const schema = WEB_AUTHN_RP_SCHEMA;
-const port = WEB_AUTHN_RP_PORT ? `:${WEB_AUTHN_RP_PORT}` : "";
+const schema = webAuthn.rpSchema;
+const port = webAuthn.rpPort ? `:${webAuthn.rpPort}` : "";
 
-const rpName = WEB_AUTHN_RP_NAME;
-const rpID = WEB_AUTHN_RP_HOST;
+const rpName = webAuthn.rpName;
+const rpID = webAuthn.rpHost;
 const origin = `${schema}://${rpID}${port}`;
 
 @Injectable()

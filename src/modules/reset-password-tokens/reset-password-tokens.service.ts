@@ -3,16 +3,18 @@ import { injectable } from "inversify";
 
 import { config } from "../../../config";
 import { createToken, verifyToken } from "../../common/helpers/jwt";
-import { Injectable } from "../../decorators/injectable.decorator";
+import { Injectable } from "../../core";
 import { ResetPasswordTokens } from "./reset-password-tokens.model";
 
-const { RESET_PASS_TOKEN_EXPIRE_MINUTES } = config;
+const {
+  auth: { resetPassword },
+} = config;
 
 @Injectable()
 export class ResetPasswordTokensService {
   create = async (userId: string) => {
     const token = await createToken(userId, {
-      expiresIn: `${RESET_PASS_TOKEN_EXPIRE_MINUTES}m`,
+      expiresIn: `${resetPassword.expireMinutes}m`,
     });
     const findResetPasswordTokens = await ResetPasswordTokens.findOne({
       where: { userId },

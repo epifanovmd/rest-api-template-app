@@ -15,6 +15,8 @@ import { DialogController } from './modules/dialog/dialog.controller';
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 import { FileController } from './modules/file/file.controller';
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+import { PasskeysController } from './modules/passkeys/passkeys.controller';
+// WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 import { ProfileController } from './modules/profile/profile.controller';
 import { koaAuthentication } from './middleware/authenticate.middleware';
 // @ts-ignore - no great way to install types from subpackage
@@ -407,6 +409,165 @@ const models: TsoaRoute.Models = {
             "videoIds": {"dataType":"array","array":{"dataType":"string"}},
             "audioIds": {"dataType":"array","array":{"dataType":"string"}},
             "deleteFileIds": {"dataType":"array","array":{"dataType":"string"}},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "Base64URLString": {
+        "dataType": "refAlias",
+        "type": {"dataType":"string","validators":{}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "PublicKeyCredentialType": {
+        "dataType": "refAlias",
+        "type": {"dataType":"enum","enums":["public-key"],"validators":{}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "AuthenticatorTransportFuture": {
+        "dataType": "refAlias",
+        "type": {"dataType":"union","subSchemas":[{"dataType":"enum","enums":["ble"]},{"dataType":"enum","enums":["cable"]},{"dataType":"enum","enums":["hybrid"]},{"dataType":"enum","enums":["internal"]},{"dataType":"enum","enums":["nfc"]},{"dataType":"enum","enums":["smart-card"]},{"dataType":"enum","enums":["usb"]}],"validators":{}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "PublicKeyCredentialDescriptorJSON": {
+        "dataType": "refObject",
+        "properties": {
+            "id": {"ref":"Base64URLString","required":true},
+            "type": {"ref":"PublicKeyCredentialType","required":true},
+            "transports": {"dataType":"array","array":{"dataType":"refAlias","ref":"AuthenticatorTransportFuture"}},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "UserVerificationRequirement": {
+        "dataType": "refAlias",
+        "type": {"dataType":"union","subSchemas":[{"dataType":"enum","enums":["discouraged"]},{"dataType":"enum","enums":["preferred"]},{"dataType":"enum","enums":["required"]}],"validators":{}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "AuthenticationExtensionsClientInputs": {
+        "dataType": "refObject",
+        "properties": {
+            "appid": {"dataType":"string"},
+            "credProps": {"dataType":"boolean"},
+            "hmacCreateSecret": {"dataType":"boolean"},
+            "minPinLength": {"dataType":"boolean"},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "PublicKeyCredentialRequestOptionsJSON": {
+        "dataType": "refObject",
+        "properties": {
+            "challenge": {"ref":"Base64URLString","required":true},
+            "timeout": {"dataType":"double"},
+            "rpId": {"dataType":"string"},
+            "allowCredentials": {"dataType":"array","array":{"dataType":"refObject","ref":"PublicKeyCredentialDescriptorJSON"}},
+            "userVerification": {"ref":"UserVerificationRequirement"},
+            "extensions": {"ref":"AuthenticationExtensionsClientInputs"},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "COSEAlgorithmIdentifier": {
+        "dataType": "refAlias",
+        "type": {"dataType":"double","validators":{}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "AuthenticatorAttestationResponseJSON": {
+        "dataType": "refObject",
+        "properties": {
+            "clientDataJSON": {"ref":"Base64URLString","required":true},
+            "attestationObject": {"ref":"Base64URLString","required":true},
+            "authenticatorData": {"ref":"Base64URLString"},
+            "transports": {"dataType":"array","array":{"dataType":"refAlias","ref":"AuthenticatorTransportFuture"}},
+            "publicKeyAlgorithm": {"ref":"COSEAlgorithmIdentifier"},
+            "publicKey": {"ref":"Base64URLString"},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "AuthenticatorAttachment": {
+        "dataType": "refAlias",
+        "type": {"dataType":"union","subSchemas":[{"dataType":"enum","enums":["cross-platform"]},{"dataType":"enum","enums":["platform"]}],"validators":{}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "CredentialPropertiesOutput": {
+        "dataType": "refObject",
+        "properties": {
+            "rk": {"dataType":"boolean"},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "AuthenticationExtensionsClientOutputs": {
+        "dataType": "refObject",
+        "properties": {
+            "appid": {"dataType":"boolean"},
+            "credProps": {"ref":"CredentialPropertiesOutput"},
+            "hmacCreateSecret": {"dataType":"boolean"},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "RegistrationResponseJSON": {
+        "dataType": "refObject",
+        "properties": {
+            "id": {"ref":"Base64URLString","required":true},
+            "rawId": {"ref":"Base64URLString","required":true},
+            "response": {"ref":"AuthenticatorAttestationResponseJSON","required":true},
+            "authenticatorAttachment": {"ref":"AuthenticatorAttachment"},
+            "clientExtensionResults": {"ref":"AuthenticationExtensionsClientOutputs","required":true},
+            "type": {"ref":"PublicKeyCredentialType","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "IVerifyRegistrationRequest": {
+        "dataType": "refObject",
+        "properties": {
+            "userId": {"dataType":"string","required":true},
+            "data": {"ref":"RegistrationResponseJSON","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "IVerifyAuthenticationResponse": {
+        "dataType": "refObject",
+        "properties": {
+            "verified": {"dataType":"boolean","required":true},
+            "tokens": {"ref":"ITokensDto"},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "AuthenticatorAssertionResponseJSON": {
+        "dataType": "refObject",
+        "properties": {
+            "clientDataJSON": {"ref":"Base64URLString","required":true},
+            "authenticatorData": {"ref":"Base64URLString","required":true},
+            "signature": {"ref":"Base64URLString","required":true},
+            "userHandle": {"ref":"Base64URLString"},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "AuthenticationResponseJSON": {
+        "dataType": "refObject",
+        "properties": {
+            "id": {"ref":"Base64URLString","required":true},
+            "rawId": {"ref":"Base64URLString","required":true},
+            "response": {"ref":"AuthenticatorAssertionResponseJSON","required":true},
+            "authenticatorAttachment": {"ref":"AuthenticatorAttachment"},
+            "clientExtensionResults": {"ref":"AuthenticationExtensionsClientOutputs","required":true},
+            "type": {"ref":"PublicKeyCredentialType","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "IVerifyAuthenticationRequest": {
+        "dataType": "refObject",
+        "properties": {
+            "userId": {"dataType":"string","required":true},
+            "data": {"ref":"AuthenticationResponseJSON","required":true},
         },
         "additionalProperties": false,
     },
@@ -1851,6 +2012,122 @@ export function RegisterRoutes(router: KoaRouter) {
             }
 
             const promise = controller.deleteFile.apply(controller, validatedArgs as any);
+            return promiseHandler(controller, promise, context, undefined, undefined);
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        router.post('/api/passkeys/generate-registration-options',
+            ...(fetchMiddlewares<Middleware>(PasskeysController)),
+            ...(fetchMiddlewares<Middleware>(PasskeysController.prototype.generateRegistrationOptions)),
+
+            async function PasskeysController_generateRegistrationOptions(context: any, next: any) {
+            const args = {
+                    undefined: {"in":"body","required":true,"dataType":"nestedObjectLiteral","nestedProperties":{"userId":{"dataType":"string","required":true}}},
+            };
+
+            let validatedArgs: any[] = [];
+            try {
+              validatedArgs = getValidatedArgs(args, context, next);
+            } catch (err) {
+              const error = err as any;
+              context.status = error.status;
+              context.throw(error.status, JSON.stringify({ fields: error.fields }));
+            }
+
+            const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(context.request) : iocContainer;
+
+            const controller: any = await container.get<PasskeysController>(PasskeysController);
+            if (typeof controller['setStatus'] === 'function') {
+                controller.setStatus(undefined);
+            }
+
+            const promise = controller.generateRegistrationOptions.apply(controller, validatedArgs as any);
+            return promiseHandler(controller, promise, context, undefined, undefined);
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        router.post('/api/passkeys/verify-registration',
+            ...(fetchMiddlewares<Middleware>(PasskeysController)),
+            ...(fetchMiddlewares<Middleware>(PasskeysController.prototype.verifyRegistration)),
+
+            async function PasskeysController_verifyRegistration(context: any, next: any) {
+            const args = {
+                    undefined: {"in":"body","required":true,"ref":"IVerifyRegistrationRequest"},
+            };
+
+            let validatedArgs: any[] = [];
+            try {
+              validatedArgs = getValidatedArgs(args, context, next);
+            } catch (err) {
+              const error = err as any;
+              context.status = error.status;
+              context.throw(error.status, JSON.stringify({ fields: error.fields }));
+            }
+
+            const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(context.request) : iocContainer;
+
+            const controller: any = await container.get<PasskeysController>(PasskeysController);
+            if (typeof controller['setStatus'] === 'function') {
+                controller.setStatus(undefined);
+            }
+
+            const promise = controller.verifyRegistration.apply(controller, validatedArgs as any);
+            return promiseHandler(controller, promise, context, undefined, undefined);
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        router.post('/api/passkeys/generate-authentication-options',
+            ...(fetchMiddlewares<Middleware>(PasskeysController)),
+            ...(fetchMiddlewares<Middleware>(PasskeysController.prototype.generateAuthenticationOptions)),
+
+            async function PasskeysController_generateAuthenticationOptions(context: any, next: any) {
+            const args = {
+                    undefined: {"in":"body","required":true,"dataType":"nestedObjectLiteral","nestedProperties":{"userId":{"dataType":"string","required":true}}},
+            };
+
+            let validatedArgs: any[] = [];
+            try {
+              validatedArgs = getValidatedArgs(args, context, next);
+            } catch (err) {
+              const error = err as any;
+              context.status = error.status;
+              context.throw(error.status, JSON.stringify({ fields: error.fields }));
+            }
+
+            const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(context.request) : iocContainer;
+
+            const controller: any = await container.get<PasskeysController>(PasskeysController);
+            if (typeof controller['setStatus'] === 'function') {
+                controller.setStatus(undefined);
+            }
+
+            const promise = controller.generateAuthenticationOptions.apply(controller, validatedArgs as any);
+            return promiseHandler(controller, promise, context, undefined, undefined);
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        router.post('/api/passkeys/verify-authentication',
+            ...(fetchMiddlewares<Middleware>(PasskeysController)),
+            ...(fetchMiddlewares<Middleware>(PasskeysController.prototype.verifyAuthentication)),
+
+            async function PasskeysController_verifyAuthentication(context: any, next: any) {
+            const args = {
+                    undefined: {"in":"body","required":true,"ref":"IVerifyAuthenticationRequest"},
+            };
+
+            let validatedArgs: any[] = [];
+            try {
+              validatedArgs = getValidatedArgs(args, context, next);
+            } catch (err) {
+              const error = err as any;
+              context.status = error.status;
+              context.throw(error.status, JSON.stringify({ fields: error.fields }));
+            }
+
+            const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(context.request) : iocContainer;
+
+            const controller: any = await container.get<PasskeysController>(PasskeysController);
+            if (typeof controller['setStatus'] === 'function') {
+                controller.setStatus(undefined);
+            }
+
+            const promise = controller.verifyAuthentication.apply(controller, validatedArgs as any);
             return promiseHandler(controller, promise, context, undefined, undefined);
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa

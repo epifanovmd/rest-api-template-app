@@ -955,6 +955,313 @@
 				"type": "object",
 				"additionalProperties": false
 			},
+			"Base64URLString": {
+				"type": "string",
+				"description": "An attempt to communicate that this isn't just any string, but a Base64URL-encoded string"
+			},
+			"PublicKeyCredentialType": {
+				"type": "string",
+				"enum": [
+					"public-key"
+				],
+				"nullable": false
+			},
+			"AuthenticatorTransportFuture": {
+				"type": "string",
+				"enum": [
+					"ble",
+					"cable",
+					"hybrid",
+					"internal",
+					"nfc",
+					"smart-card",
+					"usb"
+				],
+				"description": "A super class of TypeScript's `AuthenticatorTransport` that includes support for the latest\ntransports. Should eventually be replaced by TypeScript's when TypeScript gets updated to\nknow about it (sometime after 4.6.3)"
+			},
+			"PublicKeyCredentialDescriptorJSON": {
+				"description": "https://w3c.github.io/webauthn/#dictdef-publickeycredentialdescriptorjson",
+				"properties": {
+					"id": {
+						"$ref": "#/components/schemas/Base64URLString"
+					},
+					"type": {
+						"$ref": "#/components/schemas/PublicKeyCredentialType"
+					},
+					"transports": {
+						"items": {
+							"$ref": "#/components/schemas/AuthenticatorTransportFuture"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"id",
+					"type"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"UserVerificationRequirement": {
+				"type": "string",
+				"enum": [
+					"discouraged",
+					"preferred",
+					"required"
+				]
+			},
+			"AuthenticationExtensionsClientInputs": {
+				"properties": {
+					"appid": {
+						"type": "string"
+					},
+					"credProps": {
+						"type": "boolean"
+					},
+					"hmacCreateSecret": {
+						"type": "boolean"
+					},
+					"minPinLength": {
+						"type": "boolean"
+					}
+				},
+				"type": "object",
+				"additionalProperties": false
+			},
+			"PublicKeyCredentialRequestOptionsJSON": {
+				"description": "A variant of PublicKeyCredentialRequestOptions suitable for JSON transmission to the browser to\n(eventually) get passed into navigator.credentials.get(...) in the browser.",
+				"properties": {
+					"challenge": {
+						"$ref": "#/components/schemas/Base64URLString"
+					},
+					"timeout": {
+						"type": "number",
+						"format": "double"
+					},
+					"rpId": {
+						"type": "string"
+					},
+					"allowCredentials": {
+						"items": {
+							"$ref": "#/components/schemas/PublicKeyCredentialDescriptorJSON"
+						},
+						"type": "array"
+					},
+					"userVerification": {
+						"$ref": "#/components/schemas/UserVerificationRequirement"
+					},
+					"extensions": {
+						"$ref": "#/components/schemas/AuthenticationExtensionsClientInputs"
+					}
+				},
+				"required": [
+					"challenge"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"COSEAlgorithmIdentifier": {
+				"type": "number",
+				"format": "double"
+			},
+			"AuthenticatorAttestationResponseJSON": {
+				"description": "A slightly-modified AuthenticatorAttestationResponse to simplify working with ArrayBuffers that\nare Base64URL-encoded in the browser so that they can be sent as JSON to the server.\n\nhttps://w3c.github.io/webauthn/#dictdef-authenticatorattestationresponsejson",
+				"properties": {
+					"clientDataJSON": {
+						"$ref": "#/components/schemas/Base64URLString"
+					},
+					"attestationObject": {
+						"$ref": "#/components/schemas/Base64URLString"
+					},
+					"authenticatorData": {
+						"$ref": "#/components/schemas/Base64URLString"
+					},
+					"transports": {
+						"items": {
+							"$ref": "#/components/schemas/AuthenticatorTransportFuture"
+						},
+						"type": "array"
+					},
+					"publicKeyAlgorithm": {
+						"$ref": "#/components/schemas/COSEAlgorithmIdentifier"
+					},
+					"publicKey": {
+						"$ref": "#/components/schemas/Base64URLString"
+					}
+				},
+				"required": [
+					"clientDataJSON",
+					"attestationObject"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"AuthenticatorAttachment": {
+				"type": "string",
+				"enum": [
+					"cross-platform",
+					"platform"
+				]
+			},
+			"CredentialPropertiesOutput": {
+				"properties": {
+					"rk": {
+						"type": "boolean"
+					}
+				},
+				"type": "object",
+				"additionalProperties": false
+			},
+			"AuthenticationExtensionsClientOutputs": {
+				"properties": {
+					"appid": {
+						"type": "boolean"
+					},
+					"credProps": {
+						"$ref": "#/components/schemas/CredentialPropertiesOutput"
+					},
+					"hmacCreateSecret": {
+						"type": "boolean"
+					}
+				},
+				"type": "object",
+				"additionalProperties": false
+			},
+			"RegistrationResponseJSON": {
+				"description": "A slightly-modified RegistrationCredential to simplify working with ArrayBuffers that\nare Base64URL-encoded in the browser so that they can be sent as JSON to the server.\n\nhttps://w3c.github.io/webauthn/#dictdef-registrationresponsejson",
+				"properties": {
+					"id": {
+						"$ref": "#/components/schemas/Base64URLString"
+					},
+					"rawId": {
+						"$ref": "#/components/schemas/Base64URLString"
+					},
+					"response": {
+						"$ref": "#/components/schemas/AuthenticatorAttestationResponseJSON"
+					},
+					"authenticatorAttachment": {
+						"$ref": "#/components/schemas/AuthenticatorAttachment"
+					},
+					"clientExtensionResults": {
+						"$ref": "#/components/schemas/AuthenticationExtensionsClientOutputs"
+					},
+					"type": {
+						"$ref": "#/components/schemas/PublicKeyCredentialType"
+					}
+				},
+				"required": [
+					"id",
+					"rawId",
+					"response",
+					"clientExtensionResults",
+					"type"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IVerifyRegistrationRequest": {
+				"properties": {
+					"userId": {
+						"type": "string"
+					},
+					"data": {
+						"$ref": "#/components/schemas/RegistrationResponseJSON"
+					}
+				},
+				"required": [
+					"userId",
+					"data"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IVerifyAuthenticationResponse": {
+				"properties": {
+					"verified": {
+						"type": "boolean"
+					},
+					"tokens": {
+						"$ref": "#/components/schemas/ITokensDto"
+					}
+				},
+				"required": [
+					"verified"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"AuthenticatorAssertionResponseJSON": {
+				"description": "A slightly-modified AuthenticatorAssertionResponse to simplify working with ArrayBuffers that\nare Base64URL-encoded in the browser so that they can be sent as JSON to the server.\n\nhttps://w3c.github.io/webauthn/#dictdef-authenticatorassertionresponsejson",
+				"properties": {
+					"clientDataJSON": {
+						"$ref": "#/components/schemas/Base64URLString"
+					},
+					"authenticatorData": {
+						"$ref": "#/components/schemas/Base64URLString"
+					},
+					"signature": {
+						"$ref": "#/components/schemas/Base64URLString"
+					},
+					"userHandle": {
+						"$ref": "#/components/schemas/Base64URLString"
+					}
+				},
+				"required": [
+					"clientDataJSON",
+					"authenticatorData",
+					"signature"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"AuthenticationResponseJSON": {
+				"description": "A slightly-modified AuthenticationCredential to simplify working with ArrayBuffers that\nare Base64URL-encoded in the browser so that they can be sent as JSON to the server.\n\nhttps://w3c.github.io/webauthn/#dictdef-authenticationresponsejson",
+				"properties": {
+					"id": {
+						"$ref": "#/components/schemas/Base64URLString"
+					},
+					"rawId": {
+						"$ref": "#/components/schemas/Base64URLString"
+					},
+					"response": {
+						"$ref": "#/components/schemas/AuthenticatorAssertionResponseJSON"
+					},
+					"authenticatorAttachment": {
+						"$ref": "#/components/schemas/AuthenticatorAttachment"
+					},
+					"clientExtensionResults": {
+						"$ref": "#/components/schemas/AuthenticationExtensionsClientOutputs"
+					},
+					"type": {
+						"$ref": "#/components/schemas/PublicKeyCredentialType"
+					}
+				},
+				"required": [
+					"id",
+					"rawId",
+					"response",
+					"clientExtensionResults",
+					"type"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IVerifyAuthenticationRequest": {
+				"properties": {
+					"userId": {
+						"type": "string"
+					},
+					"data": {
+						"$ref": "#/components/schemas/AuthenticationResponseJSON"
+					}
+				},
+				"required": [
+					"userId",
+					"data"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
 			"IProfileDto": {
 				"properties": {
 					"id": {
@@ -2911,6 +3218,166 @@
 						}
 					}
 				]
+			}
+		},
+		"/api/passkeys/generate-registration-options": {
+			"post": {
+				"operationId": "GenerateRegistrationOptions",
+				"responses": {
+					"200": {
+						"description": "Параметры для регистрации устройства, соответствующие спецификации WebAuthn.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/PublicKeyCredentialRequestOptionsJSON"
+								}
+							}
+						}
+					}
+				},
+				"description": "Генерирует параметры для регистрации нового устройства с использованием Passkeys.\nЭтот эндпоинт используется для создания параметров, которые будут отправлены клиенту для\nрегистрации нового устройства. Клиент должен будет выполнить регистрацию, используя данные\nсгенерированные этим запросом.",
+				"summary": "Генерация параметров регистрации",
+				"tags": [
+					"Passkeys"
+				],
+				"security": [],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"properties": {
+									"userId": {
+										"type": "string"
+									}
+								},
+								"required": [
+									"userId"
+								],
+								"type": "object"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/passkeys/verify-registration": {
+			"post": {
+				"operationId": "VerifyRegistration",
+				"responses": {
+					"200": {
+						"description": "Объект, который сообщает, был ли процесс регистрации успешным.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"verified": {
+											"type": "boolean"
+										}
+									},
+									"required": [
+										"verified"
+									],
+									"type": "object"
+								}
+							}
+						}
+					}
+				},
+				"description": "Проверяет данные регистрации для нового устройства.\nЭтот эндпоинт используется для подтверждения данных, которые были отправлены клиентом\nпосле попытки регистрации нового устройства. Он валидирует предоставленные данные\nи завершает процесс регистрации.",
+				"summary": "Проверка данных регистрации",
+				"tags": [
+					"Passkeys"
+				],
+				"security": [],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IVerifyRegistrationRequest"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/passkeys/generate-authentication-options": {
+			"post": {
+				"operationId": "GenerateAuthenticationOptions",
+				"responses": {
+					"200": {
+						"description": "Параметры для аутентификации устройства, соответствующие спецификации WebAuthn.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/PublicKeyCredentialRequestOptionsJSON"
+								}
+							}
+						}
+					}
+				},
+				"description": "Генерирует параметры для аутентификации пользователя с использованием Passkeys.\nЭтот эндпоинт создает параметры аутентификации, которые будут отправлены клиенту для\nвыполнения аутентификации с помощью Passkeys. Эти параметры используются клиентом для\nвызова аутентификации на его устройстве.",
+				"summary": "Генерация параметров аутентификации",
+				"tags": [
+					"Passkeys"
+				],
+				"security": [],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"properties": {
+									"userId": {
+										"type": "string"
+									}
+								},
+								"required": [
+									"userId"
+								],
+								"type": "object"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/passkeys/verify-authentication": {
+			"post": {
+				"operationId": "VerifyAuthentication",
+				"responses": {
+					"200": {
+						"description": "Ответ, который включает в себя результат аутентификации и другие данные.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IVerifyAuthenticationResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Проверяет данные аутентификации для пользователя.\nЭтот эндпоинт проверяет данные аутентификации, которые были отправлены с клиентской стороны,\nи завершается успешной или неудачной аутентификацией в зависимости от результатов проверки.",
+				"summary": "Проверка данных аутентификации",
+				"tags": [
+					"Passkeys"
+				],
+				"security": [],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IVerifyAuthenticationRequest"
+							}
+						}
+					}
+				}
 			}
 		},
 		"/api/profile/my": {

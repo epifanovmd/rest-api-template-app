@@ -2,7 +2,7 @@ import { InternalServerErrorException } from "@force-dev/utils";
 import { createVerify, randomBytes } from "crypto";
 import { inject, injectable } from "inversify";
 
-import { Injectable } from "../../decorators/injectable.decorator";
+import { Injectable } from "../../core";
 import { AuthService } from "../auth";
 import { UserService } from "../user";
 import { Biometric } from "./biometric.model";

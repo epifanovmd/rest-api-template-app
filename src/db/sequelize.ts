@@ -3,25 +3,21 @@ import { Sequelize } from "sequelize";
 import { config } from "../../config";
 
 const {
-  POSTGRES_DB,
-  POSTGRES_HOST,
-  POSTGRES_PORT,
-  POSTGRES_USER,
-  POSTGRES_PASSWORD,
+  database: { postgres },
 } = config;
 
 export const sequelize = new Sequelize(
-  POSTGRES_DB,
-  POSTGRES_USER,
-  POSTGRES_PASSWORD,
+  postgres.database,
+  postgres.username,
+  postgres.password,
   {
     define: {
       timestamps: true,
     },
     dialect: "postgres",
-    host: POSTGRES_HOST,
+    host: postgres.host,
     logging: false,
-    port: POSTGRES_PORT,
+    port: postgres.port,
   },
 );
 

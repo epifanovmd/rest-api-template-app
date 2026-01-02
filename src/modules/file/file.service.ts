@@ -5,7 +5,7 @@ import { File } from "tsoa";
 import { v4 } from "uuid";
 
 import { config } from "../../../config";
-import { Injectable } from "../../decorators/injectable.decorator";
+import { Injectable } from "../../core";
 import { Files, IFileDto } from "./file.model";
 
 @Injectable()
@@ -51,14 +51,14 @@ export class FileService {
 
   private _deleteFileFromServer(url: string) {
     try {
-      fs.readdir(config.SERVER_FILES_FOLDER_PATH, err => {
+      fs.readdir(config.server.filesFolderPath, err => {
         if (err) {
           throw Promise.resolve(err);
         }
 
         const file = url.split("/")?.[1];
 
-        fs.unlink(path.join(config.SERVER_FILES_FOLDER_PATH, file), err => {
+        fs.unlink(path.join(config.server.filesFolderPath, file), err => {
           if (err) {
             throw Promise.resolve(err);
           }

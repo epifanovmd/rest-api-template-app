@@ -1,5 +1,6 @@
 {
-  "entryFile": "./src/app.controllers.ts",
+  "entryFile": "./src/main.ts",
+  "controllerPathGlobs": ["./src/modules/**/*.*controller.ts"],
   "noImplicitAdditionalProperties": "silently-remove-extras",
   "spec": {
     "schemes": [
@@ -34,7 +35,6 @@
   },
   "routes": {
     "authenticationModule": "./src/middleware/authenticate.middleware.ts",
-    "entryFile": "./src/app.controllers.ts",
     "routesDir": "./src",
     "basePath": "/",
     "middleware": "koa",

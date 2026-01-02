@@ -10,15 +10,13 @@ import { ERole, IRoleDto, Role } from "../../modules/role/role.model";
 import { IUserDto, User } from "../../modules/user/user.model";
 import { JWTDecoded } from "../../types/koa";
 
-export const { JWT_SECRET_KEY } = config;
-
 type RoleStrings = `role:${ERole}`;
 type PermissionStrings = `permission:${EPermissions}`;
 export type SecurityScopes = (RoleStrings | PermissionStrings)[];
 
 export const createToken = (userId: string, opts?: SignOptions) =>
   new Promise<string>(resolve => {
-    resolve(sign({ userId }, JWT_SECRET_KEY, opts));
+    resolve(sign({ userId }, config.auth.jwt.secretKey, opts));
   });
 
 export const createTokenAsync = (
@@ -29,7 +27,7 @@ export const verifyToken = (token: string) => {
   return new Promise<JWTDecoded>((resolve, reject) => {
     jwt.verify(
       token,
-      JWT_SECRET_KEY,
+      config.auth.jwt.secretKey,
       async (err: VerifyErrors, decoded: JWTDecoded) => {
         if (err) {
           reject(err);
@@ -51,7 +49,7 @@ export const verifyAuthToken = async (
     } else {
       jwt.verify(
         token,
-        JWT_SECRET_KEY,
+        config.auth.jwt.secretKey,
         async (err: VerifyErrors, decoded: JWTDecoded) => {
           if (err) {
             reject(err);
