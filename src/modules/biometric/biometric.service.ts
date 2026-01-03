@@ -2,31 +2,28 @@ import { InternalServerErrorException } from "@force-dev/utils";
 import { createVerify, randomBytes } from "crypto";
 import { inject, injectable } from "inversify";
 
-import { Injectable, sequelize } from "../../core";
+import { Injectable } from "../../core";
 import { AuthService } from "../auth";
 import { UserService } from "../user";
-import { Biometric } from "./biometric.model";
+import { BiometricRepository } from "./biometric.repository";
 
 @Injectable()
 export class BiometricService {
   constructor(
     @inject(UserService) private _userService: UserService,
     @inject(AuthService) private _authService: AuthService,
+    @inject(BiometricRepository)
+    private _biometricRepository: BiometricRepository,
   ) {}
 
-  /**
-   * Регистрация биометрического ключа
-   */
   async registerBiometric(
     userId: string,
     deviceId: string,
     deviceName: string,
     publicKey: string,
   ) {
-    const user = await this._userService.getUser(userId);
-
-    await Biometric.upsert({
-      userId: user.id,
+    await this._biometricRepository.upsert({
+      userId,
       deviceId,
       deviceName,
       publicKey,
@@ -34,31 +31,25 @@ export class BiometricService {
     });
   }
 
-  /**
-   * Генерация nonce для входа
-   */
   async generateNonce(userId: string) {
     const user = await this._userService.getUser(userId);
     const nonce = randomBytes(32).toString("base64url");
 
-    user.challenge = nonce;
-    await user.save();
+    await this._userService.updateUser(user.id, { challenge: nonce });
 
     return { nonce };
   }
 
-  /**
-   * Проверка подписи и выдача токенов
-   */
   async verifyBiometricSignature(
     userId: string,
     deviceId: string,
     signature: string,
   ) {
     const user = await this._userService.getUser(userId);
-    const biometric = await Biometric.findOne({
-      where: { userId, deviceId },
-    });
+    const biometric = await this._biometricRepository.findByUserIdAndDeviceId(
+      userId,
+      deviceId,
+    );
 
     if (!user?.challenge) {
       throw new InternalServerErrorException("Challenge not found");
@@ -79,7 +70,7 @@ export class BiometricService {
     }
 
     biometric.lastUsedAt = new Date();
-    await biometric.save();
+    await this._biometricRepository.save(biometric);
 
     return {
       verified: true,
@@ -87,9 +78,6 @@ export class BiometricService {
     };
   }
 
-  /**
-   * Проверка подписи (на основе SHA256 и ECDSA)
-   */
   private _verifySignature({
     publicKey,
     message,
@@ -114,9 +102,6 @@ export class BiometricService {
     }
   }
 
-  /**
-   * Конвертирует base64 publicKey → PEM
-   */
   private _convertPublicKeyToPEM(base64Key: string): string {
     const keyBuffer = Buffer.from(base64Key, "base64");
     const base64Pem = keyBuffer

@@ -1,7 +1,7 @@
 import { inject } from "inversify";
 import { Body, Controller, Post, Route, Tags } from "tsoa";
 
-import { ApiResponse, Injectable, sequelize } from "../../core";
+import { ApiResponse, Injectable } from "../../core";
 import { AuthService } from "./auth.service";
 import {
   ISignInRequest,

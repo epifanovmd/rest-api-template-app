@@ -1,16 +1,15 @@
 import { NotFoundException } from "@force-dev/utils";
-import { inject } from "inversify";
-import { col, fn, Includeable, Op, Sequelize, where } from "sequelize";
+import { inject, injectable } from "inversify";
+import { DataSource, In } from "typeorm";
 
-import { Injectable, sequelize } from "../../core";
+import { Injectable } from "../../core";
 import { DialogMembersService } from "../dialog-members";
-import { DialogMembers } from "../dialog-members/dialog-members.model";
-import { DialogMessages } from "../dialog-messages/dialog-messages.model";
-import { DialogMessagesService } from "../dialog-messages/dialog-messages.service";
+import { DialogMembersRepository } from "../dialog-members/dialog-members.repository";
+import { DialogMessagesRepository } from "../dialog-messages/dialog-messages.repository";
 import { SocketService } from "../socket";
-import { UserService } from "../user";
-import { User } from "../user/user.model";
-import { Dialog, DialogCreateRequest } from "./dialog.model";
+import { UserRepository } from "../user/user.repository";
+import { DialogCreateRequest } from "./dialog.dto";
+import { DialogRepository } from "./dialog.repository";
 
 @Injectable()
 export class DialogService {
@@ -18,221 +17,279 @@ export class DialogService {
     @inject(DialogMembersService)
     private _dialogMembersService: DialogMembersService,
     @inject(SocketService) private _socketService: SocketService,
+    @inject(DialogRepository) private _dialogRepository: DialogRepository,
+    @inject(DialogMembersRepository)
+    private _dialogMembersRepository: DialogMembersRepository,
+    @inject(DialogMessagesRepository)
+    private _dialogMessagesRepository: DialogMessagesRepository,
+    @inject(UserRepository) private _userRepository: UserRepository,
+    @inject("DataSource") private _dataSource: DataSource,
   ) {}
 
-  getUnreadMessagesCount = (userId: string, dialogId?: string) => {
-    return DialogMessages.count({
-      where: {
-        received: false,
-        ...(dialogId ? { dialogId } : {}),
-        userId: {
-          [Op.not]: userId,
-        },
-      },
-    });
-  };
+  async getUnreadMessagesCount(
+    userId: string,
+    dialogId?: string,
+  ): Promise<number> {
+    return this._dialogMessagesRepository.countUnreadMessages(userId, dialogId);
+  }
 
-  getDialogs = async (userId: string, offset?: number, limit?: number) => {
-    const dialogIds = await DialogMembers.findAll({
-      attributes: ["dialogId"],
-      where: { userId },
-      raw: true,
-    }).then(res => res.map(row => row.dialogId)); // Извлекаем массив dialogId
+  async getDialogs(userId: string, offset?: number, limit?: number) {
+    // Получаем ID диалогов пользователя
+    const userDialogs = await this._dialogMembersRepository.findByUserId(
+      userId,
+    );
+    const dialogIds = userDialogs.map(member => member.dialogId);
 
-    return await Dialog.findAll({
-      offset,
-      limit,
-      subQuery: false,
-      attributes: {
-        include: [
-          [fn("COUNT", col("dialogMessages.id")), "unreadMessagesCount"],
-        ],
-      },
-      group: [
-        "dialog.id",
-        "owner.id",
-        "owner->role.id",
-        "owner->role->permissions.id",
-      ],
-      where: {
-        id: {
-          [Op.in]: dialogIds,
-        },
-      },
-      include: DialogService.include(userId),
-      order: [
-        [
-          Sequelize.literal(`(
-        SELECT "createdAt"
-        FROM "dialog-messages" AS dm
-        WHERE dm."dialogId" = "dialog"."id"
-        ORDER BY "createdAt" DESC
-        LIMIT 1
-      )`),
-          "DESC",
-        ],
-      ],
-    });
-  };
-
-  getDialog = async (id: string, userId: string) => {
-    // Проверка на участие в диалоге
-    const dialog = await Dialog.findOne({
-      where: { id },
-      include: [
-        {
-          attributes: [],
-          model: DialogMembers,
-          where: {
-            dialogId: id,
-            userId,
-          },
-        },
-      ],
-    });
-
-    if (!dialog) {
-      return Promise.reject(new NotFoundException("Диалог не найден"));
+    if (dialogIds.length === 0) {
+      return [];
     }
 
-    return Dialog.findByPk(id, {
-      subQuery: false,
-      attributes: {
-        include: [
-          [fn("COUNT", col("dialogMessages.id")), "unreadMessagesCount"],
-        ],
-      },
-      group: [
-        "dialog.id",
-        "owner.id",
-        "owner->role.id",
-        "owner->role->permissions.id",
-      ],
-      include: DialogService.include(userId),
-    }).then(result => {
-      if (result === null) {
-        return Promise.reject(new NotFoundException("Диалог не найден"));
-      }
-
-      return result;
-    });
-  };
-
-  findDialog = async (userId: string, recipientId: string[] = []) => {
-    const userIds = Array.from(new Set(recipientId).add(userId));
-
-    const dialogs = await Dialog.findAll({
-      include: [
-        {
-          model: DialogMembers,
-          attributes: [],
-          where: {
-            userId: {
-              [Op.in]: userIds,
-            },
-          },
-          required: true,
-        },
-      ],
-      group: ["dialog.id"],
-      having: where(fn("COUNT", fn("DISTINCT", col("members.userId"))), {
-        [Op.gte]: userIds.length,
-      }),
-      raw: true,
-    });
-
-    return dialogs.map(item => item.id);
-  };
-
-  createDialog = async (userId: string, body: DialogCreateRequest) => {
-    const users = (
-      await Promise.all(
-        body.recipientId.map(recipientId =>
-          User.findByPk(recipientId).catch(() => null),
-        ),
+    // Используем QueryBuilder для сложного запроса
+    const queryBuilder = this._dataSource
+      .getRepository("Dialog")
+      .createQueryBuilder("dialog")
+      .leftJoinAndSelect("dialog.owner", "owner")
+      .leftJoinAndSelect("owner.role", "ownerRole")
+      .leftJoinAndSelect("ownerRole.permissions", "ownerPermissions")
+      .leftJoin("dialog.members", "members")
+      .leftJoinAndSelect("members.user", "memberUser")
+      .leftJoinAndSelect("memberUser.role", "memberUserRole")
+      .leftJoinAndSelect("memberUserRole.permissions", "memberUserPermissions")
+      .leftJoin("dialog.messages", "messages")
+      .leftJoinAndMapOne(
+        "dialog.lastMessage",
+        "dialog.messages",
+        "lastMessage",
+        "lastMessage.id = (SELECT id FROM dialog_messages WHERE dialog_id = dialog.id ORDER BY created_at DESC LIMIT 1)",
       )
-    ).every(Boolean);
+      .leftJoinAndSelect("lastMessage.user", "lastMessageUser")
+      .leftJoinAndSelect("lastMessageUser.role", "lastMessageUserRole")
+      .addSelect(subQuery => {
+        return subQuery
+          .select("COUNT(unreadMessages.id)", "unreadCount")
+          .from("dialog_messages", "unreadMessages")
+          .where("unreadMessages.dialog_id = dialog.id")
+          .andWhere("unreadMessages.received = false")
+          .andWhere("unreadMessages.user_id != :userId", { userId });
+      }, "dialog_unreadMessagesCount")
+      .where("dialog.id IN (:...dialogIds)", { dialogIds })
+      .orderBy("lastMessage.createdAt", "DESC")
+      .addOrderBy("dialog.createdAt", "DESC")
+      .groupBy("dialog.id")
+      .addGroupBy("owner.id")
+      .addGroupBy("ownerRole.id")
+      .addGroupBy("members.id")
+      .addGroupBy("memberUser.id")
+      .addGroupBy("memberUserRole.id")
+      .addGroupBy("lastMessage.id")
+      .addGroupBy("lastMessageUser.id")
+      .addGroupBy("lastMessageUserRole.id");
 
-    if (!users) {
-      return Promise.reject(new NotFoundException("Пользователь не найден"));
+    if (limit !== undefined) {
+      queryBuilder.limit(limit);
     }
 
-    const dialog = await Dialog.create({
-      ownerId: userId,
+    if (offset !== undefined) {
+      queryBuilder.offset(offset);
+    }
+
+    const dialogs = await queryBuilder.getMany();
+
+    // Преобразуем результаты в DTO
+    return dialogs.map(dialog => {
+      const dto = dialog.toDTO();
+
+      // Получаем количество непрочитанных сообщений
+      const unreadCount =
+        dialogs.find(d => d.id === dialog.id)?.["unreadMessagesCount"] || 0;
+
+      dto.unreadMessagesCount = parseInt(unreadCount, 10) || 0;
+
+      return dto;
     });
+  }
 
-    await this._dialogMembersService.addMembers({
-      dialogId: dialog.id,
-      members: Array.from(new Set(body.recipientId).add(userId)),
-    });
+  async getDialog(id: string, userId: string) {
+    // Проверяем участие пользователя в диалоге
+    const member = await this._dialogMembersRepository.findByUserIdAndDialogId(
+      userId,
+      id,
+    );
 
-    return this.getDialog(dialog.id, userId);
-  };
+    if (!member) {
+      throw new NotFoundException("Диалог не найден");
+    }
 
-  removeDialog = async (id: string) => {
-    const dialog = await Dialog.findByPk(id);
+    const queryBuilder = this._dataSource
+      .getRepository("Dialog")
+      .createQueryBuilder("dialog")
+      .leftJoinAndSelect("dialog.owner", "owner")
+      .leftJoinAndSelect("owner.role", "ownerRole")
+      .leftJoinAndSelect("ownerRole.permissions", "ownerPermissions")
+      .leftJoinAndSelect("dialog.members", "members")
+      .leftJoinAndSelect("members.user", "memberUser")
+      .leftJoinAndSelect("memberUser.role", "memberUserRole")
+      .leftJoinAndSelect("memberUserRole.permissions", "memberUserPermissions")
+      .leftJoin("dialog.messages", "messages")
+      .leftJoinAndMapOne(
+        "dialog.lastMessage",
+        "dialog.messages",
+        "lastMessage",
+        "lastMessage.id = (SELECT id FROM dialog_messages WHERE dialog_id = dialog.id ORDER BY created_at DESC LIMIT 1)",
+      )
+      .leftJoinAndSelect("lastMessage.user", "lastMessageUser")
+      .leftJoinAndSelect("lastMessageUser.role", "lastMessageUserRole")
+      .addSelect(subQuery => {
+        return subQuery
+          .select("COUNT(unreadMessages.id)", "unreadCount")
+          .from("dialog_messages", "unreadMessages")
+          .where("unreadMessages.dialog_id = dialog.id")
+          .andWhere("unreadMessages.received = false")
+          .andWhere("unreadMessages.user_id != :userId", { userId });
+      }, "dialog_unreadMessagesCount")
+      .where("dialog.id = :id", { id })
+      .groupBy("dialog.id")
+      .addGroupBy("owner.id")
+      .addGroupBy("ownerRole.id")
+      .addGroupBy("members.id")
+      .addGroupBy("memberUser.id")
+      .addGroupBy("memberUserRole.id")
+      .addGroupBy("lastMessage.id")
+      .addGroupBy("lastMessageUser.id")
+      .addGroupBy("lastMessageUserRole.id");
+
+    const dialog = await queryBuilder.getOne();
 
     if (!dialog) {
-      return Promise.reject(new NotFoundException("Диалог не найден"));
+      throw new NotFoundException("Диалог не найден");
     }
 
-    const members = await dialog.getMembers();
+    const dto = dialog.toDTO();
+    const unreadCount = dialog["unreadMessagesCount"] || 0;
 
-    members.forEach(({ userId }) => {
-      const client = this._socketService.getClient(userId);
+    dto.unreadMessagesCount = parseInt(unreadCount, 10) || 0;
 
-      if (client) {
-        client.emit("deleteDialog", id);
+    return dto;
+  }
+
+  async findDialog(userId: string, recipientIds: string[] = []) {
+    const userIds = Array.from(new Set([userId, ...recipientIds]));
+
+    if (userIds.length < 2) {
+      return [];
+    }
+
+    const queryBuilder = this._dataSource
+      .createQueryBuilder()
+      .select("dialog.id", "id")
+      .from("Dialog", "dialog")
+      .innerJoin("dialog.members", "members")
+      .where("members.userId IN (:...userIds)", { userIds })
+      .groupBy("dialog.id")
+      .having("COUNT(DISTINCT members.userId) = :userCount", {
+        userCount: userIds.length,
+      });
+
+    const result = await queryBuilder.getRawMany();
+
+    return result.map(row => row.id);
+  }
+
+  async createDialog(userId: string, body: DialogCreateRequest) {
+    const queryRunner = this._dataSource.createQueryRunner();
+
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      // Проверяем существование пользователей
+      const users = await Promise.all(
+        body.recipientId.map(recipientId =>
+          this._userRepository.findById(recipientId),
+        ),
+      );
+
+      const allUsersExist = users.every(user => user !== null);
+
+      if (!allUsersExist) {
+        throw new NotFoundException(
+          "Один или несколько пользователей не найдены",
+        );
       }
-    });
 
-    return dialog.destroy();
-  };
+      // Создаем диалог
+      const dialog = await this._dialogRepository.create({
+        ownerId: userId,
+      });
 
-  static include(userId: string): Includeable[] {
-    return [
-      // Подсчёт непрочитанных сообщений
-      {
-        model: DialogMessages,
-        attributes: [],
-        where: {
-          received: false,
-          userId: {
-            [Op.not]: userId,
-          },
-        },
-        required: false,
-      },
-      // Получаем последнее сообщение
-      {
-        model: DialogMessages,
-        as: "lastMessage", // alias для последнего сообщения
-        order: [["createdAt", "DESC"]],
-        limit: 1, // Ограничиваем 1 сообщением
-        include: DialogMessagesService.include,
-      },
-      // Подключение участников диалога
-      {
-        model: DialogMembers,
-        required: true,
-        separate: true,
-        include: [
-          {
-            model: User,
-            required: true,
-            attributes: UserService.attributes,
-            include: UserService.include,
-          },
-        ],
-      },
-      // Подключение владельца диалога
-      {
-        model: User,
-        attributes: UserService.attributes,
-        as: "owner",
-        required: true,
-        include: UserService.include,
-      },
-    ];
+      // Добавляем участников
+      const members = Array.from(new Set([userId, ...body.recipientId]));
+
+      await this._dialogMembersService.addMembers({
+        dialogId: dialog.id,
+        members,
+      });
+
+      await queryRunner.commitTransaction();
+
+      // Получаем полный объект диалога
+      return this.getDialog(dialog.id, userId);
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
+  async removeDialog(id: string) {
+    const queryRunner = this._dataSource.createQueryRunner();
+
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      const dialog = await this._dialogRepository.findById(id, {
+        members: true,
+      });
+
+      if (!dialog) {
+        throw new NotFoundException("Диалог не найден");
+      }
+
+      // Уведомляем участников
+      dialog.members.forEach(member => {
+        const client = this._socketService.getClient(member.userId);
+
+        if (client) {
+          client.emit("deleteDialog", id);
+        }
+      });
+
+      // Удаляем диалог
+      const deleted = await this._dialogRepository.delete(id);
+
+      if (!deleted) {
+        throw new NotFoundException("Не удалось удалить диалог");
+      }
+
+      await queryRunner.commitTransaction();
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
+  async updateDialogLastMessage(dialogId: string, messageId: string) {
+    await this._dataSource
+      .createQueryBuilder()
+      .update("Dialog")
+      .set({ lastMessageId: messageId })
+      .where("id = :dialogId", { dialogId })
+      .execute();
+
+    return true;
   }
 }

@@ -14,13 +14,7 @@ import {
 } from "tsoa";
 
 import { getContextUser } from "../../common";
-import {
-  ApiResponse,
-  AuthGuard,
-  Injectable,
-  sequelize,
-  UseGuards,
-} from "../../core";
+import { ApiResponse, Injectable } from "../../core";
 import { KoaRequest } from "../../types/koa";
 import {
   IUserDto,
@@ -28,7 +22,7 @@ import {
   IUserPassword,
   IUserPrivilegesRequest,
   IUserUpdateRequest,
-} from "./user.model";
+} from "./user.dto";
 import { UserService } from "./user.service";
 
 @Injectable()
@@ -154,7 +148,7 @@ export class UserController extends Controller {
    */
   @Security("jwt")
   @Post("requestVerifyEmail")
-  requestVerifyEmail(@Request() req: KoaRequest): Promise<void> {
+  requestVerifyEmail(@Request() req: KoaRequest): Promise<boolean> {
     const user = getContextUser(req);
 
     return this._userService.requestVerifyEmail(user.id, user.email);

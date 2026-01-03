@@ -12,8 +12,8 @@ import {
   UploadedFile,
 } from "tsoa";
 
-import { Injectable, sequelize } from "../../core";
-import { IFileDto } from "./file.model";
+import { Injectable } from "../../core";
+import { IFileDto } from "./file.dto";
 import { FileService } from "./file.service";
 
 @Injectable()
@@ -64,7 +64,7 @@ export class FileController extends Controller {
    */
   @Security("jwt")
   @Delete("/{id}")
-  deleteFile(id: string): Promise<number> {
+  deleteFile(id: string): Promise<boolean> {
     return this._fileService.deleteFile(id);
   }
 }

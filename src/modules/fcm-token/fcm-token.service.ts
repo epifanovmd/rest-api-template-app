@@ -6,11 +6,11 @@ import axios from "axios";
 import admin from "firebase-admin";
 import { Message } from "firebase-admin/lib/messaging/messaging-api";
 import fs from "fs";
-import { injectable } from "inversify";
+import { inject, injectable } from "inversify";
 import path from "path";
 
-import { Injectable, sequelize } from "../../core";
-import { FcmToken } from "./fcm-token.model";
+import { Injectable } from "../../core";
+import { FcmTokenRepository } from "./fcm-token.repository";
 import { ApnRegisterTokenResponse, FCMMessage } from "./fcm-token.types";
 
 const BATCH_IMPORT_URL = "https://iid.googleapis.com/iid/v1:batchImport";
@@ -51,7 +51,9 @@ export class FcmTokenService {
     },
   });
 
-  constructor() {
+  constructor(
+    @inject(FcmTokenRepository) private _fcmTokenRepository: FcmTokenRepository,
+  ) {
     if (firebaseAdmin !== null && firebaseCredential !== null) {
       this.getAccessToken().then(token => {
         this._accessToken = token;
@@ -59,55 +61,56 @@ export class FcmTokenService {
     }
   }
 
-  getTokens = (userId: string) =>
-    FcmToken.findAll({ where: { userId } }).then(result => {
-      if (result === null) {
-        return Promise.reject(new NotFoundException());
+  async getTokens(userId: string) {
+    const tokens = await this._fcmTokenRepository.findByUserId(userId);
+
+    if (!tokens || tokens.length === 0) {
+      throw new NotFoundException("FCM tokens not found");
+    }
+
+    return tokens;
+  }
+
+  async getToken(id: number) {
+    const token = await this._fcmTokenRepository.findById(id);
+
+    if (!token) {
+      throw new NotFoundException("FCM token not found");
+    }
+
+    return token;
+  }
+
+  async addToken(userId: string, token: string) {
+    try {
+      const existingToken = await this._fcmTokenRepository.findByToken(token);
+
+      if (existingToken) {
+        return existingToken;
       }
 
-      return result;
-    });
-
-  getToken = (id: number) =>
-    FcmToken.findOne({ where: { id } }).then(result => {
-      if (result === null) {
-        return Promise.reject(new NotFoundException());
-      }
-
-      return result;
-    });
-
-  addToken = (userId: string, token: string) =>
-    FcmToken.create({
-      userId,
-      token,
-    })
-      .then(result => {
-        if (result === null) {
-          return Promise.reject(new NotFoundException());
-        }
-
-        return result;
-      })
-      .catch(error => {
-        if (error.name === "SequelizeUniqueConstraintError") {
-          return FcmToken.findOne({ where: { token } }).then(result => {
-            if (result === null) {
-              return Promise.reject(new NotFoundException());
-            }
-
-            return result;
-          });
-        } else {
-          return Promise.reject(
-            new InternalServerErrorException(error.message, error),
-          );
-        }
+      return await this._fcmTokenRepository.create({
+        userId,
+        token,
       });
+    } catch (error) {
+      throw new InternalServerErrorException(error.message, error);
+    }
+  }
 
-  deleteToken = (id: number) => FcmToken.destroy({ where: { id } });
+  async deleteToken(id: number) {
+    const deleted = await this._fcmTokenRepository.delete(id);
 
-  deleteTokens = (userId: string) => FcmToken.destroy({ where: { userId } });
+    if (!deleted) {
+      throw new NotFoundException("FCM token not found");
+    }
+
+    return true;
+  }
+
+  async deleteTokens(userId: string) {
+    return await this._fcmTokenRepository.deleteByUserId(userId);
+  }
 
   async getAccessToken() {
     if (firebaseAdmin === null || firebaseCredential === null) {
@@ -119,28 +122,19 @@ export class FcmTokenService {
     return token.access_token;
   }
 
-  sendFcmMessage = (message: FCMMessage) =>
-    new Promise<string>((resolve, reject) => {
-      if (firebaseAdmin === null || firebaseCredential === null) {
-        reject(
-          new InternalServerErrorException("Firebase не инициализирован."),
-        );
+  async sendFcmMessage(message: FCMMessage): Promise<string> {
+    if (firebaseAdmin === null || firebaseCredential === null) {
+      throw new InternalServerErrorException("Firebase не инициализирован.");
+    }
 
-        return;
-      }
-
-      try {
-        firebaseAdmin!
-          .messaging()
-          .send(this._getMessagePayload(message))
-          .then(res => {
-            resolve(res);
-          })
-          .catch(reject);
-      } catch (e) {
-        reject(e);
-      }
-    });
+    try {
+      return await firebaseAdmin!
+        .messaging()
+        .send(this._getMessagePayload(message));
+    } catch (e) {
+      throw new InternalServerErrorException("Failed to send FCM message", e);
+    }
+  }
 
   async getFcmToken(apnsToken: string) {
     if (firebaseAdmin === null || firebaseCredential === null) {
@@ -160,18 +154,16 @@ export class FcmTokenService {
     }
   }
 
-  registerApnToken = (
+  async registerApnToken(
     apns_tokens: string[],
     application: string,
     sandbox: boolean,
-  ) => {
+  ) {
     if (firebaseAdmin === null || firebaseCredential === null) {
-      return Promise.reject(
-        new InternalServerErrorException("Firebase не инициализирован."),
-      );
+      throw new InternalServerErrorException("Firebase не инициализирован.");
     }
 
-    return this._fetch.post<ApnRegisterTokenResponse>(
+    const response = await this._fetch.post<ApnRegisterTokenResponse>(
       BATCH_IMPORT_URL,
       JSON.stringify({
         application,
@@ -179,7 +171,9 @@ export class FcmTokenService {
         apns_tokens,
       }),
     );
-  };
+
+    return response.data;
+  }
 
   private _getMessagePayload = (message: FCMMessage): Message => ({
     data: message.data,

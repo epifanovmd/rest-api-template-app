@@ -33,11 +33,13 @@ export class DialogMembers {
   updatedAt: Date;
 
   // Relations
-  @ManyToOne(() => User, user => user.dialogMemberships)
+  @ManyToOne(() => User, user => user.dialogMemberships, {
+    onDelete: "CASCADE",
+  })
   @JoinColumn({ name: "user_id" })
   user: User;
 
-  @ManyToOne(() => Dialog, dialog => dialog.members)
+  @ManyToOne(() => Dialog, dialog => dialog.members, { onDelete: "CASCADE" })
   @JoinColumn({ name: "dialog_id" })
   dialog: Dialog;
 

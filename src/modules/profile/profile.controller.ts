@@ -16,13 +16,13 @@ import {
 } from "tsoa";
 
 import { getContextUser } from "../../common";
-import { Injectable, sequelize } from "../../core";
+import { Injectable } from "../../core";
 import { KoaRequest } from "../../types/koa";
 import {
   IProfileDto,
   IProfileListDto,
   IProfileUpdateRequest,
-} from "./profile.model";
+} from "./profile.dto";
 import { ProfileService } from "./profile.service";
 
 @Injectable()

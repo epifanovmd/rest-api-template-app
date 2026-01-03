@@ -3,8 +3,6 @@ import {
   CreateDateColumn,
   Entity,
   JoinColumn,
-  JoinTable,
-  ManyToMany,
   ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
@@ -12,7 +10,7 @@ import {
 } from "typeorm";
 
 import { Dialog } from "../dialog/dialog.entity";
-import { Files } from "../file/file.entity";
+import { File } from "../file/file.entity";
 import { MessageFiles } from "../message-files/message-files.entity";
 import { User } from "../user/user.entity";
 
@@ -30,13 +28,13 @@ export class DialogMessages {
   @Column({ type: "text", nullable: true })
   text: string;
 
-  @Column({ default: false })
+  @Column({ type: "boolean", default: false })
   system: boolean;
 
-  @Column({ default: false })
+  @Column({ type: "boolean", default: false })
   sent: boolean;
 
-  @Column({ default: false })
+  @Column({ type: "boolean", default: false })
   received: boolean;
 
   @Column({ name: "reply_id", type: "uuid", nullable: true })
@@ -49,49 +47,45 @@ export class DialogMessages {
   updatedAt: Date;
 
   // Relations
-  @ManyToOne(() => User, user => user.messages)
+  @ManyToOne(() => User, user => user.messages, { onDelete: "CASCADE" })
   @JoinColumn({ name: "user_id" })
   user: User;
 
-  @ManyToOne(() => Dialog, dialog => dialog.messages)
+  @ManyToOne(() => Dialog, dialog => dialog.messages, { onDelete: "CASCADE" })
   @JoinColumn({ name: "dialog_id" })
   dialog: Dialog;
 
-  @ManyToOne(() => DialogMessages, message => message.replies)
+  @ManyToOne(() => DialogMessages, message => message.replies, {
+    nullable: true,
+    onDelete: "SET NULL",
+  })
   @JoinColumn({ name: "reply_id" })
   reply: DialogMessages;
 
   @OneToMany(() => DialogMessages, message => message.reply)
   replies: DialogMessages[];
 
-  // Files relations
-  @ManyToMany(() => Files)
-  @JoinTable({
-    name: "message_files",
-    joinColumn: { name: "message_id" },
-    inverseJoinColumn: { name: "file_id" },
-  })
-  images: Files[];
-
-  @ManyToMany(() => Files)
-  @JoinTable({
-    name: "message_files",
-    joinColumn: { name: "message_id" },
-    inverseJoinColumn: { name: "file_id" },
-  })
-  videos: Files[];
-
-  @ManyToMany(() => Files)
-  @JoinTable({
-    name: "message_files",
-    joinColumn: { name: "message_id" },
-    inverseJoinColumn: { name: "file_id" },
-  })
-  audios: Files[];
-
-  // Custom file type handling through MessageFiles
   @OneToMany(() => MessageFiles, messageFile => messageFile.message)
   messageFiles: MessageFiles[];
+
+  // // Virtual getters for filtered files
+  // get images(): Promise<Files[]> {
+  //   return this.messageFiles.then(files =>
+  //     files.filter(f => f.fileType === "image").map(f => f.file),
+  //   );
+  // }
+  //
+  // get videos(): Promise<Files[]> {
+  //   return this.messageFiles.then(files =>
+  //     files.filter(f => f.fileType === "video").map(f => f.file),
+  //   );
+  // }
+  //
+  // get audios(): Promise<Files[]> {
+  //   return this.messageFiles.then(files =>
+  //     files.filter(f => f.fileType === "audio").map(f => f.file),
+  //   );
+  // }
 
   toDTO() {
     return {
@@ -106,9 +100,6 @@ export class DialogMessages {
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
       user: this.user?.toDTO(),
-      images: this.images?.map(image => image.toDTO()),
-      videos: this.videos?.map(video => video.toDTO()),
-      audios: this.audios?.map(audio => audio.toDTO()),
       reply: this.reply?.toDTO(),
     };
   }

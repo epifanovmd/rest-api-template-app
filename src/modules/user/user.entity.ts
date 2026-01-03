@@ -1,4 +1,3 @@
-// user.entity.ts (исправленная версия)
 import {
   Column,
   CreateDateColumn,
@@ -16,7 +15,7 @@ import { Biometric } from "../biometric/biometric.entity";
 import { DialogMembers } from "../dialog-members/dialog-members.entity";
 import { DialogMessages } from "../dialog-messages/dialog-messages.entity";
 import { FcmToken } from "../fcm-token/fcm-token.entity";
-import { Files } from "../file/file.entity"; // Добавил импорт
+import { File } from "../file/file.entity";
 import { Otp } from "../otp/otp.entity";
 import { Passkey } from "../passkeys/passkey.entity";
 import { Profile } from "../profile/profile.entity";
@@ -29,25 +28,24 @@ export class User {
   @PrimaryGeneratedColumn("uuid")
   id: string;
 
-  @Column({ length: 50, nullable: true, unique: true })
+  @Column({ type: "varchar", length: 50, nullable: true, unique: true })
   email: string;
 
-  @Column({ name: "email_verified", default: false })
+  @Column({ name: "email_verified", type: "boolean", default: false })
   emailVerified: boolean;
 
-  @Column({ length: 14, nullable: true })
+  @Column({ type: "varchar", length: 14, nullable: true })
   phone: string;
 
-  @Column({ name: "password_hash", length: 100 })
+  @Column({ name: "password_hash", type: "varchar", length: 100 })
   passwordHash: string;
 
-  @Column({ nullable: true })
+  @Column({ type: "varchar", nullable: true })
   challenge: string | null;
 
   @Column({ name: "role_id", type: "uuid", nullable: true })
   roleId: string;
 
-  // Добавляем недостающее поле для аватара
   @Column({ name: "avatar_id", type: "uuid", nullable: true })
   avatarId: string | null;
 
@@ -86,10 +84,9 @@ export class User {
   @OneToMany(() => DialogMessages, message => message.user, { cascade: true })
   messages: DialogMessages[];
 
-  // Добавляем недостающую связь с аватаром
-  @ManyToOne(() => Files, { onDelete: "SET NULL" })
+  @ManyToOne(() => File, { onDelete: "SET NULL" })
   @JoinColumn({ name: "avatar_id" })
-  avatar: Files | null;
+  avatar: File | null;
 
   // Helper methods
   hasValidChallenge(): boolean {
@@ -104,17 +101,8 @@ export class User {
     this.challenge = challenge;
   }
 
-  // DTO преобразование (добавляем типизацию)
-  toDTO(): {
-    id: string;
-    email: string | null;
-    emailVerified: boolean;
-    phone: string | null;
-    challenge: string | null;
-    createdAt: Date;
-    updatedAt: Date;
-    role: any | null;
-  } {
+  // DTO преобразование
+  toDTO() {
     return {
       id: this.id,
       email: this.email,

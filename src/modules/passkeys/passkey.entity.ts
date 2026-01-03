@@ -19,7 +19,7 @@ export type CredentialDeviceType = "singleDevice" | "multiDevice";
 @Index("IDX_PASSKEYS_USER_DEVICE", ["userId", "id"])
 export class Passkey {
   @PrimaryColumn({ type: "varchar" })
-  id: string; // Base64URLString
+  id: string;
 
   @Column({ name: "public_key", type: "bytea" })
   publicKey: Uint8Array;

@@ -1,13 +1,13 @@
 import { PublicKeyCredentialRequestOptionsJSON } from "@simplewebauthn/types";
-import { inject, injectable } from "inversify";
+import { inject } from "inversify";
 import { Body, Controller, Post, Route, Tags } from "tsoa";
 
-import { Injectable, sequelize } from "../../core";
+import { Injectable } from "../../core";
 import {
   IVerifyAuthenticationRequest,
   IVerifyAuthenticationResponse,
   IVerifyRegistrationRequest,
-} from "./passkeys.model";
+} from "./passkeys.dto";
 import { PasskeysService } from "./passkeys.service";
 
 @Injectable()

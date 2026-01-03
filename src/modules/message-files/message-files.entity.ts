@@ -9,7 +9,7 @@ import {
 } from "typeorm";
 
 import { DialogMessages } from "../dialog-messages/dialog-messages.entity";
-import { Files } from "../file/file.entity";
+import { File } from "../file/file.entity";
 
 export type TMessageFileType = "image" | "video" | "audio";
 
@@ -38,13 +38,15 @@ export class MessageFiles {
   updatedAt: Date;
 
   // Relations
-  @ManyToOne(() => DialogMessages, message => message.messageFiles)
+  @ManyToOne(() => DialogMessages, message => message.messageFiles, {
+    onDelete: "CASCADE",
+  })
   @JoinColumn({ name: "message_id" })
   message: DialogMessages;
 
-  @ManyToOne(() => Files, file => file.messageFiles)
+  @ManyToOne(() => File, file => file.messageFiles, { onDelete: "CASCADE" })
   @JoinColumn({ name: "file_id" })
-  file: Files;
+  file: File;
 
   toDTO() {
     return {

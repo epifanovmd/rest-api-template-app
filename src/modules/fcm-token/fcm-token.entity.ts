@@ -15,8 +15,8 @@ import { User } from "../user/user.entity";
 @Index("IDX_FCM_TOKENS_TOKEN", ["token"], { unique: true })
 @Index("IDX_FCM_TOKENS_USER", ["userId"])
 export class FcmToken {
-  @PrimaryGeneratedColumn("uuid")
-  id: string;
+  @PrimaryGeneratedColumn("increment")
+  id: number;
 
   @Column({ name: "user_id", type: "uuid" })
   userId: string;

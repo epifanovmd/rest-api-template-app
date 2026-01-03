@@ -15,26 +15,26 @@ import {
 } from "tsoa";
 
 import { getContextUser } from "../../common";
-import { Injectable, sequelize } from "../../core";
+import { Injectable } from "../../core";
 import { KoaRequest } from "../../types/koa";
 import { DialogMembersService } from "../dialog-members";
 import {
   DialogMembersAddRequest,
   DialogMembersDto,
-} from "../dialog-members/dialog-members.model";
+} from "../dialog-members/dialog-members.dto";
 import { DialogMessagesService } from "../dialog-messages";
 import {
   IDialogListMessagesDto,
   IDialogMessagesDto,
   IMessagesRequest,
   IMessagesUpdateRequest,
-} from "../dialog-messages/dialog-messages.model";
+} from "../dialog-messages/dialog-messages.dto";
 import {
   DialogCreateRequest,
   DialogDto,
   DialogFindRequest,
   IDialogListDto,
-} from "./dialog.model";
+} from "./dialog.dto";
 import { DialogService } from "./dialog.service";
 
 @Injectable()
@@ -198,7 +198,7 @@ export class DialogController extends Controller {
    */
   @Security("jwt")
   @Delete("/member/{id}")
-  deleteMember(@Path() id: string): Promise<void> {
+  deleteMember(@Path() id: string): Promise<boolean> {
     return this._dialogMembersService.deleteMember(id);
   }
 
@@ -333,7 +333,7 @@ export class DialogController extends Controller {
    */
   @Security("jwt")
   @Delete("/message/{id}")
-  deleteMessage(id: string, @Request() req: KoaRequest): Promise<void> {
+  deleteMessage(id: string, @Request() req: KoaRequest): Promise<boolean> {
     const user = getContextUser(req);
 
     return this._dialogMessagesService.deleteMessage(id, user.id);

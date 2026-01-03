@@ -1,8 +1,8 @@
 import { Server, Socket as SocketIO } from "socket.io";
 import { DefaultEventsMap } from "socket.io/dist/typed-events";
 
-import { IDialogMessagesDto } from "../dialog-messages/dialog-messages.model";
-import { IUserDto } from "../user/user.model";
+import { IDialogMessagesDto } from "../dialog-messages/dialog-messages.dto";
+import { IUserDto } from "../user/user.dto";
 
 export interface ISocketEvents {
   messageReceived: (...args: [messageId: string[], dialogId: string]) => void;

@@ -1,135 +1,177 @@
+// user.service.ts (переписанный под TypeORM)
 import { ConflictException, NotFoundException } from "@force-dev/utils";
 import { inject } from "inversify";
-import { Includeable, Op, WhereOptions } from "sequelize";
 import sha256 from "sha256";
+import { DataSource, FindOptionsWhere } from "typeorm";
 
-import { ApiResponse, Injectable, sequelize } from "../../core";
+import { ApiResponse, Injectable } from "../../core";
 import { MailerService } from "../mailer";
 import { OtpService } from "../otp";
-import { Permission } from "../permission/permission.model";
-import { Profile } from "../profile/profile.model";
-import { ERole, Role } from "../role/role.model";
-import {
-  IUserPrivilegesRequest,
-  IUserUpdateRequest,
-  User,
-  UserCreateModel,
-  UserModel,
-} from "./user.model";
+import { ProfileRepository } from "../profile/profile.repository";
+import { ERole } from "../role/role.entity";
+import { RoleRepository } from "../role/role.repository";
+import { IUserPrivilegesRequest, IUserUpdateRequest } from "./user.dto";
+import { User } from "./user.entity";
+import { UserRepository } from "./user.repository";
 
 @Injectable()
 export class UserService {
   constructor(
     @inject(MailerService) private _mailerService: MailerService,
     @inject(OtpService) private _otpService: OtpService,
+    @inject(UserRepository) private _userRepository: UserRepository,
+    @inject(RoleRepository) private _roleRepository: RoleRepository,
+    @inject(ProfileRepository) private _profileRepository: ProfileRepository,
+    @inject("DataSource") private _dataSource: DataSource,
   ) {}
 
-  getUsers = (offset?: number, limit?: number) =>
-    User.findAll({
-      limit,
+  async getUsers(offset?: number, limit?: number) {
+    const [users, total] = await this._userRepository.findAll(
       offset,
-      attributes: UserService.attributes,
-      order: [["createdAt", "DESC"]],
-      include: UserService.include,
-    });
-
-  getUserByAttr = (where: WhereOptions<User>) =>
-    User.findOne({
-      where,
-      include: UserService.include,
-    }).then(result => {
-      if (result === null) {
-        return Promise.reject(new NotFoundException("Пользователь не найден"));
-      }
-
-      return result;
-    });
-
-  getUser = (id: string) =>
-    User.findByPk(id, {
-      attributes: UserService.attributes,
-      include: UserService.include,
-    }).then(result => {
-      if (result === null) {
-        return Promise.reject(new NotFoundException("Пользователь не найден"));
-      }
-
-      return result;
-    });
-
-  createUser = async (body: UserCreateModel) => {
-    const transaction = await sequelize.transaction();
-
-    const user = await User.create(body, { transaction });
-
-    // Сразу создаем пустой профиль
-    await Profile.create(
-      {
-        userId: user.id,
-        status: "offline",
-      },
-      { transaction },
+      limit,
+      UserService.relations,
     );
 
-    await transaction.commit();
+    return users.map(user => user.toDTO());
+  }
 
-    return this.setPrivileges(user.id, ERole.USER);
-  };
+  async getUserByAttr(where: FindOptionsWhere<User>) {
+    const user = await this._userRepository.findByEmailOrPhone(
+      where.email as string,
+      where.phone as string,
+      UserService.relations,
+    );
 
-  createAdmin = async (body: UserCreateModel) => {
-    return this.getUserByAttr({
-      [Op.or]: [{ email: body.email ?? "" }, { phone: body.phone ?? "" }],
-    }).catch(async () => {
-      const user = await this.createUser(body);
+    if (!user) {
+      throw new NotFoundException("Пользователь не найден");
+    }
 
-      return this.setPrivileges(user.id, ERole.ADMIN);
-    });
-  };
+    return user;
+  }
 
-  updateUser = async (id: string, body: IUserUpdateRequest) => {
-    await User.update(body, { where: { id } });
+  async getUser(id: string) {
+    const user = await this._userRepository.findById(id, UserService.relations);
+
+    if (!user) {
+      throw new NotFoundException("Пользователь не найден");
+    }
+
+    return user;
+  }
+
+  async createUser(body: Partial<User>) {
+    const queryRunner = this._dataSource.createQueryRunner();
+
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      // Создаем пользователя
+      const user = await this._userRepository.create({
+        ...body,
+      });
+
+      // Создаем пустой профиль
+      await this._profileRepository.create({
+        userId: user.id,
+        status: "offline",
+      });
+
+      await queryRunner.commitTransaction();
+
+      // Устанавливаем роль по умолчанию
+      return this.setPrivileges(user.id, ERole.USER, []);
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
+  async createAdmin(body: Partial<User>) {
+    // Проверяем, существует ли пользователь
+    const existingUser = await this._userRepository.findByEmailOrPhone(
+      body.email ?? null,
+      body.phone ?? null,
+    );
+
+    if (existingUser) {
+      throw new ConflictException("Пользователь уже существует");
+    }
+
+    const user = await this.createUser(body);
+
+    await this.setPrivileges(user.id, ERole.ADMIN, []);
+
+    // Если пользователь существует, возвращаем его с ролью ADMIN
+    const existingUser1 = await this._userRepository.findByEmailOrPhone(
+      body.email ?? null,
+      body.phone ?? null,
+    );
+
+    if (existingUser1) {
+      return this.setPrivileges(existingUser1.id, ERole.ADMIN, []);
+    }
+
+    throw new NotFoundException("Пользователь не найден");
+  }
+
+  async updateUser(id: string, body: IUserUpdateRequest) {
+    await this._userRepository.update(id, body);
 
     return await this.getUser(id);
-  };
+  }
 
-  setPrivileges = async (
+  async setPrivileges(
     userId: string,
     roleName: IUserPrivilegesRequest["roleName"],
     permissions: IUserPrivilegesRequest["permissions"] = [],
-  ) => {
-    const transaction = await sequelize.transaction();
-    const user = await User.findByPk(userId, { transaction });
+  ) {
+    const queryRunner = this._dataSource.createQueryRunner();
 
-    if (!user) {
-      return Promise.reject(new NotFoundException("Пользователь не найден"));
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      const user = await this._userRepository.findById(userId);
+
+      if (!user) {
+        throw new NotFoundException("Пользователь не найден");
+      }
+
+      // Находим или создаем роль
+      let role = await this._roleRepository.findByName(roleName);
+
+      if (!role) {
+        role = await this._roleRepository.create({
+          name: roleName,
+        });
+      }
+
+      // Устанавливаем роль пользователю
+      user.role = role;
+      user.roleId = role.id;
+      await this._userRepository.save(user);
+
+      // Если есть разрешения, устанавливаем их для роли
+      if (permissions.length > 0) {
+        await this._roleRepository.setPermissions(role.id, permissions);
+      }
+
+      await queryRunner.commitTransaction();
+
+      // Возвращаем обновленного пользователя с отношениями
+      return this.getUser(userId);
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
     }
+  }
 
-    const [role] = await Role.findOrCreate({
-      where: { name: roleName },
-      transaction,
-    });
-
-    if (role) {
-      await user.setRole(role, { transaction });
-
-      const permissionInstances = await Promise.all(
-        permissions.map(permissionName =>
-          Permission.findOrCreate({
-            where: { name: permissionName },
-            transaction,
-          }).then(([permission]) => permission),
-        ),
-      );
-
-      await role.setPermissions(permissionInstances, { transaction });
-
-      await transaction.commit();
-    }
-
-    return this.getUser(userId);
-  };
-
-  requestVerifyEmail = async (userId: string, email?: string) => {
+  async requestVerifyEmail(userId: string, email?: string) {
     const user = await this.getUser(userId);
 
     if (user.emailVerified) {
@@ -137,17 +179,17 @@ export class UserService {
     }
 
     if (!email) {
-      throw new NotFoundException("У пользователя отсутсвует email.");
+      throw new NotFoundException("У пользователя отсутствует email.");
     }
 
     const otp = await this._otpService.create(userId);
 
     await this._mailerService.sendCodeMail(email, otp.code);
 
-    return otp.code as any;
-  };
+    return !!otp.code;
+  }
 
-  verifyEmail = async (userId: string, code: string) => {
+  async verifyEmail(userId: string, code: string) {
     const user = await this.getUser(userId);
 
     if (user.emailVerified) {
@@ -156,58 +198,41 @@ export class UserService {
 
     if (await this._otpService.check(userId, code)) {
       user.emailVerified = true;
-      await user.save();
+      await this._userRepository.save(user);
     }
 
     return new ApiResponse({
       message: "Email успешно подтвержден.",
       data: {},
     });
-  };
+  }
 
-  changePassword = async (userId: string, password: string) => {
+  async changePassword(userId: string, password: string) {
     const user = await this.getUser(userId);
 
     user.passwordHash = sha256(password);
 
-    await user.save();
+    await this._userRepository.save(user);
 
     return new ApiResponse({ message: "Пароль успешно изменен." });
-  };
-
-  deleteUser = async (userId: string) => {
-    return User.destroy({ where: { id: userId } }).then(() => userId);
-  };
-
-  static get attributes(): (keyof UserModel)[] {
-    return [
-      "id",
-      "email",
-      "emailVerified",
-      "phone",
-      "challenge",
-      "createdAt",
-      "updatedAt",
-    ];
   }
 
-  static get include(): Includeable[] {
-    return [
-      {
-        model: Role,
-        attributes: ["name"],
-        // attributes: { exclude: ["createdAt", "updatedAt"] },
-        include: [
-          {
-            model: Permission,
-            attributes: ["name"],
-            // attributes: { exclude: ["createdAt", "updatedAt"] },
-            through: {
-              attributes: [], // Исключаем атрибуты связывающей таблицы
-            },
-          },
-        ],
+  async deleteUser(userId: string) {
+    const deleted = await this._userRepository.delete(userId);
+
+    if (!deleted) {
+      throw new NotFoundException("Пользователь не найден");
+    }
+
+    return userId;
+  }
+
+  // Статические методы для отношений
+  static get relations() {
+    return {
+      role: {
+        permissions: true,
       },
-    ];
+    };
   }
 }

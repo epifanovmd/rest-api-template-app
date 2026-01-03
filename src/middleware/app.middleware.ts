@@ -11,8 +11,8 @@ export const RegisterAppMiddlewares = (
 ) => {
   app
     .use(errorMiddleware)
-    // .use(corsMiddleware)
-    // .use(rateLimitMiddleware)
-    .use(bodyParserMiddleware);
-  // .use(helmetMiddleware)
+    .use(corsMiddleware)
+    .use(rateLimitMiddleware)
+    .use(bodyParserMiddleware)
+    .use(helmetMiddleware);
 };

@@ -20,16 +20,16 @@ export class Biometric {
   @Column({ name: "user_id", type: "uuid" })
   userId: string;
 
-  @Column({ name: "device_id", length: 100 })
+  @Column({ name: "device_id", type: "varchar", length: 100 })
   deviceId: string;
 
   @Column({ name: "public_key", type: "text" })
   publicKey: string;
 
-  @Column({ name: "device_name", length: 100, nullable: true })
+  @Column({ name: "device_name", type: "varchar", length: 100, nullable: true })
   deviceName: string;
 
-  @Column({ name: "last_used_at", nullable: true })
+  @Column({ name: "last_used_at", type: "timestamp", nullable: true })
   lastUsedAt: Date;
 
   @CreateDateColumn({ name: "created_at" })
@@ -39,7 +39,7 @@ export class Biometric {
   updatedAt: Date;
 
   // Relations
-  @ManyToOne(() => User, user => user.biometrics)
+  @ManyToOne(() => User, user => user.biometrics, { onDelete: "CASCADE" })
   @JoinColumn({ name: "user_id" })
   user: User;
 }

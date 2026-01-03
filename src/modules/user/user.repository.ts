@@ -8,9 +8,10 @@ import {
   Repository,
 } from "typeorm";
 
+import { Injectable } from "../../core";
 import { User } from "./user.entity";
 
-@injectable()
+@Injectable()
 export class UserRepository {
   private repository: Repository<User>;
 

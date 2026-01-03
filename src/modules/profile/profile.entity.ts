@@ -10,7 +10,7 @@ import {
   UpdateDateColumn,
 } from "typeorm";
 
-import { Files } from "../file/file.entity";
+import { File } from "../file/file.entity";
 import { User } from "../user/user.entity";
 
 @Entity("profiles")
@@ -23,26 +23,26 @@ export class Profile {
   @Column({ name: "user_id", type: "uuid" })
   userId: string;
 
-  @Column({ name: "first_name", length: 40, nullable: true })
+  @Column({ name: "first_name", type: "varchar", length: 40, nullable: true })
   firstName: string;
 
-  @Column({ name: "last_name", length: 40, nullable: true })
+  @Column({ name: "last_name", type: "varchar", length: 40, nullable: true })
   lastName: string;
 
-  @Column({ name: "birth_date", nullable: true })
+  @Column({ name: "birth_date", type: "timestamp", nullable: true })
   birthDate: Date;
 
-  @Column({ length: 20, nullable: true })
+  @Column({ type: "varchar", length: 20, nullable: true })
   gender: string;
 
-  @Column({ length: 50, nullable: true })
+  @Column({ type: "varchar", length: 50, nullable: true })
   status: string;
 
-  @Column({ name: "last_online", nullable: true })
+  @Column({ name: "last_online", type: "timestamp", nullable: true })
   lastOnline: Date;
 
   @Column({ name: "avatar_id", type: "uuid", nullable: true })
-  avatarId: string;
+  avatarId: string | null;
 
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
@@ -55,9 +55,9 @@ export class Profile {
   @JoinColumn({ name: "user_id" })
   user: User;
 
-  @ManyToOne(() => Files, file => file.avatarProfiles)
+  @ManyToOne(() => File, file => file.avatarProfiles, { onDelete: "SET NULL" })
   @JoinColumn({ name: "avatar_id" })
-  avatar: Files;
+  avatar: File;
 
   toDTO() {
     return {

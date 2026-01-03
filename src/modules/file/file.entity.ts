@@ -11,20 +11,20 @@ import { MessageFiles } from "../message-files/message-files.entity";
 import { Profile } from "../profile/profile.entity";
 
 @Entity("files")
-export class Files {
-  @PrimaryColumn("uuid")
+export class File {
+  @PrimaryColumn({ type: "uuid" })
   id: string;
 
-  @Column({ length: 255 })
+  @Column({ type: "varchar", length: 255 })
   name: string;
 
-  @Column({ length: 40 })
+  @Column({ type: "varchar", length: 40 })
   type: string;
 
-  @Column({ length: 120 })
+  @Column({ type: "varchar", length: 120 })
   url: string;
 
-  @Column("int")
+  @Column({ type: "int" })
   size: number;
 
   @CreateDateColumn({ name: "created_at" })

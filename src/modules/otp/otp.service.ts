@@ -1,11 +1,11 @@
 import { BadRequestException, GoneException } from "@force-dev/utils";
-import { injectable } from "inversify";
+import { inject, injectable } from "inversify";
 import moment from "moment";
 
 import { config } from "../../../config";
 import { generateOtp } from "../../common";
-import { Injectable, sequelize } from "../../core";
-import { Otp } from "./otp.model";
+import { Injectable } from "../../core";
+import { OtpRepository } from "./otp.repository";
 
 const {
   auth: { otp },
@@ -13,26 +13,30 @@ const {
 
 @Injectable()
 export class OtpService {
-  create = async (userId: string) => {
+  constructor(@inject(OtpRepository) private _otpRepository: OtpRepository) {}
+
+  async create(userId: string) {
     const code = generateOtp();
-    const findOtp = await Otp.findOne({ where: { userId } });
+    const findOtp = await this._otpRepository.findByUserId(userId);
+
+    const expireAt = moment().add(otp.expireMinutes, "minutes").toDate();
 
     if (findOtp) {
       findOtp.code = code;
-      findOtp.expireAt = moment().add(otp.expireMinutes, "minutes").toDate();
+      findOtp.expireAt = expireAt;
 
-      return await findOtp.save();
+      return await this._otpRepository.save(findOtp);
     } else {
-      return Otp.create({
+      return this._otpRepository.create({
         userId,
         code,
-        expireAt: moment().add(otp.expireMinutes, "minutes").toDate(),
+        expireAt,
       });
     }
-  };
+  }
 
-  check = async (userId: string, code: string) => {
-    const otp = await Otp.findOne({ where: { userId, code } });
+  async check(userId: string, code: string) {
+    const otp = await this._otpRepository.findByUserIdAndCode(userId, code);
 
     if (!otp) {
       throw new BadRequestException(
@@ -41,14 +45,14 @@ export class OtpService {
     }
 
     if (otp.expireAt < new Date()) {
-      await otp.destroy();
+      await this._otpRepository.delete(userId);
       throw new GoneException(
         "Срок действия кода истек. Пожалуйста, запросите новый код.",
       );
     }
 
-    await otp.destroy();
+    await this._otpRepository.delete(userId);
 
     return true;
-  };
+  }
 }

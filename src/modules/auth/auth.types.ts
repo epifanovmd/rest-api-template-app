@@ -1,4 +1,4 @@
-import { IUserDto, IUserPassword } from "../user/user.model";
+import { IUserDto, IUserPassword } from "../user/user.dto";
 
 export interface IUserResetPasswordRequest extends IUserPassword {
   token: string;

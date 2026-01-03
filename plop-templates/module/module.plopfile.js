@@ -21,8 +21,8 @@ module.exports = plop => {
       },
       {
         type: "add",
-        path: "src/modules/{{dashCase name}}/{{dashCase name}}.model.ts",
-        templateFile: "plop-templates/module/module.model.ts.hbs",
+        path: "src/modules/{{dashCase name}}/{{dashCase name}}.entity.ts",
+        templateFile: "plop-templates/module/module.entity.ts.hbs",
       },
       {
         type: "add",
@@ -37,22 +37,6 @@ module.exports = plop => {
         template:
           // eslint-disable-next-line quotes
           'export { {{properCase name}}Controller } from "./{{dashCase name}}";\n$1',
-      },
-      {
-        type: "modify",
-        path: "src/modules/modules.module.ts",
-        pattern: /(\/\/ IMPORT MODULE HERE)/gi,
-        template:
-          // eslint-disable-next-line quotes
-          'import { {{properCase name}}Module } from "./{{dashCase name}}";\n$1',
-      },
-      {
-        type: "modify",
-        path: "src/modules/modules.module.ts",
-        pattern: /(\/\/ CONFIGURE MODULE HERE)/gi,
-        template:
-          // eslint-disable-next-line quotes
-          "new {{properCase name}}Module().Configure(ioc);\n$1",
       },
 
       {

@@ -5,7 +5,6 @@ import {
 } from "@force-dev/utils";
 import axios from "axios";
 import { inject, injectable } from "inversify";
-import { Op } from "sequelize";
 import sha256 from "sha256";
 
 import {
@@ -14,7 +13,7 @@ import {
   validatePhone,
   verifyAuthToken,
 } from "../../common";
-import { ApiResponse, Injectable, sequelize } from "../../core";
+import { ApiResponse, Injectable } from "../../core";
 import { MailerService } from "../mailer";
 import { ResetPasswordTokensService } from "../reset-password-tokens";
 import { UserService } from "../user";
@@ -59,49 +58,85 @@ export class AuthService {
       validatePhone(phone);
     }
 
-    const client = await this._userService
-      .getUserByAttr({
-        [Op.or]: [{ email: email ?? "" }, { phone: phone ?? "" }],
-      })
-      .catch(() => null);
+    // Проверяем существование пользователя
+    try {
+      const existingUser = await this._userService.getUserByAttr(
+        email ? { email } : { phone },
+      );
 
-    if (client) {
-      throw new BadRequestException(`Клиент - ${login}, уже зарегистрирован`);
-    } else {
-      return this._userService
-        .createUser({
-          ...rest,
-          phone,
-          email,
-          passwordHash: sha256(password),
-        })
-        .then(() =>
-          this.signIn({
-            login,
-            password,
-          }),
-        );
+      if (existingUser) {
+        throw new BadRequestException(`Клиент - ${login}, уже зарегистрирован`);
+      }
+    } catch (error) {
+      // Если пользователь не найден (NotFoundException), продолжаем регистрацию
+      if (!(error instanceof NotFoundException)) {
+        throw error;
+      }
     }
+
+    // Создаем пользователя
+    await this._userService.createUser({
+      ...rest,
+      phone,
+      email,
+      passwordHash: sha256(password),
+    });
+
+    // Выполняем вход
+    return this.signIn({
+      login,
+      password,
+    });
   }
 
   async signIn(body: ISignInRequest): Promise<IUserWithTokensDto> {
     const { login, password } = body;
 
-    console.log("body", body);
-
     try {
-      const { id, passwordHash } = await this._userService.getUserByAttr({
-        [Op.or]: [{ email: login ?? "" }, { phone: login ?? "" }],
-      });
+      // Пытаемся найти пользователя по email или телефону
+      let user;
 
-      if (passwordHash === sha256(password)) {
-        const user = await this._userService.getUser(id);
+      try {
+        // Пробуем сначала как email
+        if (login.includes("@")) {
+          user = await this._userService.getUserByAttr({ email: login });
+        } else {
+          // Иначе как телефон
+          user = await this._userService.getUserByAttr({ phone: login });
+        }
+      } catch (error) {
+        // Если не нашли одним способом, пробуем другим
+        if (error instanceof NotFoundException) {
+          try {
+            if (login.includes("@")) {
+              user = await this._userService.getUserByAttr({ phone: login });
+            } else {
+              user = await this._userService.getUserByAttr({ email: login });
+            }
+          } catch (innerError) {
+            // Если и второй способ не сработал, бросаем исключение
+            throw new UnauthorizedException("Не верный логин или пароль");
+          }
+        } else {
+          throw error;
+        }
+      }
 
-        const role = user.role;
+      // Проверяем пароль
+      if (user.passwordHash === sha256(password)) {
+        // Получаем полную информацию о пользователе с ролью
+        const fullUser = await this._userService.getUser(user.id);
 
+        // Формируем ответ
         const data = {
-          ...user.toJSON(),
-          role,
+          id: fullUser.id,
+          email: fullUser.email,
+          emailVerified: fullUser.emailVerified,
+          phone: fullUser.phone,
+          challenge: fullUser.challenge,
+          createdAt: fullUser.createdAt,
+          updatedAt: fullUser.updatedAt,
+          role: fullUser.role,
         };
 
         return {
@@ -110,8 +145,10 @@ export class AuthService {
         };
       }
     } catch (error) {
-      console.log("error", error);
-      /* empty */
+      // Логируем только реальные ошибки, не ошибки аутентификации
+      if (!(error instanceof UnauthorizedException)) {
+        console.error("Sign in error:", error);
+      }
     }
 
     throw new UnauthorizedException("Не верный логин или пароль");
@@ -124,48 +161,110 @@ export class AuthService {
       // Обмен code на access token
       const accessToken = await this._exchangeCodeForToken(code);
 
-      // Получение данных пользователя
-      const { email } = await this._getUserFromGitHub(accessToken);
+      // Получение данных пользователя из GitHub
+      const githubUser = await this._getUserFromGitHub(accessToken);
 
-      const { id } = await this._userService.getUserByAttr({ email });
+      if (!githubUser.email) {
+        throw new Error("GitHub account has no public email");
+      }
 
-      const user = await this._userService.getUser(id);
+      // Пытаемся найти существующего пользователя
+      let user;
 
-      const role = user.role;
+      try {
+        user = await this._userService.getUserByAttr({
+          email: githubUser.email,
+        });
+      } catch (error) {
+        // Если пользователь не найден, создаем нового
+        if (error instanceof NotFoundException) {
+          // Генерируем случайный пароль для GitHub пользователя
+          const randomPassword = Math.random().toString(36).slice(-8);
+
+          user = await this._userService.createUser({
+            email: githubUser.email,
+            passwordHash: sha256(randomPassword),
+            // emailVerified: true, // GitHub email уже верифицирован
+          });
+        } else {
+          throw error;
+        }
+      }
+
+      // Получаем полную информацию о пользователе
+      const fullUser = await this._userService.getUser(user.id);
 
       const data = {
-        ...user.toJSON(),
-        role,
+        id: fullUser.id,
+        email: fullUser.email,
+        emailVerified: fullUser.emailVerified,
+        phone: fullUser.phone,
+        challenge: fullUser.challenge,
+        createdAt: fullUser.createdAt,
+        updatedAt: fullUser.updatedAt,
+        role: fullUser.role,
       };
 
       return {
         ...data,
         tokens: await this.getTokens(data.id),
       };
-    } catch {
-      /* empty */
+    } catch (error) {
+      console.error("GitHub authentication error:", error);
+      throw new UnauthorizedException("Ошибка аутентификации через GitHub");
     }
-
-    throw new UnauthorizedException("Пользователь не найден");
   }
 
   async requestResetPassword(login: string) {
-    const { id, email } = await this._userService.getUserByAttr({
-      [Op.or]: [{ email: login ?? "" }, { phone: login ?? "" }],
-    });
+    try {
+      // Пытаемся найти пользователя
+      let user;
 
-    if (!email) {
-      throw new NotFoundException("У пользователя отсутсвует email.");
+      try {
+        if (login.includes("@")) {
+          user = await this._userService.getUserByAttr({ email: login });
+        } else {
+          user = await this._userService.getUserByAttr({ phone: login });
+        }
+      } catch (error) {
+        // Если пользователь не найден, не сообщаем об этом для безопасности
+        if (error instanceof NotFoundException) {
+          return new ApiResponse({
+            message:
+              "Если пользователь с таким email/телефоном существует, ссылка для сброса пароля будет отправлена.",
+          });
+        }
+        throw error;
+      }
+
+      // Проверяем наличие email
+      if (!user.email) {
+        throw new NotFoundException("У пользователя отсутствует email.");
+      }
+
+      // Создаем токен сброса пароля
+      const resetToken = await this._resetPasswordTokensService.create(user.id);
+
+      // Отправляем email
+      await this._mailerService.sendResetPasswordMail(
+        user.email,
+        resetToken.token,
+      );
+
+      return new ApiResponse({
+        message:
+          "Ссылка для сброса пароля отправлена на вашу почту. Проверьте входящие или папку Спам.",
+      });
+    } catch (error) {
+      // Для безопасности скрываем реальную причину ошибки
+      if (error instanceof NotFoundException) {
+        return new ApiResponse({
+          message:
+            "Если пользователь с таким email/телефоном существует, ссылка для сброса пароля будет отправлена.",
+        });
+      }
+      throw error;
     }
-
-    const { token } = await this._resetPasswordTokensService.create(id);
-
-    await this._mailerService.sendResetPasswordMail(email, token);
-
-    return new ApiResponse({
-      message:
-        "Ссылка для сброса пароля отправлена на вашу почту. Проверьте входящие или папку Спам.",
-    });
   }
 
   async resetPassword(token: string, password: string) {
@@ -177,6 +276,10 @@ export class AuthService {
   }
 
   async updateTokens(token?: string) {
+    if (!token) {
+      throw new UnauthorizedException("Токен отсутствует");
+    }
+
     const user = await verifyAuthToken(token);
 
     return this.getTokens(user.id);
@@ -201,7 +304,7 @@ export class AuthService {
   }
 
   // 1. Получение токена через code
-  private async _exchangeCodeForToken(code: string) {
+  private async _exchangeCodeForToken(code: string): Promise<string> {
     try {
       const response = await axios.post(
         "https://github.com/login/oauth/access_token",
@@ -217,8 +320,13 @@ export class AuthService {
         },
       );
 
+      if (!response.data.access_token) {
+        throw new Error("No access token received from GitHub");
+      }
+
       return response.data.access_token;
     } catch (error) {
+      console.error("GitHub token exchange error:", error);
       throw new Error("Failed to exchange code for token");
     }
   }
@@ -238,14 +346,41 @@ export class AuthService {
         },
       });
 
+      // Если email не публичный, запрашиваем список emails
+      let email = userResponse.data.email;
+
+      if (!email) {
+        try {
+          const emailsResponse = await axios.get(
+            "https://api.github.com/user/emails",
+            {
+              headers: {
+                Authorization: `Bearer ${accessToken}`,
+              },
+            },
+          );
+
+          const primaryEmail = emailsResponse.data.find(
+            (emailObj: any) => emailObj.primary,
+          );
+
+          email = primaryEmail
+            ? primaryEmail.email
+            : emailsResponse.data[0]?.email;
+        } catch (emailError) {
+          console.error("Failed to fetch GitHub emails:", emailError);
+        }
+      }
+
       return {
         githubId: userResponse.data.id,
         login: userResponse.data.login,
-        email: userResponse.data.email,
+        email: email || "",
         name: userResponse.data.name,
         avatar_url: userResponse.data.avatar_url,
       };
     } catch (error) {
+      console.error("GitHub user fetch error:", error);
       throw new Error("Failed to fetch user data from GitHub");
     }
   }

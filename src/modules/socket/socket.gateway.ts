@@ -1,8 +1,7 @@
-import { inject, injectable } from "inversify";
+import { inject } from "inversify";
 
-import { Injectable, sequelize } from "../../core";
-import { DialogMessages } from "../dialog-messages/dialog-messages.model";
-import { IUserDto } from "../user/user.model";
+import { Injectable } from "../../core";
+import { IUserDto } from "../user/user.dto";
 import { SocketService } from "./socket.service";
 import { TSocket } from "./socket.types";
 
@@ -41,26 +40,26 @@ export class SocketGateway {
   }
 
   private setupMessageHandlers(socket: TSocket, user: IUserDto): void {
-    socket.on(
-      "messageReceived",
-      async (messageIds: string[], dialogId: string) => {
-        try {
-          await DialogMessages.update(
-            { received: true },
-            { where: { id: messageIds } },
-          );
-
-          // Отправляем подтверждение о получении сообщения
-          this.socketService.broadcastToRoom(
-            `user_${user.id}`,
-            "messageReceived",
-            { messageIds, dialogId },
-          );
-        } catch (error) {
-          console.error(`Failed to update message status: ${error.message}`);
-        }
-      },
-    );
+    // socket.on(
+    //   "messageReceived",
+    //   async (messageIds: string[], dialogId: string) => {
+    //     try {
+    //       await DialogMessages.update(
+    //         { received: true },
+    //         { where: { id: messageIds } },
+    //       );
+    //
+    //       // Отправляем подтверждение о получении сообщения
+    //       this.socketService.broadcastToRoom(
+    //         `user_${user.id}`,
+    //         "messageReceived",
+    //         { messageIds, dialogId },
+    //       );
+    //     } catch (error) {
+    //       console.error(`Failed to update message status: ${error.message}`);
+    //     }
+    //   },
+    // );
   }
 
   private setupPresenceHandlers(socket: TSocket, user: IUserDto): void {

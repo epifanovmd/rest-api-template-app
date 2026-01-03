@@ -1,0 +1,35 @@
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  PrimaryColumn,
+  UpdateDateColumn,
+} from "typeorm";
+
+export class {{properCase name}}Dto {
+  // ...
+}
+
+@Entity("{{lowerCase name}}s")
+export class {{properCase name}} {
+  @PrimaryColumn({ type: "uuid" })
+  id: string;
+
+  @Column({ type: "varchar", length: 255 })
+  name: string;
+
+  @CreateDateColumn({ name: "created_at" })
+  createdAt: Date;
+
+  @UpdateDateColumn({ name: "updated_at" })
+  updatedAt: Date;
+
+  toDTO() {
+    return {
+      id: this.id,
+      name: this.name,
+      createdAt: this.createdAt,
+      updatedAt: this.updatedAt,
+    };
+  }
+}

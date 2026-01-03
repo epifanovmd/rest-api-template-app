@@ -1,71 +1,80 @@
 import { NotFoundException } from "@force-dev/utils";
 import fs from "fs";
+import { inject, injectable } from "inversify";
 import path from "path";
 import { File } from "tsoa";
 import { v4 } from "uuid";
 
 import { config } from "../../../config";
-import { Injectable, sequelize } from "../../core";
-import { Files, IFileDto } from "./file.model";
+import { Injectable } from "../../core";
+import { FileRepository } from "./file.repository";
 
 @Injectable()
 export class FileService {
-  async getFileById(id: string): Promise<IFileDto> {
-    const file = await Files.findByPk(id);
+  constructor(
+    @inject(FileRepository) private _fileRepository: FileRepository,
+  ) {}
+
+  async getFileById(id: string) {
+    const file = await this._fileRepository.findById(id);
 
     if (!file) {
       throw new NotFoundException("Файл не найден");
     }
 
-    return file;
+    return file.toDTO();
   }
 
-  uploadFile(files: File[]) {
-    return Promise.all(
-      files.map(file => {
-        const name = file.originalname;
-        const type = file.mimetype;
-        const url = file.path;
-        const size = file.size;
-
+  async uploadFile(files: File[]) {
+    const fileEntities = await Promise.all(
+      files.map(async file => {
         const id = v4();
 
-        return Files.create({
+        return this._fileRepository.create({
           id,
-          name,
-          type,
-          url,
-          size,
+          name: file.originalname,
+          type: file.mimetype,
+          url: file.path,
+          size: file.size,
         });
       }),
     );
+
+    return fileEntities.map(file => file.toDTO());
   }
 
-  async deleteFile(id: string): Promise<number> {
-    const { url } = await this.getFileById(id);
+  async deleteFile(id: string): Promise<boolean> {
+    const file = await this._fileRepository.findById(id);
 
-    await this._deleteFileFromServer(url);
+    if (!file) {
+      throw new NotFoundException("Файл не найден");
+    }
 
-    return Files.destroy({ where: { id } });
+    await this._deleteFileFromServer(file.url);
+
+    return await this._fileRepository.delete(id);
   }
 
-  private _deleteFileFromServer(url: string) {
+  private async _deleteFileFromServer(url: string) {
     try {
       fs.readdir(config.server.filesFolderPath, err => {
         if (err) {
-          throw Promise.resolve(err);
+          throw err;
         }
 
         const file = url.split("/")?.[1];
 
-        fs.unlink(path.join(config.server.filesFolderPath, file), err => {
-          if (err) {
-            throw Promise.resolve(err);
-          }
-        });
+        if (file) {
+          fs.unlink(path.join(config.server.filesFolderPath, file), err => {
+            if (err) {
+              throw err;
+            }
+          });
+        }
       });
     } catch (e) {
-      return Promise.resolve(e);
+      console.error("Error deleting file from server:", e);
+      throw e;
     }
   }
 }

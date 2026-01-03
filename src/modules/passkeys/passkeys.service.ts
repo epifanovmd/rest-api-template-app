@@ -12,14 +12,10 @@ import type {
 import { inject, injectable } from "inversify";
 
 import { config } from "../../../config";
-import { Injectable, sequelize } from "../../core";
+import { Injectable } from "../../core";
 import { AuthService } from "../auth";
 import { UserService } from "../user";
-import {
-  IVerifyAuthenticationResponse,
-  IVerifyRegistrationResponse,
-  Passkeys,
-} from "./passkeys.model";
+import { PasskeyRepository } from "./passkeys.repository";
 
 const {
   auth: { webAuthn },
@@ -37,22 +33,22 @@ export class PasskeysService {
   constructor(
     @inject(UserService) private _userService: UserService,
     @inject(AuthService) private _authService: AuthService,
+    @inject(PasskeyRepository) private _passkeyRepository: PasskeyRepository,
   ) {}
 
   async generateRegistrationOptions(userId: string) {
-    // Проверьте, существует ли пользователь с данным ID
     const user = await this._userService.getUser(userId);
-    // Настройте параметры для генерации
     const userDisplayName = user.email || user.phone;
     const userName = user.email || user.phone;
-    const userIdBuffer = Buffer.from(user.id, "utf-8");
-    const passkeys = await user.getPasskeys();
 
     if (!userName) {
       throw new InternalServerErrorException(
-        "У пользователя отсутсвует и email и телефон",
+        "У пользователя отсутствует и email и телефон",
       );
     }
+
+    const passkeys = await this._passkeyRepository.findByUserId(userId);
+    const userIdBuffer = Buffer.from(user.id, "utf-8");
 
     const options = await generateRegistrationOptions({
       rpName,
@@ -60,73 +56,66 @@ export class PasskeysService {
       userID: userIdBuffer,
       userName,
       userDisplayName,
-      attestationType: "none", // или 'indirect', 'direct' в зависимости от ваших требований
+      attestationType: "none",
       excludeCredentials: passkeys.map(passkey => ({
         id: passkey.id,
-        // Optional
         transports: passkey.transports,
       })),
       authenticatorSelection: {
-        authenticatorAttachment: "platform", // или 'cross-platform'
+        authenticatorAttachment: "platform",
         requireResidentKey: false,
         residentKey: "discouraged",
       },
-      timeout: 60000, // Таймаут в миллисекундах
+      timeout: 60000,
     });
 
     user.challenge = options.challenge;
-    await user.save();
+    await this._userService.updateUser(user.id, {
+      challenge: options.challenge,
+    });
 
-    // Генерация опций для регистрации
     return options;
   }
 
-  verifyRegistration = async (
-    userId: string,
-    data: RegistrationResponseJSON,
-  ): Promise<IVerifyRegistrationResponse> => {
+  async verifyRegistration(userId: string, data: RegistrationResponseJSON) {
     try {
       const user = await this._userService.getUser(userId);
 
-      if (user.challenge) {
-        // Проверьте данные с помощью verifyRegistrationResponse
-        const verification = await verifyRegistrationResponse({
-          response: data,
-          expectedChallenge: user.challenge, // Укажите ожидаемый challenge
-          expectedOrigin: origin, // Укажите ваш origin
-          expectedRPID: rpID, // Укажите ваш RPID
-        });
-
-        if (verification.verified && verification.registrationInfo) {
-          // Сохраните данные в модель Passkeys
-          await Passkeys.create({
-            id: verification.registrationInfo.credential.id,
-            publicKey: Buffer.from(
-              verification.registrationInfo.credential.publicKey,
-            ),
-            userId: userId,
-            counter: verification.registrationInfo.credential.counter,
-            deviceType: verification.registrationInfo.credentialDeviceType,
-            transports: verification.registrationInfo.credential.transports,
-          });
-        }
-
-        return {
-          verified: verification.verified,
-        };
+      if (!user.challenge) {
+        throw new InternalServerErrorException("Challenge not found");
       }
 
-      return Promise.reject(
-        new InternalServerErrorException("Challenge not found"),
-      );
+      const verification = await verifyRegistrationResponse({
+        response: data,
+        expectedChallenge: user.challenge,
+        expectedOrigin: origin,
+        expectedRPID: rpID,
+      });
+
+      if (verification.verified && verification.registrationInfo) {
+        await this._passkeyRepository.create({
+          id: verification.registrationInfo.credential.id,
+          publicKey: new Uint8Array(
+            verification.registrationInfo.credential.publicKey,
+          ),
+          userId: userId,
+          counter: verification.registrationInfo.credential.counter,
+          deviceType: verification.registrationInfo.credentialDeviceType,
+          transports: verification.registrationInfo.credential.transports,
+        });
+      }
+
+      return {
+        verified: verification.verified,
+      };
     } catch (error) {
       throw new InternalServerErrorException("Ошибка верификации", error);
     }
-  };
+  }
 
   async generateAuthenticationOptions(userId: string) {
     const user = await this._userService.getUser(userId);
-    const passkeys = await user.getPasskeys();
+    const passkeys = await this._passkeyRepository.findByUserId(userId);
 
     if (!passkeys || passkeys.length === 0) {
       throw new InternalServerErrorException("Credentials not found");
@@ -134,7 +123,6 @@ export class PasskeysService {
 
     const options = await generateAuthenticationOptions({
       rpID,
-      // Require users to use a previously-registered authenticator
       allowCredentials: passkeys.map(passkey => ({
         id: passkey.id,
         transports: passkey.transports,
@@ -142,24 +130,19 @@ export class PasskeysService {
     });
 
     user.challenge = options.challenge;
-    await user.save();
+    await this._userService.updateUser(user.id, {
+      challenge: options.challenge,
+    });
 
     return options;
   }
 
-  async verifyAuthentication(
-    userId: string,
-    data: AuthenticationResponseJSON,
-  ): Promise<IVerifyAuthenticationResponse> {
-    // Логика верификации аутентификации
+  async verifyAuthentication(userId: string, data: AuthenticationResponseJSON) {
     const user = await this._userService.getUser(userId);
-
-    const passkey = await Passkeys.findOne({
-      where: {
-        userId,
-        id: data.id,
-      },
-    });
+    const passkey = await this._passkeyRepository.findByUserIdAndId(
+      userId,
+      data.id,
+    );
 
     if (!user.challenge) {
       throw new InternalServerErrorException(
@@ -180,7 +163,7 @@ export class PasskeysService {
       expectedRPID: rpID,
       credential: {
         id: passkey.id,
-        publicKey: new Uint8Array(passkey.publicKey),
+        publicKey: passkey.publicKey,
         counter: passkey.counter,
         transports: passkey.transports,
       },
@@ -188,7 +171,7 @@ export class PasskeysService {
 
     if (verifyData.verified) {
       passkey.counter = verifyData.authenticationInfo.newCounter;
-      await passkey.save();
+      await this._passkeyRepository.save(passkey);
     }
 
     return {

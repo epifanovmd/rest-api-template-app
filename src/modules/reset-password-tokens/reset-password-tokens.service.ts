@@ -1,10 +1,10 @@
 import { BadRequestException } from "@force-dev/utils";
-import { injectable } from "inversify";
+import { inject, injectable } from "inversify";
 
 import { config } from "../../../config";
 import { createToken, verifyToken } from "../../common/helpers/jwt";
-import { Injectable, sequelize } from "../../core";
-import { ResetPasswordTokens } from "./reset-password-tokens.model";
+import { Injectable } from "../../core";
+import { ResetPasswordTokensRepository } from "./reset-password-tokens.repository";
 
 const {
   auth: { resetPassword },
@@ -12,35 +12,38 @@ const {
 
 @Injectable()
 export class ResetPasswordTokensService {
-  create = async (userId: string) => {
+  constructor(
+    @inject(ResetPasswordTokensRepository)
+    private _resetPasswordTokensRepository: ResetPasswordTokensRepository,
+  ) {}
+
+  async create(userId: string) {
     const token = await createToken(userId, {
       expiresIn: `${resetPassword.expireMinutes}m`,
     });
-    const findResetPasswordTokens = await ResetPasswordTokens.findOne({
-      where: { userId },
-    });
+
+    const findResetPasswordTokens =
+      await this._resetPasswordTokensRepository.findByUserId(userId);
 
     if (findResetPasswordTokens) {
       findResetPasswordTokens.token = token;
 
-      return await findResetPasswordTokens.save();
+      return await this._resetPasswordTokensRepository.save(
+        findResetPasswordTokens,
+      );
     } else {
-      return ResetPasswordTokens.create({
+      return this._resetPasswordTokensRepository.create({
         userId,
         token,
       });
     }
-  };
+  }
 
-  check = async (token: string) => {
+  async check(token: string) {
     const { userId } = await verifyToken(token);
 
-    const resetPasswordToken = await ResetPasswordTokens.findOne({
-      where: {
-        userId,
-        token,
-      },
-    });
+    const resetPasswordToken =
+      await this._resetPasswordTokensRepository.findByToken(token);
 
     if (!resetPasswordToken) {
       throw new BadRequestException(
@@ -48,8 +51,8 @@ export class ResetPasswordTokensService {
       );
     }
 
-    await resetPasswordToken.destroy();
+    await this._resetPasswordTokensRepository.delete(userId);
 
     return { userId, token };
-  };
+  }
 }

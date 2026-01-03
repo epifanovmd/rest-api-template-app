@@ -21,6 +21,9 @@ export class Dialog {
   @Column({ name: "owner_id", type: "uuid" })
   ownerId: string;
 
+  @Column({ name: "last_message_id", type: "uuid", nullable: true })
+  lastMessageId: string | null;
+
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 
@@ -32,26 +35,26 @@ export class Dialog {
   @JoinColumn({ name: "owner_id" })
   owner: User;
 
-  @OneToMany(() => DialogMembers, member => member.dialog)
+  @OneToMany(() => DialogMembers, member => member.dialog, { cascade: true })
   members: DialogMembers[];
 
-  @OneToMany(() => DialogMessages, message => message.dialog)
+  @OneToMany(() => DialogMessages, message => message.dialog, { cascade: true })
   messages: DialogMessages[];
 
-  // Virtual fields for DTO
-  lastMessage?: DialogMessages[];
-  unreadMessagesCount?: number;
+  @ManyToOne(() => DialogMessages, { nullable: true })
+  @JoinColumn({ name: "last_message_id" })
+  lastMessage: DialogMessages | null;
 
   toDTO() {
     return {
       id: this.id,
       ownerId: this.ownerId,
+      lastMessageId: this.lastMessageId,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
       owner: this.owner?.toDTO(),
       members: this.members?.map(member => member.toDTO()),
-      lastMessage: this.lastMessage,
-      unreadMessagesCount: this.unreadMessagesCount,
+      lastMessage: this.lastMessage ? [this.lastMessage.toDTO()] : null,
     };
   }
 }

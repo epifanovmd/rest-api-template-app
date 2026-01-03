@@ -1,7 +1,7 @@
-import { inject, injectable } from "inversify";
+import { inject } from "inversify";
 import { Body, Controller, Post, Route, Tags } from "tsoa";
 
-import { Injectable, sequelize } from "../../core";
+import { Injectable } from "../../core";
 import {
   IGenerateNonceRequest,
   IGenerateNonceResponse,
@@ -9,7 +9,7 @@ import {
   IRegisterBiometricResponse,
   IVerifyBiometricSignatureRequest,
   IVerifyBiometricSignatureResponse,
-} from "./biometric.model";
+} from "./biometric.dto";
 import { BiometricService } from "./biometric.service";
 
 @Injectable()

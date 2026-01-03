@@ -1,13 +1,18 @@
-import { ForbiddenException, UnauthorizedException } from "@force-dev/utils";
+import {
+  ForbiddenException,
+  iocContainer,
+  UnauthorizedException,
+} from "@force-dev/utils";
 import jwt, { sign, SignOptions, VerifyErrors } from "jsonwebtoken";
+import { DataSource } from "typeorm";
 
 import { config } from "../../../config";
 import {
   EPermissions,
   Permission,
-} from "../../modules/permission/permission.model";
-import { ERole, IRoleDto, Role } from "../../modules/role/role.model";
-import { IUserDto, User } from "../../modules/user/user.model";
+} from "../../modules/permission/permission.entity";
+import { ERole, Role } from "../../modules/role/role.entity";
+import { User } from "../../modules/user/user.entity";
 import { JWTDecoded } from "../../types/koa";
 
 type RoleStrings = `role:${ERole}`;
@@ -15,8 +20,14 @@ type PermissionStrings = `permission:${EPermissions}`;
 export type SecurityScopes = (RoleStrings | PermissionStrings)[];
 
 export const createToken = (userId: string, opts?: SignOptions) =>
-  new Promise<string>(resolve => {
-    resolve(sign({ userId }, config.auth.jwt.secretKey, opts));
+  new Promise<string>((resolve, reject) => {
+    try {
+      const token = sign({ userId }, config.auth.jwt.secretKey, opts);
+
+      resolve(token);
+    } catch (error) {
+      reject(error);
+    }
   });
 
 export const createTokenAsync = (
@@ -42,62 +53,75 @@ export const verifyToken = (token: string) => {
 export const verifyAuthToken = async (
   token?: string,
   scopes?: SecurityScopes,
-): Promise<IUserDto> =>
-  new Promise((resolve, reject) => {
-    if (!token) {
-      reject(new UnauthorizedException());
-    } else {
+): Promise<User> => {
+  if (!token) {
+    throw new UnauthorizedException();
+  }
+
+  try {
+    // Верифицируем JWT токен
+    const decoded = await new Promise<JWTDecoded>((resolve, reject) => {
       jwt.verify(
         token,
         config.auth.jwt.secretKey,
-        async (err: VerifyErrors, decoded: JWTDecoded) => {
+        (err: VerifyErrors, decoded: JWTDecoded) => {
           if (err) {
             reject(err);
-          }
-
-          try {
-            const user = await User.findByPk(decoded.userId, {
-              include: {
-                model: Role,
-                include: [
-                  {
-                    model: Permission,
-                    through: {
-                      attributes: [], // Исключаем атрибуты связывающей таблицы
-                    },
-                  },
-                ],
-              },
-            }).catch(() => null);
-
-            if (!user) {
-              return reject(new UnauthorizedException());
-            }
-
-            const role = user.role;
-            const isAdmin = role.name === ERole.ADMIN;
-
-            if (!isAdmin && scopes && scopes.length) {
-              const roles = extractRoles(scopes);
-              const permissions = extractPermissions(scopes);
-
-              if (!hasRole(role, roles) || !hasPermission(role, permissions)) {
-                reject(
-                  new ForbiddenException(
-                    "Access denied: You do not have permission to perform this action.",
-                  ),
-                );
-              }
-            }
-
-            resolve(user);
-          } catch (e) {
-            reject(e);
+          } else {
+            resolve(decoded);
           }
         },
       );
+    });
+
+    // Получаем репозиторий пользователя
+    const dataSource = iocContainer.get<DataSource>("DataSource");
+    const userRepository = dataSource.getRepository(User);
+
+    // Ищем пользователя с его ролью и разрешениями
+    const user = await userRepository.findOne({
+      where: { id: decoded.userId },
+      relations: {
+        role: {
+          permissions: true,
+        },
+      },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException("Пользователь не найден");
     }
-  });
+
+    // Проверяем доступы если указаны scopes
+    if (scopes && scopes.length > 0) {
+      const roles = extractRoles(scopes);
+      const permissions = extractPermissions(scopes);
+
+      const isAdmin = user.role?.name === ERole.ADMIN;
+
+      if (!isAdmin) {
+        if (
+          !hasRole(user.role, roles) ||
+          !hasPermission(user.role, permissions)
+        ) {
+          throw new ForbiddenException(
+            "Access denied: You do not have permission to perform this action.",
+          );
+        }
+      }
+    }
+
+    return user;
+  } catch (error) {
+    if (
+      error instanceof UnauthorizedException ||
+      error instanceof ForbiddenException
+    ) {
+      throw error;
+    }
+    throw new UnauthorizedException("Неверный токен");
+  }
+};
 
 const extractRoles = (scopes: SecurityScopes): string[] =>
   scopes.reduce<string[]>((roles, scope) => {
@@ -117,9 +141,19 @@ const extractPermissions = (scopes: SecurityScopes): string[] =>
     return permissions;
   }, []);
 
-const hasRole = (role: IRoleDto, roles: string[]): boolean =>
-  roles.length === 0 || roles.includes(role.name);
+const hasRole = (role: Role | null, roles: string[]): boolean => {
+  if (!role) return false;
 
-const hasPermission = (role: IRoleDto, permissions: string[]): boolean =>
-  permissions.length === 0 ||
-  role.permissions.some(({ name }) => permissions.includes(name));
+  return roles.length === 0 || roles.includes(role.name);
+};
+
+const hasPermission = (role: Role | null, permissions: string[]): boolean => {
+  if (!role || !role.permissions) return false;
+
+  return (
+    permissions.length === 0 ||
+    role.permissions.some((permission: Permission) =>
+      permissions.includes(permission.name),
+    )
+  );
+};

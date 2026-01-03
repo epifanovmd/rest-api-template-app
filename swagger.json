@@ -96,7 +96,8 @@
 						"type": "string"
 					},
 					"challenge": {
-						"type": "string"
+						"type": "string",
+						"nullable": true
 					},
 					"createdAt": {
 						"type": "string",
@@ -236,7 +237,8 @@
 						"type": "string"
 					},
 					"challenge": {
-						"type": "string"
+						"type": "string",
+						"nullable": true
 					},
 					"createdAt": {
 						"type": "string",
@@ -1633,8 +1635,15 @@
 			"post": {
 				"operationId": "RequestVerifyEmail",
 				"responses": {
-					"204": {
-						"description": "No content"
+					"200": {
+						"description": "Ответ о том, что запрос на подтверждение был успешно отправлен",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "boolean"
+								}
+							}
+						}
 					}
 				},
 				"description": "Запросить подтверждение email-адреса для текущего пользователя.\nЭтот эндпоинт позволяет отправить пользователю письмо для подтверждения его email-адреса.",
@@ -2350,8 +2359,7 @@
 						"content": {
 							"application/json": {
 								"schema": {
-									"type": "number",
-									"format": "double"
+									"type": "boolean"
 								}
 							}
 						}
@@ -2416,8 +2424,7 @@
 						"content": {
 							"application/json": {
 								"schema": {
-									"type": "number",
-									"format": "double"
+									"type": "boolean"
 								}
 							}
 						}
@@ -2782,8 +2789,15 @@
 			"delete": {
 				"operationId": "DeleteMember",
 				"responses": {
-					"204": {
-						"description": "No content"
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "boolean"
+								}
+							}
+						}
 					}
 				},
 				"description": "Удаляет участника из диалога.",
@@ -3027,8 +3041,15 @@
 			"delete": {
 				"operationId": "DeleteMessage",
 				"responses": {
-					"204": {
-						"description": "No content"
+					"200": {
+						"description": "Статус выполнения операции.\n\nЭтот метод позволяет пользователю удалить сообщение из диалога.\nУдаление доступно только для пользователя, который является автором сообщения.\nМетод принимает ID сообщения, которое необходимо удалить, и текущий JWT-токен для аутентификации.\nПосле успешного удаления сообщения возвращается статус выполнения операции.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "boolean"
+								}
+							}
+						}
 					}
 				},
 				"description": "Удаляет сообщение из диалога.",
@@ -3190,8 +3211,7 @@
 						"content": {
 							"application/json": {
 								"schema": {
-									"type": "number",
-									"format": "double"
+									"type": "boolean"
 								}
 							}
 						}

@@ -1,10 +1,9 @@
 import { render } from "ejs";
 import fs from "fs";
-import { injectable } from "inversify";
 import { createTransport, SendMailOptions } from "nodemailer";
 
 import { config } from "../../../config";
-import { Injectable, sequelize } from "../../core";
+import { Injectable } from "../../core";
 
 @Injectable()
 export class MailerService {

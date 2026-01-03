@@ -14,9 +14,9 @@ import {
 } from "tsoa";
 
 import { getContextUser } from "../../common";
-import { Injectable, sequelize } from "../../core";
+import { Injectable } from "../../core";
 import { KoaRequest } from "../../types/koa";
-import { FcmTokenDto, FcmTokenRequest } from "./fcm-token.model";
+import { FcmTokenDto, FcmTokenRequest } from "./fcm-token.dto";
 import { FcmTokenService } from "./fcm-token.service";
 import { FCMMessage } from "./fcm-token.types";
 
@@ -49,9 +49,7 @@ export class FcmTokenController extends Controller {
   ): Promise<string[]> {
     return this._fcmTokenService
       .registerApnToken(body.apns_tokens, body.application, body.sandbox)
-      .then(res =>
-        (res.data?.results ?? []).map(item => item.registration_token),
-      );
+      .then(res => (res.results ?? []).map(item => item.registration_token));
   }
 
   /**
@@ -107,7 +105,7 @@ export class FcmTokenController extends Controller {
    */
   @Security("jwt")
   @Delete("/my-tokens")
-  deleteTokens(@Request() req: KoaRequest): Promise<number> {
+  deleteTokens(@Request() req: KoaRequest): Promise<boolean> {
     const user = getContextUser(req);
 
     return this._fcmTokenService.deleteTokens(user.id);
@@ -154,7 +152,7 @@ export class FcmTokenController extends Controller {
    */
   @Security("jwt")
   @Delete("/token/{id}")
-  deleteToken(@Path() id: number): Promise<number> {
+  deleteToken(@Path() id: number): Promise<boolean> {
     return this._fcmTokenService.deleteToken(id);
   }
 }

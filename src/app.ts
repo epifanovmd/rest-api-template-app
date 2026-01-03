@@ -2,21 +2,18 @@ import { iocContainer } from "@force-dev/utils";
 import KoaRouter from "@koa/router";
 import Koa from "koa";
 import logger from "koa-logger";
+import sha256 from "sha256";
 import { DataSource } from "typeorm";
 
 import { config } from "../config";
-import { sequelize } from "./core";
 import { AppDataSource } from "./core/db/data-source";
 import {
   notFoundMiddleware,
   RegisterAppMiddlewares,
   RegisterSwagger,
 } from "./middleware";
-import { SocketGateway } from "./modules/socket";
 import { UserService } from "./modules/user";
 import { RegisterRoutes } from "./routes";
-
-console.log("AppDataSource", !!AppDataSource);
 
 const isDevelopment = process.env.NODE_ENV;
 
@@ -61,19 +58,19 @@ export class App {
     const userService = iocContainer.get<UserService>(UserService);
     // const socketGateway = container.get<SocketGateway>(SocketGateway);
 
-    sequelize.sync({ force: false }).then(async () => {
-      // await userService.createAdmin({
-      //   email: config.auth.admin.email,
-      //   passwordHash: sha256(config.auth.admin.password),
-      // });
-    });
-
     // socketGateway.initialize();
 
     // Инициализация базы данных
     const dataSource = iocContainer.get<DataSource>("DataSource");
 
     await dataSource.initialize();
+
+    await userService
+      .createAdmin({
+        email: config.auth.admin.email,
+        passwordHash: sha256(config.auth.admin.password),
+      })
+      .catch(() => null);
 
     this.koaApp.listen(port, hostname, () => {
       const url = `http://${hostname}:${port}`;
@@ -83,7 +80,9 @@ export class App {
 
       console.log(`🚀 Server running on ${url}`);
       console.info(`Swagger on: ${url}/api-docs`);
-      console.log(`📊 Database: ${config}`);
+      console.log(
+        `📊 Database: ${config.database.postgres.host}:${config.database.postgres.port}`,
+      );
       console.log(`🌐 Environment: ${process.env.NODE_ENV}`);
     });
   }

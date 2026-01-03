@@ -1,25 +1,27 @@
 import { NotFoundException } from "@force-dev/utils";
 import { inject, injectable } from "inversify";
-import { Includeable } from "sequelize/types/model";
 
-import { Injectable, sequelize } from "../../core";
+import { Injectable } from "../../core";
 import { SocketService } from "../socket";
-import { UserService } from "../user";
-import { User } from "../user/user.model";
-import { DialogMembers } from "./dialog-members.model";
+import { DialogMembersRepository } from "./dialog-members.repository";
 
 @Injectable()
 export class DialogMembersService {
-  constructor(@inject(SocketService) private _socketService: SocketService) {}
+  constructor(
+    @inject(SocketService) private _socketService: SocketService,
+    @inject(DialogMembersRepository)
+    private _dialogMembersRepository: DialogMembersRepository,
+  ) {}
 
-  getMembers = async (dialogId: string) => {
-    return DialogMembers.findAll({
-      where: { dialogId },
-      include: this._include,
-    });
-  };
+  async getMembers(dialogId: string) {
+    const members = await this._dialogMembersRepository.findByDialogId(
+      dialogId,
+    );
 
-  addMembers = async ({
+    return members.map(member => member.toDTO());
+  }
+
+  async addMembers({
     userId,
     dialogId,
     members,
@@ -27,45 +29,51 @@ export class DialogMembersService {
     userId?: string;
     dialogId: string;
     members: string[];
-  }) => {
-    // Проверка может ли этот пользователь добавлять участников в диалог
+  }) {
     if (userId) {
-      const member = await DialogMembers.findOne({
-        where: {
-          userId: userId,
-          dialogId: dialogId,
-        },
-      });
+      const member =
+        await this._dialogMembersRepository.findByUserIdAndDialogId(
+          userId,
+          dialogId,
+        );
 
       if (!member) {
-        return Promise.reject(new NotFoundException("Диалог не найден"));
+        throw new NotFoundException("Диалог не найден");
       }
     }
 
-    const created = await DialogMembers.bulkCreate(
-      members.map(userId => ({
-        userId,
-        dialogId,
-      })),
-      { ignoreDuplicates: true, returning: true },
+    const createdMembers = await Promise.all(
+      members.map(async memberUserId => {
+        try {
+          return await this._dialogMembersRepository.create({
+            userId: memberUserId,
+            dialogId,
+          });
+        } catch (error) {
+          // Игнорируем дубликаты
+          return null;
+        }
+      }),
     );
 
-    created.forEach(item => {
-      const client = this._socketService.getClient(item.userId);
+    createdMembers
+      .filter(member => member !== null)
+      .forEach(member => {
+        const client = this._socketService.getClient(member!.userId);
 
-      if (client) {
-        client.emit("newDialog", dialogId);
-      }
-    });
+        if (client) {
+          client.emit("newDialog", dialogId);
+        }
+      });
 
     return this.getMembers(dialogId);
-  };
+  }
 
-  deleteMember = async (id: string) => {
-    const member = await DialogMembers.findByPk(id);
+  async deleteMember(id: string) {
+    const member = await this._dialogMembersRepository.findById(id);
 
     if (!member) {
-      return Promise.reject(new NotFoundException("Участник не найден"));
+      throw new NotFoundException("Участник не найден");
     }
 
     const client = this._socketService.getClient(member.userId);
@@ -74,16 +82,8 @@ export class DialogMembersService {
       client.emit("deleteDialog", member.dialogId);
     }
 
-    return member.destroy();
-  };
+    const deleted = await this._dialogMembersRepository.delete(id);
 
-  private get _include(): Includeable[] {
-    return [
-      {
-        model: User,
-        attributes: UserService.attributes,
-        include: UserService.include,
-      },
-    ];
+    return deleted;
   }
 }
