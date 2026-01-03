@@ -2,9 +2,9 @@
 import { ConflictException, NotFoundException } from "@force-dev/utils";
 import { inject } from "inversify";
 import sha256 from "sha256";
-import { DataSource, FindOptionsWhere } from "typeorm";
+import { FindOptionsWhere } from "typeorm";
 
-import { ApiResponse, Injectable } from "../../core";
+import { ApiResponse, IDataSource, Injectable } from "../../core";
 import { MailerService } from "../mailer";
 import { OtpService } from "../otp";
 import { ProfileRepository } from "../profile/profile.repository";
@@ -22,7 +22,7 @@ export class UserService {
     @inject(UserRepository) private _userRepository: UserRepository,
     @inject(RoleRepository) private _roleRepository: RoleRepository,
     @inject(ProfileRepository) private _profileRepository: ProfileRepository,
-    @inject("DataSource") private _dataSource: DataSource,
+    @IDataSource() private _dataSource: IDataSource,
   ) {}
 
   async getUsers(offset?: number, limit?: number) {

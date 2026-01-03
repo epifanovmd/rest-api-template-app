@@ -1,14 +1,13 @@
-import { inject, injectable } from "inversify";
-import { DataSource, Repository } from "typeorm";
+import { Repository } from "typeorm";
 
-import { Injectable } from "../../core";
+import { IDataSource, Injectable } from "../../core";
 import { Otp } from "./otp.entity";
 
 @Injectable()
 export class OtpRepository {
   private repository: Repository<Otp>;
 
-  constructor(@inject("DataSource") private dataSource: DataSource) {
+  constructor(@IDataSource() private dataSource: IDataSource) {
     this.repository = this.dataSource.getRepository(Otp);
   }
 
@@ -17,7 +16,12 @@ export class OtpRepository {
   }
 
   async findByUserIdAndCode(userId: string, code: string): Promise<Otp | null> {
-    return this.repository.findOne({ where: { userId, code } });
+    return this.repository.findOne({
+      where: {
+        userId,
+        code,
+      },
+    });
   }
 
   async create(otpData: Partial<Otp>): Promise<Otp> {

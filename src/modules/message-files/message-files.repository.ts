@@ -1,21 +1,23 @@
-import { inject, injectable } from "inversify";
-import { DataSource, In, Repository } from "typeorm";
+import { In, Repository } from "typeorm";
 
-import { Injectable } from "../../core";
+import { IDataSource, Injectable } from "../../core";
 import { MessageFiles, TMessageFileType } from "./message-files.entity";
 
 @Injectable()
 export class MessageFilesRepository {
   private repository: Repository<MessageFiles>;
 
-  constructor(@inject("DataSource") private dataSource: DataSource) {
+  constructor(@IDataSource() private dataSource: IDataSource) {
     this.repository = this.dataSource.getRepository(MessageFiles);
   }
 
   async findByMessageId(messageId: string): Promise<MessageFiles[]> {
     return this.repository.find({
       where: { messageId },
-      relations: { file: true, message: true },
+      relations: {
+        file: true,
+        message: true,
+      },
     });
   }
 
@@ -24,7 +26,10 @@ export class MessageFilesRepository {
     fileType: TMessageFileType,
   ): Promise<MessageFiles[]> {
     return this.repository.find({
-      where: { messageId, fileType },
+      where: {
+        messageId,
+        fileType,
+      },
       relations: { file: true },
     });
   }

@@ -1,22 +1,28 @@
-// user.repository.ts
-import { inject, injectable } from "inversify";
+import { injectable, unmanaged } from "inversify";
 import {
-  DataSource,
   FindOptionsRelations,
   FindOptionsWhere,
-  In,
+  ObjectLiteral,
   Repository,
 } from "typeorm";
 
-import { Injectable } from "../../core";
+import { IDataSource, Injectable } from "../../core";
 import { User } from "./user.entity";
 
-@Injectable()
-export class UserRepository {
-  private repository: Repository<User>;
+@injectable()
+export abstract class BaseRepository<T extends ObjectLiteral> {
+  protected repository: Repository<T>;
+  @IDataSource() protected dataSource: IDataSource;
 
-  constructor(@inject("DataSource") private dataSource: DataSource) {
-    this.repository = this.dataSource.getRepository(User);
+  constructor(@unmanaged() entity: new () => T) {
+    this.repository = this.dataSource.getRepository(entity);
+  }
+}
+
+@Injectable()
+export class UserRepository extends BaseRepository<User> {
+  constructor() {
+    super(User);
   }
 
   // Основные методы поиска

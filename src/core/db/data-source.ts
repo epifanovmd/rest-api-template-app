@@ -1,17 +1,8 @@
-import { iocContainer } from "@force-dev/utils";
-import { DataSource } from "typeorm";
+import { createServiceDecorator } from "@force-dev/utils";
 
-import { config } from "../../../config";
+import { TypeOrmDataSource } from "./typeorm";
 
-export const AppDataSource = new DataSource({
-  type: "postgres",
-  ...config.database.postgres,
-  database: "test-test",
-  synchronize: process.env.NODE_ENV !== "production",
-  // logging: process.env.NODE_ENV === "development",
-  migrations: ["src/migrations/*.ts"],
-  entities: [__dirname + "/../../modules/**/*.entity{.ts,.js}"],
-  subscribers: [],
-});
+export type IDataSource = typeof TypeOrmDataSource;
+export const IDataSource = createServiceDecorator<IDataSource>();
 
-iocContainer.bind("DataSource").toConstantValue(AppDataSource);
+IDataSource.toConstantValue(TypeOrmDataSource);

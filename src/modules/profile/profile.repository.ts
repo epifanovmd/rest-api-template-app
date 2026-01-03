@@ -1,28 +1,33 @@
-import { inject, injectable } from "inversify";
-import { DataSource, FindOptionsWhere, Repository } from "typeorm";
+import { Repository } from "typeorm";
 
-import { Injectable } from "../../core";
+import { IDataSource, Injectable } from "../../core";
 import { Profile } from "./profile.entity";
 
 @Injectable()
 export class ProfileRepository {
   private repository: Repository<Profile>;
 
-  constructor(@inject("DataSource") private dataSource: DataSource) {
+  constructor(@IDataSource() private dataSource: IDataSource) {
     this.repository = this.dataSource.getRepository(Profile);
   }
 
   async findById(id: string): Promise<Profile | null> {
     return this.repository.findOne({
       where: { id },
-      relations: { user: true, avatar: true },
+      relations: {
+        user: true,
+        avatar: true,
+      },
     });
   }
 
   async findByUserId(userId: string): Promise<Profile | null> {
     return this.repository.findOne({
       where: { userId },
-      relations: { user: true, avatar: true },
+      relations: {
+        user: true,
+        avatar: true,
+      },
     });
   }
 

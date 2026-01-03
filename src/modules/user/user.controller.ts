@@ -14,7 +14,7 @@ import {
 } from "tsoa";
 
 import { getContextUser } from "../../common";
-import { ApiResponse, Injectable } from "../../core";
+import { ApiResponse, Injectable, ValidateBody } from "../../core";
 import { KoaRequest } from "../../types/koa";
 import {
   IUserDto,
@@ -24,6 +24,7 @@ import {
   IUserUpdateRequest,
 } from "./user.dto";
 import { UserService } from "./user.service";
+import { UserUpdateSchema } from "./user.validate";
 
 @Injectable()
 @Tags("User")
@@ -59,6 +60,7 @@ export class UserController extends Controller {
    */
   @Security("jwt")
   @Patch("/my/update")
+  @ValidateBody(UserUpdateSchema)
   updateMyUser(
     @Request() req: KoaRequest,
     @Body() body: IUserUpdateRequest,

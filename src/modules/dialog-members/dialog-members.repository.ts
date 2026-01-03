@@ -1,35 +1,43 @@
-import { inject, injectable } from "inversify";
-import { DataSource, In, Repository } from "typeorm";
+import { Repository } from "typeorm";
 
-import { Injectable } from "../../core";
+import { IDataSource, Injectable } from "../../core";
 import { DialogMembers } from "./dialog-members.entity";
 
 @Injectable()
 export class DialogMembersRepository {
   private repository: Repository<DialogMembers>;
 
-  constructor(@inject("DataSource") private dataSource: DataSource) {
+  constructor(@IDataSource() private dataSource: IDataSource) {
     this.repository = this.dataSource.getRepository(DialogMembers);
   }
 
   async findByDialogId(dialogId: string): Promise<DialogMembers[]> {
     return this.repository.find({
       where: { dialogId },
-      relations: { user: true, dialog: true },
+      relations: {
+        user: true,
+        dialog: true,
+      },
     });
   }
 
   async findById(id: string): Promise<DialogMembers | null> {
     return this.repository.findOne({
       where: { id },
-      relations: { user: true, dialog: true },
+      relations: {
+        user: true,
+        dialog: true,
+      },
     });
   }
 
   async findByUserId(userId: string): Promise<DialogMembers[]> {
     return this.repository.find({
       where: { userId },
-      relations: { user: true, dialog: true },
+      relations: {
+        user: true,
+        dialog: true,
+      },
     });
   }
 
@@ -38,8 +46,14 @@ export class DialogMembersRepository {
     dialogId: string,
   ): Promise<DialogMembers | null> {
     return this.repository.findOne({
-      where: { userId, dialogId },
-      relations: { user: true, dialog: true },
+      where: {
+        userId,
+        dialogId,
+      },
+      relations: {
+        user: true,
+        dialog: true,
+      },
     });
   }
 
@@ -67,7 +81,10 @@ export class DialogMembersRepository {
     dialogId: string,
     userId: string,
   ): Promise<boolean> {
-    const result = await this.repository.delete({ dialogId, userId });
+    const result = await this.repository.delete({
+      dialogId,
+      userId,
+    });
 
     return (result.affected || 0) > 0;
   }

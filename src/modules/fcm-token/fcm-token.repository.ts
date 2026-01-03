@@ -1,14 +1,13 @@
-import { inject, injectable } from "inversify";
-import { DataSource, FindOptionsWhere, Repository } from "typeorm";
+import { Repository } from "typeorm";
 
-import { Injectable } from "../../core";
+import { IDataSource, Injectable } from "../../core";
 import { FcmToken } from "./fcm-token.entity";
 
 @Injectable()
 export class FcmTokenRepository {
   private repository: Repository<FcmToken>;
 
-  constructor(@inject("DataSource") private dataSource: DataSource) {
+  constructor(@IDataSource() private dataSource: IDataSource) {
     this.repository = this.dataSource.getRepository(FcmToken);
   }
 

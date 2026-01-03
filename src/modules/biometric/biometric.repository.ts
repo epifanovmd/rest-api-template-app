@@ -1,14 +1,13 @@
-import { inject, injectable } from "inversify";
-import { DataSource, Repository } from "typeorm";
+import { Repository } from "typeorm";
 
-import { Injectable } from "../../core";
+import { IDataSource, Injectable } from "../../core";
 import { Biometric } from "./biometric.entity";
 
 @Injectable()
 export class BiometricRepository {
   private repository: Repository<Biometric>;
 
-  constructor(@inject("DataSource") private dataSource: DataSource) {
+  constructor(@IDataSource() private dataSource: IDataSource) {
     this.repository = this.dataSource.getRepository(Biometric);
   }
 
@@ -31,7 +30,10 @@ export class BiometricRepository {
     deviceId: string,
   ): Promise<Biometric | null> {
     return this.repository.findOne({
-      where: { userId, deviceId },
+      where: {
+        userId,
+        deviceId,
+      },
       relations: { user: true },
     });
   }

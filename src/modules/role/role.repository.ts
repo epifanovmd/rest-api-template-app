@@ -1,9 +1,7 @@
-import { inject, injectable } from "inversify";
-import { DataSource, FindOptionsWhere, In, Repository } from "typeorm";
+import { Repository } from "typeorm";
 
-import { Injectable } from "../../core";
-import { EPermissions } from "../permission/permission.entity";
-import { Permission } from "../permission/permission.entity";
+import { IDataSource, Injectable } from "../../core";
+import { EPermissions, Permission } from "../permission/permission.entity";
 import { ERole, Role } from "./role.entity";
 
 @Injectable()
@@ -11,7 +9,7 @@ export class RoleRepository {
   private repository: Repository<Role>;
   private permissionRepository: Repository<Permission>;
 
-  constructor(@inject("DataSource") private dataSource: DataSource) {
+  constructor(@IDataSource() private dataSource: IDataSource) {
     this.repository = this.dataSource.getRepository(Role);
     this.permissionRepository = this.dataSource.getRepository(Permission);
   }

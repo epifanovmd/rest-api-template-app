@@ -1,14 +1,13 @@
-import { inject, injectable } from "inversify";
-import { DataSource, Repository } from "typeorm";
+import { Repository } from "typeorm";
 
-import { Injectable } from "../../core";
+import { IDataSource, Injectable } from "../../core";
 import { File } from "./file.entity";
 
 @Injectable()
 export class FileRepository {
   private repository: Repository<File>;
 
-  constructor(@inject("DataSource") private dataSource: DataSource) {
+  constructor(@IDataSource() private dataSource: IDataSource) {
     this.repository = this.dataSource.getRepository(File);
   }
 

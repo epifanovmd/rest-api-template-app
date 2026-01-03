@@ -3,10 +3,9 @@ import KoaRouter from "@koa/router";
 import Koa from "koa";
 import logger from "koa-logger";
 import sha256 from "sha256";
-import { DataSource } from "typeorm";
 
 import { config } from "../config";
-import { AppDataSource } from "./core/db/data-source";
+import { IDataSource } from "./core";
 import {
   notFoundMiddleware,
   RegisterAppMiddlewares,
@@ -61,7 +60,7 @@ export class App {
     // socketGateway.initialize();
 
     // Инициализация базы данных
-    const dataSource = iocContainer.get<DataSource>("DataSource");
+    const dataSource = IDataSource.getInstance();
 
     await dataSource.initialize();
 

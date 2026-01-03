@@ -1,8 +1,7 @@
 import { NotFoundException } from "@force-dev/utils";
-import { inject, injectable } from "inversify";
-import { DataSource, In } from "typeorm";
+import { inject } from "inversify";
 
-import { Injectable } from "../../core";
+import { IDataSource, Injectable } from "../../core";
 import { DialogMembersService } from "../dialog-members";
 import { DialogMembersRepository } from "../dialog-members/dialog-members.repository";
 import { DialogMessagesRepository } from "../dialog-messages/dialog-messages.repository";
@@ -23,7 +22,7 @@ export class DialogService {
     @inject(DialogMessagesRepository)
     private _dialogMessagesRepository: DialogMessagesRepository,
     @inject(UserRepository) private _userRepository: UserRepository,
-    @inject("DataSource") private _dataSource: DataSource,
+    @IDataSource() private _dataSource: IDataSource,
   ) {}
 
   async getUnreadMessagesCount(

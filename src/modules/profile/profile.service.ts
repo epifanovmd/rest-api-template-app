@@ -1,9 +1,8 @@
 import { NotFoundException } from "@force-dev/utils";
-import { inject, injectable } from "inversify";
+import { inject } from "inversify";
 import { File } from "tsoa";
-import { DataSource } from "typeorm";
 
-import { Injectable } from "../../core";
+import { IDataSource, Injectable } from "../../core";
 import { FileService } from "../file";
 import { FileRepository } from "../file/file.repository";
 import { IProfileUpdateRequest } from "./profile.dto";
@@ -16,7 +15,7 @@ export class ProfileService {
     @inject(FileService) private _fileService: FileService,
     @inject(ProfileRepository) private _profileRepository: ProfileRepository,
     @inject(FileRepository) private _fileRepository: FileRepository,
-    @inject("DataSource") private _dataSource: DataSource,
+    @IDataSource() private _dataSource: IDataSource,
   ) {}
 
   async getProfiles(offset?: number, limit?: number) {

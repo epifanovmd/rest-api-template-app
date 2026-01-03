@@ -1,14 +1,13 @@
-import { inject, injectable } from "inversify";
-import { DataSource, FindOptionsWhere, Repository } from "typeorm";
+import { FindOptionsWhere, Repository } from "typeorm";
 
-import { Injectable } from "../../core";
+import { IDataSource, Injectable } from "../../core";
 import { DialogMessages } from "./dialog-messages.entity";
 
 @Injectable()
 export class DialogMessagesRepository {
   private repository: Repository<DialogMessages>;
 
-  constructor(@inject("DataSource") private dataSource: DataSource) {
+  constructor(@IDataSource() private dataSource: IDataSource) {
     this.repository = this.dataSource.getRepository(DialogMessages);
   }
 

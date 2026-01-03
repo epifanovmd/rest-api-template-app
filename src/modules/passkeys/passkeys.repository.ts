@@ -1,14 +1,13 @@
-import { inject, injectable } from "inversify";
-import { DataSource, Repository } from "typeorm";
+import { Repository } from "typeorm";
 
-import { Injectable } from "../../core";
+import { IDataSource, Injectable } from "../../core";
 import { Passkey } from "./passkey.entity";
 
 @Injectable()
 export class PasskeyRepository {
   private repository: Repository<Passkey>;
 
-  constructor(@inject("DataSource") private dataSource: DataSource) {
+  constructor(@IDataSource() private dataSource: IDataSource) {
     this.repository = this.dataSource.getRepository(Passkey);
   }
 
@@ -28,7 +27,10 @@ export class PasskeyRepository {
 
   async findByUserIdAndId(userId: string, id: string): Promise<Passkey | null> {
     return this.repository.findOne({
-      where: { userId, id },
+      where: {
+        userId,
+        id,
+      },
       relations: { user: true },
     });
   }

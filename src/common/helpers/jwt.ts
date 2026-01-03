@@ -1,12 +1,8 @@
-import {
-  ForbiddenException,
-  iocContainer,
-  UnauthorizedException,
-} from "@force-dev/utils";
+import { ForbiddenException, UnauthorizedException } from "@force-dev/utils";
 import jwt, { sign, SignOptions, VerifyErrors } from "jsonwebtoken";
-import { DataSource } from "typeorm";
 
 import { config } from "../../../config";
+import { IDataSource } from "../../core";
 import {
   EPermissions,
   Permission,
@@ -75,7 +71,7 @@ export const verifyAuthToken = async (
     });
 
     // Получаем репозиторий пользователя
-    const dataSource = iocContainer.get<DataSource>("DataSource");
+    const dataSource = IDataSource.getInstance();
     const userRepository = dataSource.getRepository(User);
 
     // Ищем пользователя с его ролью и разрешениями
@@ -142,13 +138,17 @@ const extractPermissions = (scopes: SecurityScopes): string[] =>
   }, []);
 
 const hasRole = (role: Role | null, roles: string[]): boolean => {
-  if (!role) return false;
+  if (!role) {
+    return false;
+  }
 
   return roles.length === 0 || roles.includes(role.name);
 };
 
 const hasPermission = (role: Role | null, permissions: string[]): boolean => {
-  if (!role || !role.permissions) return false;
+  if (!role || !role.permissions) {
+    return false;
+  }
 
   return (
     permissions.length === 0 ||
