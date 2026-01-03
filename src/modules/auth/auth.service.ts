@@ -14,7 +14,7 @@ import {
   validatePhone,
   verifyAuthToken,
 } from "../../common";
-import { ApiResponse, Injectable } from "../../core";
+import { ApiResponse, Injectable, sequelize } from "../../core";
 import { MailerService } from "../mailer";
 import { ResetPasswordTokensService } from "../reset-password-tokens";
 import { UserService } from "../user";

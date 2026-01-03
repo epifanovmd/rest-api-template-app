@@ -11,8 +11,7 @@ import {
   NonAttribute,
 } from "sequelize";
 
-import { ListResponse } from "../../core";
-import { sequelize } from "../../db";
+import { ListResponse, sequelize } from "../../core";
 import { Biometric } from "../biometric/biometric.model";
 import { Passkeys } from "../passkeys/passkeys.model";
 import { EPermissions } from "../permission/permission.model";

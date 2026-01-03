@@ -14,7 +14,13 @@ import {
 } from "tsoa";
 
 import { getContextUser } from "../../common";
-import { ApiResponse, AuthGuard, Injectable, UseGuards } from "../../core";
+import {
+  ApiResponse,
+  AuthGuard,
+  Injectable,
+  sequelize,
+  UseGuards,
+} from "../../core";
 import { KoaRequest } from "../../types/koa";
 import {
   IUserDto,

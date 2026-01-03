@@ -4,7 +4,7 @@ import moment from "moment";
 
 import { config } from "../../../config";
 import { generateOtp } from "../../common";
-import { Injectable } from "../../core";
+import { Injectable, sequelize } from "../../core";
 import { Otp } from "./otp.model";
 
 const {

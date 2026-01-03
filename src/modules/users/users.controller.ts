@@ -1,7 +1,7 @@
 import { inject } from "inversify";
 import { Context } from "koa";
 
-import { AuthGuard, UseGuards } from "../../core";
+import { AuthGuard, sequelize, UseGuards } from "../../core";
 import { UsersService } from "./users.service";
 
 export class UsersController {

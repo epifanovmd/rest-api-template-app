@@ -2,7 +2,7 @@ import { NotFoundException } from "@force-dev/utils";
 import { inject, injectable } from "inversify";
 import { Includeable, Op, WhereOptions } from "sequelize";
 
-import { Injectable } from "../../core";
+import { Injectable, sequelize } from "../../core";
 // TODO: решить проблему с циклической зависимостью
 import { DialogService } from "../dialog/dialog.service";
 import { FcmTokenService } from "../fcm-token";

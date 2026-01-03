@@ -8,7 +8,7 @@ import {
   NonAttribute,
 } from "sequelize";
 
-import { sequelize } from "../../db";
+import { sequelize } from "../../core";
 import { User } from "../user/user.model";
 
 export interface IBiometricDto extends BiometricModel {}

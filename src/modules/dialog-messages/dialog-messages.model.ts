@@ -8,8 +8,7 @@ import {
   NonAttribute,
 } from "sequelize";
 
-import { ListResponse } from "../../core";
-import { sequelize } from "../../db";
+import { ListResponse, sequelize } from "../../core";
 import { Dialog } from "../dialog/dialog.model";
 import { Files, IFileDto } from "../file/file.model";
 import { IUserDto, User } from "../user/user.model";

@@ -15,7 +15,7 @@ import {
 } from "tsoa";
 
 import { getContextUser } from "../../common";
-import { Injectable } from "../../core";
+import { Injectable, sequelize } from "../../core";
 import { KoaRequest } from "../../types/koa";
 import { DialogMembersService } from "../dialog-members";
 import {

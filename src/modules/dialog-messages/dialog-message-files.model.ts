@@ -6,7 +6,7 @@ import {
   NonAttribute,
 } from "sequelize";
 
-import { sequelize } from "../../db";
+import { sequelize } from "../../core";
 import { Files, IFileDto } from "../file/file.model";
 
 export type TMessageFileType = "image" | "video" | "audio";

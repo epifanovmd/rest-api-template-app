@@ -1,7 +1,7 @@
+import { iocContainer } from "@force-dev/utils";
 import { DataSource } from "typeorm";
 
-import { config } from "../../config";
-import { container } from "../core";
+import { config } from "../../../config";
 
 export const AppDataSource = new DataSource({
   type: "postgres",
@@ -14,4 +14,4 @@ export const AppDataSource = new DataSource({
   subscribers: [],
 });
 
-container.bind("DataSource").toConstantValue(AppDataSource);
+iocContainer.bind("DataSource").toConstantValue(AppDataSource);

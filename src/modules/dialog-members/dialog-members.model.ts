@@ -6,7 +6,7 @@ import {
   NonAttribute,
 } from "sequelize";
 
-import { sequelize } from "../../db";
+import { sequelize } from "../../core";
 import { IUserDto, User } from "../user/user.model";
 
 export interface DialogMembersDto {

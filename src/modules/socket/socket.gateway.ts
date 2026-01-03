@@ -1,6 +1,6 @@
 import { inject, injectable } from "inversify";
 
-import { Injectable } from "../../core";
+import { Injectable, sequelize } from "../../core";
 import { DialogMessages } from "../dialog-messages/dialog-messages.model";
 import { IUserDto } from "../user/user.model";
 import { SocketService } from "./socket.service";

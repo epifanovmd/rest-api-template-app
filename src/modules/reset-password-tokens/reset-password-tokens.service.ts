@@ -3,7 +3,7 @@ import { injectable } from "inversify";
 
 import { config } from "../../../config";
 import { createToken, verifyToken } from "../../common/helpers/jwt";
-import { Injectable } from "../../core";
+import { Injectable, sequelize } from "../../core";
 import { ResetPasswordTokens } from "./reset-password-tokens.model";
 
 const {

@@ -5,7 +5,7 @@ import { File } from "tsoa";
 import { v4 } from "uuid";
 
 import { config } from "../../../config";
-import { Injectable } from "../../core";
+import { Injectable, sequelize } from "../../core";
 import { Files, IFileDto } from "./file.model";
 
 @Injectable()

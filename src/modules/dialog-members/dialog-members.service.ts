@@ -2,7 +2,7 @@ import { NotFoundException } from "@force-dev/utils";
 import { inject, injectable } from "inversify";
 import { Includeable } from "sequelize/types/model";
 
-import { Injectable } from "../../core";
+import { Injectable, sequelize } from "../../core";
 import { SocketService } from "../socket";
 import { UserService } from "../user";
 import { User } from "../user/user.model";

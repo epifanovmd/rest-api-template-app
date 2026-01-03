@@ -5,8 +5,7 @@ import {
   Model,
 } from "sequelize";
 
-import { ListResponse } from "../../core";
-import { sequelize } from "../../db";
+import { ListResponse, sequelize } from "../../core";
 
 export enum EPermissions {
   READ = "read",

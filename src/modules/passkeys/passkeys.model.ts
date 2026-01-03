@@ -12,7 +12,7 @@ import {
   Model,
 } from "sequelize";
 
-import { sequelize } from "../../db";
+import { sequelize } from "../../core";
 import { ITokensDto } from "../auth";
 import { User } from "../user/user.model";
 

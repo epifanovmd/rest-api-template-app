@@ -4,7 +4,7 @@ import { injectable } from "inversify";
 import { createTransport, SendMailOptions } from "nodemailer";
 
 import { config } from "../../../config";
-import { Injectable } from "../../core";
+import { Injectable, sequelize } from "../../core";
 
 @Injectable()
 export class MailerService {

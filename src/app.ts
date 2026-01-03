@@ -1,13 +1,12 @@
+import { iocContainer } from "@force-dev/utils";
 import KoaRouter from "@koa/router";
 import Koa from "koa";
 import logger from "koa-logger";
-import sha256 from "sha256";
 import { DataSource } from "typeorm";
 
 import { config } from "../config";
-import { container } from "./core";
-import { sequelize } from "./db";
-import { AppDataSource } from "./db/data-source";
+import { sequelize } from "./core";
+import { AppDataSource } from "./core/db/data-source";
 import {
   notFoundMiddleware,
   RegisterAppMiddlewares,
@@ -59,7 +58,7 @@ export class App {
     const port = config.server.port;
     const hostname = config.server.host;
 
-    const userService = container.get<UserService>(UserService);
+    const userService = iocContainer.get<UserService>(UserService);
     // const socketGateway = container.get<SocketGateway>(SocketGateway);
 
     sequelize.sync({ force: false }).then(async () => {
@@ -72,7 +71,7 @@ export class App {
     // socketGateway.initialize();
 
     // Инициализация базы данных
-    const dataSource = container.get<DataSource>("DataSource");
+    const dataSource = iocContainer.get<DataSource>("DataSource");
 
     await dataSource.initialize();
 

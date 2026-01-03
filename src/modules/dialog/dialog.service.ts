@@ -2,7 +2,7 @@ import { NotFoundException } from "@force-dev/utils";
 import { inject } from "inversify";
 import { col, fn, Includeable, Op, Sequelize, where } from "sequelize";
 
-import { Injectable } from "../../core";
+import { Injectable, sequelize } from "../../core";
 import { DialogMembersService } from "../dialog-members";
 import { DialogMembers } from "../dialog-members/dialog-members.model";
 import { DialogMessages } from "../dialog-messages/dialog-messages.model";

@@ -6,7 +6,7 @@ import { Server } from "socket.io";
 // import { RateLimiterMemory } from "rate-limiter-flexible";
 import { config } from "../../../config";
 import { verifyAuthToken } from "../../common";
-import { Injectable } from "../../core";
+import { Injectable, sequelize } from "../../core";
 import { IUserDto } from "../user/user.model";
 import {
   ISocketEmitEvents,

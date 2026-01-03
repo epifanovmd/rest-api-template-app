@@ -1,6 +1,6 @@
 import * as child_process from "child_process";
 
-import { Injectable } from "../../core";
+import { Injectable, sequelize } from "../../core";
 
 @Injectable()
 export class UtilsService {

@@ -5,7 +5,7 @@ import {
   Model,
 } from "sequelize";
 
-import { sequelize } from "../../db";
+import { sequelize } from "../../core";
 
 export interface FcmTokenDto {
   id: number;
