@@ -1,5 +1,5 @@
 import { BadRequestException, GoneException } from "@force-dev/utils";
-import { inject, injectable } from "inversify";
+import { inject } from "inversify";
 import moment from "moment";
 
 import { config } from "../../../config";

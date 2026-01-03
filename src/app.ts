@@ -73,17 +73,30 @@ export class App {
       .catch(() => null);
 
     this.koaApp.listen(port, hostname, () => {
-      const url = `http://${hostname}:${port}`;
+      const protocol = "http";
+      const fullUrl = `${protocol}://${hostname}:${port}`;
 
-      console.info(`REST API Server running on: ${url}`);
-      console.info(`Swagger on: ${url}/api-docs`);
+      console.log("🚀  Server launched successfully!");
+      console.log("📊 API Status");
+      console.log(`   ├─ 🌐  Environment: ${process.env.NODE_ENV}`);
+      console.log(`   ├─ 🏠  Host: ${fullUrl}`);
 
-      console.log(`🚀 Server running on ${url}`);
-      console.info(`Swagger on: ${url}/api-docs`);
+      if (hostname === "0.0.0.0" || hostname === "::") {
+        console.log(`   └─ 🌍  Network: ${protocol}://localhost:${port}`);
+      }
+
+      console.log("📚 Documentation");
+      console.log(`   ├─ 📖  Swagger UI: ${fullUrl}/api-docs`);
+      console.log(`   ├─ 📄  OpenAPI JSON: ${fullUrl}/swagger.json`);
+
+      console.log("🗄️ Database");
       console.log(
-        `📊 Database: ${config.database.postgres.host}:${config.database.postgres.port}`,
+        `   ├─ 🌐  Host: ${config.database.postgres.host}:${config.database.postgres.port}`,
       );
-      console.log(`🌐 Environment: ${process.env.NODE_ENV}`);
+      console.log(`   ├─ 📁  Database: ${config.database.postgres.database}`);
+      console.log(`   └─ 👤  User: ${config.database.postgres.username}`);
+
+      console.log("🎯  Ready to receive requests!\n");
     });
   }
 
