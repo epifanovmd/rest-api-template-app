@@ -4,16 +4,15 @@ import {
   UnauthorizedException,
 } from "@force-dev/utils";
 import axios from "axios";
-import { inject, injectable } from "inversify";
+import { inject } from "inversify";
 import sha256 from "sha256";
 
 import {
+  ApiResponse,
   createTokenAsync,
-  validateEmail,
-  validatePhone,
+  Injectable,
   verifyAuthToken,
-} from "../../common";
-import { ApiResponse, Injectable } from "../../core";
+} from "../../core";
 import { MailerService } from "../mailer";
 import { ResetPasswordTokensService } from "../reset-password-tokens";
 import { UserService } from "../user";
@@ -49,13 +48,6 @@ export class AuthService {
       throw new BadRequestException(
         "Необходимо указать либо email, либо телефон, а также пароль.",
       );
-    }
-
-    if (email) {
-      validateEmail(email);
-    }
-    if (phone) {
-      validatePhone(phone);
     }
 
     // Проверяем существование пользователя

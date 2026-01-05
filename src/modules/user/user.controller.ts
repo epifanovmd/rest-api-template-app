@@ -13,8 +13,12 @@ import {
   Tags,
 } from "tsoa";
 
-import { getContextUser } from "../../common";
-import { ApiResponse, Injectable, ValidateBody } from "../../core";
+import {
+  ApiResponse,
+  getContextUser,
+  Injectable,
+  ValidateBody,
+} from "../../core";
 import { KoaRequest } from "../../types/koa";
 import {
   IUserDto,
@@ -55,6 +59,7 @@ export class UserController extends Controller {
    * Этот эндпоинт позволяет пользователю обновить свои данные, такие как email, телефон и другие параметры пользователя.
    *
    * @summary Обновление данных текущего пользователя
+   * @param req
    * @param body Обновленные данные пользователя
    * @returns Обновленный пользователя
    */
@@ -162,6 +167,7 @@ export class UserController extends Controller {
    *
    * @summary Подтверждение email-адреса
    * @param code Код подтверждения email, полученный пользователем
+   * @param req
    * @returns Ответ о статусе подтверждения
    */
   @Security("jwt")
@@ -192,6 +198,7 @@ export class UserController extends Controller {
    * Этот эндпоинт позволяет пользователю изменить свой пароль.
    *
    * @summary Изменение пароля
+   * @param req
    * @param body Новый пароль для пользователя
    * @returns Ответ о статусе изменения пароля
    */

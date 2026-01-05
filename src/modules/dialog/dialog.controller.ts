@@ -14,8 +14,7 @@ import {
   Tags,
 } from "tsoa";
 
-import { getContextUser } from "../../common";
-import { Injectable } from "../../core";
+import { getContextUser, Injectable } from "../../core";
 import { KoaRequest } from "../../types/koa";
 import { DialogMembersService } from "../dialog-members";
 import {

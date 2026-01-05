@@ -2,7 +2,6 @@ import { ForbiddenException, UnauthorizedException } from "@force-dev/utils";
 import jwt, { sign, SignOptions, VerifyErrors } from "jsonwebtoken";
 
 import { config } from "../../../config";
-import { IDataSource } from "../../core";
 import {
   EPermissions,
   Permission,
@@ -10,6 +9,7 @@ import {
 import { ERole, Role } from "../../modules/role/role.entity";
 import { User } from "../../modules/user/user.entity";
 import { JWTDecoded } from "../../types/koa";
+import { IDataSource } from "../db";
 
 type RoleStrings = `role:${ERole}`;
 type PermissionStrings = `permission:${EPermissions}`;

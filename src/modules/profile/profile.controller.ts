@@ -15,8 +15,7 @@ import {
   UploadedFile,
 } from "tsoa";
 
-import { getContextUser } from "../../common";
-import { Injectable } from "../../core";
+import { getContextUser, Injectable } from "../../core";
 import { KoaRequest } from "../../types/koa";
 import {
   IProfileDto,
@@ -165,8 +164,6 @@ export class ProfileController extends Controller {
    * Этот эндпоинт позволяет пользователю удалить свой аватар.
    *
    * @summary Удаление аватара
-   * @param id ID аватара, который необходимо удалить
-   * @returns Обновленный профиль без аватара
    */
   @Security("jwt")
   @Delete("/avatar")

@@ -11,6 +11,8 @@ import {
   RegisterAppMiddlewares,
   RegisterSwagger,
 } from "./middleware";
+import { SocketService } from "./modules/socket";
+import { SocketGateway } from "./modules/socket/socket.gateway";
 import { UserService } from "./modules/user";
 import { RegisterRoutes } from "./routes";
 
@@ -55,9 +57,12 @@ export class App {
     const hostname = config.server.host;
 
     const userService = iocContainer.get<UserService>(UserService);
-    // const socketGateway = container.get<SocketGateway>(SocketGateway);
 
-    // socketGateway.initialize();
+    SocketService.setup(iocContainer, this.koaApp);
+
+    const socketGateway = iocContainer.get<SocketGateway>(SocketGateway);
+
+    socketGateway.initialize();
 
     // Инициализация базы данных
     const dataSource = IDataSource.getInstance();

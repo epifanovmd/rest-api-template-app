@@ -1,9 +1,8 @@
 import { BadRequestException } from "@force-dev/utils";
-import { inject, injectable } from "inversify";
+import { inject } from "inversify";
 
 import { config } from "../../../config";
-import { createToken, verifyToken } from "../../common/helpers/jwt";
-import { Injectable } from "../../core";
+import { createToken, Injectable, verifyToken } from "../../core";
 import { ResetPasswordTokensRepository } from "./reset-password-tokens.repository";
 
 const {

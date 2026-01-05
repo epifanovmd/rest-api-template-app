@@ -1,7 +1,7 @@
 import { UnauthorizedException } from "@force-dev/utils";
 import { Request } from "koa";
 
-import { SecurityScopes, verifyAuthToken } from "../common";
+import { SecurityScopes, verifyAuthToken } from "../core";
 import { IUserDto } from "../modules/user/user.dto";
 
 export const koaAuthentication = (

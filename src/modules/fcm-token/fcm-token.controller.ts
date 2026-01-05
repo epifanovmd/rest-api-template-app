@@ -13,8 +13,7 @@ import {
   Tags,
 } from "tsoa";
 
-import { getContextUser } from "../../common";
-import { Injectable } from "../../core";
+import { getContextUser, Injectable } from "../../core";
 import { KoaRequest } from "../../types/koa";
 import { FcmTokenDto, FcmTokenRequest } from "./fcm-token.dto";
 import { FcmTokenService } from "./fcm-token.service";

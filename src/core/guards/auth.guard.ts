@@ -1,7 +1,7 @@
 import { UnauthorizedException } from "@force-dev/utils";
 import { Context } from "koa";
 
-import { verifyAuthToken } from "../../common";
+import { verifyAuthToken } from "../auth";
 import { IGuard } from "./types";
 
 export class AuthGuard implements IGuard {

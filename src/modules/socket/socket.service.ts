@@ -1,19 +1,14 @@
 import { ForbiddenException } from "@force-dev/utils";
 import { createServer } from "http";
+import { Container } from "inversify";
 import Koa from "koa";
 import { Server } from "socket.io";
 
 // import { RateLimiterMemory } from "rate-limiter-flexible";
 import { config } from "../../../config";
-import { verifyAuthToken } from "../../common";
-import { Injectable } from "../../core";
+import { verifyAuthToken } from "../../core";
 import { IUserDto } from "../user/user.dto";
-import {
-  ISocketEmitEvents,
-  ISocketEvents,
-  TServer,
-  TSocket,
-} from "./socket.types";
+import { ISocketEmitEvents, TServer, TSocket } from "./socket.types";
 
 const NODE_ENV = process.env.NODE_ENV;
 
@@ -25,8 +20,15 @@ const { socket, cors } = config;
 //   duration: 1, // за 1 секунду
 // });
 
-@Injectable()
 export class SocketService {
+  static setup = (container: Container, koaApp: Koa) => {
+    const socketService = new SocketService(koaApp);
+
+    container.bind(SocketService).toConstantValue(socketService);
+
+    return socketService;
+  };
+
   private _server: ReturnType<typeof createServer>;
   private _io: TServer;
   public _clients = new Map<string, { socket: TSocket; user: IUserDto }>();
@@ -40,8 +42,8 @@ export class SocketService {
         methods: ["GET", "POST"],
         credentials: true,
       },
-      transports: ["websocket"], // Отключаем long-polling
-      serveClient: false, // Не обслуживаем клиентские файлы
+      transports: ["websocket"],
+      serveClient: false,
       pingTimeout: 10000,
       pingInterval: 25000,
       cookie: NODE_ENV === "production",
