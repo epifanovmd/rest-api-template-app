@@ -177,7 +177,9 @@ export class DialogService {
       // Проверяем существование пользователей
       const users = await Promise.all(
         body.recipientId.map(recipientId =>
-          this._userRepository.findById(recipientId),
+          this._userRepository.findOne({
+            where: { id: recipientId },
+          }),
         ),
       );
 

@@ -50,7 +50,10 @@ export class UserService {
   }
 
   async getUser(id: string) {
-    const user = await this._userRepository.findById(id, UserService.relations);
+    const user = await this._userRepository.findOne({
+      where: { id },
+      relations: UserService.relations,
+    });
 
     if (!user) {
       throw new NotFoundException("Пользователь не найден");
@@ -67,7 +70,7 @@ export class UserService {
 
     try {
       // Создаем пользователя
-      const user = await this._userRepository.create({
+      const user = await this._userRepository.createAndSave({
         ...body,
       });
 
@@ -118,9 +121,13 @@ export class UserService {
   }
 
   async updateUser(id: string, body: IUserUpdateRequestDto) {
-    await this._userRepository.update(id, body);
+    const user = await this._userRepository.updateWithResponse(id, body);
 
-    return this.getUser(id);
+    if (!user) {
+      throw new NotFoundException("Пользователь не найден");
+    }
+
+    return user;
   }
 
   async setPrivileges(
