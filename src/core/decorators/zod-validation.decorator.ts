@@ -6,10 +6,10 @@ import { z } from "zod";
 /**
  * Фабрика для создания middleware валидации Zod
  */
-export function createZodValidationMiddleware(
+const createZodValidationMiddleware = (
   schema: z.ZodSchema<any>,
   source: "body" | "query" | "params" = "body",
-) {
+) => {
   return Middlewares(async (ctx: Context, next: () => Promise<any>) => {
     const data =
       source === "body"
@@ -37,7 +37,7 @@ export function createZodValidationMiddleware(
 
     return next();
   });
-}
+};
 
 export const ValidateBody = (schema: z.ZodSchema<any>) =>
   createZodValidationMiddleware(schema, "body");
