@@ -103,8 +103,4 @@ export class App {
       console.log("🎯  Ready to receive requests!\n");
     });
   }
-
-  getKoaApp(): Koa {
-    return this.koaApp;
-  }
 }
