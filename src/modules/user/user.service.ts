@@ -120,7 +120,7 @@ export class UserService {
   async updateUser(id: string, body: IUserUpdateRequestDto) {
     await this._userRepository.update(id, body);
 
-    return await this.getUser(id);
+    return this.getUser(id);
   }
 
   async setPrivileges(

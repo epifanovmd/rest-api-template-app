@@ -51,7 +51,7 @@ export class UserController extends Controller {
   getMyUser(@Request() req: KoaRequest): Promise<IUserDto> {
     const user = getContextUser(req);
 
-    return this._userService.getUser(user.id);
+    return this._userService.getUser(user.id).then(res => res.toDTO());
   }
 
   /**
@@ -72,7 +72,7 @@ export class UserController extends Controller {
   ): Promise<IUserDto> {
     const user = getContextUser(req);
 
-    return this._userService.updateUser(user.id, body);
+    return this._userService.updateUser(user.id, body).then(res => res.toDTO());
   }
 
   /**
@@ -196,7 +196,7 @@ export class UserController extends Controller {
     id: string,
     @Body() body: IUserUpdateRequestDto,
   ): Promise<IUserDto> {
-    return this._userService.updateUser(id, body);
+    return this._userService.updateUser(id, body).then(res => res.toDTO());
   }
 
   /**
