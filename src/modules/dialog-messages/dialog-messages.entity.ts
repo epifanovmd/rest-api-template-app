@@ -13,6 +13,7 @@ import { Dialog } from "../dialog/dialog.entity";
 import { File } from "../file/file.entity";
 import { MessageFiles } from "../message-files/message-files.entity";
 import { User } from "../user/user.entity";
+import { IDialogMessagesDto } from "./dialog-messages.dto";
 
 @Entity("dialog_messages")
 export class DialogMessages {
@@ -87,7 +88,7 @@ export class DialogMessages {
   //   );
   // }
 
-  toDTO() {
+  toDTO(): IDialogMessagesDto {
     return {
       id: this.id,
       userId: this.userId,

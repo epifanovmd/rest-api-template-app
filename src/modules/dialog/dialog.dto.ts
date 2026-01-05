@@ -3,7 +3,7 @@ import { DialogMembersDto } from "../dialog-members/dialog-members.dto";
 import { IDialogMessagesDto } from "../dialog-messages/dialog-messages.dto";
 import { IUserDto } from "../user/user.dto";
 
-export interface DialogDto {
+export interface IDialogDto {
   id: string;
   ownerId: string;
   createdAt: Date;
@@ -14,7 +14,7 @@ export interface DialogDto {
   unreadMessagesCount: number;
 }
 
-export interface IDialogListDto extends IListResponseDto<DialogDto[]> {}
+export interface IDialogListDto extends IListResponseDto<IDialogDto[]> {}
 
 export interface DialogCreateRequestDto {
   recipientId: string[];

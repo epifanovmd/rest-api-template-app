@@ -43,47 +43,23 @@ export class DialogService {
       return [];
     }
 
-    // Используем QueryBuilder для сложного запроса
-    const queryBuilder = this._dataSource
-      .getRepository("Dialog")
+    // Используем QueryBuilder с DISTINCT вместо GROUP BY
+    const queryBuilder = this._dialogRepository.repository
       .createQueryBuilder("dialog")
       .leftJoinAndSelect("dialog.owner", "owner")
-      .leftJoinAndSelect("owner.role", "ownerRole")
-      .leftJoinAndSelect("ownerRole.permissions", "ownerPermissions")
-      .leftJoin("dialog.members", "members")
+      // .leftJoinAndSelect("owner.role", "ownerRole")
+      // .leftJoinAndSelect("ownerRole.permissions", "ownerPermissions")
+      .leftJoinAndSelect("dialog.members", "members")
       .leftJoinAndSelect("members.user", "memberUser")
-      .leftJoinAndSelect("memberUser.role", "memberUserRole")
-      .leftJoinAndSelect("memberUserRole.permissions", "memberUserPermissions")
-      .leftJoin("dialog.messages", "messages")
-      .leftJoinAndMapOne(
-        "dialog.lastMessage",
-        "dialog.messages",
-        "lastMessage",
-        "lastMessage.id = (SELECT id FROM dialog_messages WHERE dialog_id = dialog.id ORDER BY created_at DESC LIMIT 1)",
-      )
+      // .leftJoinAndSelect("memberUser.role", "memberUserRole")
+      // .leftJoinAndSelect("memberUserRole.permissions", "memberUserPermissions")
+      .leftJoinAndSelect("dialog.lastMessage", "lastMessage")
       .leftJoinAndSelect("lastMessage.user", "lastMessageUser")
-      .leftJoinAndSelect("lastMessageUser.role", "lastMessageUserRole")
-      .addSelect(subQuery => {
-        return subQuery
-          .select("COUNT(unreadMessages.id)", "unreadCount")
-          .from("dialog_messages", "unreadMessages")
-          .where("unreadMessages.dialog_id = dialog.id")
-          .andWhere("unreadMessages.received = false")
-          .andWhere("unreadMessages.user_id != :userId", { userId });
-      }, "dialog_unreadMessagesCount")
+      // .leftJoinAndSelect("lastMessageUser.role", "lastMessageUserRole")
       .where("dialog.id IN (:...dialogIds)", { dialogIds })
-      .orderBy("lastMessage.createdAt", "DESC")
-      .addOrderBy("dialog.createdAt", "DESC")
-      .groupBy("dialog.id")
-      .addGroupBy("owner.id")
-      .addGroupBy("ownerRole.id")
-      .addGroupBy("members.id")
-      .addGroupBy("memberUser.id")
-      .addGroupBy("memberUserRole.id")
-      .addGroupBy("lastMessage.id")
-      .addGroupBy("lastMessageUser.id")
-      .addGroupBy("lastMessageUserRole.id");
+      .distinct(true); // Используем DISTINCT вместо GROUP BY
 
+    // Добавляем пагинацию
     if (limit !== undefined) {
       queryBuilder.limit(limit);
     }
@@ -94,15 +70,23 @@ export class DialogService {
 
     const dialogs = await queryBuilder.getMany();
 
+    // Подсчет непрочитанных сообщений для каждого диалога
+    const unreadCountsPromises = dialogs.map(dialog =>
+      this._dialogMessagesRepository.repository
+        .createQueryBuilder("message")
+        .where("message.dialog_id = :dialogId", { dialogId: dialog.id })
+        .andWhere("message.received = false")
+        .andWhere("message.user_id != :userId", { userId })
+        .getCount(),
+    );
+
+    const unreadCounts = await Promise.all(unreadCountsPromises);
+
     // Преобразуем результаты в DTO
-    return dialogs.map(dialog => {
+    return dialogs.map((dialog, index) => {
       const dto = dialog.toDTO();
 
-      // Получаем количество непрочитанных сообщений
-      const unreadCount =
-        dialogs.find(d => d.id === dialog.id)?.["unreadMessagesCount"] || 0;
-
-      dto.unreadMessagesCount = parseInt(unreadCount, 10) || 0;
+      dto.unreadMessagesCount = unreadCounts[index];
 
       return dto;
     });
@@ -119,43 +103,25 @@ export class DialogService {
       throw new NotFoundException("Диалог не найден");
     }
 
-    const queryBuilder = this._dataSource
-      .getRepository("Dialog")
+    // Используем Raw SQL или упрощенный подход
+
+    // Вариант 1: Упрощенный запрос с DISTINCT
+    const queryBuilder = this._dialogRepository.repository
       .createQueryBuilder("dialog")
       .leftJoinAndSelect("dialog.owner", "owner")
-      .leftJoinAndSelect("owner.role", "ownerRole")
-      .leftJoinAndSelect("ownerRole.permissions", "ownerPermissions")
+      // .leftJoinAndSelect("owner.role", "ownerRole")
+      // .leftJoinAndSelect("ownerRole.permissions", "ownerPermissions")
       .leftJoinAndSelect("dialog.members", "members")
       .leftJoinAndSelect("members.user", "memberUser")
-      .leftJoinAndSelect("memberUser.role", "memberUserRole")
-      .leftJoinAndSelect("memberUserRole.permissions", "memberUserPermissions")
-      .leftJoin("dialog.messages", "messages")
-      .leftJoinAndMapOne(
-        "dialog.lastMessage",
-        "dialog.messages",
-        "lastMessage",
-        "lastMessage.id = (SELECT id FROM dialog_messages WHERE dialog_id = dialog.id ORDER BY created_at DESC LIMIT 1)",
-      )
+      // .leftJoinAndSelect("memberUser.role", "memberUserRole")
+      // .leftJoinAndSelect("memberUserRole.permissions", "memberUserPermissions")
+      // Загружаем lastMessage отдельным JOIN
+      .leftJoinAndSelect("dialog.lastMessage", "lastMessage")
       .leftJoinAndSelect("lastMessage.user", "lastMessageUser")
-      .leftJoinAndSelect("lastMessageUser.role", "lastMessageUserRole")
-      .addSelect(subQuery => {
-        return subQuery
-          .select("COUNT(unreadMessages.id)", "unreadCount")
-          .from("dialog_messages", "unreadMessages")
-          .where("unreadMessages.dialog_id = dialog.id")
-          .andWhere("unreadMessages.received = false")
-          .andWhere("unreadMessages.user_id != :userId", { userId });
-      }, "dialog_unreadMessagesCount")
+      // .leftJoinAndSelect("lastMessageUser.role", "lastMessageUserRole")
       .where("dialog.id = :id", { id })
-      .groupBy("dialog.id")
-      .addGroupBy("owner.id")
-      .addGroupBy("ownerRole.id")
-      .addGroupBy("members.id")
-      .addGroupBy("memberUser.id")
-      .addGroupBy("memberUserRole.id")
-      .addGroupBy("lastMessage.id")
-      .addGroupBy("lastMessageUser.id")
-      .addGroupBy("lastMessageUserRole.id");
+      // Используем DISTINCT вместо GROUP BY
+      .distinct(true);
 
     const dialog = await queryBuilder.getOne();
 
@@ -163,10 +129,17 @@ export class DialogService {
       throw new NotFoundException("Диалог не найден");
     }
 
-    const dto = dialog.toDTO();
-    const unreadCount = dialog["unreadMessagesCount"] || 0;
+    // Подсчет непрочитанных сообщений отдельным запросом
+    const unreadCount = await this._dialogMessagesRepository.repository
+      .createQueryBuilder("message")
+      .where("message.dialog_id = :dialogId", { dialogId: id })
+      .andWhere("message.received = false")
+      .andWhere("message.user_id != :userId", { userId })
+      .getCount();
 
-    dto.unreadMessagesCount = parseInt(unreadCount, 10) || 0;
+    const dto = dialog.toDTO();
+
+    dto.unreadMessagesCount = unreadCount;
 
     return dto;
   }
@@ -178,7 +151,7 @@ export class DialogService {
       return [];
     }
 
-    const queryBuilder = this._dataSource
+    const queryBuilder = this._dialogRepository.repository
       .createQueryBuilder()
       .select("dialog.id", "id")
       .from("Dialog", "dialog")
@@ -282,7 +255,7 @@ export class DialogService {
   }
 
   async updateDialogLastMessage(dialogId: string, messageId: string) {
-    await this._dataSource
+    await this._dialogRepository.repository
       .createQueryBuilder()
       .update("Dialog")
       .set({ lastMessageId: messageId })

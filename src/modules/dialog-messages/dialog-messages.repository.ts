@@ -5,7 +5,7 @@ import { DialogMessages } from "./dialog-messages.entity";
 
 @Injectable()
 export class DialogMessagesRepository {
-  private repository: Repository<DialogMessages>;
+  public repository: Repository<DialogMessages>;
 
   constructor(@IDataSource() private dataSource: IDataSource) {
     this.repository = this.dataSource.getRepository(DialogMessages);

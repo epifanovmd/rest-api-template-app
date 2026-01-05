@@ -1,5 +1,5 @@
 import { NotFoundException } from "@force-dev/utils";
-import { inject, injectable } from "inversify";
+import { inject } from "inversify";
 
 import { Injectable } from "../../core";
 import { DialogService } from "../dialog/dialog.service";
@@ -7,7 +7,6 @@ import { FcmTokenService } from "../fcm-token";
 import { FileRepository } from "../file/file.repository";
 import { MessageFilesRepository } from "../message-files/message-files.repository";
 import { SocketService } from "../socket";
-import { UserService } from "../user";
 import { DialogMessagesRepository } from "./dialog-messages.repository";
 
 @Injectable()
@@ -32,9 +31,9 @@ export class DialogMessagesService {
         {
           user: true,
           reply: true,
-          images: true,
-          videos: true,
-          audios: true,
+          // images: true,
+          // videos: true,
+          // audios: true,
         },
       );
 
@@ -46,16 +45,17 @@ export class DialogMessagesService {
       dialogId,
     );
 
-    return message ? message.toDTO() : null;
+    return message ? [message.toDTO()] : [];
   }
 
   async getMessageById(id: string, userId?: string) {
     const message = await this._dialogMessagesRepository.findById(id, {
       user: true,
       reply: true,
-      images: true,
-      videos: true,
-      audios: true,
+      messageFiles: true,
+      // images: true,
+      // videos: true,
+      // audios: true,
     });
 
     if (!message) {
@@ -87,21 +87,21 @@ export class DialogMessagesService {
       this.sendPushNotification(member.userId, result);
     });
 
-    if (body.imageIds?.length) {
-      const files = await this._fileRepository.findByIds(body.imageIds);
-      // Здесь нужно будет добавить логику для связывания файлов с сообщением
-      // через MessageFilesRepository
-    }
-
-    if (body.videoIds?.length) {
-      const files = await this._fileRepository.findByIds(body.videoIds);
-      // Аналогично для видео
-    }
-
-    if (body.audioIds?.length) {
-      const files = await this._fileRepository.findByIds(body.audioIds);
-      // Аналогично для аудио
-    }
+    // if (body.imageIds?.length) {
+    //   const files = await this._fileRepository.findByIds(body.imageIds);
+    //   // Здесь нужно будет добавить логику для связывания файлов с сообщением
+    //   // через MessageFilesRepository
+    // }
+    //
+    // if (body.videoIds?.length) {
+    //   const files = await this._fileRepository.findByIds(body.videoIds);
+    //   // Аналогично для видео
+    // }
+    //
+    // if (body.audioIds?.length) {
+    //   const files = await this._fileRepository.findByIds(body.audioIds);
+    //   // Аналогично для аудио
+    // }
 
     return result;
   }
@@ -165,9 +165,7 @@ export class DialogMessagesService {
       }
     });
 
-    const deleted = await this._dialogMessagesRepository.delete(id);
-
-    return deleted;
+    return this._dialogMessagesRepository.delete(id);
   }
 
   sendSocketMessage(recipientId: string, message: any) {

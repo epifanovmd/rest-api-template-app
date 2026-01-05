@@ -12,6 +12,7 @@ import {
 import { DialogMembers } from "../dialog-members/dialog-members.entity";
 import { DialogMessages } from "../dialog-messages/dialog-messages.entity";
 import { User } from "../user/user.entity";
+import { IDialogDto } from "./dialog.dto";
 
 @Entity("dialogs")
 export class Dialog {
@@ -45,16 +46,16 @@ export class Dialog {
   @JoinColumn({ name: "last_message_id" })
   lastMessage: DialogMessages | null;
 
-  toDTO() {
+  toDTO(): IDialogDto {
     return {
       id: this.id,
       ownerId: this.ownerId,
-      lastMessageId: this.lastMessageId,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
       owner: this.owner?.toDTO(),
       members: this.members?.map(member => member.toDTO()),
       lastMessage: this.lastMessage ? [this.lastMessage.toDTO()] : null,
+      unreadMessagesCount: 0,
     };
   }
 }

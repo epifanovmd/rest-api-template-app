@@ -30,8 +30,8 @@ import {
 } from "../dialog-messages/dialog-messages.dto";
 import {
   DialogCreateRequestDto,
-  DialogDto,
   DialogFindRequestDto,
+  IDialogDto,
   IDialogListDto,
 } from "./dialog.dto";
 import { DialogService } from "./dialog.service";
@@ -109,7 +109,7 @@ export class DialogController extends Controller {
   getDialogById(
     @Request() req: KoaRequest,
     @Path() id: string,
-  ): Promise<DialogDto> {
+  ): Promise<IDialogDto> {
     const user = getContextUser(req);
 
     return this._dialogService.getDialog(id, user.id);
@@ -147,7 +147,7 @@ export class DialogController extends Controller {
   createDialog(
     @Request() req: KoaRequest,
     @Body() body: DialogCreateRequestDto,
-  ): Promise<DialogDto> {
+  ): Promise<IDialogDto> {
     const user = getContextUser(req);
 
     return this._dialogService.createDialog(user.id, body);

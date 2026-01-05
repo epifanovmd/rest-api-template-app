@@ -5,7 +5,7 @@ import { Dialog } from "./dialog.entity";
 
 @Injectable()
 export class DialogRepository {
-  private repository: Repository<Dialog>;
+  public repository: Repository<Dialog>;
 
   constructor(@IDataSource() private dataSource: IDataSource) {
     this.repository = this.dataSource.getRepository(Dialog);
