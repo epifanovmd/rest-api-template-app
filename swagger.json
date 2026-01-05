@@ -184,7 +184,7 @@
 				"type": "object",
 				"additionalProperties": false
 			},
-			"ApiResponse": {
+			"IApiResponseDto": {
 				"properties": {
 					"message": {
 						"type": "string"
@@ -265,7 +265,7 @@
 				"type": "object",
 				"additionalProperties": false
 			},
-			"TSignUpRequest": {
+			"TSignUpRequestDto": {
 				"allOf": [
 					{
 						"properties": {
@@ -318,7 +318,7 @@
 					}
 				]
 			},
-			"ISignInRequest": {
+			"ISignInRequestDto": {
 				"properties": {
 					"login": {
 						"type": "string",
@@ -335,7 +335,7 @@
 				"type": "object",
 				"additionalProperties": false
 			},
-			"IUserLogin": {
+			"IUserLoginRequestDto": {
 				"properties": {
 					"login": {
 						"type": "string",
@@ -348,7 +348,7 @@
 				"type": "object",
 				"additionalProperties": false
 			},
-			"IUserResetPasswordRequest": {
+			"IUserResetPasswordRequestDto": {
 				"properties": {
 					"password": {
 						"type": "string"
@@ -472,7 +472,7 @@
 				"type": "object",
 				"additionalProperties": false
 			},
-			"FCMMessage": {
+			"IFCMMessageDto": {
 				"properties": {
 					"dialogId": {
 						"type": "string"
@@ -1668,7 +1668,7 @@
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/ApiResponse"
+									"$ref": "#/components/schemas/IApiResponseDto"
 								}
 							}
 						}
@@ -1758,7 +1758,7 @@
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/ApiResponse"
+									"$ref": "#/components/schemas/IApiResponseDto"
 								}
 							}
 						}
@@ -1857,7 +1857,7 @@
 					"content": {
 						"application/json": {
 							"schema": {
-								"$ref": "#/components/schemas/TSignUpRequest",
+								"$ref": "#/components/schemas/TSignUpRequestDto",
 								"description": "Данные для регистрации"
 							},
 							"example": {
@@ -1899,7 +1899,7 @@
 					"content": {
 						"application/json": {
 							"schema": {
-								"$ref": "#/components/schemas/ISignInRequest",
+								"$ref": "#/components/schemas/ISignInRequestDto",
 								"description": "Данные для входа"
 							},
 							"example": {
@@ -1967,7 +1967,7 @@
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/ApiResponse"
+									"$ref": "#/components/schemas/IApiResponseDto"
 								}
 							}
 						}
@@ -1985,7 +1985,7 @@
 					"content": {
 						"application/json": {
 							"schema": {
-								"$ref": "#/components/schemas/IUserLogin"
+								"$ref": "#/components/schemas/IUserLoginRequestDto"
 							}
 						}
 					}
@@ -2001,7 +2001,7 @@
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/ApiResponse"
+									"$ref": "#/components/schemas/IApiResponseDto"
 								}
 							}
 						}
@@ -2020,7 +2020,7 @@
 					"content": {
 						"application/json": {
 							"schema": {
-								"$ref": "#/components/schemas/IUserResetPasswordRequest",
+								"$ref": "#/components/schemas/IUserResetPasswordRequestDto",
 								"description": "Токен и новый пароль"
 							},
 							"example": {
@@ -2272,7 +2272,7 @@
 					"content": {
 						"application/json": {
 							"schema": {
-								"$ref": "#/components/schemas/FCMMessage",
+								"$ref": "#/components/schemas/IFCMMessageDto",
 								"description": "Данные уведомления."
 							}
 						}

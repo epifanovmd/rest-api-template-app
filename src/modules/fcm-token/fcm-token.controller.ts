@@ -15,9 +15,12 @@ import {
 
 import { getContextUser, Injectable } from "../../core";
 import { KoaRequest } from "../../types/koa";
-import { FcmTokenDto, FcmTokenRequestDto } from "./fcm-token.dto";
+import {
+  FcmTokenDto,
+  FcmTokenRequestDto,
+  IFCMMessageDto,
+} from "./fcm-token.dto";
 import { FcmTokenService } from "./fcm-token.service";
-import { FCMMessage } from "./fcm-token.types";
 
 @Injectable()
 @Tags("FCM")
@@ -62,7 +65,7 @@ export class FcmTokenController extends Controller {
   @Post("/push")
   sendPushNotification(
     @Body()
-    message: FCMMessage,
+    message: IFCMMessageDto,
   ): Promise<string> {
     return this._fcmTokenService.sendFcmMessage(message);
   }

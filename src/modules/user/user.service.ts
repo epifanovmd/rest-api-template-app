@@ -4,7 +4,7 @@ import { inject } from "inversify";
 import sha256 from "sha256";
 import { FindOptionsWhere } from "typeorm";
 
-import { ApiResponse, IDataSource, Injectable } from "../../core";
+import { IApiResponseDto, IDataSource, Injectable } from "../../core";
 import { MailerService } from "../mailer";
 import { OtpService } from "../otp";
 import { ProfileRepository } from "../profile/profile.repository";
@@ -201,7 +201,7 @@ export class UserService {
       await this._userRepository.save(user);
     }
 
-    return new ApiResponse({
+    return new IApiResponseDto({
       message: "Email успешно подтвержден.",
       data: {},
     });
@@ -214,7 +214,7 @@ export class UserService {
 
     await this._userRepository.save(user);
 
-    return new ApiResponse({ message: "Пароль успешно изменен." });
+    return new IApiResponseDto({ message: "Пароль успешно изменен." });
   }
 
   async deleteUser(userId: string) {

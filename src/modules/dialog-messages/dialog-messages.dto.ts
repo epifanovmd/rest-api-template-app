@@ -1,4 +1,4 @@
-import { ListResponse } from "../../core";
+import { IListResponseDto } from "../../core";
 import { IFileDto } from "../file/file.dto";
 import { IUserDto } from "../user/user.dto";
 
@@ -21,7 +21,7 @@ export interface IDialogMessagesDto {
 }
 
 export interface IDialogListMessagesDto
-  extends ListResponse<IDialogMessagesDto[]> {}
+  extends IListResponseDto<IDialogMessagesDto[]> {}
 
 export interface IMessagesRequestDto {
   dialogId: string;

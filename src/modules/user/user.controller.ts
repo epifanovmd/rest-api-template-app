@@ -14,8 +14,8 @@ import {
 } from "tsoa";
 
 import {
-  ApiResponse,
   getContextUser,
+  IApiResponseDto,
   Injectable,
   ValidateBody,
 } from "../../core";
@@ -172,7 +172,10 @@ export class UserController extends Controller {
    */
   @Security("jwt")
   @Get("verifyEmail/{code}")
-  verifyEmail(code: string, @Request() req: KoaRequest): Promise<ApiResponse> {
+  verifyEmail(
+    code: string,
+    @Request() req: KoaRequest,
+  ): Promise<IApiResponseDto> {
     const user = getContextUser(req);
 
     return this._userService.verifyEmail(user.id, code);
@@ -210,7 +213,7 @@ export class UserController extends Controller {
   changePassword(
     @Request() req: KoaRequest,
     @Body() body: IUserChangePasswordDto,
-  ): Promise<ApiResponse> {
+  ): Promise<IApiResponseDto> {
     const user = getContextUser(req);
 
     return this._userService.changePassword(user.id, body.password);

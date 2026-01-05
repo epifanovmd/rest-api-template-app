@@ -1,4 +1,4 @@
-import { ListResponse } from "../../core";
+import { IListResponseDto } from "../../core";
 import { IFileDto } from "../file/file.dto";
 
 export interface IProfileUpdateRequestDto {
@@ -23,4 +23,4 @@ export interface IProfileDto {
   avatar: IFileDto | null;
 }
 
-export interface IProfileListDto extends ListResponse<IProfileDto[]> {}
+export interface IProfileListDto extends IListResponseDto<IProfileDto[]> {}

@@ -1,4 +1,4 @@
-import { ListResponse } from "../../core";
+import { IListResponseDto } from "../../core";
 
 export enum EPermissions {
   READ = "read",
@@ -13,4 +13,5 @@ export interface IPermissionDto {
   updatedAt: Date;
 }
 
-export interface IPermissionListDto extends ListResponse<IPermissionDto[]> {}
+export interface IPermissionListDto
+  extends IListResponseDto<IPermissionDto[]> {}

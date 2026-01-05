@@ -1,4 +1,4 @@
-import { ListResponse } from "../../core";
+import { IListResponseDto } from "../../core";
 import { IPermissionDto } from "../permission/permission.dto";
 
 export enum ERole {
@@ -15,4 +15,4 @@ export interface IRoleDto {
   permissions: IPermissionDto[];
 }
 
-export interface IRoleListDto extends ListResponse<IRoleDto[]> {}
+export interface IRoleListDto extends IListResponseDto<IRoleDto[]> {}

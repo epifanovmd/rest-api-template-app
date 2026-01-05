@@ -6,12 +6,12 @@ import axios from "axios";
 import admin from "firebase-admin";
 import { Message } from "firebase-admin/lib/messaging/messaging-api";
 import fs from "fs";
-import { inject, injectable } from "inversify";
+import { inject } from "inversify";
 import path from "path";
 
 import { Injectable } from "../../core";
+import { IApnRegisterTokenResponseDto, IFCMMessageDto } from "./fcm-token.dto";
 import { FcmTokenRepository } from "./fcm-token.repository";
-import { ApnRegisterTokenResponse, FCMMessage } from "./fcm-token.types";
 
 const BATCH_IMPORT_URL = "https://iid.googleapis.com/iid/v1:batchImport";
 
@@ -122,7 +122,7 @@ export class FcmTokenService {
     return token.access_token;
   }
 
-  async sendFcmMessage(message: FCMMessage): Promise<string> {
+  async sendFcmMessage(message: IFCMMessageDto): Promise<string> {
     if (firebaseAdmin === null || firebaseCredential === null) {
       throw new InternalServerErrorException("Firebase не инициализирован.");
     }
@@ -163,7 +163,7 @@ export class FcmTokenService {
       throw new InternalServerErrorException("Firebase не инициализирован.");
     }
 
-    const response = await this._fetch.post<ApnRegisterTokenResponse>(
+    const response = await this._fetch.post<IApnRegisterTokenResponseDto>(
       BATCH_IMPORT_URL,
       JSON.stringify({
         application,
@@ -175,7 +175,7 @@ export class FcmTokenService {
     return response.data;
   }
 
-  private _getMessagePayload = (message: FCMMessage): Message => ({
+  private _getMessagePayload = (message: IFCMMessageDto): Message => ({
     data: message.data,
     ...(message.type === "topic"
       ? { topic: message.to }

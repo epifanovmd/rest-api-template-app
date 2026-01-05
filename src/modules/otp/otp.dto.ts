@@ -1,4 +1,4 @@
-import { ListResponse } from "../../core";
+import { IListResponseDto } from "../../core";
 
 export interface IOtpDto {
   userId: string;
@@ -8,4 +8,4 @@ export interface IOtpDto {
   updatedAt: Date;
 }
 
-export interface IOtpListDto extends ListResponse<IOtpDto[]> {}
+export interface IOtpListDto extends IListResponseDto<IOtpDto[]> {}

@@ -8,8 +8,8 @@ import { inject } from "inversify";
 import sha256 from "sha256";
 
 import {
-  ApiResponse,
   createTokenAsync,
+  IApiResponseDto,
   Injectable,
   verifyAuthToken,
 } from "../../core";
@@ -17,12 +17,12 @@ import { MailerService } from "../mailer";
 import { ResetPasswordTokensService } from "../reset-password-tokens";
 import { UserService } from "../user";
 import {
-  IAuthenticateRequest,
-  ISignInRequest,
+  IAuthenticateRequestDto,
+  ISignInRequestDto,
   ITokensDto,
   IUserWithTokensDto,
-  TSignUpRequest,
-} from "./auth.types";
+  TSignUpRequestDto,
+} from "./auth.dto";
 
 const GITHUB_CLIENT_ID = "Ov23lizh9Zepze4yliRV";
 const GITHUB_CLIENT_SECRET = "d1cbef76205d2d527ca8c6646c03eca70b4c6f8a";
@@ -41,7 +41,7 @@ export class AuthService {
     phone,
     password,
     ...rest
-  }: TSignUpRequest): Promise<IUserWithTokensDto> {
+  }: TSignUpRequestDto): Promise<IUserWithTokensDto> {
     const login = email || phone;
 
     if (!login) {
@@ -81,7 +81,7 @@ export class AuthService {
     });
   }
 
-  async signIn(body: ISignInRequest): Promise<IUserWithTokensDto> {
+  async signIn(body: ISignInRequestDto): Promise<IUserWithTokensDto> {
     const { login, password } = body;
 
     try {
@@ -148,7 +148,7 @@ export class AuthService {
 
   async authenticate({
     code,
-  }: IAuthenticateRequest): Promise<IUserWithTokensDto> {
+  }: IAuthenticateRequestDto): Promise<IUserWithTokensDto> {
     try {
       // Обмен code на access token
       const accessToken = await this._exchangeCodeForToken(code);
@@ -221,7 +221,7 @@ export class AuthService {
       } catch (error) {
         // Если пользователь не найден, не сообщаем об этом для безопасности
         if (error instanceof NotFoundException) {
-          return new ApiResponse({
+          return new IApiResponseDto({
             message:
               "Если пользователь с таким email/телефоном существует, ссылка для сброса пароля будет отправлена.",
           });
@@ -243,14 +243,14 @@ export class AuthService {
         resetToken.token,
       );
 
-      return new ApiResponse({
+      return new IApiResponseDto({
         message:
           "Ссылка для сброса пароля отправлена на вашу почту. Проверьте входящие или папку Спам.",
       });
     } catch (error) {
       // Для безопасности скрываем реальную причину ошибки
       if (error instanceof NotFoundException) {
-        return new ApiResponse({
+        return new IApiResponseDto({
           message:
             "Если пользователь с таким email/телефоном существует, ссылка для сброса пароля будет отправлена.",
         });
@@ -264,7 +264,7 @@ export class AuthService {
 
     await this._userService.changePassword(userId, password);
 
-    return new ApiResponse({ message: "Пароль успешно сброшен." });
+    return new IApiResponseDto({ message: "Пароль успешно сброшен." });
   }
 
   async updateTokens(token?: string) {

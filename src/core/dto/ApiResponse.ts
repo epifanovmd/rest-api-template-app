@@ -3,7 +3,7 @@ export interface IApiResponse<T = unknown> {
   data?: T;
 }
 
-export class ApiResponse<T = unknown> implements IApiResponse {
+export class IApiResponseDto<T = unknown> implements IApiResponse {
   public message?: string = undefined;
   public data?: T = undefined;
 

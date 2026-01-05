@@ -1,4 +1,4 @@
-import { ListResponse } from "../../core";
+import { IListResponseDto } from "../../core";
 import { DialogMembersDto } from "../dialog-members/dialog-members.dto";
 import { IDialogMessagesDto } from "../dialog-messages/dialog-messages.dto";
 import { IUserDto } from "../user/user.dto";
@@ -14,7 +14,7 @@ export interface DialogDto {
   unreadMessagesCount: number;
 }
 
-export interface IDialogListDto extends ListResponse<DialogDto[]> {}
+export interface IDialogListDto extends IListResponseDto<DialogDto[]> {}
 
 export interface DialogCreateRequestDto {
   recipientId: string[];

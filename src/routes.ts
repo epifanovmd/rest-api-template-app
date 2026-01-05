@@ -111,7 +111,7 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "ApiResponse": {
+    "IApiResponseDto": {
         "dataType": "refObject",
         "properties": {
             "message": {"dataType":"string"},
@@ -153,12 +153,12 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "TSignUpRequest": {
+    "TSignUpRequestDto": {
         "dataType": "refAlias",
         "type": {"dataType":"union","subSchemas":[{"dataType":"intersection","subSchemas":[{"dataType":"nestedObjectLiteral","nestedProperties":{"password":{"dataType":"string","required":true},"lastName":{"dataType":"string"},"firstName":{"dataType":"string"}}},{"dataType":"union","subSchemas":[{"dataType":"nestedObjectLiteral","nestedProperties":{"phone":{"dataType":"string","required":true},"email":{"dataType":"string"}}},{"dataType":"nestedObjectLiteral","nestedProperties":{"phone":{"dataType":"string"},"email":{"dataType":"string","required":true}}}]}]}],"validators":{}},
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "ISignInRequest": {
+    "ISignInRequestDto": {
         "dataType": "refObject",
         "properties": {
             "login": {"dataType":"string","required":true},
@@ -167,7 +167,7 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "IUserLogin": {
+    "IUserLoginRequestDto": {
         "dataType": "refObject",
         "properties": {
             "login": {"dataType":"string","required":true},
@@ -175,7 +175,7 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "IUserResetPasswordRequest": {
+    "IUserResetPasswordRequestDto": {
         "dataType": "refObject",
         "properties": {
             "password": {"dataType":"string","required":true},
@@ -238,7 +238,7 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "FCMMessage": {
+    "IFCMMessageDto": {
         "dataType": "refObject",
         "properties": {
             "dialogId": {"dataType":"string"},
@@ -965,7 +965,7 @@ export function RegisterRoutes(router: KoaRouter) {
 
             async function AuthController_signUp(context: any, next: any) {
             const args = {
-                    body: {"in":"body","name":"body","required":true,"ref":"TSignUpRequest"},
+                    body: {"in":"body","name":"body","required":true,"ref":"TSignUpRequestDto"},
             };
 
             let validatedArgs: any[] = [];
@@ -994,7 +994,7 @@ export function RegisterRoutes(router: KoaRouter) {
 
             async function AuthController_signIn(context: any, next: any) {
             const args = {
-                    body: {"in":"body","name":"body","required":true,"ref":"ISignInRequest"},
+                    body: {"in":"body","name":"body","required":true,"ref":"ISignInRequestDto"},
             };
 
             let validatedArgs: any[] = [];
@@ -1052,7 +1052,7 @@ export function RegisterRoutes(router: KoaRouter) {
 
             async function AuthController_requestResetPassword(context: any, next: any) {
             const args = {
-                    undefined: {"in":"body","required":true,"ref":"IUserLogin"},
+                    undefined: {"in":"body","required":true,"ref":"IUserLoginRequestDto"},
             };
 
             let validatedArgs: any[] = [];
@@ -1081,7 +1081,7 @@ export function RegisterRoutes(router: KoaRouter) {
 
             async function AuthController_resetPassword(context: any, next: any) {
             const args = {
-                    body: {"in":"body","name":"body","required":true,"ref":"IUserResetPasswordRequest"},
+                    body: {"in":"body","name":"body","required":true,"ref":"IUserResetPasswordRequestDto"},
             };
 
             let validatedArgs: any[] = [];
@@ -1257,7 +1257,7 @@ export function RegisterRoutes(router: KoaRouter) {
 
             async function FcmTokenController_sendPushNotification(context: any, next: any) {
             const args = {
-                    message: {"in":"body","name":"message","required":true,"ref":"FCMMessage"},
+                    message: {"in":"body","name":"message","required":true,"ref":"IFCMMessageDto"},
             };
 
             let validatedArgs: any[] = [];

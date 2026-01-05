@@ -1,6 +1,6 @@
 import { IUserChangePasswordDto, IUserDto } from "../user/user.dto";
 
-export interface IUserResetPasswordRequest extends IUserChangePasswordDto {
+export interface IUserResetPasswordRequestDto extends IUserChangePasswordDto {
   token: string;
 }
 
@@ -13,20 +13,20 @@ export interface IUserWithTokensDto extends IUserDto {
   tokens: ITokensDto;
 }
 
-export interface IUserLogin {
+export interface IUserLoginRequestDto {
   /** Может быть телефоном, email-ом и username-ом  */
   login: string;
 }
 
-export interface ISignInRequest extends IUserLogin {
+export interface ISignInRequestDto extends IUserLoginRequestDto {
   password: string;
 }
 
-export interface IAuthenticateRequest {
+export interface IAuthenticateRequestDto {
   code: string;
 }
 
-export type TSignUpRequest =
+export type TSignUpRequestDto =
   | {
       firstName?: string;
       lastName?: string;

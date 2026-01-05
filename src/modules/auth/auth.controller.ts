@@ -1,16 +1,16 @@
 import { inject } from "inversify";
 import { Body, Controller, Post, Route, Tags } from "tsoa";
 
-import { ApiResponse, Injectable } from "../../core";
-import { AuthService } from "./auth.service";
+import { IApiResponseDto, Injectable } from "../../core";
 import {
-  ISignInRequest,
+  ISignInRequestDto,
   ITokensDto,
-  IUserLogin,
-  IUserResetPasswordRequest,
+  IUserLoginRequestDto,
+  IUserResetPasswordRequestDto,
   IUserWithTokensDto,
-  TSignUpRequest,
-} from "./auth.types";
+  TSignUpRequestDto,
+} from "./auth.dto";
+import { AuthService } from "./auth.service";
 
 @Injectable()
 @Tags("Authorization")
@@ -35,7 +35,7 @@ export class AuthController extends Controller {
    * @response 400 - Некорректные данные
    */
   @Post("/sign-up")
-  signUp(@Body() body: TSignUpRequest): Promise<IUserWithTokensDto> {
+  signUp(@Body() body: TSignUpRequestDto): Promise<IUserWithTokensDto> {
     return this._authService.signUp(body);
   }
 
@@ -52,7 +52,7 @@ export class AuthController extends Controller {
    * @response 401 - Неверные учетные данные
    */
   @Post("/sign-in")
-  signIn(@Body() body: ISignInRequest): Promise<IUserWithTokensDto> {
+  signIn(@Body() body: ISignInRequestDto): Promise<IUserWithTokensDto> {
     return this._authService.signIn(body);
   }
 
@@ -84,7 +84,9 @@ export class AuthController extends Controller {
    * @response 404 - Пользователь не найден
    */
   @Post("/request-reset-password")
-  requestResetPassword(@Body() { login }: IUserLogin): Promise<ApiResponse> {
+  requestResetPassword(
+    @Body() { login }: IUserLoginRequestDto,
+  ): Promise<IApiResponseDto> {
     return this._authService.requestResetPassword(login);
   }
 
@@ -101,7 +103,9 @@ export class AuthController extends Controller {
    * @response 400 - Некорректный или просроченный токен
    */
   @Post("/reset-password")
-  resetPassword(@Body() body: IUserResetPasswordRequest): Promise<ApiResponse> {
+  resetPassword(
+    @Body() body: IUserResetPasswordRequestDto,
+  ): Promise<IApiResponseDto> {
     return this._authService.resetPassword(body.token, body.password);
   }
 

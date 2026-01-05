@@ -1,4 +1,4 @@
-import { ListResponse } from "../../core";
+import { IListResponseDto } from "../../core";
 import { EPermissions } from "../permission/permission.dto";
 import { ERole, IRoleDto } from "../role/role.dto";
 
@@ -25,7 +25,7 @@ export interface IUserDto {
   role: IRoleDto;
 }
 
-export interface IUserListDto extends ListResponse<IUserDto[]> {}
+export interface IUserListDto extends IListResponseDto<IUserDto[]> {}
 
 export interface IUserChangePasswordDto {
   password: string;
