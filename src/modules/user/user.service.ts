@@ -10,7 +10,7 @@ import { OtpService } from "../otp";
 import { ProfileRepository } from "../profile/profile.repository";
 import { ERole } from "../role/role.entity";
 import { RoleRepository } from "../role/role.repository";
-import { IUserPrivilegesRequest, IUserUpdateRequest } from "./user.dto";
+import { IUserPrivilegesRequestDto, IUserUpdateRequestDto } from "./user.dto";
 import { User } from "./user.entity";
 import { UserRepository } from "./user.repository";
 
@@ -26,7 +26,7 @@ export class UserService {
   ) {}
 
   async getUsers(offset?: number, limit?: number) {
-    const [users, total] = await this._userRepository.findAll(
+    const users = await this._userRepository.findAll(
       offset,
       limit,
       UserService.relations,
@@ -92,8 +92,8 @@ export class UserService {
   async createAdmin(body: Partial<User>) {
     // Проверяем, существует ли пользователь
     const existingUser = await this._userRepository.findByEmailOrPhone(
-      body.email ?? null,
-      body.phone ?? null,
+      body.email,
+      body.phone,
     );
 
     if (existingUser) {
@@ -106,8 +106,8 @@ export class UserService {
 
     // Если пользователь существует, возвращаем его с ролью ADMIN
     const existingUser1 = await this._userRepository.findByEmailOrPhone(
-      body.email ?? null,
-      body.phone ?? null,
+      body.email,
+      body.phone,
     );
 
     if (existingUser1) {
@@ -117,7 +117,7 @@ export class UserService {
     throw new NotFoundException("Пользователь не найден");
   }
 
-  async updateUser(id: string, body: IUserUpdateRequest) {
+  async updateUser(id: string, body: IUserUpdateRequestDto) {
     await this._userRepository.update(id, body);
 
     return await this.getUser(id);
@@ -125,8 +125,8 @@ export class UserService {
 
   async setPrivileges(
     userId: string,
-    roleName: IUserPrivilegesRequest["roleName"],
-    permissions: IUserPrivilegesRequest["permissions"] = [],
+    roleName: IUserPrivilegesRequestDto["roleName"],
+    permissions: IUserPrivilegesRequestDto["permissions"] = [],
   ) {
     const queryRunner = this._dataSource.createQueryRunner();
 

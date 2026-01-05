@@ -57,10 +57,10 @@ export class UserRepository extends BaseRepository<User> {
   }
 
   async findByEmailOrPhone(
-    email: string | null,
-    phone: string | null,
+    email?: string,
+    phone?: string,
     relations?: FindOptionsRelations<User>,
-  ): Promise<User | null> {
+  ) {
     const where: FindOptionsWhere<User>[] = [];
 
     if (email) where.push({ email });
@@ -78,8 +78,8 @@ export class UserRepository extends BaseRepository<User> {
     offset?: number,
     limit?: number,
     relations?: FindOptionsRelations<User>,
-  ): Promise<[User[], number]> {
-    return this.repository.findAndCount({
+  ): Promise<User[]> {
+    return this.repository.find({
       skip: offset,
       take: limit,
       order: { createdAt: "DESC" },

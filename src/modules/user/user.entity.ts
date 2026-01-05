@@ -21,6 +21,7 @@ import { Passkey } from "../passkeys/passkey.entity";
 import { Profile } from "../profile/profile.entity";
 import { ResetPasswordTokens } from "../reset-password-tokens/reset-password-tokens.entity";
 import { Role } from "../role/role.entity";
+import { IUserDto } from "./user.dto";
 
 @Entity("users")
 @Index("IDX_USERS_EMAIL_PHONE", ["email", "phone"], { unique: true })
@@ -88,21 +89,12 @@ export class User {
   @JoinColumn({ name: "avatar_id" })
   avatar: File | null;
 
-  // Helper methods
-  hasValidChallenge(): boolean {
-    return !!this.challenge;
-  }
-
-  clearChallenge(): void {
-    this.challenge = null;
-  }
-
-  setChallenge(challenge: string): void {
-    this.challenge = challenge;
+  setEmail(email: string) {
+    this.email = email;
   }
 
   // DTO преобразование
-  toDTO() {
+  toDTO(): IUserDto {
     return {
       id: this.id,
       email: this.email,
@@ -112,17 +104,6 @@ export class User {
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
       role: this.role?.toDTO?.(),
-    };
-  }
-
-  // For authentication
-  toAuthDTO() {
-    return {
-      id: this.id,
-      email: this.email,
-      emailVerified: this.emailVerified,
-      phone: this.phone,
-      role: this.role?.name,
     };
   }
 }

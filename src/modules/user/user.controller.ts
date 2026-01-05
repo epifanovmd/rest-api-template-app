@@ -24,8 +24,8 @@ import {
   IUserDto,
   IUserListDto,
   IUserPassword,
-  IUserPrivilegesRequest,
-  IUserUpdateRequest,
+  IUserPrivilegesRequestDto,
+  IUserUpdateRequestDto,
 } from "./user.dto";
 import { UserService } from "./user.service";
 import { UserUpdateSchema } from "./user.validate";
@@ -68,7 +68,7 @@ export class UserController extends Controller {
   @ValidateBody(UserUpdateSchema)
   updateMyUser(
     @Request() req: KoaRequest,
-    @Body() body: IUserUpdateRequest,
+    @Body() body: IUserUpdateRequestDto,
   ): Promise<IUserDto> {
     const user = getContextUser(req);
 
@@ -141,7 +141,7 @@ export class UserController extends Controller {
   @Patch("setPrivileges/{id}")
   setPrivileges(
     id: string,
-    @Body() body: IUserPrivilegesRequest,
+    @Body() body: IUserPrivilegesRequestDto,
   ): Promise<IUserDto> {
     return this._userService.setPrivileges(id, body.roleName, body.permissions);
   }
@@ -189,7 +189,10 @@ export class UserController extends Controller {
    */
   @Security("jwt", ["role:admin"])
   @Patch("update/{id}")
-  updateUser(id: string, @Body() body: IUserUpdateRequest): Promise<IUserDto> {
+  updateUser(
+    id: string,
+    @Body() body: IUserUpdateRequestDto,
+  ): Promise<IUserDto> {
     return this._userService.updateUser(id, body);
   }
 
