@@ -9,7 +9,7 @@ export interface DialogMembersDto {
   user: IUserDto;
 }
 
-export interface DialogMembersAddRequest {
+export interface DialogMembersAddRequestDto {
   dialogId: string;
   members: string[];
 }

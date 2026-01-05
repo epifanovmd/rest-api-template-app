@@ -15,7 +15,7 @@ import {
 
 import { getContextUser, Injectable } from "../../core";
 import { KoaRequest } from "../../types/koa";
-import { FcmTokenDto, FcmTokenRequest } from "./fcm-token.dto";
+import { FcmTokenDto, FcmTokenRequestDto } from "./fcm-token.dto";
 import { FcmTokenService } from "./fcm-token.service";
 import { FCMMessage } from "./fcm-token.types";
 
@@ -135,7 +135,7 @@ export class FcmTokenController extends Controller {
   @Post("/token")
   addToken(
     @Request() req: KoaRequest,
-    @Body() { token }: FcmTokenRequest,
+    @Body() { token }: FcmTokenRequestDto,
   ): Promise<FcmTokenDto> {
     const user = getContextUser(req);
 

@@ -1,31 +1,31 @@
 export interface IBiometricDto {}
 
-export interface IRegisterBiometricRequest {
+export interface IRegisterBiometricRequestDto {
   userId: string;
   deviceId: string;
   deviceName: string;
   publicKey: string;
 }
 
-export interface IRegisterBiometricResponse {
+export interface IRegisterBiometricResponseDto {
   registered: boolean;
 }
 
-export interface IGenerateNonceRequest {
+export interface IGenerateNonceRequestDto {
   userId: string;
 }
 
-export interface IGenerateNonceResponse {
+export interface IGenerateNonceResponseDto {
   nonce: string;
 }
 
-export interface IVerifyBiometricSignatureRequest {
+export interface IVerifyBiometricSignatureRequestDto {
   userId: string;
   deviceId: string;
   signature: string;
 }
 
-export interface IVerifyBiometricSignatureResponse {
+export interface IVerifyBiometricSignatureResponseDto {
   verified: boolean;
   tokens: {
     accessToken: string;

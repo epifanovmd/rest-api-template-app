@@ -20,7 +20,7 @@ import { KoaRequest } from "../../types/koa";
 import {
   IProfileDto,
   IProfileListDto,
-  IProfileUpdateRequest,
+  IProfileUpdateRequestDto,
 } from "./profile.dto";
 import { ProfileService } from "./profile.service";
 
@@ -60,7 +60,7 @@ export class ProfileController extends Controller {
   @Patch("/my/update")
   updateMyProfile(
     @Request() req: KoaRequest,
-    @Body() body: IProfileUpdateRequest,
+    @Body() body: IProfileUpdateRequestDto,
   ): Promise<IProfileDto> {
     const user = getContextUser(req);
 
@@ -135,7 +135,7 @@ export class ProfileController extends Controller {
   @Patch("update/{userId}")
   updateProfile(
     userId: string,
-    @Body() body: IProfileUpdateRequest,
+    @Body() body: IProfileUpdateRequestDto,
   ): Promise<IProfileDto> {
     return this._profileService.updateProfile(userId, body);
   }

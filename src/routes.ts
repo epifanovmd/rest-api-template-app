@@ -80,7 +80,7 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "IUserUpdateRequest": {
+    "IUserUpdateRequestDto": {
         "dataType": "refObject",
         "properties": {
             "email": {"dataType":"string"},
@@ -102,7 +102,7 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "IUserPrivilegesRequest": {
+    "IUserPrivilegesRequestDto": {
         "dataType": "refObject",
         "properties": {
             "roleName": {"ref":"ERole","required":true},
@@ -120,7 +120,7 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "IUserPassword": {
+    "IUserChangePasswordDto": {
         "dataType": "refObject",
         "properties": {
             "password": {"dataType":"string","required":true},
@@ -184,7 +184,7 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "IRegisterBiometricResponse": {
+    "IRegisterBiometricResponseDto": {
         "dataType": "refObject",
         "properties": {
             "registered": {"dataType":"boolean","required":true},
@@ -192,7 +192,7 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "IRegisterBiometricRequest": {
+    "IRegisterBiometricRequestDto": {
         "dataType": "refObject",
         "properties": {
             "userId": {"dataType":"string","required":true},
@@ -203,7 +203,7 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "IGenerateNonceResponse": {
+    "IGenerateNonceResponseDto": {
         "dataType": "refObject",
         "properties": {
             "nonce": {"dataType":"string","required":true},
@@ -211,7 +211,7 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "IGenerateNonceRequest": {
+    "IGenerateNonceRequestDto": {
         "dataType": "refObject",
         "properties": {
             "userId": {"dataType":"string","required":true},
@@ -219,7 +219,7 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "IVerifyBiometricSignatureResponse": {
+    "IVerifyBiometricSignatureResponseDto": {
         "dataType": "refObject",
         "properties": {
             "verified": {"dataType":"boolean","required":true},
@@ -228,7 +228,7 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "IVerifyBiometricSignatureRequest": {
+    "IVerifyBiometricSignatureRequestDto": {
         "dataType": "refObject",
         "properties": {
             "userId": {"dataType":"string","required":true},
@@ -264,7 +264,7 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "FcmTokenRequest": {
+    "FcmTokenRequestDto": {
         "dataType": "refObject",
         "properties": {
             "token": {"dataType":"string","required":true},
@@ -347,7 +347,7 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "DialogFindRequest": {
+    "DialogFindRequestDto": {
         "dataType": "refObject",
         "properties": {
             "recipientId": {"dataType":"array","array":{"dataType":"string"},"required":true},
@@ -355,7 +355,7 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "DialogCreateRequest": {
+    "DialogCreateRequestDto": {
         "dataType": "refObject",
         "properties": {
             "recipientId": {"dataType":"array","array":{"dataType":"string"},"required":true},
@@ -363,7 +363,7 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "DialogMembersAddRequest": {
+    "DialogMembersAddRequestDto": {
         "dataType": "refObject",
         "properties": {
             "dialogId": {"dataType":"string","required":true},
@@ -383,7 +383,7 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "IMessagesRequest": {
+    "IMessagesRequestDto": {
         "dataType": "refObject",
         "properties": {
             "dialogId": {"dataType":"string","required":true},
@@ -398,7 +398,7 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "IMessagesUpdateRequest": {
+    "IMessagesUpdateRequestDto": {
         "dataType": "refObject",
         "properties": {
             "text": {"dataType":"string"},
@@ -521,7 +521,7 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "IVerifyRegistrationRequest": {
+    "IVerifyRegistrationRequestDto": {
         "dataType": "refObject",
         "properties": {
             "userId": {"dataType":"string","required":true},
@@ -530,7 +530,7 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "IVerifyAuthenticationResponse": {
+    "IVerifyAuthenticationResponseDto": {
         "dataType": "refObject",
         "properties": {
             "verified": {"dataType":"boolean","required":true},
@@ -563,7 +563,7 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "IVerifyAuthenticationRequest": {
+    "IVerifyAuthenticationRequestDto": {
         "dataType": "refObject",
         "properties": {
             "userId": {"dataType":"string","required":true},
@@ -589,7 +589,7 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "IProfileUpdateRequest": {
+    "IProfileUpdateRequestDto": {
         "dataType": "refObject",
         "properties": {
             "firstName": {"dataType":"string"},
@@ -661,7 +661,7 @@ export function RegisterRoutes(router: KoaRouter) {
             async function UserController_updateMyUser(context: any, next: any) {
             const args = {
                     req: {"in":"request","name":"req","required":true,"dataType":"object"},
-                    body: {"in":"body","name":"body","required":true,"ref":"IUserUpdateRequest"},
+                    body: {"in":"body","name":"body","required":true,"ref":"IUserUpdateRequestDto"},
             };
 
             let validatedArgs: any[] = [];
@@ -783,7 +783,7 @@ export function RegisterRoutes(router: KoaRouter) {
             async function UserController_setPrivileges(context: any, next: any) {
             const args = {
                     id: {"in":"path","name":"id","required":true,"dataType":"string"},
-                    body: {"in":"body","name":"body","required":true,"ref":"IUserPrivilegesRequest"},
+                    body: {"in":"body","name":"body","required":true,"ref":"IUserPrivilegesRequestDto"},
             };
 
             let validatedArgs: any[] = [];
@@ -875,7 +875,7 @@ export function RegisterRoutes(router: KoaRouter) {
             async function UserController_updateUser(context: any, next: any) {
             const args = {
                     id: {"in":"path","name":"id","required":true,"dataType":"string"},
-                    body: {"in":"body","name":"body","required":true,"ref":"IUserUpdateRequest"},
+                    body: {"in":"body","name":"body","required":true,"ref":"IUserUpdateRequestDto"},
             };
 
             let validatedArgs: any[] = [];
@@ -906,7 +906,7 @@ export function RegisterRoutes(router: KoaRouter) {
             async function UserController_changePassword(context: any, next: any) {
             const args = {
                     req: {"in":"request","name":"req","required":true,"dataType":"object"},
-                    body: {"in":"body","name":"body","required":true,"ref":"IUserPassword"},
+                    body: {"in":"body","name":"body","required":true,"ref":"IUserChangePasswordDto"},
             };
 
             let validatedArgs: any[] = [];
@@ -1139,7 +1139,7 @@ export function RegisterRoutes(router: KoaRouter) {
 
             async function BiometricController_registerBiometric(context: any, next: any) {
             const args = {
-                    body: {"in":"body","name":"body","required":true,"ref":"IRegisterBiometricRequest"},
+                    body: {"in":"body","name":"body","required":true,"ref":"IRegisterBiometricRequestDto"},
             };
 
             let validatedArgs: any[] = [];
@@ -1168,7 +1168,7 @@ export function RegisterRoutes(router: KoaRouter) {
 
             async function BiometricController_generateNonce(context: any, next: any) {
             const args = {
-                    body: {"in":"body","name":"body","required":true,"ref":"IGenerateNonceRequest"},
+                    body: {"in":"body","name":"body","required":true,"ref":"IGenerateNonceRequestDto"},
             };
 
             let validatedArgs: any[] = [];
@@ -1197,7 +1197,7 @@ export function RegisterRoutes(router: KoaRouter) {
 
             async function BiometricController_verifySignature(context: any, next: any) {
             const args = {
-                    body: {"in":"body","name":"body","required":true,"ref":"IVerifyBiometricSignatureRequest"},
+                    body: {"in":"body","name":"body","required":true,"ref":"IVerifyBiometricSignatureRequestDto"},
             };
 
             let validatedArgs: any[] = [];
@@ -1408,7 +1408,7 @@ export function RegisterRoutes(router: KoaRouter) {
             async function FcmTokenController_addToken(context: any, next: any) {
             const args = {
                     req: {"in":"request","name":"req","required":true,"dataType":"object"},
-                    undefined: {"in":"body","required":true,"ref":"FcmTokenRequest"},
+                    undefined: {"in":"body","required":true,"ref":"FcmTokenRequestDto"},
             };
 
             let validatedArgs: any[] = [];
@@ -1563,7 +1563,7 @@ export function RegisterRoutes(router: KoaRouter) {
             async function DialogController_findDialog(context: any, next: any) {
             const args = {
                     req: {"in":"request","name":"req","required":true,"dataType":"object"},
-                    body: {"in":"body","name":"body","required":true,"ref":"DialogFindRequest"},
+                    body: {"in":"body","name":"body","required":true,"ref":"DialogFindRequestDto"},
             };
 
             let validatedArgs: any[] = [];
@@ -1594,7 +1594,7 @@ export function RegisterRoutes(router: KoaRouter) {
             async function DialogController_createDialog(context: any, next: any) {
             const args = {
                     req: {"in":"request","name":"req","required":true,"dataType":"object"},
-                    body: {"in":"body","name":"body","required":true,"ref":"DialogCreateRequest"},
+                    body: {"in":"body","name":"body","required":true,"ref":"DialogCreateRequestDto"},
             };
 
             let validatedArgs: any[] = [];
@@ -1655,7 +1655,7 @@ export function RegisterRoutes(router: KoaRouter) {
             async function DialogController_addMembers(context: any, next: any) {
             const args = {
                     req: {"in":"request","name":"req","required":true,"dataType":"object"},
-                    body: {"in":"body","name":"body","required":true,"ref":"DialogMembersAddRequest"},
+                    body: {"in":"body","name":"body","required":true,"ref":"DialogMembersAddRequestDto"},
             };
 
             let validatedArgs: any[] = [];
@@ -1837,7 +1837,7 @@ export function RegisterRoutes(router: KoaRouter) {
 
             async function DialogController_newMessage(context: any, next: any) {
             const args = {
-                    message: {"in":"body","name":"message","required":true,"ref":"IMessagesRequest"},
+                    message: {"in":"body","name":"message","required":true,"ref":"IMessagesRequestDto"},
                     req: {"in":"request","name":"req","required":true,"dataType":"object"},
             };
 
@@ -1870,7 +1870,7 @@ export function RegisterRoutes(router: KoaRouter) {
             const args = {
                     id: {"in":"path","name":"id","required":true,"dataType":"string"},
                     req: {"in":"request","name":"req","required":true,"dataType":"object"},
-                    body: {"in":"body","name":"body","required":true,"ref":"IMessagesUpdateRequest"},
+                    body: {"in":"body","name":"body","required":true,"ref":"IMessagesUpdateRequestDto"},
             };
 
             let validatedArgs: any[] = [];
@@ -2050,7 +2050,7 @@ export function RegisterRoutes(router: KoaRouter) {
 
             async function PasskeysController_verifyRegistration(context: any, next: any) {
             const args = {
-                    undefined: {"in":"body","required":true,"ref":"IVerifyRegistrationRequest"},
+                    undefined: {"in":"body","required":true,"ref":"IVerifyRegistrationRequestDto"},
             };
 
             let validatedArgs: any[] = [];
@@ -2108,7 +2108,7 @@ export function RegisterRoutes(router: KoaRouter) {
 
             async function PasskeysController_verifyAuthentication(context: any, next: any) {
             const args = {
-                    undefined: {"in":"body","required":true,"ref":"IVerifyAuthenticationRequest"},
+                    undefined: {"in":"body","required":true,"ref":"IVerifyAuthenticationRequestDto"},
             };
 
             let validatedArgs: any[] = [];
@@ -2169,7 +2169,7 @@ export function RegisterRoutes(router: KoaRouter) {
             async function ProfileController_updateMyProfile(context: any, next: any) {
             const args = {
                     req: {"in":"request","name":"req","required":true,"dataType":"object"},
-                    body: {"in":"body","name":"body","required":true,"ref":"IProfileUpdateRequest"},
+                    body: {"in":"body","name":"body","required":true,"ref":"IProfileUpdateRequestDto"},
             };
 
             let validatedArgs: any[] = [];
@@ -2291,7 +2291,7 @@ export function RegisterRoutes(router: KoaRouter) {
             async function ProfileController_updateProfile(context: any, next: any) {
             const args = {
                     userId: {"in":"path","name":"userId","required":true,"dataType":"string"},
-                    body: {"in":"body","name":"body","required":true,"ref":"IProfileUpdateRequest"},
+                    body: {"in":"body","name":"body","required":true,"ref":"IProfileUpdateRequestDto"},
             };
 
             let validatedArgs: any[] = [];

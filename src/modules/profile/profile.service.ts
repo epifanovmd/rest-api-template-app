@@ -5,7 +5,7 @@ import { File } from "tsoa";
 import { IDataSource, Injectable } from "../../core";
 import { FileService } from "../file";
 import { FileRepository } from "../file/file.repository";
-import { IProfileUpdateRequest } from "./profile.dto";
+import { IProfileUpdateRequestDto } from "./profile.dto";
 import { Profile } from "./profile.entity";
 import { ProfileRepository } from "./profile.repository";
 
@@ -82,7 +82,7 @@ export class ProfileService {
     return profile.toDTO();
   }
 
-  async updateProfile(userId: string, body: IProfileUpdateRequest) {
+  async updateProfile(userId: string, body: IProfileUpdateRequestDto) {
     const profile = await this._profileRepository.update(userId, body);
 
     if (!profile) {

@@ -18,20 +18,20 @@ import { getContextUser, Injectable } from "../../core";
 import { KoaRequest } from "../../types/koa";
 import { DialogMembersService } from "../dialog-members";
 import {
-  DialogMembersAddRequest,
+  DialogMembersAddRequestDto,
   DialogMembersDto,
 } from "../dialog-members/dialog-members.dto";
 import { DialogMessagesService } from "../dialog-messages";
 import {
   IDialogListMessagesDto,
   IDialogMessagesDto,
-  IMessagesRequest,
-  IMessagesUpdateRequest,
+  IMessagesRequestDto,
+  IMessagesUpdateRequestDto,
 } from "../dialog-messages/dialog-messages.dto";
 import {
-  DialogCreateRequest,
+  DialogCreateRequestDto,
   DialogDto,
-  DialogFindRequest,
+  DialogFindRequestDto,
   IDialogListDto,
 } from "./dialog.dto";
 import { DialogService } from "./dialog.service";
@@ -127,7 +127,7 @@ export class DialogController extends Controller {
   @Post("/find")
   findDialog(
     @Request() req: KoaRequest,
-    @Body() body: DialogFindRequest,
+    @Body() body: DialogFindRequestDto,
   ): Promise<string[]> {
     const user = getContextUser(req);
 
@@ -146,7 +146,7 @@ export class DialogController extends Controller {
   @Post()
   createDialog(
     @Request() req: KoaRequest,
-    @Body() body: DialogCreateRequest,
+    @Body() body: DialogCreateRequestDto,
   ): Promise<DialogDto> {
     const user = getContextUser(req);
 
@@ -178,7 +178,7 @@ export class DialogController extends Controller {
   @Post("/member")
   addMembers(
     @Request() req: KoaRequest,
-    @Body() body: DialogMembersAddRequest,
+    @Body() body: DialogMembersAddRequestDto,
   ): Promise<DialogMembersDto[]> {
     const user = getContextUser(req);
 
@@ -282,7 +282,7 @@ export class DialogController extends Controller {
   @Security("jwt")
   @Post("/message/")
   newMessage(
-    @Body() message: IMessagesRequest,
+    @Body() message: IMessagesRequestDto,
     @Request() req: KoaRequest,
   ): Promise<IDialogMessagesDto> {
     const user = getContextUser(req);
@@ -310,7 +310,7 @@ export class DialogController extends Controller {
   updateMessage(
     id: string,
     @Request() req: KoaRequest,
-    @Body() body: IMessagesUpdateRequest,
+    @Body() body: IMessagesUpdateRequestDto,
   ): Promise<IDialogMessagesDto> {
     const user = getContextUser(req);
 

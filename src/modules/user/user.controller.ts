@@ -21,9 +21,9 @@ import {
 } from "../../core";
 import { KoaRequest } from "../../types/koa";
 import {
+  IUserChangePasswordDto,
   IUserDto,
   IUserListDto,
-  IUserPassword,
   IUserPrivilegesRequestDto,
   IUserUpdateRequestDto,
 } from "./user.dto";
@@ -209,7 +209,7 @@ export class UserController extends Controller {
   @Post("changePassword")
   changePassword(
     @Request() req: KoaRequest,
-    @Body() body: IUserPassword,
+    @Body() body: IUserChangePasswordDto,
   ): Promise<ApiResponse> {
     const user = getContextUser(req);
 

@@ -1,7 +1,7 @@
 import { ListResponse } from "../../core";
 import { IFileDto } from "../file/file.dto";
 
-export interface IProfileUpdateRequest {
+export interface IProfileUpdateRequestDto {
   firstName?: string;
   lastName?: string;
   bio?: string;

@@ -23,7 +23,7 @@ export interface IDialogMessagesDto {
 export interface IDialogListMessagesDto
   extends ListResponse<IDialogMessagesDto[]> {}
 
-export interface IMessagesRequest {
+export interface IMessagesRequestDto {
   dialogId: string;
   text: string;
   system?: boolean;
@@ -34,7 +34,7 @@ export interface IMessagesRequest {
   audioIds?: string[];
 }
 
-export interface IMessagesUpdateRequest {
+export interface IMessagesUpdateRequestDto {
   text?: string;
   system?: boolean;
   received?: boolean;

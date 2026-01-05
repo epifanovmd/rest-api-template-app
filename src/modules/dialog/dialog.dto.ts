@@ -16,10 +16,10 @@ export interface DialogDto {
 
 export interface IDialogListDto extends ListResponse<DialogDto[]> {}
 
-export interface DialogCreateRequest {
+export interface DialogCreateRequestDto {
   recipientId: string[];
 }
 
-export interface DialogFindRequest {
+export interface DialogFindRequestDto {
   recipientId: string[];
 }

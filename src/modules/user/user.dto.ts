@@ -27,6 +27,6 @@ export interface IUserDto {
 
 export interface IUserListDto extends ListResponse<IUserDto[]> {}
 
-export interface IUserPassword {
+export interface IUserChangePasswordDto {
   password: string;
 }

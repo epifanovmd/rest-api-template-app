@@ -5,21 +5,21 @@ import {
 
 import { ITokensDto } from "../auth";
 
-export interface IVerifyRegistrationRequest {
+export interface IVerifyRegistrationRequestDto {
   userId: string;
   data: RegistrationResponseJSON;
 }
 
-export interface IVerifyAuthenticationRequest {
+export interface IVerifyAuthenticationRequestDto {
   userId: string;
   data: AuthenticationResponseJSON;
 }
 
-export interface IVerifyAuthenticationResponse {
+export interface IVerifyAuthenticationResponseDto {
   verified: boolean;
   tokens?: ITokensDto;
 }
 
-export interface IVerifyRegistrationResponse {
+export interface IVerifyRegistrationResponseDto {
   verified: boolean;
 }

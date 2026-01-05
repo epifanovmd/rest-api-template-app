@@ -3,12 +3,12 @@ import { Body, Controller, Post, Route, Tags } from "tsoa";
 
 import { Injectable } from "../../core";
 import {
-  IGenerateNonceRequest,
-  IGenerateNonceResponse,
-  IRegisterBiometricRequest,
-  IRegisterBiometricResponse,
-  IVerifyBiometricSignatureRequest,
-  IVerifyBiometricSignatureResponse,
+  IGenerateNonceRequestDto,
+  IGenerateNonceResponseDto,
+  IRegisterBiometricRequestDto,
+  IRegisterBiometricResponseDto,
+  IVerifyBiometricSignatureRequestDto,
+  IVerifyBiometricSignatureResponseDto,
 } from "./biometric.dto";
 import { BiometricService } from "./biometric.service";
 
@@ -27,8 +27,8 @@ export class BiometricController extends Controller {
    */
   @Post("/register")
   async registerBiometric(
-    @Body() body: IRegisterBiometricRequest,
-  ): Promise<IRegisterBiometricResponse> {
+    @Body() body: IRegisterBiometricRequestDto,
+  ): Promise<IRegisterBiometricResponseDto> {
     const { userId, deviceId, deviceName, publicKey } = body;
 
     await this.biometricService.registerBiometric(
@@ -46,8 +46,8 @@ export class BiometricController extends Controller {
    */
   @Post("/generate-nonce")
   async generateNonce(
-    @Body() body: IGenerateNonceRequest,
-  ): Promise<IGenerateNonceResponse> {
+    @Body() body: IGenerateNonceRequestDto,
+  ): Promise<IGenerateNonceResponseDto> {
     return await this.biometricService.generateNonce(body.userId);
   }
 
@@ -56,8 +56,8 @@ export class BiometricController extends Controller {
    */
   @Post("/verify-signature")
   async verifySignature(
-    @Body() body: IVerifyBiometricSignatureRequest,
-  ): Promise<IVerifyBiometricSignatureResponse> {
+    @Body() body: IVerifyBiometricSignatureRequestDto,
+  ): Promise<IVerifyBiometricSignatureResponseDto> {
     return await this.biometricService.verifyBiometricSignature(
       body.userId,
       body.deviceId,

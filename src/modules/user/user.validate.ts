@@ -3,7 +3,6 @@ import { z } from "zod";
 export const UserUpdateSchema = z
   .object({
     email: z
-      .string()
       .email("Неверный формат email")
       .max(50, "Email не должен превышать 50 символов")
       .transform(val => val?.trim().toLowerCase())

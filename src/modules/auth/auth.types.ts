@@ -1,6 +1,6 @@
-import { IUserDto, IUserPassword } from "../user/user.dto";
+import { IUserChangePasswordDto, IUserDto } from "../user/user.dto";
 
-export interface IUserResetPasswordRequest extends IUserPassword {
+export interface IUserResetPasswordRequest extends IUserChangePasswordDto {
   token: string;
 }
 

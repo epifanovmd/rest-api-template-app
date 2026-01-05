@@ -6,6 +6,6 @@ export interface FcmTokenDto {
   updatedAt: Date;
 }
 
-export interface FcmTokenRequest {
+export interface FcmTokenRequestDto {
   token: string;
 }

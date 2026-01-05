@@ -4,9 +4,9 @@ import { Body, Controller, Post, Route, Tags } from "tsoa";
 
 import { Injectable } from "../../core";
 import {
-  IVerifyAuthenticationRequest,
-  IVerifyAuthenticationResponse,
-  IVerifyRegistrationRequest,
+  IVerifyAuthenticationRequestDto,
+  IVerifyAuthenticationResponseDto,
+  IVerifyRegistrationRequestDto,
 } from "./passkeys.dto";
 import { PasskeysService } from "./passkeys.service";
 
@@ -47,7 +47,7 @@ export class PasskeysController extends Controller {
    */
   @Post("/verify-registration")
   async verifyRegistration(
-    @Body() { userId, data }: IVerifyRegistrationRequest,
+    @Body() { userId, data }: IVerifyRegistrationRequestDto,
   ): Promise<{
     verified: boolean;
   }> {
@@ -82,8 +82,8 @@ export class PasskeysController extends Controller {
    */
   @Post("/verify-authentication")
   async verifyAuthentication(
-    @Body() { userId, data }: IVerifyAuthenticationRequest,
-  ): Promise<IVerifyAuthenticationResponse> {
+    @Body() { userId, data }: IVerifyAuthenticationRequestDto,
+  ): Promise<IVerifyAuthenticationResponseDto> {
     return await this._authService.verifyAuthentication(userId, data);
   }
 }

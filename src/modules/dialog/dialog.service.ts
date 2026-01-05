@@ -7,7 +7,7 @@ import { DialogMembersRepository } from "../dialog-members/dialog-members.reposi
 import { DialogMessagesRepository } from "../dialog-messages/dialog-messages.repository";
 import { SocketService } from "../socket";
 import { UserRepository } from "../user/user.repository";
-import { DialogCreateRequest } from "./dialog.dto";
+import { DialogCreateRequestDto } from "./dialog.dto";
 import { DialogRepository } from "./dialog.repository";
 
 @Injectable()
@@ -194,7 +194,7 @@ export class DialogService {
     return result.map(row => row.id);
   }
 
-  async createDialog(userId: string, body: DialogCreateRequest) {
+  async createDialog(userId: string, body: DialogCreateRequestDto) {
     const queryRunner = this._dataSource.createQueryRunner();
 
     await queryRunner.connect();

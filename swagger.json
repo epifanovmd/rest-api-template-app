@@ -120,7 +120,7 @@
 				"type": "object",
 				"additionalProperties": false
 			},
-			"IUserUpdateRequest": {
+			"IUserUpdateRequestDto": {
 				"properties": {
 					"email": {
 						"type": "string"
@@ -165,7 +165,7 @@
 				"type": "object",
 				"additionalProperties": false
 			},
-			"IUserPrivilegesRequest": {
+			"IUserPrivilegesRequestDto": {
 				"properties": {
 					"roleName": {
 						"$ref": "#/components/schemas/ERole"
@@ -194,7 +194,7 @@
 				"type": "object",
 				"additionalProperties": false
 			},
-			"IUserPassword": {
+			"IUserChangePasswordDto": {
 				"properties": {
 					"password": {
 						"type": "string"
@@ -364,7 +364,7 @@
 				"type": "object",
 				"additionalProperties": false
 			},
-			"IRegisterBiometricResponse": {
+			"IRegisterBiometricResponseDto": {
 				"properties": {
 					"registered": {
 						"type": "boolean"
@@ -376,7 +376,7 @@
 				"type": "object",
 				"additionalProperties": false
 			},
-			"IRegisterBiometricRequest": {
+			"IRegisterBiometricRequestDto": {
 				"properties": {
 					"userId": {
 						"type": "string"
@@ -400,7 +400,7 @@
 				"type": "object",
 				"additionalProperties": false
 			},
-			"IGenerateNonceResponse": {
+			"IGenerateNonceResponseDto": {
 				"properties": {
 					"nonce": {
 						"type": "string"
@@ -412,7 +412,7 @@
 				"type": "object",
 				"additionalProperties": false
 			},
-			"IGenerateNonceRequest": {
+			"IGenerateNonceRequestDto": {
 				"properties": {
 					"userId": {
 						"type": "string"
@@ -424,7 +424,7 @@
 				"type": "object",
 				"additionalProperties": false
 			},
-			"IVerifyBiometricSignatureResponse": {
+			"IVerifyBiometricSignatureResponseDto": {
 				"properties": {
 					"verified": {
 						"type": "boolean"
@@ -452,7 +452,7 @@
 				"type": "object",
 				"additionalProperties": false
 			},
-			"IVerifyBiometricSignatureRequest": {
+			"IVerifyBiometricSignatureRequestDto": {
 				"properties": {
 					"userId": {
 						"type": "string"
@@ -560,7 +560,7 @@
 				"type": "object",
 				"additionalProperties": false
 			},
-			"FcmTokenRequest": {
+			"FcmTokenRequestDto": {
 				"properties": {
 					"token": {
 						"type": "string"
@@ -794,7 +794,7 @@
 				"type": "object",
 				"additionalProperties": false
 			},
-			"DialogFindRequest": {
+			"DialogFindRequestDto": {
 				"properties": {
 					"recipientId": {
 						"items": {
@@ -809,7 +809,7 @@
 				"type": "object",
 				"additionalProperties": false
 			},
-			"DialogCreateRequest": {
+			"DialogCreateRequestDto": {
 				"properties": {
 					"recipientId": {
 						"items": {
@@ -824,7 +824,7 @@
 				"type": "object",
 				"additionalProperties": false
 			},
-			"DialogMembersAddRequest": {
+			"DialogMembersAddRequestDto": {
 				"properties": {
 					"dialogId": {
 						"type": "string"
@@ -870,7 +870,7 @@
 				"type": "object",
 				"additionalProperties": false
 			},
-			"IMessagesRequest": {
+			"IMessagesRequestDto": {
 				"properties": {
 					"dialogId": {
 						"type": "string"
@@ -914,7 +914,7 @@
 				"type": "object",
 				"additionalProperties": false
 			},
-			"IMessagesUpdateRequest": {
+			"IMessagesUpdateRequestDto": {
 				"properties": {
 					"text": {
 						"type": "string"
@@ -1161,7 +1161,7 @@
 				"type": "object",
 				"additionalProperties": false
 			},
-			"IVerifyRegistrationRequest": {
+			"IVerifyRegistrationRequestDto": {
 				"properties": {
 					"userId": {
 						"type": "string"
@@ -1177,7 +1177,7 @@
 				"type": "object",
 				"additionalProperties": false
 			},
-			"IVerifyAuthenticationResponse": {
+			"IVerifyAuthenticationResponseDto": {
 				"properties": {
 					"verified": {
 						"type": "boolean"
@@ -1248,7 +1248,7 @@
 				"type": "object",
 				"additionalProperties": false
 			},
-			"IVerifyAuthenticationRequest": {
+			"IVerifyAuthenticationRequestDto": {
 				"properties": {
 					"userId": {
 						"type": "string"
@@ -1317,7 +1317,7 @@
 				"type": "object",
 				"additionalProperties": false
 			},
-			"IProfileUpdateRequest": {
+			"IProfileUpdateRequestDto": {
 				"properties": {
 					"firstName": {
 						"type": "string"
@@ -1452,7 +1452,7 @@
 					"content": {
 						"application/json": {
 							"schema": {
-								"$ref": "#/components/schemas/IUserUpdateRequest",
+								"$ref": "#/components/schemas/IUserUpdateRequestDto",
 								"description": "Обновленные данные пользователя"
 							}
 						}
@@ -1623,7 +1623,7 @@
 					"content": {
 						"application/json": {
 							"schema": {
-								"$ref": "#/components/schemas/IUserPrivilegesRequest",
+								"$ref": "#/components/schemas/IUserPrivilegesRequestDto",
 								"description": "Запрос, содержащий роль и разрешения"
 							}
 						}
@@ -1741,7 +1741,7 @@
 					"content": {
 						"application/json": {
 							"schema": {
-								"$ref": "#/components/schemas/IUserUpdateRequest",
+								"$ref": "#/components/schemas/IUserUpdateRequestDto",
 								"description": "Данные для обновления пользователя"
 							}
 						}
@@ -1781,7 +1781,7 @@
 					"content": {
 						"application/json": {
 							"schema": {
-								"$ref": "#/components/schemas/IUserPassword",
+								"$ref": "#/components/schemas/IUserChangePasswordDto",
 								"description": "Новый пароль для пользователя"
 							}
 						}
@@ -2088,7 +2088,7 @@
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/IRegisterBiometricResponse"
+									"$ref": "#/components/schemas/IRegisterBiometricResponseDto"
 								}
 							}
 						}
@@ -2105,7 +2105,7 @@
 					"content": {
 						"application/json": {
 							"schema": {
-								"$ref": "#/components/schemas/IRegisterBiometricRequest"
+								"$ref": "#/components/schemas/IRegisterBiometricRequestDto"
 							}
 						}
 					}
@@ -2121,7 +2121,7 @@
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/IGenerateNonceResponse"
+									"$ref": "#/components/schemas/IGenerateNonceResponseDto"
 								}
 							}
 						}
@@ -2138,7 +2138,7 @@
 					"content": {
 						"application/json": {
 							"schema": {
-								"$ref": "#/components/schemas/IGenerateNonceRequest"
+								"$ref": "#/components/schemas/IGenerateNonceRequestDto"
 							}
 						}
 					}
@@ -2154,7 +2154,7 @@
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/IVerifyBiometricSignatureResponse"
+									"$ref": "#/components/schemas/IVerifyBiometricSignatureResponseDto"
 								}
 							}
 						}
@@ -2171,7 +2171,7 @@
 					"content": {
 						"application/json": {
 							"schema": {
-								"$ref": "#/components/schemas/IVerifyBiometricSignatureRequest"
+								"$ref": "#/components/schemas/IVerifyBiometricSignatureRequestDto"
 							}
 						}
 					}
@@ -2485,7 +2485,7 @@
 					"content": {
 						"application/json": {
 							"schema": {
-								"$ref": "#/components/schemas/FcmTokenRequest"
+								"$ref": "#/components/schemas/FcmTokenRequestDto"
 							}
 						}
 					}
@@ -2653,7 +2653,7 @@
 					"content": {
 						"application/json": {
 							"schema": {
-								"$ref": "#/components/schemas/DialogFindRequest",
+								"$ref": "#/components/schemas/DialogFindRequestDto",
 								"description": "Данные поиска (ID получателя)."
 							}
 						}
@@ -2693,7 +2693,7 @@
 					"content": {
 						"application/json": {
 							"schema": {
-								"$ref": "#/components/schemas/DialogCreateRequest",
+								"$ref": "#/components/schemas/DialogCreateRequestDto",
 								"description": "Данные для создания диалога."
 							}
 						}
@@ -2777,7 +2777,7 @@
 					"content": {
 						"application/json": {
 							"schema": {
-								"$ref": "#/components/schemas/DialogMembersAddRequest",
+								"$ref": "#/components/schemas/DialogMembersAddRequestDto",
 								"description": "Данные с ID диалога и участниками."
 							}
 						}
@@ -3031,7 +3031,7 @@
 					"content": {
 						"application/json": {
 							"schema": {
-								"$ref": "#/components/schemas/IMessagesUpdateRequest",
+								"$ref": "#/components/schemas/IMessagesUpdateRequestDto",
 								"description": "Данные для обновления сообщения."
 							}
 						}
@@ -3107,7 +3107,7 @@
 					"content": {
 						"application/json": {
 							"schema": {
-								"$ref": "#/components/schemas/IMessagesRequest",
+								"$ref": "#/components/schemas/IMessagesRequestDto",
 								"description": "Данные сообщения."
 							}
 						}
@@ -3317,7 +3317,7 @@
 					"content": {
 						"application/json": {
 							"schema": {
-								"$ref": "#/components/schemas/IVerifyRegistrationRequest"
+								"$ref": "#/components/schemas/IVerifyRegistrationRequestDto"
 							}
 						}
 					}
@@ -3375,7 +3375,7 @@
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/IVerifyAuthenticationResponse"
+									"$ref": "#/components/schemas/IVerifyAuthenticationResponseDto"
 								}
 							}
 						}
@@ -3393,7 +3393,7 @@
 					"content": {
 						"application/json": {
 							"schema": {
-								"$ref": "#/components/schemas/IVerifyAuthenticationRequest"
+								"$ref": "#/components/schemas/IVerifyAuthenticationRequestDto"
 							}
 						}
 					}
@@ -3460,7 +3460,7 @@
 					"content": {
 						"application/json": {
 							"schema": {
-								"$ref": "#/components/schemas/IProfileUpdateRequest",
+								"$ref": "#/components/schemas/IProfileUpdateRequestDto",
 								"description": "Обновленные данные профиля"
 							}
 						}
@@ -3627,7 +3627,7 @@
 					"content": {
 						"application/json": {
 							"schema": {
-								"$ref": "#/components/schemas/IProfileUpdateRequest",
+								"$ref": "#/components/schemas/IProfileUpdateRequestDto",
 								"description": "Данные для обновления профиля"
 							}
 						}
@@ -3688,7 +3688,7 @@
 				"operationId": "RemoveAvatar",
 				"responses": {
 					"200": {
-						"description": "Обновленный профиль без аватара",
+						"description": "Ok",
 						"content": {
 							"application/json": {
 								"schema": {
