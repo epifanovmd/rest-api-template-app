@@ -108,16 +108,8 @@ export class UserService {
 
     const user = await this.createUser(body);
 
-    await this.setPrivileges(user.id, ERole.ADMIN, []);
-
-    // Если пользователь существует, возвращаем его с ролью ADMIN
-    const existingUser1 = await this._userRepository.findByEmailOrPhone(
-      body.email,
-      body.phone,
-    );
-
-    if (existingUser1) {
-      return this.setPrivileges(existingUser1.id, ERole.ADMIN, []);
+    if (user) {
+      return this.setPrivileges(user.id, ERole.ADMIN, []);
     }
 
     throw new NotFoundException("Пользователь не найден");
@@ -183,7 +175,7 @@ export class UserService {
       let role = await this._roleRepository.findByName(roleName);
 
       if (!role) {
-        role = this._roleRepository.create({
+        role = await this._roleRepository.createAndSave({
           name: roleName,
         });
       }
