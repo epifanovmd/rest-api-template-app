@@ -1,5 +1,6 @@
-import { iocContainer } from "@force-dev/utils";
 import { injectable } from "inversify";
+
+import { iocContainer } from "../../app.module";
 
 export function Injectable() {
   return <T extends new (...args: any[]) => any>(constructor: T) => {

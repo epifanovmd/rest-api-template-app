@@ -1,8 +1,13 @@
 import "reflect-metadata";
 
-import { decorate, injectable } from "inversify";
+import { Container, decorate, injectable } from "inversify";
 import { Controller } from "tsoa";
+import { DataSource } from "typeorm";
+
+import { TypeOrmDataSource } from "./core";
 
 decorate(injectable(), Controller);
 
-export { iocContainer } from "@force-dev/utils";
+export const iocContainer = new Container();
+
+iocContainer.bind(DataSource).toConstantValue(TypeOrmDataSource);

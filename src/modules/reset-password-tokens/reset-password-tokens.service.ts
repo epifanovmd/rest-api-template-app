@@ -31,7 +31,7 @@ export class ResetPasswordTokensService {
         findResetPasswordTokens,
       );
     } else {
-      return this._resetPasswordTokensRepository.create({
+      return this._resetPasswordTokensRepository.createAndSave({
         userId,
         token,
       });

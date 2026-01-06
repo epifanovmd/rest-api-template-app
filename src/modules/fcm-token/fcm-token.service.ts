@@ -89,7 +89,7 @@ export class FcmTokenService {
         return existingToken;
       }
 
-      return await this._fcmTokenRepository.create({
+      return await this._fcmTokenRepository.createAndSave({
         userId,
         token,
       });
@@ -109,7 +109,9 @@ export class FcmTokenService {
   }
 
   async deleteTokens(userId: string) {
-    return await this._fcmTokenRepository.deleteByUserId(userId);
+    return await this._fcmTokenRepository
+      .delete({ userId })
+      .then(res => !!res.affected);
   }
 
   async getAccessToken() {

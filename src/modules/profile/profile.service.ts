@@ -2,9 +2,8 @@ import { NotFoundException } from "@force-dev/utils";
 import { inject } from "inversify";
 import { File } from "tsoa";
 
-import { IDataSource, Injectable } from "../../core";
+import { Injectable } from "../../core";
 import { FileService } from "../file";
-import { FileRepository } from "../file/file.repository";
 import { IProfileUpdateRequestDto } from "./profile.dto";
 import { Profile } from "./profile.entity";
 import { ProfileRepository } from "./profile.repository";
@@ -14,13 +13,10 @@ export class ProfileService {
   constructor(
     @inject(FileService) private _fileService: FileService,
     @inject(ProfileRepository) private _profileRepository: ProfileRepository,
-    @inject(FileRepository) private _fileRepository: FileRepository,
-    @IDataSource() private _dataSource: IDataSource,
   ) {}
 
   async getProfiles(offset?: number, limit?: number) {
-    const queryBuilder = this._dataSource
-      .getRepository("Profile")
+    const queryBuilder = this._profileRepository
       .createQueryBuilder("profile")
       .leftJoinAndSelect("profile.avatar", "avatar")
       .leftJoinAndSelect("profile.user", "user")
@@ -40,8 +36,7 @@ export class ProfileService {
   }
 
   async getProfileByAttr(where: any) {
-    const queryBuilder = this._dataSource
-      .getRepository("Profile")
+    const queryBuilder = this._profileRepository
       .createQueryBuilder("profile")
       .leftJoinAndSelect("profile.avatar", "avatar")
       .leftJoinAndSelect("profile.user", "user");
@@ -77,13 +72,14 @@ export class ProfileService {
   }
 
   async createProfile(body: Partial<Profile>) {
-    const profile = await this._profileRepository.create(body);
+    const profile = await this._profileRepository.createAndSave(body);
 
     return profile.toDTO();
   }
 
   async updateProfile(userId: string, body: IProfileUpdateRequestDto) {
-    const profile = await this._profileRepository.update(userId, body);
+    await this._profileRepository.update({ userId }, body);
+    const profile = await this._profileRepository.findByUserId(userId);
 
     if (!profile) {
       throw new NotFoundException("Пользователь не найден");
@@ -93,7 +89,7 @@ export class ProfileService {
   }
 
   async addAvatar(userId: string, file: File) {
-    const queryRunner = this._dataSource.createQueryRunner();
+    const queryRunner = this._profileRepository.createQueryRunner();
 
     await queryRunner.connect();
     await queryRunner.startTransaction();
@@ -111,17 +107,16 @@ export class ProfileService {
       }
 
       // Обновляем профиль с новым аватаром
-      const updatedProfile = await this._profileRepository.update(userId, {
-        avatarId: uploadedFile.id,
-      });
-
-      if (!updatedProfile) {
-        throw new NotFoundException("Не удалось обновить профиль");
-      }
+      await this._profileRepository.update(
+        { userId },
+        {
+          avatarId: uploadedFile.id,
+        },
+      );
 
       await queryRunner.commitTransaction();
 
-      return updatedProfile.toDTO();
+      return this.getProfileByUserId(userId);
     } catch (error) {
       await queryRunner.rollbackTransaction();
       throw error;
@@ -131,7 +126,7 @@ export class ProfileService {
   }
 
   async removeAvatar(userId: string) {
-    const queryRunner = this._dataSource.createQueryRunner();
+    const queryRunner = this._profileRepository.createQueryRunner();
 
     await queryRunner.connect();
     await queryRunner.startTransaction();
@@ -143,17 +138,13 @@ export class ProfileService {
         await this._fileService.deleteFile(profile.avatarId);
       }
 
-      const updatedProfile = await this._profileRepository.update(userId, {
+      await this._profileRepository.update(userId, {
         avatarId: null,
       });
 
-      if (!updatedProfile) {
-        throw new NotFoundException("Не удалось обновить профиль");
-      }
-
       await queryRunner.commitTransaction();
 
-      return updatedProfile.toDTO();
+      return this.getProfileByUserId(userId);
     } catch (error) {
       await queryRunner.rollbackTransaction();
       throw error;
@@ -163,7 +154,7 @@ export class ProfileService {
   }
 
   async deleteProfile(userId: string) {
-    const deleted = await this._profileRepository.delete(userId);
+    const deleted = await this._profileRepository.delete({ userId });
 
     if (!deleted) {
       throw new NotFoundException("Профиль не найден");

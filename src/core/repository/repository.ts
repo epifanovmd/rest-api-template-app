@@ -1,11 +1,9 @@
-import { ObjectLiteral, Repository } from "typeorm";
-
-import { IDataSource } from "../db";
+import { DataSource, ObjectLiteral, Repository } from "typeorm";
 
 export abstract class BaseRepository<
   T extends ObjectLiteral,
 > extends Repository<T> {
-  constructor(dataSource: IDataSource, entity: new () => T) {
+  constructor(private dataSource: DataSource, entity: new () => T) {
     super(entity, dataSource.manager, dataSource.createQueryRunner());
   }
 
@@ -14,4 +12,8 @@ export abstract class BaseRepository<
 
     return this.save(entity, args[1]);
   };
+
+  createQueryRunner() {
+    return this.dataSource.createQueryRunner();
+  }
 }

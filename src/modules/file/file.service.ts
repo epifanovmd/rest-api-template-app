@@ -30,7 +30,7 @@ export class FileService {
       files.map(async file => {
         const id = v4();
 
-        return this._fileRepository.create({
+        return this._fileRepository.createAndSave({
           id,
           name: file.originalname,
           type: file.mimetype,
@@ -52,7 +52,7 @@ export class FileService {
 
     await this._deleteFileFromServer(file.url);
 
-    return await this._fileRepository.delete(id);
+    return await this._fileRepository.delete(id).then(res => !!res.affected);
   }
 
   private async _deleteFileFromServer(url: string) {

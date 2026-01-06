@@ -1,31 +1,13 @@
-import { Repository } from "typeorm";
-
-import { IDataSource, Injectable } from "../../core";
+import { BaseRepository, InjectableRepository } from "../../core";
 import { EPermissions, Permission } from "./permission.entity";
 
-@Injectable()
-export class PermissionRepository {
-  private repository: Repository<Permission>;
-
-  constructor(@IDataSource() private dataSource: IDataSource) {
-    this.repository = this.dataSource.getRepository(Permission);
-  }
-
+@InjectableRepository(Permission)
+export class PermissionRepository extends BaseRepository<Permission> {
   async findByName(name: EPermissions): Promise<Permission | null> {
-    return this.repository.findOne({ where: { name } });
+    return this.findOne({ where: { name } });
   }
 
   async findAll(): Promise<Permission[]> {
-    return this.repository.find({ relations: { roles: true } });
-  }
-
-  async create(permissionData: Partial<Permission>): Promise<Permission> {
-    const permission = this.repository.create(permissionData);
-
-    return this.repository.save(permission);
-  }
-
-  async save(permission: Permission): Promise<Permission> {
-    return this.repository.save(permission);
+    return this.find({ relations: { roles: true } });
   }
 }

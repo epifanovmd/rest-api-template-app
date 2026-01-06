@@ -1,7 +1,7 @@
 import { NotFoundException } from "@force-dev/utils";
 import { inject } from "inversify";
 
-import { IDataSource, Injectable } from "../../core";
+import { Injectable } from "../../core";
 import { DialogMembersService } from "../dialog-members";
 import { DialogMembersRepository } from "../dialog-members/dialog-members.repository";
 import { DialogMessagesRepository } from "../dialog-messages/dialog-messages.repository";
@@ -22,7 +22,6 @@ export class DialogService {
     @inject(DialogMessagesRepository)
     private _dialogMessagesRepository: DialogMessagesRepository,
     @inject(UserRepository) private _userRepository: UserRepository,
-    @IDataSource() private _dataSource: IDataSource,
   ) {}
 
   async getUnreadMessagesCount(
@@ -44,7 +43,7 @@ export class DialogService {
     }
 
     // Используем QueryBuilder с DISTINCT вместо GROUP BY
-    const queryBuilder = this._dialogRepository.repository
+    const queryBuilder = this._dialogRepository
       .createQueryBuilder("dialog")
       .leftJoinAndSelect("dialog.owner", "owner")
       // .leftJoinAndSelect("owner.role", "ownerRole")
@@ -72,7 +71,7 @@ export class DialogService {
 
     // Подсчет непрочитанных сообщений для каждого диалога
     const unreadCountsPromises = dialogs.map(dialog =>
-      this._dialogMessagesRepository.repository
+      this._dialogMessagesRepository
         .createQueryBuilder("message")
         .where("message.dialog_id = :dialogId", { dialogId: dialog.id })
         .andWhere("message.received = false")
@@ -106,7 +105,7 @@ export class DialogService {
     // Используем Raw SQL или упрощенный подход
 
     // Вариант 1: Упрощенный запрос с DISTINCT
-    const queryBuilder = this._dialogRepository.repository
+    const queryBuilder = this._dialogRepository
       .createQueryBuilder("dialog")
       .leftJoinAndSelect("dialog.owner", "owner")
       // .leftJoinAndSelect("owner.role", "ownerRole")
@@ -130,7 +129,7 @@ export class DialogService {
     }
 
     // Подсчет непрочитанных сообщений отдельным запросом
-    const unreadCount = await this._dialogMessagesRepository.repository
+    const unreadCount = await this._dialogMessagesRepository
       .createQueryBuilder("message")
       .where("message.dialog_id = :dialogId", { dialogId: id })
       .andWhere("message.received = false")
@@ -151,7 +150,7 @@ export class DialogService {
       return [];
     }
 
-    const queryBuilder = this._dialogRepository.repository
+    const queryBuilder = this._dialogRepository
       .createQueryBuilder()
       .select("dialog.id", "id")
       .from("Dialog", "dialog")
@@ -168,7 +167,7 @@ export class DialogService {
   }
 
   async createDialog(userId: string, body: DialogCreateRequestDto) {
-    const queryRunner = this._dataSource.createQueryRunner();
+    const queryRunner = this._dialogRepository.createQueryRunner();
 
     await queryRunner.connect();
     await queryRunner.startTransaction();
@@ -192,7 +191,7 @@ export class DialogService {
       }
 
       // Создаем диалог
-      const dialog = await this._dialogRepository.create({
+      const dialog = await this._dialogRepository.createAndSave({
         ownerId: userId,
       });
 
@@ -217,7 +216,7 @@ export class DialogService {
   }
 
   async removeDialog(id: string) {
-    const queryRunner = this._dataSource.createQueryRunner();
+    const queryRunner = this._dialogRepository.createQueryRunner();
 
     await queryRunner.connect();
     await queryRunner.startTransaction();
@@ -257,7 +256,7 @@ export class DialogService {
   }
 
   async updateDialogLastMessage(dialogId: string, messageId: string) {
-    await this._dialogRepository.repository
+    await this._dialogRepository
       .createQueryBuilder()
       .update("Dialog")
       .set({ lastMessageId: messageId })

@@ -1,12 +1,12 @@
-import { iocContainer } from "@force-dev/utils";
 import { injectable } from "inversify";
+import { DataSource } from "typeorm";
 
-import { IDataSource } from "../db";
+import { iocContainer } from "../../app.module";
 
 export const InjectableRepository = <T>(entity: new () => T) => {
   return <T extends new (...args: any[]) => any>(constructor: T) => {
-    iocContainer.bind(constructor).toDynamicValue(() => {
-      return new constructor(IDataSource.getInstance(), entity);
+    iocContainer.bind(constructor).toDynamicValue(context => {
+      return new constructor(context.container.get(DataSource), entity);
     });
 
     return injectable()(constructor);

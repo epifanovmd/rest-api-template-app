@@ -1,7 +1,9 @@
 import { ForbiddenException, UnauthorizedException } from "@force-dev/utils";
 import jwt, { sign, SignOptions, VerifyErrors } from "jsonwebtoken";
+import { DataSource } from "typeorm";
 
 import { config } from "../../../config";
+import { iocContainer } from "../../app.module";
 import {
   EPermissions,
   Permission,
@@ -9,7 +11,6 @@ import {
 import { ERole, Role } from "../../modules/role/role.entity";
 import { User } from "../../modules/user/user.entity";
 import { JWTDecoded } from "../../types/koa";
-import { IDataSource } from "../db";
 
 type RoleStrings = `role:${ERole}`;
 type PermissionStrings = `permission:${EPermissions}`;
@@ -71,7 +72,7 @@ export const verifyAuthToken = async (
     });
 
     // Получаем репозиторий пользователя
-    const dataSource = IDataSource.getInstance();
+    const dataSource = iocContainer.get(DataSource);
     const userRepository = dataSource.getRepository(User);
 
     // Ищем пользователя с его ролью и разрешениями

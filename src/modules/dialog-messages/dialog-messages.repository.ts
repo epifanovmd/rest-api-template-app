@@ -1,18 +1,12 @@
-import { FindOptionsWhere, Repository } from "typeorm";
+import { FindOptionsWhere } from "typeorm";
 
-import { IDataSource, Injectable } from "../../core";
+import { BaseRepository, InjectableRepository } from "../../core";
 import { DialogMessages } from "./dialog-messages.entity";
 
-@Injectable()
-export class DialogMessagesRepository {
-  public repository: Repository<DialogMessages>;
-
-  constructor(@IDataSource() private dataSource: IDataSource) {
-    this.repository = this.dataSource.getRepository(DialogMessages);
-  }
-
+@InjectableRepository(DialogMessages)
+export class DialogMessagesRepository extends BaseRepository<DialogMessages> {
   async findById(id: string, relations?: any): Promise<DialogMessages | null> {
-    return this.repository.findOne({
+    return this.findOne({
       where: { id },
       relations,
     });
@@ -24,7 +18,7 @@ export class DialogMessagesRepository {
     limit?: number,
     relations?: any,
   ): Promise<[DialogMessages[], number]> {
-    return this.repository.findAndCount({
+    return this.findAndCount({
       where: { dialogId },
       skip: offset,
       take: limit,
@@ -34,38 +28,10 @@ export class DialogMessagesRepository {
   }
 
   async findLastByDialogId(dialogId: string): Promise<DialogMessages | null> {
-    return this.repository.findOne({
+    return this.findOne({
       where: { dialogId },
       order: { createdAt: "DESC" },
     });
-  }
-
-  async create(messageData: Partial<DialogMessages>): Promise<DialogMessages> {
-    const message = this.repository.create(messageData);
-
-    return this.repository.save(message);
-  }
-
-  async update(
-    id: string,
-    updateData: Partial<DialogMessages>,
-  ): Promise<DialogMessages | null> {
-    await this.repository.update(id, updateData);
-
-    return this.findById(id, {
-      user: true,
-      dialog: true,
-      reply: true,
-      images: true,
-      videos: true,
-      audios: true,
-    });
-  }
-
-  async delete(id: string): Promise<boolean> {
-    const result = await this.repository.delete(id);
-
-    return (result.affected || 0) > 0;
   }
 
   async countUnreadMessages(
@@ -81,10 +47,6 @@ export class DialogMessagesRepository {
       where.dialogId = dialogId;
     }
 
-    return this.repository.count({ where });
-  }
-
-  async save(message: DialogMessages): Promise<DialogMessages> {
-    return this.repository.save(message);
+    return this.count({ where });
   }
 }

@@ -717,7 +717,7 @@
 				"type": "object",
 				"additionalProperties": false
 			},
-			"DialogDto": {
+			"IDialogDto": {
 				"properties": {
 					"id": {
 						"type": "string"
@@ -783,7 +783,7 @@
 					},
 					"data": {
 						"items": {
-							"$ref": "#/components/schemas/DialogDto"
+							"$ref": "#/components/schemas/IDialogDto"
 						},
 						"type": "array"
 					}
@@ -2589,7 +2589,7 @@
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/DialogDto"
+									"$ref": "#/components/schemas/IDialogDto"
 								}
 							}
 						}
@@ -2670,7 +2670,7 @@
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/DialogDto"
+									"$ref": "#/components/schemas/IDialogDto"
 								}
 							}
 						}

@@ -321,7 +321,7 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "DialogDto": {
+    "IDialogDto": {
         "dataType": "refObject",
         "properties": {
             "id": {"dataType":"string","required":true},
@@ -342,7 +342,7 @@ const models: TsoaRoute.Models = {
             "count": {"dataType":"double"},
             "offset": {"dataType":"double"},
             "limit": {"dataType":"double"},
-            "data": {"dataType":"array","array":{"dataType":"refObject","ref":"DialogDto"},"required":true},
+            "data": {"dataType":"array","array":{"dataType":"refObject","ref":"IDialogDto"},"required":true},
         },
         "additionalProperties": false,
     },

@@ -1,18 +1,10 @@
-import { Repository } from "typeorm";
-
-import { IDataSource, Injectable } from "../../core";
+import { BaseRepository, InjectableRepository } from "../../core";
 import { DialogMembers } from "./dialog-members.entity";
 
-@Injectable()
-export class DialogMembersRepository {
-  private repository: Repository<DialogMembers>;
-
-  constructor(@IDataSource() private dataSource: IDataSource) {
-    this.repository = this.dataSource.getRepository(DialogMembers);
-  }
-
+@InjectableRepository(DialogMembers)
+export class DialogMembersRepository extends BaseRepository<DialogMembers> {
   async findByDialogId(dialogId: string): Promise<DialogMembers[]> {
-    return this.repository.find({
+    return this.find({
       where: { dialogId },
       relations: {
         user: true,
@@ -22,7 +14,7 @@ export class DialogMembersRepository {
   }
 
   async findById(id: string): Promise<DialogMembers | null> {
-    return this.repository.findOne({
+    return this.findOne({
       where: { id },
       relations: {
         user: true,
@@ -32,7 +24,7 @@ export class DialogMembersRepository {
   }
 
   async findByUserId(userId: string): Promise<DialogMembers[]> {
-    return this.repository.find({
+    return this.find({
       where: { userId },
       relations: {
         user: true,
@@ -45,7 +37,7 @@ export class DialogMembersRepository {
     userId: string,
     dialogId: string,
   ): Promise<DialogMembers | null> {
-    return this.repository.findOne({
+    return this.findOne({
       where: {
         userId,
         dialogId,
@@ -55,41 +47,5 @@ export class DialogMembersRepository {
         dialog: true,
       },
     });
-  }
-
-  async create(memberData: Partial<DialogMembers>): Promise<DialogMembers> {
-    const member = this.repository.create(memberData);
-
-    return this.repository.save(member);
-  }
-
-  async createMany(
-    membersData: Partial<DialogMembers>[],
-  ): Promise<DialogMembers[]> {
-    const members = this.repository.create(membersData);
-
-    return this.repository.save(members);
-  }
-
-  async delete(id: string): Promise<boolean> {
-    const result = await this.repository.delete(id);
-
-    return (result.affected || 0) > 0;
-  }
-
-  async deleteByDialogIdAndUserId(
-    dialogId: string,
-    userId: string,
-  ): Promise<boolean> {
-    const result = await this.repository.delete({
-      dialogId,
-      userId,
-    });
-
-    return (result.affected || 0) > 0;
-  }
-
-  async save(member: DialogMembers): Promise<DialogMembers> {
-    return this.repository.save(member);
   }
 }

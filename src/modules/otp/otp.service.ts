@@ -27,7 +27,7 @@ export class OtpService {
 
       return await this._otpRepository.save(findOtp);
     } else {
-      return this._otpRepository.create({
+      return this._otpRepository.createAndSave({
         userId,
         code,
         expireAt,
@@ -45,13 +45,13 @@ export class OtpService {
     }
 
     if (otp.expireAt < new Date()) {
-      await this._otpRepository.delete(userId);
+      await this._otpRepository.delete({ userId });
       throw new GoneException(
         "Срок действия кода истек. Пожалуйста, запросите новый код.",
       );
     }
 
-    await this._otpRepository.delete(userId);
+    await this._otpRepository.delete({ userId });
 
     return true;
   }

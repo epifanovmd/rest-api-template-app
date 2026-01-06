@@ -72,7 +72,7 @@ export class DialogMessagesService {
   async appendMessage(userId: string, body: any) {
     const dialog = await this._dialogService.getDialog(body.dialogId, userId);
 
-    const message = await this._dialogMessagesRepository.create({
+    const message = await this._dialogMessagesRepository.createAndSave({
       ...body,
       userId,
       sent: true,
@@ -122,10 +122,9 @@ export class DialogMessagesService {
       );
     }
 
-    const updatedMessage = await this._dialogMessagesRepository.update(
-      id,
-      rest,
-    );
+    const updatedMessage = { ...message, ...rest };
+
+    await this._dialogMessagesRepository.update(id, updatedMessage);
 
     if (!updatedMessage) {
       throw new NotFoundException("Сообщение не найдено");
@@ -165,7 +164,9 @@ export class DialogMessagesService {
       }
     });
 
-    return this._dialogMessagesRepository.delete(id);
+    return this._dialogMessagesRepository
+      .delete(id)
+      .then(res => !!res.affected);
   }
 
   sendSocketMessage(recipientId: string, message: any) {

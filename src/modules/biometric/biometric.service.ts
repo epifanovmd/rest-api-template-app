@@ -22,7 +22,7 @@ export class BiometricService {
     deviceName: string,
     publicKey: string,
   ) {
-    await this._biometricRepository.upsert({
+    await this._biometricRepository.createAndSave({
       userId,
       deviceId,
       deviceName,

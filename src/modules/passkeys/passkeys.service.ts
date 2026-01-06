@@ -9,7 +9,7 @@ import type {
   AuthenticationResponseJSON,
   RegistrationResponseJSON,
 } from "@simplewebauthn/types";
-import { inject, injectable } from "inversify";
+import { inject } from "inversify";
 
 import { config } from "../../../config";
 import { Injectable } from "../../core";
@@ -93,7 +93,7 @@ export class PasskeysService {
       });
 
       if (verification.verified && verification.registrationInfo) {
-        await this._passkeyRepository.create({
+        await this._passkeyRepository.createAndSave({
           id: verification.registrationInfo.credential.id,
           publicKey: new Uint8Array(
             verification.registrationInfo.credential.publicKey,

@@ -4,9 +4,11 @@ import { inject } from "inversify";
 import sha256 from "sha256";
 import { FindOptionsWhere } from "typeorm";
 
-import { IApiResponseDto, IDataSource, Injectable } from "../../core";
+import { IApiResponseDto, Injectable } from "../../core";
 import { MailerService } from "../mailer";
 import { OtpService } from "../otp";
+import { EPermissions } from "../permission/permission.entity";
+import { PermissionRepository } from "../permission/permission.repository";
 import { ProfileRepository } from "../profile/profile.repository";
 import { ERole } from "../role/role.entity";
 import { RoleRepository } from "../role/role.repository";
@@ -21,8 +23,9 @@ export class UserService {
     @inject(OtpService) private _otpService: OtpService,
     @inject(UserRepository) private _userRepository: UserRepository,
     @inject(RoleRepository) private _roleRepository: RoleRepository,
+    @inject(PermissionRepository)
+    private permissionRepository: PermissionRepository,
     @inject(ProfileRepository) private _profileRepository: ProfileRepository,
-    @IDataSource() private _dataSource: IDataSource,
   ) {}
 
   async getUsers(offset?: number, limit?: number) {
@@ -63,7 +66,7 @@ export class UserService {
   }
 
   async createUser(body: Partial<User>) {
-    const queryRunner = this._dataSource.createQueryRunner();
+    const queryRunner = this._userRepository.createQueryRunner();
 
     await queryRunner.connect();
     await queryRunner.startTransaction();
@@ -75,7 +78,7 @@ export class UserService {
       });
 
       // Создаем пустой профиль
-      await this._profileRepository.create({
+      await this._profileRepository.createAndSave({
         userId: user.id,
         status: "offline",
       });
@@ -130,12 +133,41 @@ export class UserService {
     return user;
   }
 
+  async setPermissions(
+    roleId: string,
+    permissions: EPermissions[],
+  ): Promise<void> {
+    const role = await this._roleRepository.findById(roleId);
+
+    if (!role) {
+      throw new Error("Role not found");
+    }
+
+    // Находим или создаем разрешения
+    role.permissions = await Promise.all(
+      permissions.map(async permissionName => {
+        let permission = await this.permissionRepository.findByName(
+          permissionName,
+        );
+
+        if (!permission) {
+          permission = await this.permissionRepository.createAndSave({
+            name: permissionName,
+          });
+        }
+
+        return permission;
+      }),
+    );
+    await this._roleRepository.save(role);
+  }
+
   async setPrivileges(
     userId: string,
     roleName: IUserPrivilegesRequestDto["roleName"],
     permissions: IUserPrivilegesRequestDto["permissions"] = [],
   ) {
-    const queryRunner = this._dataSource.createQueryRunner();
+    const queryRunner = this._userRepository.createQueryRunner();
 
     await queryRunner.connect();
     await queryRunner.startTransaction();
@@ -151,7 +183,7 @@ export class UserService {
       let role = await this._roleRepository.findByName(roleName);
 
       if (!role) {
-        role = await this._roleRepository.create({
+        role = this._roleRepository.create({
           name: roleName,
         });
       }
@@ -163,7 +195,7 @@ export class UserService {
 
       // Если есть разрешения, устанавливаем их для роли
       if (permissions.length > 0) {
-        await this._roleRepository.setPermissions(role.id, permissions);
+        await this.setPermissions(role.id, permissions);
       }
 
       await queryRunner.commitTransaction();

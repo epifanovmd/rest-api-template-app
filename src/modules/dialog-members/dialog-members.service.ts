@@ -45,7 +45,7 @@ export class DialogMembersService {
     const createdMembers = await Promise.all(
       members.map(async memberUserId => {
         try {
-          return await this._dialogMembersRepository.create({
+          return await this._dialogMembersRepository.createAndSave({
             userId: memberUserId,
             dialogId,
           });
@@ -84,6 +84,6 @@ export class DialogMembersService {
 
     const deleted = await this._dialogMembersRepository.delete(id);
 
-    return deleted;
+    return !!deleted.affected;
   }
 }

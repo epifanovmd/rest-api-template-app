@@ -1,8 +1,14 @@
-import { createServiceDecorator } from "@force-dev/utils";
+import { DataSource } from "typeorm";
 
-import { TypeOrmDataSource } from "./typeorm";
+import { config } from "../../../config";
 
-export type IDataSource = typeof TypeOrmDataSource;
-export const IDataSource = createServiceDecorator<IDataSource>();
-
-IDataSource.toConstantValue(TypeOrmDataSource);
+export const TypeOrmDataSource = new DataSource({
+  type: "postgres",
+  ...config.database.postgres,
+  database: "test-test",
+  synchronize: process.env.NODE_ENV !== "production",
+  // logging: process.env.NODE_ENV === "development",
+  migrations: ["src/migrations/*.ts"],
+  entities: [__dirname + "/../../modules/**/*.entity{.ts,.js}"],
+  subscribers: [],
+});
