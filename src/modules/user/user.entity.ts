@@ -21,7 +21,7 @@ import { Passkey } from "../passkeys/passkey.entity";
 import { Profile } from "../profile/profile.entity";
 import { ResetPasswordTokens } from "../reset-password-tokens/reset-password-tokens.entity";
 import { Role } from "../role/role.entity";
-import { IUserDto } from "./user.dto";
+import { IUserDto } from "./dto";
 
 @Entity("users")
 @Index("IDX_USERS_EMAIL_PHONE", ["email", "phone"], { unique: true })

@@ -1,5 +1,6 @@
 import { BaseRepository, InjectableRepository } from "../../core";
-import { ERole, Role } from "./role.entity";
+import { Role } from "./role.entity";
+import { ERole } from "./role.types";
 
 @InjectableRepository(Role)
 export class RoleRepository extends BaseRepository<Role> {

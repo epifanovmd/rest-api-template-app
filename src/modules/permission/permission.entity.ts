@@ -8,12 +8,7 @@ import {
 } from "typeorm";
 
 import { Role } from "../role/role.entity";
-
-export enum EPermissions {
-  READ = "read",
-  WRITE = "write",
-  DELETE = "delete",
-}
+import { EPermissions } from "./permission.types";
 
 @Entity("permissions")
 export class Permission {

@@ -1,10 +1,5 @@
 import { IListResponseDto } from "../../core";
-
-export enum EPermissions {
-  READ = "read",
-  WRITE = "write",
-  DELETE = "delete",
-}
+import { EPermissions } from "./permission.types";
 
 export interface IPermissionDto {
   id: string;

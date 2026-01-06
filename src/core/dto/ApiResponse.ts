@@ -1,21 +1,14 @@
-export interface IApiResponse<T = unknown> {
+export interface IApiResponseDto<T = unknown> {
   message?: string;
   data?: T;
 }
 
-export class IApiResponseDto<T = unknown> implements IApiResponse {
+export class ApiResponseDto<T = unknown> implements IApiResponseDto {
   public message?: string = undefined;
   public data?: T = undefined;
 
-  constructor(value: IApiResponse<T>) {
+  constructor(value: IApiResponseDto<T>) {
     this.message = value.message;
     this.data = value.data;
-  }
-
-  toJson() {
-    return JSON.stringify({
-      message: this.message,
-      data: this.data,
-    });
   }
 }

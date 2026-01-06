@@ -11,12 +11,7 @@ import {
 
 import { Permission } from "../permission/permission.entity";
 import { User } from "../user/user.entity";
-
-export enum ERole {
-  ADMIN = "admin",
-  USER = "user",
-  GUEST = "guest",
-}
+import { ERole } from "./role.types";
 
 @Entity("roles")
 export class Role {

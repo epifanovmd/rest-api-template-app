@@ -1,7 +1,7 @@
 import { IListResponseDto } from "../../core";
 import { DialogMembersDto } from "../dialog-members/dialog-members.dto";
 import { IDialogMessagesDto } from "../dialog-messages/dialog-messages.dto";
-import { IUserDto } from "../user/user.dto";
+import { IUserDto } from "../user/dto";
 
 export interface IDialogDto {
   id: string;

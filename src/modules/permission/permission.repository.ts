@@ -1,5 +1,6 @@
 import { BaseRepository, InjectableRepository } from "../../core";
-import { EPermissions, Permission } from "./permission.entity";
+import { Permission } from "./permission.entity";
+import { EPermissions } from "./permission.types";
 
 @InjectableRepository(Permission)
 export class PermissionRepository extends BaseRepository<Permission> {

@@ -1,6 +1,6 @@
 import { IListResponseDto } from "../../core";
 import { IFileDto } from "../file/file.dto";
-import { IUserDto } from "../user/user.dto";
+import { IUserDto } from "../user/dto";
 
 export interface IDialogMessagesDto {
   id: string;

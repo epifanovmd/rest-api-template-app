@@ -1,4 +1,5 @@
 import { FindOptionsRelations, FindOptionsWhere } from "typeorm";
+import { QueryDeepPartialEntity } from "typeorm/query-builder/QueryPartialEntity";
 
 import { BaseRepository, InjectableRepository } from "../../core";
 import { User } from "./user.entity";
@@ -59,22 +60,9 @@ export class UserRepository extends BaseRepository<User> {
     });
   }
 
-  async findAll(
-    offset?: number,
-    limit?: number,
-    relations?: FindOptionsRelations<User>,
-  ): Promise<User[]> {
-    return this.find({
-      skip: offset,
-      take: limit,
-      order: { createdAt: "DESC" },
-      relations,
-    });
-  }
-
   async updateWithResponse(
     id: string,
-    updateData: Partial<User>,
+    updateData: QueryDeepPartialEntity<User>,
   ): Promise<User | null> {
     await this.update(id, updateData);
 

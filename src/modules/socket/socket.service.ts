@@ -7,7 +7,7 @@ import { Server } from "socket.io";
 // import { RateLimiterMemory } from "rate-limiter-flexible";
 import { config } from "../../../config";
 import { verifyAuthToken } from "../../core";
-import { IUserDto } from "../user/user.dto";
+import { IUserDto } from "../user/dto";
 import { ISocketEmitEvents, TServer, TSocket } from "./socket.types";
 
 const NODE_ENV = process.env.NODE_ENV;

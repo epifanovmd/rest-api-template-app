@@ -1,6 +1,6 @@
 import Koa from "koa";
 
-import { IUserDto } from "../modules/user/user.dto";
+import { IUserDto } from "../modules/user/dto";
 
 export type JWTDecoded = {
   userId: string;

@@ -8,8 +8,8 @@ import { inject } from "inversify";
 import sha256 from "sha256";
 
 import {
+  ApiResponseDto,
   createTokenAsync,
-  IApiResponseDto,
   Injectable,
   verifyAuthToken,
 } from "../../core";
@@ -221,7 +221,7 @@ export class AuthService {
       } catch (error) {
         // Если пользователь не найден, не сообщаем об этом для безопасности
         if (error instanceof NotFoundException) {
-          return new IApiResponseDto({
+          return new ApiResponseDto({
             message:
               "Если пользователь с таким email/телефоном существует, ссылка для сброса пароля будет отправлена.",
           });
@@ -243,14 +243,14 @@ export class AuthService {
         resetToken.token,
       );
 
-      return new IApiResponseDto({
+      return new ApiResponseDto({
         message:
           "Ссылка для сброса пароля отправлена на вашу почту. Проверьте входящие или папку Спам.",
       });
     } catch (error) {
       // Для безопасности скрываем реальную причину ошибки
       if (error instanceof NotFoundException) {
-        return new IApiResponseDto({
+        return new ApiResponseDto({
           message:
             "Если пользователь с таким email/телефоном существует, ссылка для сброса пароля будет отправлена.",
         });
@@ -264,7 +264,7 @@ export class AuthService {
 
     await this._userService.changePassword(userId, password);
 
-    return new IApiResponseDto({ message: "Пароль успешно сброшен." });
+    return new ApiResponseDto({ message: "Пароль успешно сброшен." });
   }
 
   async updateTokens(token?: string) {

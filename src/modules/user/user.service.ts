@@ -1,18 +1,17 @@
-// user.service.ts (переписанный под TypeORM)
 import { ConflictException, NotFoundException } from "@force-dev/utils";
 import { inject } from "inversify";
 import sha256 from "sha256";
-import { FindOptionsWhere } from "typeorm";
+import { FindOptionsRelations, FindOptionsWhere } from "typeorm";
 
-import { IApiResponseDto, Injectable } from "../../core";
+import { ApiResponseDto, Injectable } from "../../core";
 import { MailerService } from "../mailer";
 import { OtpService } from "../otp";
-import { EPermissions } from "../permission/permission.entity";
-import { PermissionRepository } from "../permission/permission.repository";
-import { ProfileRepository } from "../profile/profile.repository";
-import { ERole } from "../role/role.entity";
-import { RoleRepository } from "../role/role.repository";
-import { IUserPrivilegesRequestDto, IUserUpdateRequestDto } from "./user.dto";
+import { PermissionRepository } from "../permission";
+import { EPermissions } from "../permission/permission.types";
+import { ProfileRepository } from "../profile";
+import { RoleRepository } from "../role";
+import { ERole } from "../role/role.types";
+import { IUserPrivilegesRequestDto, IUserUpdateRequestDto } from "./dto";
 import { User } from "./user.entity";
 import { UserRepository } from "./user.repository";
 
@@ -29,13 +28,12 @@ export class UserService {
   ) {}
 
   async getUsers(offset?: number, limit?: number) {
-    const users = await this._userRepository.findAll(
-      offset,
-      limit,
-      UserService.relations,
-    );
-
-    return users.map(user => user.toDTO());
+    return await this._userRepository.find({
+      skip: offset,
+      take: limit,
+      order: { createdAt: "DESC" },
+      relations: UserService.relations,
+    });
   }
 
   async getUserByAttr(where: FindOptionsWhere<User>) {
@@ -86,7 +84,7 @@ export class UserService {
       await queryRunner.commitTransaction();
 
       // Устанавливаем роль по умолчанию
-      return this.setPrivileges(user.id, ERole.USER, []);
+      return this.setPrivileges(user.id, ERole.USER, [EPermissions.READ]);
     } catch (error) {
       await queryRunner.rollbackTransaction();
       throw error;
@@ -228,38 +226,29 @@ export class UserService {
     }
 
     if (await this._otpService.check(userId, code)) {
-      user.emailVerified = true;
-      await this._userRepository.save(user);
+      await this._userRepository.update(userId, { emailVerified: true });
     }
 
-    return new IApiResponseDto({
+    return new ApiResponseDto({
       message: "Email успешно подтвержден.",
-      data: {},
     });
   }
 
   async changePassword(userId: string, password: string) {
-    const user = await this.getUser(userId);
+    await this._userRepository.update(userId, {
+      passwordHash: sha256(password),
+    });
 
-    user.passwordHash = sha256(password);
-
-    await this._userRepository.save(user);
-
-    return new IApiResponseDto({ message: "Пароль успешно изменен." });
+    return new ApiResponseDto({ message: "Пароль успешно изменен." });
   }
 
   async deleteUser(userId: string) {
     const deleted = await this._userRepository.delete(userId);
 
-    if (!deleted) {
-      throw new NotFoundException("Пользователь не найден");
-    }
-
-    return userId;
+    return !!deleted.affected;
   }
 
-  // Статические методы для отношений
-  static get relations() {
+  static get relations(): FindOptionsRelations<User> {
     return {
       role: {
         permissions: true,

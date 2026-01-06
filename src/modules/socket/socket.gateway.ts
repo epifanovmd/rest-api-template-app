@@ -1,7 +1,7 @@
 import { inject } from "inversify";
 
 import { Injectable } from "../../core";
-import { IUserDto } from "../user/user.dto";
+import { IUserDto } from "../user/dto";
 import { SocketService } from "./socket.service";
 import { TSocket } from "./socket.types";
 

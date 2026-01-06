@@ -1,6 +1,6 @@
 import { InternalServerErrorException } from "@force-dev/utils";
 import { createVerify, randomBytes } from "crypto";
-import { inject, injectable } from "inversify";
+import { inject } from "inversify";
 
 import { Injectable } from "../../core";
 import { AuthService } from "../auth";

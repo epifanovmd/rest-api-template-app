@@ -14,8 +14,8 @@ import {
 } from "tsoa";
 
 import {
+  ApiResponseDto,
   getContextUser,
-  IApiResponseDto,
   Injectable,
   ValidateBody,
 } from "../../core";
@@ -26,9 +26,9 @@ import {
   IUserListDto,
   IUserPrivilegesRequestDto,
   IUserUpdateRequestDto,
-} from "./user.dto";
+} from "./dto";
 import { UserService } from "./user.service";
-import { UserUpdateSchema } from "./user.validate";
+import { UserUpdateSchema } from "./validation";
 
 @Injectable()
 @Tags("User")
@@ -84,7 +84,7 @@ export class UserController extends Controller {
    */
   @Security("jwt")
   @Delete("my/delete")
-  deleteMyUser(@Request() req: KoaRequest): Promise<string> {
+  deleteMyUser(@Request() req: KoaRequest): Promise<boolean> {
     const user = getContextUser(req);
 
     return this._userService.deleteUser(user.id);
@@ -110,7 +110,7 @@ export class UserController extends Controller {
       offset,
       limit,
       count: result.length,
-      data: result,
+      data: result.map(user => user.toDTO()),
     }));
   }
 
@@ -125,7 +125,7 @@ export class UserController extends Controller {
   @Security("jwt", ["role:admin"])
   @Get("/{id}")
   getUserById(id: string): Promise<IUserDto> {
-    return this._userService.getUser(id);
+    return this._userService.getUser(id).then(res => res.toDTO());
   }
 
   /**
@@ -175,7 +175,7 @@ export class UserController extends Controller {
   verifyEmail(
     code: string,
     @Request() req: KoaRequest,
-  ): Promise<IApiResponseDto> {
+  ): Promise<ApiResponseDto> {
     const user = getContextUser(req);
 
     return this._userService.verifyEmail(user.id, code);
@@ -213,7 +213,7 @@ export class UserController extends Controller {
   changePassword(
     @Request() req: KoaRequest,
     @Body() body: IUserChangePasswordDto,
-  ): Promise<IApiResponseDto> {
+  ): Promise<ApiResponseDto> {
     const user = getContextUser(req);
 
     return this._userService.changePassword(user.id, body.password);
@@ -229,7 +229,7 @@ export class UserController extends Controller {
    */
   @Security("jwt", ["role:admin"])
   @Delete("delete/{id}")
-  deleteUser(id: string): Promise<string> {
+  deleteUser(id: string): Promise<boolean> {
     return this._userService.deleteUser(id);
   }
 }

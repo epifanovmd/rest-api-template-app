@@ -1,11 +1,6 @@
 import { IListResponseDto } from "../../core";
 import { IPermissionDto } from "../permission/permission.dto";
-
-export enum ERole {
-  ADMIN = "admin",
-  USER = "user",
-  GUEST = "guest",
-}
+import { ERole } from "./role.types";
 
 export interface IRoleDto {
   id: string;

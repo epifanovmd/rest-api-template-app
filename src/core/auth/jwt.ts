@@ -4,11 +4,10 @@ import { DataSource } from "typeorm";
 
 import { config } from "../../../config";
 import { iocContainer } from "../../app.module";
-import {
-  EPermissions,
-  Permission,
-} from "../../modules/permission/permission.entity";
-import { ERole, Role } from "../../modules/role/role.entity";
+import { Permission } from "../../modules/permission/permission.entity";
+import { EPermissions } from "../../modules/permission/permission.types";
+import { Role } from "../../modules/role/role.entity";
+import { ERole } from "../../modules/role/role.types";
 import { User } from "../../modules/user/user.entity";
 import { JWTDecoded } from "../../types/koa";
 

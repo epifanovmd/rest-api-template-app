@@ -6,6 +6,150 @@
 		"requestBodies": {},
 		"responses": {},
 		"schemas": {
+			"IFileDto": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"name": {
+						"type": "string"
+					},
+					"type": {
+						"type": "string"
+					},
+					"url": {
+						"type": "string"
+					},
+					"size": {
+						"type": "number",
+						"format": "double"
+					},
+					"createdAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"updatedAt": {
+						"type": "string",
+						"format": "date-time"
+					}
+				},
+				"required": [
+					"id",
+					"name",
+					"type",
+					"url",
+					"size",
+					"createdAt",
+					"updatedAt"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IProfileDto": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"firstName": {
+						"type": "string"
+					},
+					"lastName": {
+						"type": "string"
+					},
+					"birthDate": {
+						"type": "string",
+						"format": "date-time",
+						"nullable": true
+					},
+					"gender": {
+						"type": "string"
+					},
+					"status": {
+						"type": "string"
+					},
+					"lastOnline": {
+						"type": "string",
+						"format": "date-time",
+						"nullable": true
+					},
+					"createdAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"updatedAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"avatar": {
+						"allOf": [
+							{
+								"$ref": "#/components/schemas/IFileDto"
+							}
+						],
+						"nullable": true
+					}
+				},
+				"required": [
+					"id",
+					"createdAt",
+					"updatedAt",
+					"avatar"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IProfileUpdateRequestDto": {
+				"properties": {
+					"firstName": {
+						"type": "string"
+					},
+					"lastName": {
+						"type": "string"
+					},
+					"bio": {
+						"type": "string"
+					},
+					"birthDate": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"gender": {
+						"type": "string"
+					},
+					"status": {
+						"type": "string"
+					}
+				},
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IProfileListDto": {
+				"properties": {
+					"count": {
+						"type": "number",
+						"format": "double"
+					},
+					"offset": {
+						"type": "number",
+						"format": "double"
+					},
+					"limit": {
+						"type": "number",
+						"format": "double"
+					},
+					"data": {
+						"items": {
+							"$ref": "#/components/schemas/IProfileDto"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"data"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
 			"ERole": {
 				"enum": [
 					"admin",
@@ -184,7 +328,7 @@
 				"type": "object",
 				"additionalProperties": false
 			},
-			"IApiResponseDto": {
+			"ApiResponseDto": {
 				"properties": {
 					"message": {
 						"type": "string"
@@ -602,45 +746,6 @@
 					"createdAt",
 					"updatedAt",
 					"user"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"IFileDto": {
-				"properties": {
-					"id": {
-						"type": "string"
-					},
-					"name": {
-						"type": "string"
-					},
-					"type": {
-						"type": "string"
-					},
-					"url": {
-						"type": "string"
-					},
-					"size": {
-						"type": "number",
-						"format": "double"
-					},
-					"createdAt": {
-						"type": "string",
-						"format": "date-time"
-					},
-					"updatedAt": {
-						"type": "string",
-						"format": "date-time"
-					}
-				},
-				"required": [
-					"id",
-					"name",
-					"type",
-					"url",
-					"size",
-					"createdAt",
-					"updatedAt"
 				],
 				"type": "object",
 				"additionalProperties": false
@@ -1263,111 +1368,6 @@
 				],
 				"type": "object",
 				"additionalProperties": false
-			},
-			"IProfileDto": {
-				"properties": {
-					"id": {
-						"type": "string"
-					},
-					"firstName": {
-						"type": "string"
-					},
-					"lastName": {
-						"type": "string"
-					},
-					"birthDate": {
-						"type": "string",
-						"format": "date-time",
-						"nullable": true
-					},
-					"gender": {
-						"type": "string"
-					},
-					"status": {
-						"type": "string"
-					},
-					"lastOnline": {
-						"type": "string",
-						"format": "date-time",
-						"nullable": true
-					},
-					"createdAt": {
-						"type": "string",
-						"format": "date-time"
-					},
-					"updatedAt": {
-						"type": "string",
-						"format": "date-time"
-					},
-					"avatar": {
-						"allOf": [
-							{
-								"$ref": "#/components/schemas/IFileDto"
-							}
-						],
-						"nullable": true
-					}
-				},
-				"required": [
-					"id",
-					"createdAt",
-					"updatedAt",
-					"avatar"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"IProfileUpdateRequestDto": {
-				"properties": {
-					"firstName": {
-						"type": "string"
-					},
-					"lastName": {
-						"type": "string"
-					},
-					"bio": {
-						"type": "string"
-					},
-					"birthDate": {
-						"type": "string",
-						"format": "date-time"
-					},
-					"gender": {
-						"type": "string"
-					},
-					"status": {
-						"type": "string"
-					}
-				},
-				"type": "object",
-				"additionalProperties": false
-			},
-			"IProfileListDto": {
-				"properties": {
-					"count": {
-						"type": "number",
-						"format": "double"
-					},
-					"offset": {
-						"type": "number",
-						"format": "double"
-					},
-					"limit": {
-						"type": "number",
-						"format": "double"
-					},
-					"data": {
-						"items": {
-							"$ref": "#/components/schemas/IProfileDto"
-						},
-						"type": "array"
-					}
-				},
-				"required": [
-					"data"
-				],
-				"type": "object",
-				"additionalProperties": false
 			}
 		},
 		"securitySchemes": {
@@ -1392,6 +1392,482 @@
 	},
 	"openapi": "3.0.0",
 	"paths": {
+		"/api/file": {
+			"get": {
+				"operationId": "GetFileById",
+				"responses": {
+					"200": {
+						"description": "Информацию о файле, включая метаданные и его содержимое",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IFileDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Получить файл по ID.\nЭтот эндпоинт позволяет пользователю получить файл по его уникальному ID.\nОн защищен с использованием JWT-аутентификации, что означает, что только аутентифицированные пользователи могут получить доступ к этому ресурсу.",
+				"summary": "Получение файла по ID",
+				"tags": [
+					"Files"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"description": "ID файла, который нужно получить",
+						"in": "query",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			},
+			"post": {
+				"operationId": "UploadFile",
+				"responses": {
+					"200": {
+						"description": "Массив объектов, представляющих загруженные файлы с их метаданными",
+						"content": {
+							"application/json": {
+								"schema": {
+									"items": {
+										"$ref": "#/components/schemas/IFileDto"
+									},
+									"type": "array"
+								}
+							}
+						}
+					}
+				},
+				"description": "Загрузить файл.\nЭтот эндпоинт позволяет пользователю загрузить один файл на сервер.\nОн защищен с использованием JWT-аутентификации, что означает, что только аутентифицированные пользователи могут загружать файлы.",
+				"summary": "Загрузка файла",
+				"tags": [
+					"Files"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"multipart/form-data": {
+							"schema": {
+								"type": "object",
+								"properties": {
+									"file": {
+										"type": "string",
+										"format": "binary",
+										"description": "Файл, который нужно загрузить"
+									}
+								},
+								"required": [
+									"file"
+								]
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/file/{id}": {
+			"delete": {
+				"operationId": "DeleteFile",
+				"responses": {
+					"200": {
+						"description": "Количество удаленных файлов (обычно 1, если файл существует)",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "boolean"
+								}
+							}
+						}
+					}
+				},
+				"description": "Удалить файл.\nЭтот эндпоинт позволяет пользователю удалить файл по его ID. Доступ разрешен только пользователю, который загрузил файл, либо администратору.",
+				"summary": "Удаление файла",
+				"tags": [
+					"Files"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"description": "ID файла, который нужно удалить",
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/profile/my": {
+			"get": {
+				"operationId": "GetMyProfile",
+				"responses": {
+					"200": {
+						"description": "Пользователь",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IProfileDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Получить профиль текущего пользователя.\nЭтот эндпоинт позволяет получить данные профиля пользователя, который выполнил запрос.\nИспользуется для получения информации о текущем пользователе, например, его имени, email, и других данных.",
+				"summary": "Получение профиля текущего пользователя",
+				"tags": [
+					"Profile"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": []
+			}
+		},
+		"/api/profile/my/update": {
+			"patch": {
+				"operationId": "UpdateMyProfile",
+				"responses": {
+					"200": {
+						"description": "Обновленный профиль пользователя",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IProfileDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Обновить профиль текущего пользователя.\nЭтот эндпоинт позволяет пользователю обновить свои данные, такие как имя, email и другие параметры профиля.",
+				"summary": "Обновление профиля текущего пользователя",
+				"tags": [
+					"Profile"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"description": "Обновленные данные профиля",
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IProfileUpdateRequestDto",
+								"description": "Обновленные данные профиля"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/profile/my/delete": {
+			"delete": {
+				"operationId": "DeleteMyProfile",
+				"responses": {
+					"200": {
+						"description": "Сообщение об успешном удалении",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "string"
+								}
+							}
+						}
+					}
+				},
+				"description": "Удалить профиль текущего пользователя.\nЭтот эндпоинт позволяет пользователю удалить свой профиль из системы.",
+				"summary": "Удаление профиля текущего пользователя",
+				"tags": [
+					"Profile"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": []
+			}
+		},
+		"/api/profile/all": {
+			"get": {
+				"operationId": "GetProfiles",
+				"responses": {
+					"200": {
+						"description": "Список всех профилей с информацией о них",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IProfileListDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Получить все профили.\nЭтот эндпоинт позволяет администраторам получить список всех пользователей системы.\nОн поддерживает пагинацию через параметры `offset` и `limit`.",
+				"summary": "Получение всех профилей",
+				"tags": [
+					"Profile"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"description": "Смещение для пагинации",
+						"in": "query",
+						"name": "offset",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					},
+					{
+						"description": "Лимит количества возвращаемых профилей",
+						"in": "query",
+						"name": "limit",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					}
+				]
+			}
+		},
+		"/api/profile/{userId}": {
+			"get": {
+				"operationId": "GetProfileById",
+				"responses": {
+					"200": {
+						"description": "Пользователь по ID",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IProfileDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Получить профиль по ID.\nЭтот эндпоинт позволяет получить профиль другого пользователя по его ID. Доступен только для администраторов.",
+				"summary": "Получение профиля по ID",
+				"tags": [
+					"Profile"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"description": "ID пользователя, профиль которого нужно получить",
+						"in": "path",
+						"name": "userId",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/profile/update/{userId}": {
+			"patch": {
+				"operationId": "UpdateProfile",
+				"responses": {
+					"200": {
+						"description": "Обновленный профиль пользователя",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IProfileDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Обновить профиль другого пользователя.\nЭтот эндпоинт позволяет администраторам обновлять профиль других пользователей.",
+				"summary": "Обновление профиля другого пользователя",
+				"tags": [
+					"Profile"
+				],
+				"security": [
+					{
+						"jwt": [
+							"role:admin"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"description": "ID пользователя, профиль которого необходимо обновить",
+						"in": "path",
+						"name": "userId",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"description": "Данные для обновления профиля",
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IProfileUpdateRequestDto",
+								"description": "Данные для обновления профиля"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/profile/avatar/upload": {
+			"post": {
+				"operationId": "AddAvatar",
+				"responses": {
+					"200": {
+						"description": "Обновленный профиль с новым аватаром",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IProfileDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Загрузить аватар для текущего пользователя.\nЭтот эндпоинт позволяет пользователю загрузить аватар для своего профиля.",
+				"summary": "Загрузка аватара",
+				"tags": [
+					"Profile"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"multipart/form-data": {
+							"schema": {
+								"type": "object",
+								"properties": {
+									"file": {
+										"type": "string",
+										"format": "binary",
+										"description": "Файл изображения аватара"
+									}
+								},
+								"required": [
+									"file"
+								]
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/profile/avatar": {
+			"delete": {
+				"operationId": "RemoveAvatar",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IProfileDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Удалить аватар пользователя.\nЭтот эндпоинт позволяет пользователю удалить свой аватар.",
+				"summary": "Удаление аватара",
+				"tags": [
+					"Profile"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": []
+			}
+		},
+		"/api/profile/delete/{userId}": {
+			"delete": {
+				"operationId": "DeleteProfile",
+				"responses": {
+					"200": {
+						"description": "Сообщение об успешном удалении",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "string"
+								}
+							}
+						}
+					}
+				},
+				"description": "Удалить профиль другого пользователя.\nЭтот эндпоинт позволяет администраторам удалить профиль другого пользователя из системы.",
+				"summary": "Удаление профиля другого пользователя",
+				"tags": [
+					"Profile"
+				],
+				"security": [
+					{
+						"jwt": [
+							"role:admin"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"description": "ID пользователя, профиль которого необходимо удалить",
+						"in": "path",
+						"name": "userId",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
 		"/api/user/my": {
 			"get": {
 				"operationId": "GetMyUser",
@@ -1469,7 +1945,7 @@
 						"content": {
 							"application/json": {
 								"schema": {
-									"type": "string"
+									"type": "boolean"
 								}
 							}
 						}
@@ -1668,7 +2144,7 @@
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/IApiResponseDto"
+									"$ref": "#/components/schemas/ApiResponseDto"
 								}
 							}
 						}
@@ -1758,7 +2234,7 @@
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/IApiResponseDto"
+									"$ref": "#/components/schemas/ApiResponseDto"
 								}
 							}
 						}
@@ -1798,7 +2274,7 @@
 						"content": {
 							"application/json": {
 								"schema": {
-									"type": "string"
+									"type": "boolean"
 								}
 							}
 						}
@@ -1967,7 +2443,7 @@
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/IApiResponseDto"
+									"$ref": "#/components/schemas/ApiResponseDto"
 								}
 							}
 						}
@@ -2001,7 +2477,7 @@
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/IApiResponseDto"
+									"$ref": "#/components/schemas/ApiResponseDto"
 								}
 							}
 						}
@@ -3115,131 +3591,6 @@
 				}
 			}
 		},
-		"/api/file": {
-			"get": {
-				"operationId": "GetFileById",
-				"responses": {
-					"200": {
-						"description": "Информацию о файле, включая метаданные и его содержимое",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/IFileDto"
-								}
-							}
-						}
-					}
-				},
-				"description": "Получить файл по ID.\nЭтот эндпоинт позволяет пользователю получить файл по его уникальному ID.\nОн защищен с использованием JWT-аутентификации, что означает, что только аутентифицированные пользователи могут получить доступ к этому ресурсу.",
-				"summary": "Получение файла по ID",
-				"tags": [
-					"Files"
-				],
-				"security": [
-					{
-						"jwt": []
-					}
-				],
-				"parameters": [
-					{
-						"description": "ID файла, который нужно получить",
-						"in": "query",
-						"name": "id",
-						"required": true,
-						"schema": {
-							"type": "string"
-						}
-					}
-				]
-			},
-			"post": {
-				"operationId": "UploadFile",
-				"responses": {
-					"200": {
-						"description": "Массив объектов, представляющих загруженные файлы с их метаданными",
-						"content": {
-							"application/json": {
-								"schema": {
-									"items": {
-										"$ref": "#/components/schemas/IFileDto"
-									},
-									"type": "array"
-								}
-							}
-						}
-					}
-				},
-				"description": "Загрузить файл.\nЭтот эндпоинт позволяет пользователю загрузить один файл на сервер.\nОн защищен с использованием JWT-аутентификации, что означает, что только аутентифицированные пользователи могут загружать файлы.",
-				"summary": "Загрузка файла",
-				"tags": [
-					"Files"
-				],
-				"security": [
-					{
-						"jwt": []
-					}
-				],
-				"parameters": [],
-				"requestBody": {
-					"required": true,
-					"content": {
-						"multipart/form-data": {
-							"schema": {
-								"type": "object",
-								"properties": {
-									"file": {
-										"type": "string",
-										"format": "binary",
-										"description": "Файл, который нужно загрузить"
-									}
-								},
-								"required": [
-									"file"
-								]
-							}
-						}
-					}
-				}
-			}
-		},
-		"/api/file/{id}": {
-			"delete": {
-				"operationId": "DeleteFile",
-				"responses": {
-					"200": {
-						"description": "Количество удаленных файлов (обычно 1, если файл существует)",
-						"content": {
-							"application/json": {
-								"schema": {
-									"type": "boolean"
-								}
-							}
-						}
-					}
-				},
-				"description": "Удалить файл.\nЭтот эндпоинт позволяет пользователю удалить файл по его ID. Доступ разрешен только пользователю, который загрузил файл, либо администратору.",
-				"summary": "Удаление файла",
-				"tags": [
-					"Files"
-				],
-				"security": [
-					{
-						"jwt": []
-					}
-				],
-				"parameters": [
-					{
-						"description": "ID файла, который нужно удалить",
-						"in": "path",
-						"name": "id",
-						"required": true,
-						"schema": {
-							"type": "string"
-						}
-					}
-				]
-			}
-		},
 		"/api/passkeys/generate-registration-options": {
 			"post": {
 				"operationId": "GenerateRegistrationOptions",
@@ -3398,357 +3749,6 @@
 						}
 					}
 				}
-			}
-		},
-		"/api/profile/my": {
-			"get": {
-				"operationId": "GetMyProfile",
-				"responses": {
-					"200": {
-						"description": "Пользователь",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/IProfileDto"
-								}
-							}
-						}
-					}
-				},
-				"description": "Получить профиль текущего пользователя.\nЭтот эндпоинт позволяет получить данные профиля пользователя, который выполнил запрос.\nИспользуется для получения информации о текущем пользователе, например, его имени, email, и других данных.",
-				"summary": "Получение профиля текущего пользователя",
-				"tags": [
-					"Profile"
-				],
-				"security": [
-					{
-						"jwt": []
-					}
-				],
-				"parameters": []
-			}
-		},
-		"/api/profile/my/update": {
-			"patch": {
-				"operationId": "UpdateMyProfile",
-				"responses": {
-					"200": {
-						"description": "Обновленный профиль пользователя",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/IProfileDto"
-								}
-							}
-						}
-					}
-				},
-				"description": "Обновить профиль текущего пользователя.\nЭтот эндпоинт позволяет пользователю обновить свои данные, такие как имя, email и другие параметры профиля.",
-				"summary": "Обновление профиля текущего пользователя",
-				"tags": [
-					"Profile"
-				],
-				"security": [
-					{
-						"jwt": []
-					}
-				],
-				"parameters": [],
-				"requestBody": {
-					"description": "Обновленные данные профиля",
-					"required": true,
-					"content": {
-						"application/json": {
-							"schema": {
-								"$ref": "#/components/schemas/IProfileUpdateRequestDto",
-								"description": "Обновленные данные профиля"
-							}
-						}
-					}
-				}
-			}
-		},
-		"/api/profile/my/delete": {
-			"delete": {
-				"operationId": "DeleteMyProfile",
-				"responses": {
-					"200": {
-						"description": "Сообщение об успешном удалении",
-						"content": {
-							"application/json": {
-								"schema": {
-									"type": "string"
-								}
-							}
-						}
-					}
-				},
-				"description": "Удалить профиль текущего пользователя.\nЭтот эндпоинт позволяет пользователю удалить свой профиль из системы.",
-				"summary": "Удаление профиля текущего пользователя",
-				"tags": [
-					"Profile"
-				],
-				"security": [
-					{
-						"jwt": []
-					}
-				],
-				"parameters": []
-			}
-		},
-		"/api/profile/all": {
-			"get": {
-				"operationId": "GetProfiles",
-				"responses": {
-					"200": {
-						"description": "Список всех профилей с информацией о них",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/IProfileListDto"
-								}
-							}
-						}
-					}
-				},
-				"description": "Получить все профили.\nЭтот эндпоинт позволяет администраторам получить список всех пользователей системы.\nОн поддерживает пагинацию через параметры `offset` и `limit`.",
-				"summary": "Получение всех профилей",
-				"tags": [
-					"Profile"
-				],
-				"security": [
-					{
-						"jwt": []
-					}
-				],
-				"parameters": [
-					{
-						"description": "Смещение для пагинации",
-						"in": "query",
-						"name": "offset",
-						"required": false,
-						"schema": {
-							"format": "double",
-							"type": "number"
-						}
-					},
-					{
-						"description": "Лимит количества возвращаемых профилей",
-						"in": "query",
-						"name": "limit",
-						"required": false,
-						"schema": {
-							"format": "double",
-							"type": "number"
-						}
-					}
-				]
-			}
-		},
-		"/api/profile/{userId}": {
-			"get": {
-				"operationId": "GetProfileById",
-				"responses": {
-					"200": {
-						"description": "Пользователь по ID",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/IProfileDto"
-								}
-							}
-						}
-					}
-				},
-				"description": "Получить профиль по ID.\nЭтот эндпоинт позволяет получить профиль другого пользователя по его ID. Доступен только для администраторов.",
-				"summary": "Получение профиля по ID",
-				"tags": [
-					"Profile"
-				],
-				"security": [
-					{
-						"jwt": []
-					}
-				],
-				"parameters": [
-					{
-						"description": "ID пользователя, профиль которого нужно получить",
-						"in": "path",
-						"name": "userId",
-						"required": true,
-						"schema": {
-							"type": "string"
-						}
-					}
-				]
-			}
-		},
-		"/api/profile/update/{userId}": {
-			"patch": {
-				"operationId": "UpdateProfile",
-				"responses": {
-					"200": {
-						"description": "Обновленный профиль пользователя",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/IProfileDto"
-								}
-							}
-						}
-					}
-				},
-				"description": "Обновить профиль другого пользователя.\nЭтот эндпоинт позволяет администраторам обновлять профиль других пользователей.",
-				"summary": "Обновление профиля другого пользователя",
-				"tags": [
-					"Profile"
-				],
-				"security": [
-					{
-						"jwt": [
-							"role:admin"
-						]
-					}
-				],
-				"parameters": [
-					{
-						"description": "ID пользователя, профиль которого необходимо обновить",
-						"in": "path",
-						"name": "userId",
-						"required": true,
-						"schema": {
-							"type": "string"
-						}
-					}
-				],
-				"requestBody": {
-					"description": "Данные для обновления профиля",
-					"required": true,
-					"content": {
-						"application/json": {
-							"schema": {
-								"$ref": "#/components/schemas/IProfileUpdateRequestDto",
-								"description": "Данные для обновления профиля"
-							}
-						}
-					}
-				}
-			}
-		},
-		"/api/profile/avatar/upload": {
-			"post": {
-				"operationId": "AddAvatar",
-				"responses": {
-					"200": {
-						"description": "Обновленный профиль с новым аватаром",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/IProfileDto"
-								}
-							}
-						}
-					}
-				},
-				"description": "Загрузить аватар для текущего пользователя.\nЭтот эндпоинт позволяет пользователю загрузить аватар для своего профиля.",
-				"summary": "Загрузка аватара",
-				"tags": [
-					"Profile"
-				],
-				"security": [
-					{
-						"jwt": []
-					}
-				],
-				"parameters": [],
-				"requestBody": {
-					"required": true,
-					"content": {
-						"multipart/form-data": {
-							"schema": {
-								"type": "object",
-								"properties": {
-									"file": {
-										"type": "string",
-										"format": "binary",
-										"description": "Файл изображения аватара"
-									}
-								},
-								"required": [
-									"file"
-								]
-							}
-						}
-					}
-				}
-			}
-		},
-		"/api/profile/avatar": {
-			"delete": {
-				"operationId": "RemoveAvatar",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/IProfileDto"
-								}
-							}
-						}
-					}
-				},
-				"description": "Удалить аватар пользователя.\nЭтот эндпоинт позволяет пользователю удалить свой аватар.",
-				"summary": "Удаление аватара",
-				"tags": [
-					"Profile"
-				],
-				"security": [
-					{
-						"jwt": []
-					}
-				],
-				"parameters": []
-			}
-		},
-		"/api/profile/delete/{userId}": {
-			"delete": {
-				"operationId": "DeleteProfile",
-				"responses": {
-					"200": {
-						"description": "Сообщение об успешном удалении",
-						"content": {
-							"application/json": {
-								"schema": {
-									"type": "string"
-								}
-							}
-						}
-					}
-				},
-				"description": "Удалить профиль другого пользователя.\nЭтот эндпоинт позволяет администраторам удалить профиль другого пользователя из системы.",
-				"summary": "Удаление профиля другого пользователя",
-				"tags": [
-					"Profile"
-				],
-				"security": [
-					{
-						"jwt": [
-							"role:admin"
-						]
-					}
-				],
-				"parameters": [
-					{
-						"description": "ID пользователя, профиль которого необходимо удалить",
-						"in": "path",
-						"name": "userId",
-						"required": true,
-						"schema": {
-							"type": "string"
-						}
-					}
-				]
 			}
 		}
 	},

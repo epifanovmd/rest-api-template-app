@@ -3,7 +3,7 @@ import {
   RegistrationResponseJSON,
 } from "@simplewebauthn/types";
 
-import { ITokensDto } from "../auth";
+import { ITokensDto } from "../auth/auth.dto";
 
 export interface IVerifyRegistrationRequestDto {
   userId: string;

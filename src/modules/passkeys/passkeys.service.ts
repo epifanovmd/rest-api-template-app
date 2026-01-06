@@ -131,7 +131,7 @@ export class PasskeysService {
 
     user.challenge = options.challenge;
     await this._userService.updateUser(user.id, {
-      challenge: options.challenge,
+      // challenge: options.challenge,
     });
 
     return options;
