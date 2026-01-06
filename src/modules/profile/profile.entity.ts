@@ -12,6 +12,7 @@ import {
 
 import { File } from "../file/file.entity";
 import { User } from "../user/user.entity";
+import { IProfileDto } from "./dto";
 
 @Entity("profiles")
 @Index("IDX_PROFILES_USER_ID", ["userId"], { unique: true })
@@ -59,7 +60,7 @@ export class Profile {
   @JoinColumn({ name: "avatar_id" })
   avatar: File;
 
-  toDTO() {
+  toDTO(): IProfileDto {
     return {
       id: this.id,
       firstName: this.firstName,
@@ -70,7 +71,7 @@ export class Profile {
       lastOnline: this.lastOnline,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
-      avatar: this.avatar?.toDTO(),
+      avatar: this.avatar?.toDTO() || null,
     };
   }
 }

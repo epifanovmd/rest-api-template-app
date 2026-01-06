@@ -97,6 +97,7 @@ export const verifyAuthToken = async (
 
       if (!isAdmin) {
         if (
+          !user.role ||
           !hasRole(user.role, roles) ||
           !hasPermission(user.role, permissions)
         ) {

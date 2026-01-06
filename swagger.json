@@ -276,7 +276,8 @@
 						"type": "string"
 					},
 					"challenge": {
-						"type": "string"
+						"type": "string",
+						"nullable": true
 					}
 				},
 				"type": "object",

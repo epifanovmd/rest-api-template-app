@@ -1,4 +1,5 @@
 import { IListResponseDto } from "../../../core";
+import { IProfileDto } from "../../profile/dto";
 import { IRoleDto } from "../../role/role.dto";
 
 export interface IUserDto {
@@ -7,9 +8,10 @@ export interface IUserDto {
   emailVerified?: boolean;
   phone?: string;
   challenge?: string | null;
+  profile?: IProfileDto;
+  role?: IRoleDto;
   createdAt: Date;
   updatedAt: Date;
-  role: IRoleDto;
 }
 
 export interface IUserListDto extends IListResponseDto<IUserDto[]> {}

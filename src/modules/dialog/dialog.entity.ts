@@ -32,7 +32,7 @@ export class Dialog {
   updatedAt: Date;
 
   // Relations
-  @ManyToOne(() => User, user => user.dialogMemberships)
+  @ManyToOne(() => User, user => user.id)
   @JoinColumn({ name: "owner_id" })
   owner: User;
 

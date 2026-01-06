@@ -141,7 +141,7 @@ const models: TsoaRoute.Models = {
             "email": {"dataType":"string"},
             "phone": {"dataType":"string"},
             "roleId": {"dataType":"string"},
-            "challenge": {"dataType":"string"},
+            "challenge": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}]},
         },
         "additionalProperties": false,
     },

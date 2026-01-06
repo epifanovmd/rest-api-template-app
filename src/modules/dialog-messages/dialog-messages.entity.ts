@@ -48,7 +48,7 @@ export class DialogMessages {
   updatedAt: Date;
 
   // Relations
-  @ManyToOne(() => User, user => user.messages, { onDelete: "CASCADE" })
+  @ManyToOne(() => User, user => user.id, { onDelete: "CASCADE" })
   @JoinColumn({ name: "user_id" })
   user: User;
 

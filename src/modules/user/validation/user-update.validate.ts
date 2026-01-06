@@ -39,9 +39,14 @@ export const UserUpdateSchema = z
         message:
           "Challenge может содержать только буквы, цифры, дефисы и подчеркивания",
       })
+      .nullable()
       .optional(),
   })
-  .refine(data => data.email || data.phone || data.roleId || data.challenge, {
-    message: "Должно быть указано хотя бы одно поле для обновления",
-    path: ["general"],
-  });
+  .refine(
+    data =>
+      data.email || data.phone || data.roleId || data.challenge !== undefined,
+    {
+      message: "Должно быть указано хотя бы одно поле для обновления",
+      path: ["general"],
+    },
+  );

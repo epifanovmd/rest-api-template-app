@@ -32,7 +32,6 @@ export class UserService {
       skip: offset,
       take: limit,
       order: { createdAt: "DESC" },
-      relations: UserService.relations,
     });
   }
 
@@ -250,6 +249,9 @@ export class UserService {
 
   static get relations(): FindOptionsRelations<User> {
     return {
+      profile: {
+        avatar: true,
+      },
       role: {
         permissions: true,
       },

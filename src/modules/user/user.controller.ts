@@ -51,7 +51,7 @@ export class UserController extends Controller {
   getMyUser(@Request() req: KoaRequest): Promise<IUserDto> {
     const user = getContextUser(req);
 
-    return this._userService.getUser(user.id).then(res => res.toDTO());
+    return this._userService.getUser(user.id).then(res => res.toFullDTO());
   }
 
   /**
@@ -72,7 +72,9 @@ export class UserController extends Controller {
   ): Promise<IUserDto> {
     const user = getContextUser(req);
 
-    return this._userService.updateUser(user.id, body).then(res => res.toDTO());
+    return this._userService
+      .updateUser(user.id, body)
+      .then(res => res.toFullDTO());
   }
 
   /**
@@ -125,7 +127,7 @@ export class UserController extends Controller {
   @Security("jwt", ["role:admin"])
   @Get("/{id}")
   getUserById(id: string): Promise<IUserDto> {
-    return this._userService.getUser(id).then(res => res.toDTO());
+    return this._userService.getUser(id).then(res => res.toFullDTO());
   }
 
   /**
@@ -196,7 +198,7 @@ export class UserController extends Controller {
     id: string,
     @Body() body: IUserUpdateRequestDto,
   ): Promise<IUserDto> {
-    return this._userService.updateUser(id, body).then(res => res.toDTO());
+    return this._userService.updateUser(id, body).then(res => res.toFullDTO());
   }
 
   /**

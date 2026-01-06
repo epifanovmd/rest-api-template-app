@@ -12,10 +12,7 @@ import {
 } from "typeorm";
 
 import { Biometric } from "../biometric/biometric.entity";
-import { DialogMembers } from "../dialog-members/dialog-members.entity";
-import { DialogMessages } from "../dialog-messages/dialog-messages.entity";
 import { FcmToken } from "../fcm-token/fcm-token.entity";
-import { File } from "../file/file.entity";
 import { Otp } from "../otp/otp.entity";
 import { Passkey } from "../passkeys/passkey.entity";
 import { Profile } from "../profile/profile.entity";
@@ -47,9 +44,6 @@ export class User {
   @Column({ name: "role_id", type: "uuid", nullable: true })
   roleId: string;
 
-  @Column({ name: "avatar_id", type: "uuid", nullable: true })
-  avatarId: string | null;
-
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 
@@ -57,41 +51,27 @@ export class User {
   updatedAt: Date;
 
   // Relations
-  @ManyToOne(() => Role, role => role.users, { onDelete: "SET NULL" })
+  @ManyToOne(() => Role, { onDelete: "SET NULL" })
   @JoinColumn({ name: "role_id" })
-  role: Role;
+  role?: Role;
 
   @OneToOne(() => Profile, profile => profile.user, { cascade: true })
-  profile: Profile;
+  profile?: Profile;
 
   @OneToMany(() => Passkey, passkey => passkey.user, { cascade: true })
-  passkeys: Passkey[];
+  passkeys?: Passkey[];
 
   @OneToMany(() => Biometric, biometric => biometric.user, { cascade: true })
-  biometrics: Biometric[];
+  biometrics?: Biometric[];
 
   @OneToMany(() => Otp, otp => otp.user, { cascade: true })
-  otps: Otp[];
+  otps?: Otp[];
 
   @OneToMany(() => ResetPasswordTokens, token => token.user, { cascade: true })
-  resetPasswordTokens: ResetPasswordTokens[];
+  resetPasswordTokens?: ResetPasswordTokens[];
 
   @OneToMany(() => FcmToken, token => token.user, { cascade: true })
-  fcmTokens: FcmToken[];
-
-  @OneToMany(() => DialogMembers, member => member.user, { cascade: true })
-  dialogMemberships: DialogMembers[];
-
-  @OneToMany(() => DialogMessages, message => message.user, { cascade: true })
-  messages: DialogMessages[];
-
-  @ManyToOne(() => File, { onDelete: "SET NULL" })
-  @JoinColumn({ name: "avatar_id" })
-  avatar: File | null;
-
-  setEmail(email: string) {
-    this.email = email;
-  }
+  fcmTokens?: FcmToken[];
 
   // DTO преобразование
   toDTO(): IUserDto {
@@ -100,10 +80,17 @@ export class User {
       email: this.email,
       emailVerified: this.emailVerified,
       phone: this.phone,
-      challenge: this.challenge,
+      profile: this.profile?.toDTO(),
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
-      role: this.role?.toDTO?.(),
+    };
+  }
+
+  toFullDTO(): IUserDto {
+    return {
+      ...this.toDTO(),
+      challenge: this.challenge,
+      role: this.role?.toDTO(),
     };
   }
 }
