@@ -4,7 +4,7 @@ import { File } from "tsoa";
 
 import { Injectable } from "../../core";
 import { FileService } from "../file";
-import { IProfileUpdateRequestDto } from "./profile.dto";
+import { IProfileUpdateRequestDto } from "./dto";
 import { Profile } from "./profile.entity";
 import { ProfileRepository } from "./profile.repository";
 

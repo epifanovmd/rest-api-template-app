@@ -1,14 +1,5 @@
-import { IListResponseDto } from "../../core";
-import { IFileDto } from "../file/file.dto";
-
-export interface IProfileUpdateRequestDto {
-  firstName?: string;
-  lastName?: string;
-  bio?: string;
-  birthDate?: Date;
-  gender?: string;
-  status?: string;
-}
+import { IListResponseDto } from "../../../core";
+import { IFileDto } from "../../file/file.dto";
 
 export interface IProfileDto {
   id: string;

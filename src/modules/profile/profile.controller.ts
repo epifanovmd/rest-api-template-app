@@ -1,4 +1,4 @@
-import { inject, injectable } from "inversify";
+import { inject } from "inversify";
 import {
   Body,
   Controller,
@@ -17,11 +17,7 @@ import {
 
 import { getContextUser, Injectable } from "../../core";
 import { KoaRequest } from "../../types/koa";
-import {
-  IProfileDto,
-  IProfileListDto,
-  IProfileUpdateRequestDto,
-} from "./profile.dto";
+import { IProfileDto, IProfileListDto, IProfileUpdateRequestDto } from "./dto";
 import { ProfileService } from "./profile.service";
 
 @Injectable()
