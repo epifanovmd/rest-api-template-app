@@ -12,7 +12,7 @@ import {
 
 import { File } from "../file/file.entity";
 import { User } from "../user/user.entity";
-import { IProfileDto } from "./dto";
+import { EProfileStatus } from "./profile.types";
 
 @Entity("profiles")
 @Index("IDX_PROFILES_USER_ID", ["userId"], { unique: true })
@@ -36,8 +36,13 @@ export class Profile {
   @Column({ type: "varchar", length: 20, nullable: true })
   gender: string;
 
-  @Column({ type: "varchar", length: 50, nullable: true })
-  status: string;
+  @Column({
+    name: "profile_status_type",
+    type: "enum",
+    enum: ["online", "offline"],
+    default: "offline",
+  })
+  status: EProfileStatus;
 
   @Column({ name: "last_online", type: "timestamp", nullable: true })
   lastOnline: Date;
@@ -59,19 +64,4 @@ export class Profile {
   @ManyToOne(() => File, file => file.avatarProfiles, { onDelete: "SET NULL" })
   @JoinColumn({ name: "avatar_id" })
   avatar: File;
-
-  toDTO(): IProfileDto {
-    return {
-      id: this.id,
-      firstName: this.firstName,
-      lastName: this.lastName,
-      birthDate: this.birthDate,
-      gender: this.gender,
-      status: this.status,
-      lastOnline: this.lastOnline,
-      createdAt: this.createdAt,
-      updatedAt: this.updatedAt,
-      avatar: this.avatar?.toDTO() || null,
-    };
-  }
 }

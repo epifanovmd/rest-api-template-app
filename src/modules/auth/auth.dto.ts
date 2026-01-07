@@ -1,4 +1,4 @@
-import { IUserChangePasswordDto, IUserDto } from "../user/dto";
+import { IUserChangePasswordDto, UserDto } from "../user/dto";
 
 export interface IUserResetPasswordRequestDto extends IUserChangePasswordDto {
   token: string;
@@ -9,7 +9,7 @@ export interface ITokensDto {
   refreshToken: string;
 }
 
-export interface IUserWithTokensDto extends IUserDto {
+export interface IUserWithTokensDto extends UserDto {
   tokens: ITokensDto;
 }
 

@@ -18,7 +18,6 @@ import { Passkey } from "../passkeys/passkey.entity";
 import { Profile } from "../profile/profile.entity";
 import { ResetPasswordTokens } from "../reset-password-tokens/reset-password-tokens.entity";
 import { Role } from "../role/role.entity";
-import { IUserDto } from "./dto";
 
 @Entity("users")
 @Index("IDX_USERS_EMAIL_PHONE", ["email", "phone"], { unique: true })
@@ -51,46 +50,28 @@ export class User {
   updatedAt: Date;
 
   // Relations
-  @ManyToOne(() => Role, { onDelete: "SET NULL" })
+  @ManyToOne(() => Role, { onDelete: "SET NULL", eager: true })
   @JoinColumn({ name: "role_id" })
-  role?: Role;
+  role: Role;
 
-  @OneToOne(() => Profile, profile => profile.user, { cascade: true })
-  profile?: Profile;
+  @OneToOne(() => Profile, profile => profile.user, {
+    cascade: true,
+    eager: true,
+  })
+  profile: Profile;
 
   @OneToMany(() => Passkey, passkey => passkey.user, { cascade: true })
-  passkeys?: Passkey[];
+  passkeys: Passkey[];
 
   @OneToMany(() => Biometric, biometric => biometric.user, { cascade: true })
-  biometrics?: Biometric[];
+  biometrics: Biometric[];
 
   @OneToMany(() => Otp, otp => otp.user, { cascade: true })
-  otps?: Otp[];
+  otps: Otp[];
 
   @OneToMany(() => ResetPasswordTokens, token => token.user, { cascade: true })
-  resetPasswordTokens?: ResetPasswordTokens[];
+  resetPasswordTokens: ResetPasswordTokens[];
 
   @OneToMany(() => FcmToken, token => token.user, { cascade: true })
-  fcmTokens?: FcmToken[];
-
-  // DTO преобразование
-  toDTO(): IUserDto {
-    return {
-      id: this.id,
-      email: this.email,
-      emailVerified: this.emailVerified,
-      phone: this.phone,
-      profile: this.profile?.toDTO(),
-      createdAt: this.createdAt,
-      updatedAt: this.updatedAt,
-    };
-  }
-
-  toFullDTO(): IUserDto {
-    return {
-      ...this.toDTO(),
-      challenge: this.challenge,
-      role: this.role?.toDTO(),
-    };
-  }
+  fcmTokens: FcmToken[];
 }

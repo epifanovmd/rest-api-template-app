@@ -1,51 +1,51 @@
+import { FindOptionsRelations } from "typeorm";
+
 import { BaseRepository, InjectableRepository } from "../../core";
 import { DialogMembers } from "./dialog-members.entity";
 
 @InjectableRepository(DialogMembers)
 export class DialogMembersRepository extends BaseRepository<DialogMembers> {
-  async findByDialogId(dialogId: string): Promise<DialogMembers[]> {
+  async findByDialogId(
+    dialogId: string,
+    relations?: FindOptionsRelations<DialogMembers>,
+  ): Promise<DialogMembers[]> {
     return this.find({
       where: { dialogId },
-      relations: {
-        user: true,
-        dialog: true,
-      },
+      relations,
     });
   }
 
-  async findById(id: string): Promise<DialogMembers | null> {
+  async findById(
+    id: string,
+    relations?: FindOptionsRelations<DialogMembers>,
+  ): Promise<DialogMembers | null> {
     return this.findOne({
       where: { id },
-      relations: {
-        user: true,
-        dialog: true,
-      },
+      relations,
     });
   }
 
-  async findByUserId(userId: string): Promise<DialogMembers[]> {
+  async findByUserId(
+    userId: string,
+    relations?: FindOptionsRelations<DialogMembers>,
+  ): Promise<DialogMembers[]> {
     return this.find({
       where: { userId },
-      relations: {
-        user: true,
-        dialog: true,
-      },
+      relations,
     });
   }
 
   async findByUserIdAndDialogId(
     userId: string,
     dialogId: string,
+    relations?: FindOptionsRelations<DialogMembers>,
   ): Promise<DialogMembers | null> {
     return this.findOne({
       where: {
         userId,
         dialogId,
       },
-      relations: {
-        user: true,
-        dialog: true,
-      },
+      relations,
     });
   }
 }

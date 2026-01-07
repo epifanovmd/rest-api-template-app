@@ -1,4 +1,4 @@
-import { FindOptionsWhere } from "typeorm";
+import { FindOptionsWhere, Not } from "typeorm";
 
 import { BaseRepository, InjectableRepository } from "../../core";
 import { DialogMessages } from "./dialog-messages.entity";
@@ -40,7 +40,12 @@ export class DialogMessagesRepository extends BaseRepository<DialogMessages> {
   ): Promise<number> {
     const where: FindOptionsWhere<DialogMessages> = {
       received: false,
-      user: { id: userId },
+      user: { id: Not(userId) },
+      dialog: {
+        members: {
+          userId,
+        },
+      },
     };
 
     if (dialogId) {

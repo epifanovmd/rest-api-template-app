@@ -16,6 +16,7 @@ import {
 import { MailerService } from "../mailer";
 import { ResetPasswordTokensService } from "../reset-password-tokens";
 import { UserService } from "../user";
+import { UserDto } from "../user/dto";
 import {
   IAuthenticateRequestDto,
   ISignInRequestDto,
@@ -119,21 +120,9 @@ export class AuthService {
         // Получаем полную информацию о пользователе с ролью
         const fullUser = await this._userService.getUser(user.id);
 
-        // Формируем ответ
-        const data = {
-          id: fullUser.id,
-          email: fullUser.email,
-          emailVerified: fullUser.emailVerified,
-          phone: fullUser.phone,
-          challenge: fullUser.challenge,
-          createdAt: fullUser.createdAt,
-          updatedAt: fullUser.updatedAt,
-          role: fullUser.role,
-        };
-
         return {
-          ...data,
-          tokens: await this.getTokens(data.id),
+          ...UserDto.fromEntity(fullUser),
+          tokens: await this.getTokens(fullUser.id),
         };
       }
     } catch (error) {
@@ -281,7 +270,9 @@ export class AuthService {
     const [accessToken, refreshToken] = await createTokenAsync([
       {
         userId,
-        opts: { expiresIn: "15m" },
+        opts: {
+          expiresIn: process.env.NODE_ENV === "development" ? "1d" : "15m",
+        },
       },
       {
         userId,

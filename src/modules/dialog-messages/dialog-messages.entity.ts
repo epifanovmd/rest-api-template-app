@@ -10,35 +10,55 @@ import {
 } from "typeorm";
 
 import { Dialog } from "../dialog/dialog.entity";
-import { File } from "../file/file.entity";
 import { MessageFiles } from "../message-files/message-files.entity";
 import { User } from "../user/user.entity";
-import { IDialogMessagesDto } from "./dialog-messages.dto";
 
 @Entity("dialog_messages")
 export class DialogMessages {
   @PrimaryGeneratedColumn("uuid")
   id: string;
 
-  @Column({ name: "user_id", type: "uuid" })
+  @Column({
+    name: "user_id",
+    type: "uuid",
+  })
   userId: string;
 
-  @Column({ name: "dialog_id", type: "uuid" })
+  @Column({
+    name: "dialog_id",
+    type: "uuid",
+  })
   dialogId: string;
 
-  @Column({ type: "text", nullable: true })
+  @Column({
+    type: "text",
+    nullable: true,
+  })
   text: string;
 
-  @Column({ type: "boolean", default: false })
+  @Column({
+    type: "boolean",
+    default: false,
+  })
   system: boolean;
 
-  @Column({ type: "boolean", default: false })
+  @Column({
+    type: "boolean",
+    default: false,
+  })
   sent: boolean;
 
-  @Column({ type: "boolean", default: false })
+  @Column({
+    type: "boolean",
+    default: false,
+  })
   received: boolean;
 
-  @Column({ name: "reply_id", type: "uuid", nullable: true })
+  @Column({
+    name: "reply_id",
+    type: "uuid",
+    nullable: true,
+  })
   replyId: string;
 
   @CreateDateColumn({ name: "created_at" })
@@ -87,21 +107,4 @@ export class DialogMessages {
   //     files.filter(f => f.fileType === "audio").map(f => f.file),
   //   );
   // }
-
-  toDTO(): IDialogMessagesDto {
-    return {
-      id: this.id,
-      userId: this.userId,
-      dialogId: this.dialogId,
-      text: this.text,
-      system: this.system,
-      sent: this.sent,
-      received: this.received,
-      replyId: this.replyId,
-      createdAt: this.createdAt,
-      updatedAt: this.updatedAt,
-      user: this.user?.toDTO(),
-      reply: this.reply?.toDTO(),
-    };
-  }
 }

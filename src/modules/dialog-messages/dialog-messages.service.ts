@@ -2,12 +2,13 @@ import { NotFoundException } from "@force-dev/utils";
 import { inject } from "inversify";
 
 import { Injectable } from "../../core";
-import { DialogService } from "../dialog/dialog.service";
+import { DialogService } from "../dialog";
 import { FcmTokenService } from "../fcm-token";
-import { FileRepository } from "../file/file.repository";
-import { MessageFilesRepository } from "../message-files/message-files.repository";
+import { FileRepository } from "../file";
+import { MessageFilesRepository } from "../message-files";
 import { SocketService } from "../socket";
 import { DialogMessagesRepository } from "./dialog-messages.repository";
+import { DialogLastMessagesDto, DialogMessagesDto } from "./dto";
 
 @Injectable()
 export class DialogMessagesService {
@@ -37,7 +38,7 @@ export class DialogMessagesService {
         },
       );
 
-    return messages.map(message => message.toDTO());
+    return messages.map(DialogMessagesDto.fromEntity);
   }
 
   async getLastMessage(dialogId: string) {
@@ -45,7 +46,7 @@ export class DialogMessagesService {
       dialogId,
     );
 
-    return message ? [message.toDTO()] : [];
+    return message ? [DialogLastMessagesDto.fromEntity(message)] : [];
   }
 
   async getMessageById(id: string, userId?: string) {
@@ -66,7 +67,7 @@ export class DialogMessagesService {
       throw new NotFoundException("Сообщение не найдено");
     }
 
-    return message.toDTO();
+    return DialogMessagesDto.fromEntity(message);
   }
 
   async appendMessage(userId: string, body: any) {
@@ -79,6 +80,11 @@ export class DialogMessagesService {
     });
 
     const result = await this.getMessageById(message.id, userId);
+
+    await this._dialogService.updateDialogLastMessage(
+      body.dialogId,
+      message.id,
+    );
 
     const members = dialog.members.filter(member => member.userId !== userId);
 

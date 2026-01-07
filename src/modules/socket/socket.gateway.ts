@@ -1,7 +1,7 @@
 import { inject } from "inversify";
 
 import { Injectable } from "../../core";
-import { IUserDto } from "../user/dto";
+import { User } from "../user/user.entity";
 import { SocketService } from "./socket.service";
 import { TSocket } from "./socket.types";
 
@@ -25,7 +25,7 @@ export class SocketGateway {
     });
   }
 
-  private setupConnectionHandlers(socket: TSocket, user: IUserDto): void {
+  private setupConnectionHandlers(socket: TSocket, user: User): void {
     // Подписываемся на комнату пользователя
     socket.join(`user_${user.id}`);
 
@@ -39,7 +39,7 @@ export class SocketGateway {
     });
   }
 
-  private setupMessageHandlers(socket: TSocket, user: IUserDto): void {
+  private setupMessageHandlers(socket: TSocket, user: User): void {
     // socket.on(
     //   "messageReceived",
     //   async (messageIds: string[], dialogId: string) => {
@@ -62,7 +62,7 @@ export class SocketGateway {
     // );
   }
 
-  private setupPresenceHandlers(socket: TSocket, user: IUserDto): void {
+  private setupPresenceHandlers(socket: TSocket, user: User): void {
     // Уведомляем о онлайн статусе
     socket.on("online", (isOnline: boolean) => {
       this.socketService.broadcastToRoom(`user_${user.id}`, "online", {
@@ -82,7 +82,7 @@ export class SocketGateway {
     );
   }
 
-  private setupTypingHandlers(socket: TSocket, user: IUserDto): void {
+  private setupTypingHandlers(socket: TSocket, user: User): void {
     socket.on("typingStart", (dialogId: string) => {
       this.handleTypingEvent(user.id, dialogId, true);
     });

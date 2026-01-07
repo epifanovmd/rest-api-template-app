@@ -1,17 +1,55 @@
 import { IListResponseDto } from "../../../core";
-import { IProfileDto } from "../../profile/dto";
+import { BaseDto } from "../../../core/dto/BaseDto";
+import { ProfileDto, PublicProfileDto } from "../../profile/dto";
 import { IRoleDto } from "../../role/role.dto";
+import { User } from "../user.entity";
 
-export interface IUserDto {
+export class UserDto extends BaseDto {
   id: string;
   email?: string;
   emailVerified?: boolean;
   phone?: string;
   challenge?: string | null;
-  profile?: IProfileDto;
-  role?: IRoleDto;
+  profile?: ProfileDto;
+  role: IRoleDto;
   createdAt: Date;
   updatedAt: Date;
+
+  constructor(entity: User) {
+    super(entity);
+
+    this.id = entity.id;
+    this.email = entity.email;
+    this.emailVerified = entity.emailVerified;
+    this.phone = entity.phone;
+    this.profile = entity.profile && ProfileDto.fromEntity(entity.profile);
+    this.challenge = entity.challenge;
+    this.role = entity.role?.toDTO();
+    this.createdAt = entity.createdAt;
+    this.updatedAt = entity.updatedAt;
+  }
+
+  static fromEntity(entity: User) {
+    return new UserDto(entity);
+  }
 }
 
-export interface IUserListDto extends IListResponseDto<IUserDto[]> {}
+export class PublicUserDto extends BaseDto {
+  userId: string;
+  email: string;
+  profile: PublicProfileDto;
+
+  constructor(entity: User) {
+    super(entity);
+
+    this.userId = entity.id;
+    this.email = entity.email;
+    this.profile = PublicProfileDto.fromEntity(entity.profile);
+  }
+
+  static fromEntity(entity: User) {
+    return new PublicUserDto(entity);
+  }
+}
+
+export interface IUserListDto extends IListResponseDto<PublicUserDto[]> {}

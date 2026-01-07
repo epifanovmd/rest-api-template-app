@@ -17,7 +17,12 @@ import {
 
 import { getContextUser, Injectable } from "../../core";
 import { KoaRequest } from "../../types/koa";
-import { IProfileDto, IProfileListDto, IProfileUpdateRequestDto } from "./dto";
+import {
+  IProfileListDto,
+  IProfileUpdateRequestDto,
+  ProfileDto,
+  PublicProfileDto,
+} from "./dto";
 import { ProfileService } from "./profile.service";
 
 @Injectable()
@@ -38,7 +43,7 @@ export class ProfileController extends Controller {
    */
   @Security("jwt")
   @Get("my")
-  getMyProfile(@Request() req: KoaRequest): Promise<IProfileDto> {
+  getMyProfile(@Request() req: KoaRequest): Promise<ProfileDto> {
     const user = getContextUser(req);
 
     return this._profileService.getProfileByUserId(user.id);
@@ -57,7 +62,7 @@ export class ProfileController extends Controller {
   updateMyProfile(
     @Request() req: KoaRequest,
     @Body() body: IProfileUpdateRequestDto,
-  ): Promise<IProfileDto> {
+  ): Promise<ProfileDto> {
     const user = getContextUser(req);
 
     return this._profileService.updateProfile(user.id, body);
@@ -100,7 +105,7 @@ export class ProfileController extends Controller {
       offset,
       limit,
       count: result.length,
-      data: result,
+      data: result.map(PublicProfileDto.fromEntity),
     };
   }
 
@@ -114,7 +119,7 @@ export class ProfileController extends Controller {
    */
   @Security("jwt")
   @Get("/{userId}")
-  getProfileById(userId: string): Promise<IProfileDto> {
+  getProfileById(userId: string): Promise<ProfileDto> {
     return this._profileService.getProfileByUserId(userId);
   }
 
@@ -132,7 +137,7 @@ export class ProfileController extends Controller {
   updateProfile(
     userId: string,
     @Body() body: IProfileUpdateRequestDto,
-  ): Promise<IProfileDto> {
+  ): Promise<ProfileDto> {
     return this._profileService.updateProfile(userId, body);
   }
 
@@ -149,7 +154,7 @@ export class ProfileController extends Controller {
   addAvatar(
     @Request() req: KoaRequest,
     @UploadedFile() file: File,
-  ): Promise<IProfileDto> {
+  ): Promise<ProfileDto> {
     const user = getContextUser(req);
 
     return this._profileService.addAvatar(user.id, file);
@@ -163,7 +168,7 @@ export class ProfileController extends Controller {
    */
   @Security("jwt")
   @Delete("/avatar")
-  removeAvatar(@Request() req: KoaRequest): Promise<IProfileDto> {
+  removeAvatar(@Request() req: KoaRequest): Promise<ProfileDto> {
     const user = getContextUser(req);
 
     return this._profileService.removeAvatar(user.id);

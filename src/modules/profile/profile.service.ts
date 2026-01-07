@@ -5,7 +5,6 @@ import { File } from "tsoa";
 import { Injectable } from "../../core";
 import { FileService } from "../file";
 import { IProfileUpdateRequestDto } from "./dto";
-import { Profile } from "./profile.entity";
 import { ProfileRepository } from "./profile.repository";
 
 @Injectable()
@@ -32,7 +31,7 @@ export class ProfileService {
 
     const profiles = await queryBuilder.getMany();
 
-    return profiles.map(profile => profile.toDTO());
+    return profiles.map(profile => profile);
   }
 
   async getProfileByAttr(where: any) {
@@ -71,12 +70,6 @@ export class ProfileService {
     return profile;
   }
 
-  async createProfile(body: Partial<Profile>) {
-    const profile = await this._profileRepository.createAndSave(body);
-
-    return profile.toDTO();
-  }
-
   async updateProfile(userId: string, body: IProfileUpdateRequestDto) {
     await this._profileRepository.update({ userId }, body);
     const profile = await this._profileRepository.findByUserId(userId);
@@ -85,7 +78,7 @@ export class ProfileService {
       throw new NotFoundException("Пользователь не найден");
     }
 
-    return profile.toDTO();
+    return profile;
   }
 
   async addAvatar(userId: string, file: File) {

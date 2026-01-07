@@ -46,7 +46,7 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "IProfileDto": {
+    "ProfileDto": {
         "dataType": "refObject",
         "properties": {
             "id": {"dataType":"string","required":true},
@@ -63,6 +63,11 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "EProfileStatus": {
+        "dataType": "refEnum",
+        "enums": ["online","offline"],
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "IProfileUpdateRequestDto": {
         "dataType": "refObject",
         "properties": {
@@ -71,7 +76,20 @@ const models: TsoaRoute.Models = {
             "bio": {"dataType":"string"},
             "birthDate": {"dataType":"datetime"},
             "gender": {"dataType":"string"},
-            "status": {"dataType":"string"},
+            "status": {"ref":"EProfileStatus"},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "PublicProfileDto": {
+        "dataType": "refObject",
+        "properties": {
+            "id": {"dataType":"string","required":true},
+            "firstName": {"dataType":"string"},
+            "lastName": {"dataType":"string"},
+            "avatar": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}]},
+            "status": {"ref":"EProfileStatus","required":true},
+            "lastOnline": {"dataType":"datetime"},
         },
         "additionalProperties": false,
     },
@@ -82,7 +100,7 @@ const models: TsoaRoute.Models = {
             "count": {"dataType":"double"},
             "offset": {"dataType":"double"},
             "limit": {"dataType":"double"},
-            "data": {"dataType":"array","array":{"dataType":"refObject","ref":"IProfileDto"},"required":true},
+            "data": {"dataType":"array","array":{"dataType":"refObject","ref":"PublicProfileDto"},"required":true},
         },
         "additionalProperties": false,
     },
@@ -120,7 +138,7 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "IUserDto": {
+    "UserDto": {
         "dataType": "refObject",
         "properties": {
             "id": {"dataType":"string","required":true},
@@ -128,9 +146,10 @@ const models: TsoaRoute.Models = {
             "emailVerified": {"dataType":"boolean"},
             "phone": {"dataType":"string"},
             "challenge": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}]},
+            "profile": {"ref":"ProfileDto"},
+            "role": {"ref":"IRoleDto","required":true},
             "createdAt": {"dataType":"datetime","required":true},
             "updatedAt": {"dataType":"datetime","required":true},
-            "role": {"ref":"IRoleDto","required":true},
         },
         "additionalProperties": false,
     },
@@ -146,13 +165,23 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "PublicUserDto": {
+        "dataType": "refObject",
+        "properties": {
+            "userId": {"dataType":"string","required":true},
+            "email": {"dataType":"string","required":true},
+            "profile": {"ref":"PublicProfileDto","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "IUserListDto": {
         "dataType": "refObject",
         "properties": {
             "count": {"dataType":"double"},
             "offset": {"dataType":"double"},
             "limit": {"dataType":"double"},
-            "data": {"dataType":"array","array":{"dataType":"refObject","ref":"IUserDto"},"required":true},
+            "data": {"dataType":"array","array":{"dataType":"refObject","ref":"PublicUserDto"},"required":true},
         },
         "additionalProperties": false,
     },
@@ -200,9 +229,10 @@ const models: TsoaRoute.Models = {
             "emailVerified": {"dataType":"boolean"},
             "phone": {"dataType":"string"},
             "challenge": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}]},
+            "profile": {"ref":"ProfileDto"},
+            "role": {"ref":"IRoleDto","required":true},
             "createdAt": {"dataType":"datetime","required":true},
             "updatedAt": {"dataType":"datetime","required":true},
-            "role": {"ref":"IRoleDto","required":true},
             "tokens": {"ref":"ITokensDto","required":true},
         },
         "additionalProperties": false,
@@ -327,6 +357,90 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "DialogLastMessagesDto": {
+        "dataType": "refObject",
+        "properties": {
+            "id": {"dataType":"string","required":true},
+            "text": {"dataType":"string","required":true},
+            "received": {"dataType":"boolean"},
+            "createdAt": {"dataType":"datetime","required":true},
+            "updatedAt": {"dataType":"datetime","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "DialogDto": {
+        "dataType": "refObject",
+        "properties": {
+            "id": {"dataType":"string","required":true},
+            "ownerId": {"dataType":"string","required":true},
+            "createdAt": {"dataType":"datetime","required":true},
+            "updatedAt": {"dataType":"datetime","required":true},
+            "participants": {"dataType":"array","array":{"dataType":"refObject","ref":"PublicUserDto"},"required":true},
+            "lastMessage": {"dataType":"union","subSchemas":[{"ref":"DialogLastMessagesDto"},{"dataType":"enum","enums":[null]}],"required":true},
+            "unreadMessagesCount": {"dataType":"double","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "IDialogListDto": {
+        "dataType": "refObject",
+        "properties": {
+            "count": {"dataType":"double"},
+            "offset": {"dataType":"double"},
+            "limit": {"dataType":"double"},
+            "data": {"dataType":"array","array":{"dataType":"refObject","ref":"DialogDto"},"required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "DialogDetailDto": {
+        "dataType": "refObject",
+        "properties": {
+            "id": {"dataType":"string","required":true},
+            "ownerId": {"dataType":"string","required":true},
+            "createdAt": {"dataType":"datetime","required":true},
+            "updatedAt": {"dataType":"datetime","required":true},
+            "owner": {"ref":"PublicUserDto","required":true},
+            "participants": {"dataType":"array","array":{"dataType":"refObject","ref":"PublicUserDto"},"required":true},
+            "lastMessage": {"dataType":"union","subSchemas":[{"ref":"DialogLastMessagesDto"},{"dataType":"enum","enums":[null]}],"required":true},
+            "unreadMessagesCount": {"dataType":"double","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "IDialogFindResponseDto": {
+        "dataType": "refObject",
+        "properties": {
+            "dialogId": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "IDialogFindRequestDto": {
+        "dataType": "refObject",
+        "properties": {
+            "recipientId": {"dataType":"array","array":{"dataType":"string"},"required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "IDialogFindOrCreateResponseDto": {
+        "dataType": "refObject",
+        "properties": {
+            "dialogId": {"dataType":"string","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "IDialogCreateRequestDto": {
+        "dataType": "refObject",
+        "properties": {
+            "recipientId": {"dataType":"array","array":{"dataType":"string"},"required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "DialogMembersDto": {
         "dataType": "refObject",
         "properties": {
@@ -335,12 +449,21 @@ const models: TsoaRoute.Models = {
             "dialogId": {"dataType":"string","required":true},
             "createdAt": {"dataType":"datetime","required":true},
             "updatedAt": {"dataType":"datetime","required":true},
-            "user": {"ref":"IUserDto","required":true},
+            "user": {"ref":"PublicUserDto","required":true},
         },
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "IDialogMessagesDto": {
+    "IDialogMembersAddRequestDto": {
+        "dataType": "refObject",
+        "properties": {
+            "dialogId": {"dataType":"string","required":true},
+            "members": {"dataType":"array","array":{"dataType":"string"},"required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "DialogMessagesDto": {
         "dataType": "refObject",
         "properties": {
             "id": {"dataType":"string","required":true},
@@ -353,62 +476,11 @@ const models: TsoaRoute.Models = {
             "replyId": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}]},
             "createdAt": {"dataType":"datetime","required":true},
             "updatedAt": {"dataType":"datetime","required":true},
-            "user": {"ref":"IUserDto","required":true},
+            "user": {"ref":"PublicUserDto","required":true},
             "images": {"dataType":"array","array":{"dataType":"refObject","ref":"IFileDto"}},
             "videos": {"dataType":"array","array":{"dataType":"refObject","ref":"IFileDto"}},
             "audios": {"dataType":"array","array":{"dataType":"refObject","ref":"IFileDto"}},
-            "reply": {"ref":"IDialogMessagesDto"},
-        },
-        "additionalProperties": false,
-    },
-    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "IDialogDto": {
-        "dataType": "refObject",
-        "properties": {
-            "id": {"dataType":"string","required":true},
-            "ownerId": {"dataType":"string","required":true},
-            "createdAt": {"dataType":"datetime","required":true},
-            "updatedAt": {"dataType":"datetime","required":true},
-            "owner": {"ref":"IUserDto","required":true},
-            "members": {"dataType":"array","array":{"dataType":"refObject","ref":"DialogMembersDto"},"required":true},
-            "lastMessage": {"dataType":"union","subSchemas":[{"dataType":"array","array":{"dataType":"refObject","ref":"IDialogMessagesDto"}},{"dataType":"enum","enums":[null]}],"required":true},
-            "unreadMessagesCount": {"dataType":"double","required":true},
-        },
-        "additionalProperties": false,
-    },
-    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "IDialogListDto": {
-        "dataType": "refObject",
-        "properties": {
-            "count": {"dataType":"double"},
-            "offset": {"dataType":"double"},
-            "limit": {"dataType":"double"},
-            "data": {"dataType":"array","array":{"dataType":"refObject","ref":"IDialogDto"},"required":true},
-        },
-        "additionalProperties": false,
-    },
-    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "DialogFindRequestDto": {
-        "dataType": "refObject",
-        "properties": {
-            "recipientId": {"dataType":"array","array":{"dataType":"string"},"required":true},
-        },
-        "additionalProperties": false,
-    },
-    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "DialogCreateRequestDto": {
-        "dataType": "refObject",
-        "properties": {
-            "recipientId": {"dataType":"array","array":{"dataType":"string"},"required":true},
-        },
-        "additionalProperties": false,
-    },
-    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "DialogMembersAddRequestDto": {
-        "dataType": "refObject",
-        "properties": {
-            "dialogId": {"dataType":"string","required":true},
-            "members": {"dataType":"array","array":{"dataType":"string"},"required":true},
+            "reply": {"ref":"DialogMessagesDto"},
         },
         "additionalProperties": false,
     },
@@ -419,7 +491,7 @@ const models: TsoaRoute.Models = {
             "count": {"dataType":"double"},
             "offset": {"dataType":"double"},
             "limit": {"dataType":"double"},
-            "data": {"dataType":"array","array":{"dataType":"refObject","ref":"IDialogMessagesDto"},"required":true},
+            "data": {"dataType":"array","array":{"dataType":"refObject","ref":"DialogMessagesDto"},"required":true},
         },
         "additionalProperties": false,
     },
@@ -1921,6 +1993,37 @@ export function RegisterRoutes(router: KoaRouter) {
             return promiseHandler(controller, promise, context, undefined, undefined);
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        router.get('/api/dialog/private-with/:userId',
+            authenticateMiddleware([{"jwt":[]}]),
+            ...(fetchMiddlewares<Middleware>(DialogController)),
+            ...(fetchMiddlewares<Middleware>(DialogController.prototype.getPrivateDialogWithUser)),
+
+            async function DialogController_getPrivateDialogWithUser(context: any, next: any) {
+            const args = {
+                    req: {"in":"request","name":"req","required":true,"dataType":"object"},
+                    userId: {"in":"path","name":"userId","required":true,"dataType":"string"},
+            };
+
+            let validatedArgs: any[] = [];
+            try {
+              validatedArgs = getValidatedArgs(args, context, next);
+            } catch (err) {
+              const error = err as any;
+              context.status = error.status;
+              context.throw(error.status, JSON.stringify({ fields: error.fields }));
+            }
+
+            const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(context.request) : iocContainer;
+
+            const controller: any = await container.get<DialogController>(DialogController);
+            if (typeof controller['setStatus'] === 'function') {
+                controller.setStatus(undefined);
+            }
+
+            const promise = controller.getPrivateDialogWithUser.apply(controller, validatedArgs as any);
+            return promiseHandler(controller, promise, context, undefined, undefined);
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         router.post('/api/dialog/find',
             authenticateMiddleware([{"jwt":[]}]),
             ...(fetchMiddlewares<Middleware>(DialogController)),
@@ -1929,7 +2032,7 @@ export function RegisterRoutes(router: KoaRouter) {
             async function DialogController_findDialog(context: any, next: any) {
             const args = {
                     req: {"in":"request","name":"req","required":true,"dataType":"object"},
-                    body: {"in":"body","name":"body","required":true,"ref":"DialogFindRequestDto"},
+                    body: {"in":"body","name":"body","required":true,"ref":"IDialogFindRequestDto"},
             };
 
             let validatedArgs: any[] = [];
@@ -1952,6 +2055,37 @@ export function RegisterRoutes(router: KoaRouter) {
             return promiseHandler(controller, promise, context, undefined, undefined);
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        router.post('/api/dialog/findOrCreate',
+            authenticateMiddleware([{"jwt":[]}]),
+            ...(fetchMiddlewares<Middleware>(DialogController)),
+            ...(fetchMiddlewares<Middleware>(DialogController.prototype.findOrCreate)),
+
+            async function DialogController_findOrCreate(context: any, next: any) {
+            const args = {
+                    req: {"in":"request","name":"req","required":true,"dataType":"object"},
+                    body: {"in":"body","name":"body","required":true,"ref":"IDialogFindRequestDto"},
+            };
+
+            let validatedArgs: any[] = [];
+            try {
+              validatedArgs = getValidatedArgs(args, context, next);
+            } catch (err) {
+              const error = err as any;
+              context.status = error.status;
+              context.throw(error.status, JSON.stringify({ fields: error.fields }));
+            }
+
+            const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(context.request) : iocContainer;
+
+            const controller: any = await container.get<DialogController>(DialogController);
+            if (typeof controller['setStatus'] === 'function') {
+                controller.setStatus(undefined);
+            }
+
+            const promise = controller.findOrCreate.apply(controller, validatedArgs as any);
+            return promiseHandler(controller, promise, context, undefined, undefined);
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         router.post('/api/dialog',
             authenticateMiddleware([{"jwt":[]}]),
             ...(fetchMiddlewares<Middleware>(DialogController)),
@@ -1960,7 +2094,7 @@ export function RegisterRoutes(router: KoaRouter) {
             async function DialogController_createDialog(context: any, next: any) {
             const args = {
                     req: {"in":"request","name":"req","required":true,"dataType":"object"},
-                    body: {"in":"body","name":"body","required":true,"ref":"DialogCreateRequestDto"},
+                    body: {"in":"body","name":"body","required":true,"ref":"IDialogCreateRequestDto"},
             };
 
             let validatedArgs: any[] = [];
@@ -2021,7 +2155,7 @@ export function RegisterRoutes(router: KoaRouter) {
             async function DialogController_addMembers(context: any, next: any) {
             const args = {
                     req: {"in":"request","name":"req","required":true,"dataType":"object"},
-                    body: {"in":"body","name":"body","required":true,"ref":"DialogMembersAddRequestDto"},
+                    body: {"in":"body","name":"body","required":true,"ref":"IDialogMembersAddRequestDto"},
             };
 
             let validatedArgs: any[] = [];

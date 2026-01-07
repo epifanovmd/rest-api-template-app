@@ -9,6 +9,7 @@ import { OtpService } from "../otp";
 import { PermissionRepository } from "../permission";
 import { EPermissions } from "../permission/permission.types";
 import { ProfileRepository } from "../profile";
+import { EProfileStatus } from "../profile/profile.types";
 import { RoleRepository } from "../role";
 import { ERole } from "../role/role.types";
 import { IUserPrivilegesRequestDto, IUserUpdateRequestDto } from "./dto";
@@ -77,7 +78,7 @@ export class UserService {
       // Создаем пустой профиль
       await this._profileRepository.createAndSave({
         userId: user.id,
-        status: "offline",
+        status: EProfileStatus.Offline,
       });
 
       await queryRunner.commitTransaction();

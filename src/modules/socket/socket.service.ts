@@ -7,7 +7,7 @@ import { Server } from "socket.io";
 // import { RateLimiterMemory } from "rate-limiter-flexible";
 import { config } from "../../../config";
 import { verifyAuthToken } from "../../core";
-import { IUserDto } from "../user/dto";
+import { User } from "../user/user.entity";
 import { ISocketEmitEvents, TServer, TSocket } from "./socket.types";
 
 const NODE_ENV = process.env.NODE_ENV;
@@ -31,7 +31,7 @@ export class SocketService {
 
   private _server: ReturnType<typeof createServer>;
   private _io: TServer;
-  public _clients = new Map<string, { socket: TSocket; user: IUserDto }>();
+  public _clients = new Map<string, { socket: TSocket; user: User }>();
 
   constructor(app: Koa) {
     this._server = createServer(app.callback());
@@ -124,7 +124,7 @@ export class SocketService {
     return token?.startsWith("Bearer ") ? token.slice(7) : null;
   }
 
-  private handleNewConnection(socket: TSocket, user: IUserDto): void {
+  private handleNewConnection(socket: TSocket, user: User): void {
     this._clients.set(user.id, { socket, user });
 
     // Отправляем клиенту его ID

@@ -1,14 +1,14 @@
 import { NotFoundException } from "@force-dev/utils";
 import { inject } from "inversify";
+import { Not } from "typeorm";
 
 import { Injectable } from "../../core";
 import { DialogMembersService } from "../dialog-members";
-import { DialogMembersRepository } from "../dialog-members/dialog-members.repository";
-import { DialogMessagesRepository } from "../dialog-messages/dialog-messages.repository";
+import { DialogMessagesRepository } from "../dialog-messages";
 import { SocketService } from "../socket";
-import { UserRepository } from "../user/user.repository";
-import { DialogCreateRequestDto } from "./dialog.dto";
+import { UserRepository } from "../user";
 import { DialogRepository } from "./dialog.repository";
+import { IDialogFindOrCreateResponseDto, IDialogFindResponseDto } from "./dto";
 
 @Injectable()
 export class DialogService {
@@ -17,8 +17,6 @@ export class DialogService {
     private _dialogMembersService: DialogMembersService,
     @inject(SocketService) private _socketService: SocketService,
     @inject(DialogRepository) private _dialogRepository: DialogRepository,
-    @inject(DialogMembersRepository)
-    private _dialogMembersRepository: DialogMembersRepository,
     @inject(DialogMessagesRepository)
     private _dialogMessagesRepository: DialogMessagesRepository,
     @inject(UserRepository) private _userRepository: UserRepository,
@@ -32,141 +30,135 @@ export class DialogService {
   }
 
   async getDialogs(userId: string, offset?: number, limit?: number) {
-    // Получаем ID диалогов пользователя
-    const userDialogs = await this._dialogMembersRepository.findByUserId(
-      userId,
-    );
-    const dialogIds = userDialogs.map(member => member.dialogId);
+    // Все в одном запросе
+    const result = await this._dialogRepository
+      .createQueryBuilder("dialog")
+      .innerJoin("dialog.members", "member", "member.userId = :userId", {
+        userId,
+      })
+      .leftJoinAndSelect("dialog.members", "members")
+      .leftJoinAndSelect("members.user", "memberUser")
+      .leftJoinAndSelect("memberUser.profile", "memberUserProfile")
+      .leftJoinAndSelect("dialog.lastMessage", "lastMessage")
+      // Непрочитанные сообщения
+      .addSelect(
+        qb =>
+          qb
+            .select("COUNT(*)")
+            .from("DialogMessages", "msg")
+            .where("msg.dialogId = dialog.id")
+            .andWhere("msg.received = false")
+            .andWhere("msg.userId != :userId"),
+        "unreadCount",
+      )
+      .orderBy("dialog.updatedAt", "DESC")
+      .offset(offset || 0)
+      .limit(limit || 20)
+      .getRawAndEntities();
 
-    if (dialogIds.length === 0) {
+    const dialogs = result.entities;
+
+    if (dialogs.length === 0) {
       return [];
     }
 
-    // Используем QueryBuilder с DISTINCT вместо GROUP BY
-    const queryBuilder = this._dialogRepository
-      .createQueryBuilder("dialog")
-      .leftJoinAndSelect("dialog.owner", "owner")
-      // .leftJoinAndSelect("owner.role", "ownerRole")
-      // .leftJoinAndSelect("ownerRole.permissions", "ownerPermissions")
-      .leftJoinAndSelect("dialog.members", "members")
-      .leftJoinAndSelect("members.user", "memberUser")
-      // .leftJoinAndSelect("memberUser.role", "memberUserRole")
-      // .leftJoinAndSelect("memberUserRole.permissions", "memberUserPermissions")
-      .leftJoinAndSelect("dialog.lastMessage", "lastMessage")
-      .leftJoinAndSelect("lastMessage.user", "lastMessageUser")
-      // .leftJoinAndSelect("lastMessageUser.role", "lastMessageUserRole")
-      .where("dialog.id IN (:...dialogIds)", { dialogIds })
-      .distinct(true); // Используем DISTINCT вместо GROUP BY
-
-    // Добавляем пагинацию
-    if (limit !== undefined) {
-      queryBuilder.limit(limit);
-    }
-
-    if (offset !== undefined) {
-      queryBuilder.offset(offset);
-    }
-
-    const dialogs = await queryBuilder.getMany();
-
-    // Подсчет непрочитанных сообщений для каждого диалога
-    const unreadCountsPromises = dialogs.map(dialog =>
-      this._dialogMessagesRepository
-        .createQueryBuilder("message")
-        .where("message.dialog_id = :dialogId", { dialogId: dialog.id })
-        .andWhere("message.received = false")
-        .andWhere("message.user_id != :userId", { userId })
-        .getCount(),
-    );
-
-    const unreadCounts = await Promise.all(unreadCountsPromises);
-
-    // Преобразуем результаты в DTO
     return dialogs.map((dialog, index) => {
-      const dto = dialog.toDTO();
-
-      dto.unreadMessagesCount = unreadCounts[index];
-
-      return dto;
+      return {
+        ...dialog,
+        unreadMessagesCount: parseInt(result.raw[index]?.unreadCount || "0"),
+      };
     });
   }
 
   async getDialog(id: string, userId: string) {
-    // Проверяем участие пользователя в диалоге
-    const member = await this._dialogMembersRepository.findByUserIdAndDialogId(
-      userId,
-      id,
-    );
-
-    if (!member) {
-      throw new NotFoundException("Диалог не найден");
-    }
-
-    // Используем Raw SQL или упрощенный подход
-
-    // Вариант 1: Упрощенный запрос с DISTINCT
-    const queryBuilder = this._dialogRepository
-      .createQueryBuilder("dialog")
-      .leftJoinAndSelect("dialog.owner", "owner")
-      // .leftJoinAndSelect("owner.role", "ownerRole")
-      // .leftJoinAndSelect("ownerRole.permissions", "ownerPermissions")
-      .leftJoinAndSelect("dialog.members", "members")
-      .leftJoinAndSelect("members.user", "memberUser")
-      // .leftJoinAndSelect("memberUser.role", "memberUserRole")
-      // .leftJoinAndSelect("memberUserRole.permissions", "memberUserPermissions")
-      // Загружаем lastMessage отдельным JOIN
-      .leftJoinAndSelect("dialog.lastMessage", "lastMessage")
-      .leftJoinAndSelect("lastMessage.user", "lastMessageUser")
-      // .leftJoinAndSelect("lastMessageUser.role", "lastMessageUserRole")
-      .where("dialog.id = :id", { id })
-      // Используем DISTINCT вместо GROUP BY
-      .distinct(true);
-
-    const dialog = await queryBuilder.getOne();
+    const [dialog, unreadMessagesCount] = await Promise.all([
+      this._dialogRepository.findOne({
+        where: {
+          id,
+          // members: {
+          //   userId: Not(userId),
+          // },
+        },
+        relations: {
+          owner: {
+            profile: true,
+          },
+          members: {
+            user: true,
+          },
+          lastMessage: true,
+        },
+        select: {
+          lastMessage: {
+            id: true,
+            text: true,
+            received: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        },
+      }),
+      this._dialogMessagesRepository.count({
+        where: {
+          dialogId: id,
+          received: false,
+          userId: Not(userId),
+        },
+      }),
+    ]);
 
     if (!dialog) {
       throw new NotFoundException("Диалог не найден");
     }
 
-    // Подсчет непрочитанных сообщений отдельным запросом
-    const unreadCount = await this._dialogMessagesRepository
-      .createQueryBuilder("message")
-      .where("message.dialog_id = :dialogId", { dialogId: id })
-      .andWhere("message.received = false")
-      .andWhere("message.user_id != :userId", { userId })
-      .getCount();
-
-    const dto = dialog.toDTO();
-
-    dto.unreadMessagesCount = unreadCount;
-
-    return dto;
+    return {
+      ...dialog,
+      unreadMessagesCount,
+    };
   }
 
-  async findDialog(userId: string, recipientIds: string[] = []) {
-    const userIds = Array.from(new Set([userId, ...recipientIds]));
+  async getPrivateDialogWithUser(
+    currentUserId: string,
+    targetUserId: string,
+  ): Promise<IDialogFindResponseDto> {
+    const dialogId = await this._dialogRepository.findPrivateDialogBetweenUsers(
+      currentUserId,
+      targetUserId,
+    );
 
-    if (userIds.length < 2) {
-      return [];
+    return { dialogId };
+  }
+
+  async findDialog(
+    userId: string,
+    recipientIds: string[] = [],
+  ): Promise<IDialogFindResponseDto> {
+    const result = await this._dialogRepository.findDialogWithExactMembers([
+      userId,
+      ...recipientIds,
+    ]);
+
+    return {
+      dialogId: result,
+    };
+  }
+
+  async findOrCreate(
+    userId: string,
+    recipientId: string[] = [],
+  ): Promise<IDialogFindOrCreateResponseDto> {
+    const result = await this.findDialog(userId, recipientId);
+
+    if (!result.dialogId) {
+      return this.createDialog(userId, recipientId).then(res => ({
+        dialogId: res.id,
+      }));
     }
 
-    const queryBuilder = this._dialogRepository
-      .createQueryBuilder()
-      .select("dialog.id", "id")
-      .from("Dialog", "dialog")
-      .innerJoin("dialog.members", "members")
-      .where("members.userId IN (:...userIds)", { userIds })
-      .groupBy("dialog.id")
-      .having("COUNT(DISTINCT members.userId) = :userCount", {
-        userCount: userIds.length,
-      });
-
-    const result = await queryBuilder.getRawMany();
-
-    return result.map(row => row.id);
+    return { dialogId: result.dialogId };
   }
 
-  async createDialog(userId: string, body: DialogCreateRequestDto) {
+  async createDialog(userId: string, recipientId: string[]) {
     const queryRunner = this._dialogRepository.createQueryRunner();
 
     await queryRunner.connect();
@@ -175,7 +167,7 @@ export class DialogService {
     try {
       // Проверяем существование пользователей
       const users = await Promise.all(
-        body.recipientId.map(recipientId =>
+        recipientId.map(recipientId =>
           this._userRepository.findOne({
             where: { id: recipientId },
           }),
@@ -196,7 +188,15 @@ export class DialogService {
       });
 
       // Добавляем участников
-      const members = Array.from(new Set([userId, ...body.recipientId]));
+      const members = Array.from(new Set([userId, ...recipientId]));
+
+      members.forEach(member => {
+        const client = this._socketService.getClient(member);
+
+        if (client) {
+          client.emit("newDialog", member);
+        }
+      });
 
       await this._dialogMembersService.addMembers({
         dialogId: dialog.id,
@@ -255,14 +255,15 @@ export class DialogService {
     }
   }
 
-  async updateDialogLastMessage(dialogId: string, messageId: string) {
-    await this._dialogRepository
-      .createQueryBuilder()
-      .update("Dialog")
-      .set({ lastMessageId: messageId })
-      .where("id = :dialogId", { dialogId })
-      .execute();
+  async updateDialogLastMessage(
+    dialogId: string,
+    messageId: string,
+  ): Promise<boolean> {
+    const result = await this._dialogRepository.update(
+      { id: dialogId },
+      { lastMessageId: messageId },
+    );
 
-    return true;
+    return !!result.affected;
   }
 }

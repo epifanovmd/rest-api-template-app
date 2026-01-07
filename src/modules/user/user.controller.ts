@@ -22,10 +22,11 @@ import {
 import { KoaRequest } from "../../types/koa";
 import {
   IUserChangePasswordDto,
-  IUserDto,
   IUserListDto,
   IUserPrivilegesRequestDto,
   IUserUpdateRequestDto,
+  PublicUserDto,
+  UserDto,
 } from "./dto";
 import { UserService } from "./user.service";
 import { UserUpdateSchema } from "./validation";
@@ -48,10 +49,10 @@ export class UserController extends Controller {
   // @UseGuards(AuthGuard)
   @Security("jwt")
   @Get("my")
-  getMyUser(@Request() req: KoaRequest): Promise<IUserDto> {
+  getMyUser(@Request() req: KoaRequest): Promise<UserDto> {
     const user = getContextUser(req);
 
-    return this._userService.getUser(user.id).then(res => res.toFullDTO());
+    return this._userService.getUser(user.id).then(UserDto.fromEntity);
   }
 
   /**
@@ -69,12 +70,10 @@ export class UserController extends Controller {
   updateMyUser(
     @Request() req: KoaRequest,
     @Body() body: IUserUpdateRequestDto,
-  ): Promise<IUserDto> {
+  ): Promise<UserDto> {
     const user = getContextUser(req);
 
-    return this._userService
-      .updateUser(user.id, body)
-      .then(res => res.toFullDTO());
+    return this._userService.updateUser(user.id, body).then(UserDto.fromEntity);
   }
 
   /**
@@ -112,7 +111,7 @@ export class UserController extends Controller {
       offset,
       limit,
       count: result.length,
-      data: result.map(user => user.toDTO()),
+      data: result.map(PublicUserDto.fromEntity),
     }));
   }
 
@@ -126,8 +125,8 @@ export class UserController extends Controller {
    */
   @Security("jwt", ["role:admin"])
   @Get("/{id}")
-  getUserById(id: string): Promise<IUserDto> {
-    return this._userService.getUser(id).then(res => res.toFullDTO());
+  getUserById(id: string): Promise<UserDto> {
+    return this._userService.getUser(id).then(UserDto.fromEntity);
   }
 
   /**
@@ -144,8 +143,10 @@ export class UserController extends Controller {
   setPrivileges(
     id: string,
     @Body() body: IUserPrivilegesRequestDto,
-  ): Promise<IUserDto> {
-    return this._userService.setPrivileges(id, body.roleName, body.permissions);
+  ): Promise<UserDto> {
+    return this._userService
+      .setPrivileges(id, body.roleName, body.permissions)
+      .then(UserDto.fromEntity);
   }
 
   /**
@@ -197,8 +198,8 @@ export class UserController extends Controller {
   updateUser(
     id: string,
     @Body() body: IUserUpdateRequestDto,
-  ): Promise<IUserDto> {
-    return this._userService.updateUser(id, body).then(res => res.toFullDTO());
+  ): Promise<UserDto> {
+    return this._userService.updateUser(id, body).then(UserDto.fromEntity);
   }
 
   /**

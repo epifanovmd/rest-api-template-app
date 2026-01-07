@@ -1,8 +1,8 @@
 import { Server, Socket as SocketIO } from "socket.io";
 import { DefaultEventsMap } from "socket.io/dist/typed-events";
 
-import { IDialogMessagesDto } from "../dialog-messages/dialog-messages.dto";
-import { IUserDto } from "../user/dto";
+import { DialogMessagesDto } from "../dialog-messages/dto";
+import { User } from "../user/user.entity";
 
 export interface ISocketEvents {
   messageReceived: (...args: [messageId: string[], dialogId: string]) => void;
@@ -18,7 +18,7 @@ export interface ISocketEvents {
 export interface ISocketEmitEvents {
   authenticated: (...args: [{ userId: string }]) => void;
   auth_error: (...args: [{ message: string }]) => void;
-  message: (...args: [message: IDialogMessagesDto]) => void;
+  message: (...args: [message: DialogMessagesDto]) => void;
   messageReceived: (
     ...args: [{ messageIds: string[]; dialogId: string }]
   ) => void;
@@ -34,12 +34,12 @@ export type TSocket = SocketIO<
   ISocketEvents,
   ISocketEmitEvents,
   DefaultEventsMap,
-  IUserDto
+  User
 >;
 
 export type TServer = Server<
   ISocketEvents,
   ISocketEmitEvents,
   DefaultEventsMap,
-  IUserDto
+  User
 >;

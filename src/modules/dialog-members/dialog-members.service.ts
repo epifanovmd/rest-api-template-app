@@ -1,9 +1,10 @@
 import { NotFoundException } from "@force-dev/utils";
-import { inject, injectable } from "inversify";
+import { inject } from "inversify";
 
 import { Injectable } from "../../core";
 import { SocketService } from "../socket";
 import { DialogMembersRepository } from "./dialog-members.repository";
+import { DialogMembersDto } from "./dto";
 
 @Injectable()
 export class DialogMembersService {
@@ -18,7 +19,7 @@ export class DialogMembersService {
       dialogId,
     );
 
-    return members.map(member => member.toDTO());
+    return members.map(DialogMembersDto.fromEntity);
   }
 
   async addMembers({

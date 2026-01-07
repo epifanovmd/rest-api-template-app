@@ -42,15 +42,4 @@ export class DialogMembers {
   @ManyToOne(() => Dialog, dialog => dialog.members, { onDelete: "CASCADE" })
   @JoinColumn({ name: "dialog_id" })
   dialog: Dialog;
-
-  toDTO() {
-    return {
-      id: this.id,
-      userId: this.userId,
-      dialogId: this.dialogId,
-      createdAt: this.createdAt,
-      updatedAt: this.updatedAt,
-      user: this.user?.toDTO(),
-    };
-  }
 }

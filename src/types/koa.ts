@@ -1,6 +1,6 @@
 import Koa from "koa";
 
-import { IUserDto } from "../modules/user/dto";
+import { User } from "../modules/user/user.entity";
 
 export type JWTDecoded = {
   userId: string;
@@ -11,7 +11,7 @@ export type JWTDecoded = {
 interface RequestClient {
   ctx: {
     request: {
-      user: IUserDto | undefined;
+      user: User | undefined;
     };
   };
 }

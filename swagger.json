@@ -45,7 +45,7 @@
 				"type": "object",
 				"additionalProperties": false
 			},
-			"IProfileDto": {
+			"ProfileDto": {
 				"properties": {
 					"id": {
 						"type": "string"
@@ -98,6 +98,13 @@
 				"type": "object",
 				"additionalProperties": false
 			},
+			"EProfileStatus": {
+				"enum": [
+					"online",
+					"offline"
+				],
+				"type": "string"
+			},
 			"IProfileUpdateRequestDto": {
 				"properties": {
 					"firstName": {
@@ -117,9 +124,39 @@
 						"type": "string"
 					},
 					"status": {
-						"type": "string"
+						"$ref": "#/components/schemas/EProfileStatus"
 					}
 				},
+				"type": "object",
+				"additionalProperties": false
+			},
+			"PublicProfileDto": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"firstName": {
+						"type": "string"
+					},
+					"lastName": {
+						"type": "string"
+					},
+					"avatar": {
+						"type": "string",
+						"nullable": true
+					},
+					"status": {
+						"$ref": "#/components/schemas/EProfileStatus"
+					},
+					"lastOnline": {
+						"type": "string",
+						"format": "date-time"
+					}
+				},
+				"required": [
+					"id",
+					"status"
+				],
 				"type": "object",
 				"additionalProperties": false
 			},
@@ -139,7 +176,7 @@
 					},
 					"data": {
 						"items": {
-							"$ref": "#/components/schemas/IProfileDto"
+							"$ref": "#/components/schemas/PublicProfileDto"
 						},
 						"type": "array"
 					}
@@ -225,7 +262,7 @@
 				"type": "object",
 				"additionalProperties": false
 			},
-			"IUserDto": {
+			"UserDto": {
 				"properties": {
 					"id": {
 						"type": "string"
@@ -243,6 +280,12 @@
 						"type": "string",
 						"nullable": true
 					},
+					"profile": {
+						"$ref": "#/components/schemas/ProfileDto"
+					},
+					"role": {
+						"$ref": "#/components/schemas/IRoleDto"
+					},
 					"createdAt": {
 						"type": "string",
 						"format": "date-time"
@@ -250,16 +293,13 @@
 					"updatedAt": {
 						"type": "string",
 						"format": "date-time"
-					},
-					"role": {
-						"$ref": "#/components/schemas/IRoleDto"
 					}
 				},
 				"required": [
 					"id",
+					"role",
 					"createdAt",
-					"updatedAt",
-					"role"
+					"updatedAt"
 				],
 				"type": "object",
 				"additionalProperties": false
@@ -283,6 +323,26 @@
 				"type": "object",
 				"additionalProperties": false
 			},
+			"PublicUserDto": {
+				"properties": {
+					"userId": {
+						"type": "string"
+					},
+					"email": {
+						"type": "string"
+					},
+					"profile": {
+						"$ref": "#/components/schemas/PublicProfileDto"
+					}
+				},
+				"required": [
+					"userId",
+					"email",
+					"profile"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
 			"IUserListDto": {
 				"properties": {
 					"count": {
@@ -299,7 +359,7 @@
 					},
 					"data": {
 						"items": {
-							"$ref": "#/components/schemas/IUserDto"
+							"$ref": "#/components/schemas/PublicUserDto"
 						},
 						"type": "array"
 					}
@@ -385,6 +445,12 @@
 						"type": "string",
 						"nullable": true
 					},
+					"profile": {
+						"$ref": "#/components/schemas/ProfileDto"
+					},
+					"role": {
+						"$ref": "#/components/schemas/IRoleDto"
+					},
 					"createdAt": {
 						"type": "string",
 						"format": "date-time"
@@ -393,18 +459,15 @@
 						"type": "string",
 						"format": "date-time"
 					},
-					"role": {
-						"$ref": "#/components/schemas/IRoleDto"
-					},
 					"tokens": {
 						"$ref": "#/components/schemas/ITokensDto"
 					}
 				},
 				"required": [
 					"id",
+					"role",
 					"createdAt",
 					"updatedAt",
-					"role",
 					"tokens"
 				],
 				"type": "object",
@@ -717,6 +780,215 @@
 				"type": "object",
 				"additionalProperties": false
 			},
+			"DialogLastMessagesDto": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"text": {
+						"type": "string"
+					},
+					"received": {
+						"type": "boolean"
+					},
+					"createdAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"updatedAt": {
+						"type": "string",
+						"format": "date-time"
+					}
+				},
+				"required": [
+					"id",
+					"text",
+					"createdAt",
+					"updatedAt"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"DialogDto": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"ownerId": {
+						"type": "string"
+					},
+					"createdAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"updatedAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"participants": {
+						"items": {
+							"$ref": "#/components/schemas/PublicUserDto"
+						},
+						"type": "array"
+					},
+					"lastMessage": {
+						"allOf": [
+							{
+								"$ref": "#/components/schemas/DialogLastMessagesDto"
+							}
+						],
+						"nullable": true
+					},
+					"unreadMessagesCount": {
+						"type": "number",
+						"format": "double"
+					}
+				},
+				"required": [
+					"id",
+					"ownerId",
+					"createdAt",
+					"updatedAt",
+					"participants",
+					"lastMessage",
+					"unreadMessagesCount"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IDialogListDto": {
+				"properties": {
+					"count": {
+						"type": "number",
+						"format": "double"
+					},
+					"offset": {
+						"type": "number",
+						"format": "double"
+					},
+					"limit": {
+						"type": "number",
+						"format": "double"
+					},
+					"data": {
+						"items": {
+							"$ref": "#/components/schemas/DialogDto"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"data"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"DialogDetailDto": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"ownerId": {
+						"type": "string"
+					},
+					"createdAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"updatedAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"owner": {
+						"$ref": "#/components/schemas/PublicUserDto"
+					},
+					"participants": {
+						"items": {
+							"$ref": "#/components/schemas/PublicUserDto"
+						},
+						"type": "array"
+					},
+					"lastMessage": {
+						"allOf": [
+							{
+								"$ref": "#/components/schemas/DialogLastMessagesDto"
+							}
+						],
+						"nullable": true
+					},
+					"unreadMessagesCount": {
+						"type": "number",
+						"format": "double"
+					}
+				},
+				"required": [
+					"id",
+					"ownerId",
+					"createdAt",
+					"updatedAt",
+					"owner",
+					"participants",
+					"lastMessage",
+					"unreadMessagesCount"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IDialogFindResponseDto": {
+				"properties": {
+					"dialogId": {
+						"type": "string",
+						"nullable": true
+					}
+				},
+				"required": [
+					"dialogId"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IDialogFindRequestDto": {
+				"properties": {
+					"recipientId": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"recipientId"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IDialogFindOrCreateResponseDto": {
+				"properties": {
+					"dialogId": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"dialogId"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IDialogCreateRequestDto": {
+				"properties": {
+					"recipientId": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"recipientId"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
 			"DialogMembersDto": {
 				"properties": {
 					"id": {
@@ -737,7 +1009,7 @@
 						"format": "date-time"
 					},
 					"user": {
-						"$ref": "#/components/schemas/IUserDto"
+						"$ref": "#/components/schemas/PublicUserDto"
 					}
 				},
 				"required": [
@@ -751,7 +1023,26 @@
 				"type": "object",
 				"additionalProperties": false
 			},
-			"IDialogMessagesDto": {
+			"IDialogMembersAddRequestDto": {
+				"properties": {
+					"dialogId": {
+						"type": "string"
+					},
+					"members": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"dialogId",
+					"members"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"DialogMessagesDto": {
 				"properties": {
 					"id": {
 						"type": "string"
@@ -787,7 +1078,7 @@
 						"format": "date-time"
 					},
 					"user": {
-						"$ref": "#/components/schemas/IUserDto"
+						"$ref": "#/components/schemas/PublicUserDto"
 					},
 					"images": {
 						"items": {
@@ -808,7 +1099,7 @@
 						"type": "array"
 					},
 					"reply": {
-						"$ref": "#/components/schemas/IDialogMessagesDto"
+						"$ref": "#/components/schemas/DialogMessagesDto"
 					}
 				},
 				"required": [
@@ -819,132 +1110,6 @@
 					"createdAt",
 					"updatedAt",
 					"user"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"IDialogDto": {
-				"properties": {
-					"id": {
-						"type": "string"
-					},
-					"ownerId": {
-						"type": "string"
-					},
-					"createdAt": {
-						"type": "string",
-						"format": "date-time"
-					},
-					"updatedAt": {
-						"type": "string",
-						"format": "date-time"
-					},
-					"owner": {
-						"$ref": "#/components/schemas/IUserDto"
-					},
-					"members": {
-						"items": {
-							"$ref": "#/components/schemas/DialogMembersDto"
-						},
-						"type": "array"
-					},
-					"lastMessage": {
-						"items": {
-							"$ref": "#/components/schemas/IDialogMessagesDto"
-						},
-						"type": "array",
-						"nullable": true
-					},
-					"unreadMessagesCount": {
-						"type": "number",
-						"format": "double"
-					}
-				},
-				"required": [
-					"id",
-					"ownerId",
-					"createdAt",
-					"updatedAt",
-					"owner",
-					"members",
-					"lastMessage",
-					"unreadMessagesCount"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"IDialogListDto": {
-				"properties": {
-					"count": {
-						"type": "number",
-						"format": "double"
-					},
-					"offset": {
-						"type": "number",
-						"format": "double"
-					},
-					"limit": {
-						"type": "number",
-						"format": "double"
-					},
-					"data": {
-						"items": {
-							"$ref": "#/components/schemas/IDialogDto"
-						},
-						"type": "array"
-					}
-				},
-				"required": [
-					"data"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"DialogFindRequestDto": {
-				"properties": {
-					"recipientId": {
-						"items": {
-							"type": "string"
-						},
-						"type": "array"
-					}
-				},
-				"required": [
-					"recipientId"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"DialogCreateRequestDto": {
-				"properties": {
-					"recipientId": {
-						"items": {
-							"type": "string"
-						},
-						"type": "array"
-					}
-				},
-				"required": [
-					"recipientId"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"DialogMembersAddRequestDto": {
-				"properties": {
-					"dialogId": {
-						"type": "string"
-					},
-					"members": {
-						"items": {
-							"type": "string"
-						},
-						"type": "array"
-					}
-				},
-				"required": [
-					"dialogId",
-					"members"
 				],
 				"type": "object",
 				"additionalProperties": false
@@ -965,7 +1130,7 @@
 					},
 					"data": {
 						"items": {
-							"$ref": "#/components/schemas/IDialogMessagesDto"
+							"$ref": "#/components/schemas/DialogMessagesDto"
 						},
 						"type": "array"
 					}
@@ -1527,7 +1692,7 @@
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/IProfileDto"
+									"$ref": "#/components/schemas/ProfileDto"
 								}
 							}
 						}
@@ -1555,7 +1720,7 @@
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/IProfileDto"
+									"$ref": "#/components/schemas/ProfileDto"
 								}
 							}
 						}
@@ -1672,7 +1837,7 @@
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/IProfileDto"
+									"$ref": "#/components/schemas/ProfileDto"
 								}
 							}
 						}
@@ -1710,7 +1875,7 @@
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/IProfileDto"
+									"$ref": "#/components/schemas/ProfileDto"
 								}
 							}
 						}
@@ -1762,7 +1927,7 @@
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/IProfileDto"
+									"$ref": "#/components/schemas/ProfileDto"
 								}
 							}
 						}
@@ -1810,7 +1975,7 @@
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/IProfileDto"
+									"$ref": "#/components/schemas/ProfileDto"
 								}
 							}
 						}
@@ -1878,7 +2043,7 @@
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/IUserDto"
+									"$ref": "#/components/schemas/UserDto"
 								}
 							}
 						}
@@ -1906,7 +2071,7 @@
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/IUserDto"
+									"$ref": "#/components/schemas/UserDto"
 								}
 							}
 						}
@@ -2025,7 +2190,7 @@
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/IUserDto"
+									"$ref": "#/components/schemas/UserDto"
 								}
 							}
 						}
@@ -2065,7 +2230,7 @@
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/IUserDto"
+									"$ref": "#/components/schemas/UserDto"
 								}
 							}
 						}
@@ -2183,7 +2348,7 @@
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/IUserDto"
+									"$ref": "#/components/schemas/UserDto"
 								}
 							}
 						}
@@ -3066,7 +3231,7 @@
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/IDialogDto"
+									"$ref": "#/components/schemas/DialogDetailDto"
 								}
 							}
 						}
@@ -3095,19 +3260,54 @@
 				]
 			}
 		},
-		"/api/dialog/find": {
-			"post": {
-				"operationId": "FindDialog",
+		"/api/dialog/private-with/{userId}": {
+			"get": {
+				"operationId": "GetPrivateDialogWithUser",
 				"responses": {
 					"200": {
 						"description": "Массив найденных ID диалогов.",
 						"content": {
 							"application/json": {
 								"schema": {
-									"items": {
-										"type": "string"
-									},
-									"type": "array"
+									"$ref": "#/components/schemas/IDialogFindResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Ищет диалог между текущим пользователем и собеседником.",
+				"summary": "Поиск диалога",
+				"tags": [
+					"Dialog"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"description": "Данные поиска (ID собеседника).",
+						"in": "path",
+						"name": "userId",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/dialog/find": {
+			"post": {
+				"operationId": "FindDialog",
+				"responses": {
+					"200": {
+						"description": "Найденый ID диалога.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IDialogFindResponseDto"
 								}
 							}
 						}
@@ -3130,7 +3330,47 @@
 					"content": {
 						"application/json": {
 							"schema": {
-								"$ref": "#/components/schemas/DialogFindRequestDto",
+								"$ref": "#/components/schemas/IDialogFindRequestDto",
+								"description": "Данные поиска (ID получателя)."
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/dialog/findOrCreate": {
+			"post": {
+				"operationId": "FindOrCreate",
+				"responses": {
+					"200": {
+						"description": "Найденый ID диалога.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IDialogFindOrCreateResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Ищет диалог или создает если не найден.",
+				"summary": "Поиск или создание диалога",
+				"tags": [
+					"Dialog"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"description": "Данные поиска (ID получателя).",
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IDialogFindRequestDto",
 								"description": "Данные поиска (ID получателя)."
 							}
 						}
@@ -3147,7 +3387,7 @@
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/IDialogDto"
+									"$ref": "#/components/schemas/DialogDetailDto"
 								}
 							}
 						}
@@ -3170,7 +3410,7 @@
 					"content": {
 						"application/json": {
 							"schema": {
-								"$ref": "#/components/schemas/DialogCreateRequestDto",
+								"$ref": "#/components/schemas/IDialogCreateRequestDto",
 								"description": "Данные для создания диалога."
 							}
 						}
@@ -3254,7 +3494,7 @@
 					"content": {
 						"application/json": {
 							"schema": {
-								"$ref": "#/components/schemas/DialogMembersAddRequestDto",
+								"$ref": "#/components/schemas/IDialogMembersAddRequestDto",
 								"description": "Данные с ID диалога и участниками."
 							}
 						}
@@ -3399,7 +3639,7 @@
 							"application/json": {
 								"schema": {
 									"items": {
-										"$ref": "#/components/schemas/IDialogMessagesDto"
+										"$ref": "#/components/schemas/DialogLastMessagesDto"
 									},
 									"type": "array"
 								}
@@ -3439,7 +3679,7 @@
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/IDialogMessagesDto"
+									"$ref": "#/components/schemas/DialogMessagesDto"
 								}
 							}
 						}
@@ -3475,7 +3715,7 @@
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/IDialogMessagesDto"
+									"$ref": "#/components/schemas/DialogMessagesDto"
 								}
 							}
 						}
@@ -3561,7 +3801,7 @@
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/IDialogMessagesDto"
+									"$ref": "#/components/schemas/DialogMessagesDto"
 								}
 							}
 						}

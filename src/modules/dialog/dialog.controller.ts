@@ -1,4 +1,4 @@
-import { inject, injectable } from "inversify";
+import { inject } from "inversify";
 import {
   Body,
   Controller,
@@ -18,23 +18,27 @@ import { getContextUser, Injectable } from "../../core";
 import { KoaRequest } from "../../types/koa";
 import { DialogMembersService } from "../dialog-members";
 import {
-  DialogMembersAddRequestDto,
   DialogMembersDto,
-} from "../dialog-members/dialog-members.dto";
+  IDialogMembersAddRequestDto,
+} from "../dialog-members/dto";
 import { DialogMessagesService } from "../dialog-messages";
 import {
+  DialogLastMessagesDto,
+  DialogMessagesDto,
   IDialogListMessagesDto,
-  IDialogMessagesDto,
   IMessagesRequestDto,
   IMessagesUpdateRequestDto,
-} from "../dialog-messages/dialog-messages.dto";
-import {
-  DialogCreateRequestDto,
-  DialogFindRequestDto,
-  IDialogDto,
-  IDialogListDto,
-} from "./dialog.dto";
+} from "../dialog-messages/dto";
 import { DialogService } from "./dialog.service";
+import {
+  DialogDetailDto,
+  DialogDto,
+  IDialogCreateRequestDto,
+  IDialogFindOrCreateResponseDto,
+  IDialogFindRequestDto,
+  IDialogFindResponseDto,
+  IDialogListDto,
+} from "./dto";
 
 @Injectable()
 @Tags("Dialog")
@@ -92,7 +96,9 @@ export class DialogController extends Controller {
       offset,
       limit,
       count: data.length,
-      data,
+      data: data.map(({ unreadMessagesCount, ...dialog }) =>
+        DialogDto.fromEntity(dialog, unreadMessagesCount),
+      ),
     };
   }
 
@@ -109,10 +115,39 @@ export class DialogController extends Controller {
   getDialogById(
     @Request() req: KoaRequest,
     @Path() id: string,
-  ): Promise<IDialogDto> {
+  ): Promise<DialogDetailDto> {
     const user = getContextUser(req);
 
-    return this._dialogService.getDialog(id, user.id);
+    return (
+      this._dialogService
+        .getDialog(id, user.id)
+        // .then(({ unreadMessagesCount, ...entity }) =>
+        //   DialogDetailDto.fromEntity(entity, unreadMessagesCount),
+        // );
+        .then(
+          ({ unreadMessagesCount, ...entity }) =>
+            new DialogDetailDto(entity, unreadMessagesCount),
+        )
+    );
+  }
+
+  /**
+   * Ищет диалог между текущим пользователем и собеседником.
+   *
+   * @summary Поиск диалога
+   * @param req Запрос с JWT-токеном.
+   * @param userId Данные поиска (ID собеседника).
+   * @returns Массив найденных ID диалогов.
+   */
+  @Security("jwt")
+  @Get("/private-with/{userId}")
+  async getPrivateDialogWithUser(
+    @Request() req: KoaRequest,
+    @Path() userId: string,
+  ): Promise<IDialogFindResponseDto> {
+    const currentUser = getContextUser(req);
+
+    return this._dialogService.getPrivateDialogWithUser(currentUser.id, userId);
   }
 
   /**
@@ -121,17 +156,36 @@ export class DialogController extends Controller {
    * @summary Поиск диалога
    * @param req Запрос с JWT-токеном.
    * @param body Данные поиска (ID получателя).
-   * @returns Массив найденных ID диалогов.
+   * @returns Найденый ID диалога.
    */
   @Security("jwt")
   @Post("/find")
   findDialog(
     @Request() req: KoaRequest,
-    @Body() body: DialogFindRequestDto,
-  ): Promise<string[]> {
+    @Body() body: IDialogFindRequestDto,
+  ): Promise<IDialogFindResponseDto> {
     const user = getContextUser(req);
 
     return this._dialogService.findDialog(user.id, body.recipientId);
+  }
+
+  /**
+   * Ищет диалог или создает если не найден.
+   *
+   * @summary Поиск или создание диалога
+   * @param req Запрос с JWT-токеном.
+   * @param body Данные поиска (ID получателя).
+   * @returns Найденый ID диалога.
+   */
+  @Security("jwt")
+  @Post("/findOrCreate")
+  findOrCreate(
+    @Request() req: KoaRequest,
+    @Body() body: IDialogFindRequestDto,
+  ): Promise<IDialogFindOrCreateResponseDto> {
+    const user = getContextUser(req);
+
+    return this._dialogService.findOrCreate(user.id, body.recipientId);
   }
 
   /**
@@ -146,11 +200,15 @@ export class DialogController extends Controller {
   @Post()
   createDialog(
     @Request() req: KoaRequest,
-    @Body() body: DialogCreateRequestDto,
-  ): Promise<IDialogDto> {
+    @Body() body: IDialogCreateRequestDto,
+  ): Promise<DialogDetailDto> {
     const user = getContextUser(req);
 
-    return this._dialogService.createDialog(user.id, body);
+    return this._dialogService
+      .createDialog(user.id, body.recipientId)
+      .then(({ unreadMessagesCount, ...entity }) =>
+        DialogDetailDto.fromEntity(entity, unreadMessagesCount),
+      );
   }
 
   /**
@@ -178,7 +236,7 @@ export class DialogController extends Controller {
   @Post("/member")
   addMembers(
     @Request() req: KoaRequest,
-    @Body() body: DialogMembersAddRequestDto,
+    @Body() body: IDialogMembersAddRequestDto,
   ): Promise<DialogMembersDto[]> {
     const user = getContextUser(req);
 
@@ -254,7 +312,7 @@ export class DialogController extends Controller {
   @Get("/message/last-message")
   getLastMessage(
     @Query("dialogId") dialogId: string,
-  ): Promise<IDialogMessagesDto[]> {
+  ): Promise<DialogLastMessagesDto[]> {
     return this._dialogMessagesService.getLastMessage(dialogId);
   }
 
@@ -267,7 +325,7 @@ export class DialogController extends Controller {
    */
   @Security("jwt")
   @Get("/message/{id}")
-  getMessageById(@Path() id: string): Promise<IDialogMessagesDto> {
+  getMessageById(@Path() id: string): Promise<DialogMessagesDto> {
     return this._dialogMessagesService.getMessageById(id);
   }
 
@@ -284,7 +342,7 @@ export class DialogController extends Controller {
   newMessage(
     @Body() message: IMessagesRequestDto,
     @Request() req: KoaRequest,
-  ): Promise<IDialogMessagesDto> {
+  ): Promise<DialogMessagesDto> {
     const user = getContextUser(req);
 
     return this._dialogMessagesService.appendMessage(user.id, message);
@@ -311,7 +369,7 @@ export class DialogController extends Controller {
     id: string,
     @Request() req: KoaRequest,
     @Body() body: IMessagesUpdateRequestDto,
-  ): Promise<IDialogMessagesDto> {
+  ): Promise<DialogMessagesDto> {
     const user = getContextUser(req);
 
     return this._dialogMessagesService.updateMessage(id, user.id, body);
