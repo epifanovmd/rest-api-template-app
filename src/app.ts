@@ -5,7 +5,8 @@ import sha256 from "sha256";
 import { DataSource } from "typeorm";
 
 import { config } from "../config";
-import { iocContainer } from "./app.module";
+import { iocContainer } from "./app.container";
+import { loadAppModule } from "./app.module";
 import {
   notFoundMiddleware,
   RegisterAppMiddlewares,
@@ -24,6 +25,7 @@ export class App {
   constructor() {
     this.koaApp = new Koa();
     this.configure();
+    loadAppModule();
   }
 
   private configure() {

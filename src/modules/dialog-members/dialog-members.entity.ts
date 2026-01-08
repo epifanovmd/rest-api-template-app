@@ -9,8 +9,8 @@ import {
   UpdateDateColumn,
 } from "typeorm";
 
-import { Dialog } from "../dialog/dialog.entity";
-import { User } from "../user/user.entity";
+import type { Dialog } from "../dialog/dialog.entity";
+import type { User } from "../user/user.entity";
 
 @Entity("dialog_members")
 @Index("IDX_DIALOG_MEMBERS_USER_DIALOG", ["userId", "dialogId"], {
@@ -33,13 +33,15 @@ export class DialogMembers {
   updatedAt: Date;
 
   // Relations
-  @ManyToOne(() => User, user => user.id, {
+  // @ManyToOne(() => User, user => user.id, {
+  @ManyToOne("User", "id", {
     onDelete: "CASCADE",
   })
   @JoinColumn({ name: "user_id" })
   user: User;
 
-  @ManyToOne(() => Dialog, dialog => dialog.members, { onDelete: "CASCADE" })
+  // @ManyToOne(() => Dialog, dialog => dialog.members, { onDelete: "CASCADE" })
+  @ManyToOne("Dialog", "members", { onDelete: "CASCADE" })
   @JoinColumn({ name: "dialog_id" })
   dialog: Dialog;
 }

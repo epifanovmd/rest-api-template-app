@@ -38,6 +38,6 @@
     "routesDir": "./src",
     "basePath": "/",
     "middleware": "koa",
-    "iocModule": "./src/app.module.ts"
+    "iocModule": "./src/app.container.ts"
   }
 }

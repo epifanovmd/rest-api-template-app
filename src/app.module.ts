@@ -1,13 +1,14 @@
 import "reflect-metadata";
 
-import { Container, decorate, injectable } from "inversify";
+import { decorate, injectable } from "inversify";
 import { Controller } from "tsoa";
 import { DataSource } from "typeorm";
 
+import { iocContainer } from "./app.container";
 import { TypeOrmDataSource } from "./core";
 
-decorate(injectable(), Controller);
+export const loadAppModule = () => {
+  decorate(injectable(), Controller);
 
-export const iocContainer = new Container();
-
-iocContainer.bind(DataSource).toConstantValue(TypeOrmDataSource);
+  iocContainer.bind(DataSource).toConstantValue(TypeOrmDataSource);
+};

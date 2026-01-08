@@ -21,7 +21,7 @@ import { PasskeysController } from './modules/passkeys/passkeys.controller';
 import { koaAuthentication } from './middleware/authenticate.middleware';
 // @ts-ignore - no great way to install types from subpackage
 const promiseAny = require('promise.any');
-import { iocContainer } from './app.module';
+import { iocContainer } from './app.container';
 import { IocContainer, IocContainerFactory } from '@tsoa/runtime';
 import type { Middleware } from 'koa';
 import * as KoaRouter from '@koa/router';

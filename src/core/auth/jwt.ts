@@ -3,7 +3,7 @@ import jwt, { sign, SignOptions, VerifyErrors } from "jsonwebtoken";
 import { DataSource } from "typeorm";
 
 import { config } from "../../../config";
-import { iocContainer } from "../../app.module";
+import { iocContainer } from "../../app.container";
 import { Permission } from "../../modules/permission/permission.entity";
 import { EPermissions } from "../../modules/permission/permission.types";
 import { Role } from "../../modules/role/role.entity";

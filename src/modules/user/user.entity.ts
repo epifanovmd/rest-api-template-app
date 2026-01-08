@@ -11,13 +11,13 @@ import {
   UpdateDateColumn,
 } from "typeorm";
 
-import { Biometric } from "../biometric/biometric.entity";
-import { FcmToken } from "../fcm-token/fcm-token.entity";
-import { Otp } from "../otp/otp.entity";
-import { Passkey } from "../passkeys/passkey.entity";
-import { Profile } from "../profile/profile.entity";
-import { ResetPasswordTokens } from "../reset-password-tokens/reset-password-tokens.entity";
-import { Role } from "../role/role.entity";
+import type { Biometric } from "../biometric/biometric.entity";
+import type { FcmToken } from "../fcm-token/fcm-token.entity";
+import type { Otp } from "../otp/otp.entity";
+import type { Passkey } from "../passkeys/passkey.entity";
+import type { Profile } from "../profile/profile.entity";
+import type { ResetPasswordTokens } from "../reset-password-tokens/reset-password-tokens.entity";
+import type { Role } from "../role/role.entity";
 
 @Entity("users")
 @Index("IDX_USERS_EMAIL_PHONE", ["email", "phone"], { unique: true })
@@ -50,28 +50,35 @@ export class User {
   updatedAt: Date;
 
   // Relations
-  @ManyToOne(() => Role, { onDelete: "SET NULL", eager: true })
+  // @ManyToOne(() => Role, { onDelete: "SET NULL", eager: true })
+  @ManyToOne("Role", { onDelete: "SET NULL", eager: true })
   @JoinColumn({ name: "role_id" })
   role: Role;
 
-  @OneToOne(() => Profile, profile => profile.user, {
+  // @OneToOne(() => Profile, profile => profile.user, {
+  @OneToOne("Profile", "user", {
     cascade: true,
     eager: true,
   })
   profile: Profile;
 
-  @OneToMany(() => Passkey, passkey => passkey.user, { cascade: true })
+  // @OneToMany(() => Passkey, passkey => passkey.user, { cascade: true })
+  @OneToMany("Passkey", "user", { cascade: true })
   passkeys: Passkey[];
 
-  @OneToMany(() => Biometric, biometric => biometric.user, { cascade: true })
+  // @OneToMany(() => Biometric, biometric => biometric.user, { cascade: true })
+  @OneToMany("Biometric", "user", { cascade: true })
   biometrics: Biometric[];
 
-  @OneToMany(() => Otp, otp => otp.user, { cascade: true })
+  // @OneToMany(() => Otp, otp => otp.user, { cascade: true })
+  @OneToMany("Otp", "user", { cascade: true })
   otps: Otp[];
 
-  @OneToMany(() => ResetPasswordTokens, token => token.user, { cascade: true })
+  // @OneToMany(() => ResetPasswordTokens, token => token.user, { cascade: true })
+  @OneToMany("ResetPasswordTokens", "user", { cascade: true })
   resetPasswordTokens: ResetPasswordTokens[];
 
-  @OneToMany(() => FcmToken, token => token.user, { cascade: true })
+  // @OneToMany(() => FcmToken, token => token.user, { cascade: true })
+  @OneToMany("FcmToken", "user", { cascade: true })
   fcmTokens: FcmToken[];
 }

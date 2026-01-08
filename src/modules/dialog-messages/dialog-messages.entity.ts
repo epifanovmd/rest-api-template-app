@@ -9,9 +9,9 @@ import {
   UpdateDateColumn,
 } from "typeorm";
 
-import { Dialog } from "../dialog/dialog.entity";
-import { MessageFiles } from "../message-files/message-files.entity";
-import { User } from "../user/user.entity";
+import type { Dialog } from "../dialog/dialog.entity";
+import type { MessageFiles } from "../message-files/message-files.entity";
+import type { User } from "../user/user.entity";
 
 @Entity("dialog_messages")
 export class DialogMessages {
@@ -68,11 +68,13 @@ export class DialogMessages {
   updatedAt: Date;
 
   // Relations
-  @ManyToOne(() => User, user => user.id, { onDelete: "CASCADE" })
+  // @ManyToOne(() => User, user => user.id, { onDelete: "CASCADE" })
+  @ManyToOne("User", "id", { onDelete: "CASCADE" })
   @JoinColumn({ name: "user_id" })
   user: User;
 
-  @ManyToOne(() => Dialog, dialog => dialog.messages, { onDelete: "CASCADE" })
+  // @ManyToOne(() => Dialog, dialog => dialog.messages, { onDelete: "CASCADE" })
+  @ManyToOne("Dialog", "messages", { onDelete: "CASCADE" })
   @JoinColumn({ name: "dialog_id" })
   dialog: Dialog;
 
@@ -86,7 +88,8 @@ export class DialogMessages {
   @OneToMany(() => DialogMessages, message => message.reply)
   replies: DialogMessages[];
 
-  @OneToMany(() => MessageFiles, messageFile => messageFile.message)
+  // @OneToMany(() => MessageFiles, messageFile => messageFile.message)
+  @OneToMany("MessageFiles", "message")
   messageFiles: MessageFiles[];
 
   // // Virtual getters for filtered files

@@ -7,7 +7,7 @@ import {
   UpdateDateColumn,
 } from "typeorm";
 
-import { Role } from "../role/role.entity";
+import type { Role } from "../role/role.entity";
 import { EPermissions } from "./permission.types";
 
 @Entity("permissions")
@@ -25,7 +25,8 @@ export class Permission {
   updatedAt: Date;
 
   // Relations
-  @ManyToMany(() => Role, role => role.permissions)
+  // @ManyToMany(() => Role, role => role.permissions)
+  @ManyToMany("Role", "permissions")
   roles: Role[];
 
   toDTO() {

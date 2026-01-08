@@ -8,7 +8,7 @@ import {
   UpdateDateColumn,
 } from "typeorm";
 
-import { User } from "../user/user.entity";
+import type { User } from "../user/user.entity";
 
 @Entity("otp")
 export class Otp {
@@ -28,7 +28,8 @@ export class Otp {
   updatedAt: Date;
 
   // Relations
-  @ManyToOne(() => User, user => user.otps, { onDelete: "CASCADE" })
+  // @ManyToOne(() => User, user => user.otps, { onDelete: "CASCADE" })
+  @ManyToOne("User", "otps", { onDelete: "CASCADE" })
   @JoinColumn({ name: "user_id" })
   user: User;
 

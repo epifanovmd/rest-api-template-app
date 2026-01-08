@@ -9,7 +9,7 @@ import {
   UpdateDateColumn,
 } from "typeorm";
 
-import { User } from "../user/user.entity";
+import type { User } from "../user/user.entity";
 
 @Entity("biometrics")
 @Index("IDX_BIOMETRICS_USER_DEVICE", ["userId", "deviceId"], { unique: true })
@@ -39,7 +39,8 @@ export class Biometric {
   updatedAt: Date;
 
   // Relations
-  @ManyToOne(() => User, user => user.biometrics, { onDelete: "CASCADE" })
+  // @ManyToOne(() => User, user => user.biometrics, { onDelete: "CASCADE" })
+  @ManyToOne("User", "biometrics", { onDelete: "CASCADE" })
   @JoinColumn({ name: "user_id" })
   user: User;
 }

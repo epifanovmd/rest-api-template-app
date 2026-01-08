@@ -10,7 +10,7 @@ import {
   UpdateDateColumn,
 } from "typeorm";
 
-import { User } from "../user/user.entity";
+import type { User } from "../user/user.entity";
 
 export type CredentialDeviceType = "singleDevice" | "multiDevice";
 
@@ -58,7 +58,8 @@ export class Passkey {
   updatedAt: Date;
 
   // Relations
-  @ManyToOne(() => User, user => user.passkeys, { onDelete: "CASCADE" })
+  // @ManyToOne(() => User, user => user.passkeys, { onDelete: "CASCADE" })
+  @ManyToOne("User", "passkeys", { onDelete: "CASCADE" })
   @JoinColumn({ name: "user_id" })
   user: User;
 

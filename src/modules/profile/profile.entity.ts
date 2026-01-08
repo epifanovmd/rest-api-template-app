@@ -10,8 +10,8 @@ import {
   UpdateDateColumn,
 } from "typeorm";
 
-import { File } from "../file/file.entity";
-import { User } from "../user/user.entity";
+import type { File } from "../file/file.entity";
+import type { User } from "../user/user.entity";
 import { EProfileStatus } from "./profile.types";
 
 @Entity("profiles")
@@ -57,11 +57,13 @@ export class Profile {
   updatedAt: Date;
 
   // Relations
-  @OneToOne(() => User, user => user.profile, { onDelete: "CASCADE" })
+  // @OneToOne(() => User, user => user.profile, { onDelete: "CASCADE" })
+  @OneToOne("User", "profile", { onDelete: "CASCADE" })
   @JoinColumn({ name: "user_id" })
   user: User;
 
-  @ManyToOne(() => File, file => file.avatarProfiles, { onDelete: "SET NULL" })
+  // @ManyToOne(() => File, file => file.avatarProfiles, { onDelete: "SET NULL" })
+  @ManyToOne("File", "avatarProfiles", { onDelete: "SET NULL" })
   @JoinColumn({ name: "avatar_id" })
   avatar: File;
 }

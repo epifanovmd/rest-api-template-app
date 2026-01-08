@@ -1,7 +1,7 @@
 import { injectable } from "inversify";
 import { DataSource } from "typeorm";
 
-import { iocContainer } from "../../app.module";
+import { iocContainer } from "../../app.container";
 
 export const InjectableRepository = <T>(entity: new () => T) => {
   return <T extends new (...args: any[]) => any>(constructor: T) => {

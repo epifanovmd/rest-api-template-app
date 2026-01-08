@@ -7,7 +7,7 @@ import typescript from "rollup-plugin-typescript2";
 
 const config = defineConfig(() => {
   return {
-    input: "src/app.server.ts",
+    input: "src/main.ts",
     output: [
       {
         dir: "./build",
@@ -20,7 +20,12 @@ const config = defineConfig(() => {
     ],
     external: /node_modules/,
     plugins: [
-      resolve(),
+      resolve({
+        preferBuiltins: true,
+        exportConditions: ["node", "import", "require"],
+        mainFields: ["module", "main"],
+        extensions: [".js", ".jsx", ".ts", ".tsx", ".json"],
+      }),
       commonjs(),
       terser({
         mangle: {
