@@ -1,5 +1,5 @@
 # Используем аргумент для версии Node.js
-ARG NODE_VERSION=20.10.0
+ARG NODE_VERSION=23.11.1
 
 # Первый этап: установка зависимостей
 FROM node:${NODE_VERSION} AS installer
