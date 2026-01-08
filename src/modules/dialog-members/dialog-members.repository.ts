@@ -28,7 +28,7 @@ export class DialogMembersRepository extends BaseRepository<DialogMembers> {
   async findByUserId(
     userId: string,
     relations?: FindOptionsRelations<DialogMembers>,
-  ): Promise<DialogMembers[]> {
+  ) {
     return this.find({
       where: { userId },
       relations,
@@ -39,7 +39,7 @@ export class DialogMembersRepository extends BaseRepository<DialogMembers> {
     userId: string,
     dialogId: string,
     relations?: FindOptionsRelations<DialogMembers>,
-  ): Promise<DialogMembers | null> {
+  ) {
     return this.findOne({
       where: {
         userId,

@@ -4,7 +4,6 @@ import { inject } from "inversify";
 import { Injectable } from "../../core";
 import { SocketService } from "../socket";
 import { DialogMembersRepository } from "./dialog-members.repository";
-import { DialogMembersDto } from "./dto";
 
 @Injectable()
 export class DialogMembersService {
@@ -15,11 +14,7 @@ export class DialogMembersService {
   ) {}
 
   async getMembers(dialogId: string) {
-    const members = await this._dialogMembersRepository.findByDialogId(
-      dialogId,
-    );
-
-    return members.map(DialogMembersDto.fromEntity);
+    return await this._dialogMembersRepository.findByDialogId(dialogId);
   }
 
   async addMembers({

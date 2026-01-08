@@ -1,8 +1,13 @@
-import { NotFoundException } from "@force-dev/utils";
+import { ForbiddenException, NotFoundException } from "@force-dev/utils";
 import { inject } from "inversify";
+import { Not } from "typeorm";
 
 import { Injectable } from "../../core";
 import { DialogService } from "../dialog";
+import {
+  DialogMembersRepository,
+  DialogMembersService,
+} from "../dialog-members";
 import { FcmTokenService } from "../fcm-token";
 import { FileRepository } from "../file";
 import { MessageFilesRepository } from "../message-files";
@@ -18,7 +23,10 @@ export class DialogMessagesService {
     @inject(FcmTokenService) private _fcmTokenService: FcmTokenService,
     @inject(DialogMessagesRepository)
     private _dialogMessagesRepository: DialogMessagesRepository,
-    @inject(FileRepository) private _fileRepository: FileRepository,
+    @inject(DialogMembersService)
+    private _dialogMembersService: DialogMembersService,
+    @inject(DialogMembersRepository)
+    private _dialogMembersRepository: DialogMembersRepository,
     @inject(MessageFilesRepository)
     private _messageFilesRepository: MessageFilesRepository,
   ) {}
@@ -148,31 +156,68 @@ export class DialogMessagesService {
     return updatedMessage.toDTO();
   }
 
-  async deleteMessage(id: string, userId: string) {
-    const message = await this._dialogMessagesRepository.findById(id);
+  async deleteMessage(id: string, userId: string): Promise<boolean> {
+    const queryRunner = this._dialogMessagesRepository.createQueryRunner();
 
-    if (!message) {
-      throw new NotFoundException("Сообщение не найдено");
-    }
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
 
-    const dialog = await this._dialogService.getDialog(
-      message.dialogId,
-      userId,
-    );
+    try {
+      const message = await this._dialogMessagesRepository.findById(id);
 
-    dialog.members.forEach(({ userId: memberId }) => {
-      if (this._socketService.getClient(memberId)) {
+      if (!message) {
+        throw new NotFoundException("Сообщение не найдено");
+      }
+
+      const dialog = await this._dialogService.getDialog(
+        message.dialogId,
+        userId,
+      );
+
+      if (dialog.lastMessageId === id) {
+        const previousMessage = await this._dialogMessagesRepository.findOne({
+          where: {
+            dialogId: message.dialogId,
+            id: Not(message.id),
+          },
+          order: {
+            updatedAt: "DESC",
+          },
+        });
+
+        if (previousMessage) {
+          await this._dialogService.updateDialogLastMessage(
+            message.dialogId,
+            previousMessage.id,
+          );
+        }
+      }
+
+      const deleted = await this._dialogMessagesRepository
+        .delete(id)
+        .then(res => !!res.affected);
+
+      await queryRunner.commitTransaction();
+
+      const members = await this._dialogMembersService.getMembers(
+        message.dialogId,
+      );
+
+      members.forEach(({ userId: memberId }) => {
         const client = this._socketService.getClient(memberId);
 
         if (client) {
-          client.emit("deleteMessage", dialog.id, id);
+          client.emit("deleteMessage", message.dialogId, id);
         }
-      }
-    });
+      });
 
-    return this._dialogMessagesRepository
-      .delete(id)
-      .then(res => !!res.affected);
+      return deleted;
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
   }
 
   sendSocketMessage(recipientId: string, message: any) {

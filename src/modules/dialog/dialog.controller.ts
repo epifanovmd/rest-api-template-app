@@ -221,7 +221,9 @@ export class DialogController extends Controller {
   @Security("jwt")
   @Get("/members")
   getMembers(@Query("dialogId") dialogId: string): Promise<DialogMembersDto[]> {
-    return this._dialogMembersService.getMembers(dialogId);
+    return this._dialogMembersService
+      .getMembers(dialogId)
+      .then(res => res.map(DialogMembersDto.fromEntity));
   }
 
   /**
@@ -240,11 +242,13 @@ export class DialogController extends Controller {
   ): Promise<DialogMembersDto[]> {
     const user = getContextUser(req);
 
-    return this._dialogMembersService.addMembers({
-      userId: user.id,
-      dialogId: body.dialogId,
-      members: body.members,
-    });
+    return this._dialogMembersService
+      .addMembers({
+        userId: user.id,
+        dialogId: body.dialogId,
+        members: body.members,
+      })
+      .then(res => res.map(DialogMembersDto.fromEntity));
   }
 
   /**
