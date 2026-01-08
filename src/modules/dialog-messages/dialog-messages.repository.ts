@@ -1,11 +1,14 @@
-import { FindOptionsWhere, Not } from "typeorm";
+import { FindOptionsRelations, FindOptionsWhere, Not } from "typeorm";
 
 import { BaseRepository, InjectableRepository } from "../../core";
 import { DialogMessages } from "./dialog-messages.entity";
 
 @InjectableRepository(DialogMessages)
 export class DialogMessagesRepository extends BaseRepository<DialogMessages> {
-  async findById(id: string, relations?: any): Promise<DialogMessages | null> {
+  async findById(
+    id: string,
+    relations?: FindOptionsRelations<DialogMessages>,
+  ): Promise<DialogMessages | null> {
     return this.findOne({
       where: { id },
       relations,
@@ -16,7 +19,7 @@ export class DialogMessagesRepository extends BaseRepository<DialogMessages> {
     dialogId: string,
     offset?: number,
     limit?: number,
-    relations?: any,
+    relations?: FindOptionsRelations<DialogMessages>,
   ): Promise<[DialogMessages[], number]> {
     return this.findAndCount({
       where: { dialogId },
@@ -27,10 +30,14 @@ export class DialogMessagesRepository extends BaseRepository<DialogMessages> {
     });
   }
 
-  async findLastByDialogId(dialogId: string): Promise<DialogMessages | null> {
+  async findLastByDialogId(
+    dialogId: string,
+    relations?: FindOptionsRelations<DialogMessages>,
+  ): Promise<DialogMessages | null> {
     return this.findOne({
       where: { dialogId },
       order: { createdAt: "DESC" },
+      relations,
     });
   }
 

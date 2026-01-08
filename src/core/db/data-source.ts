@@ -5,7 +5,6 @@ import { config } from "../../../config";
 export const TypeOrmDataSource = new DataSource({
   type: "postgres",
   ...config.database.postgres,
-  database: "test-test",
   synchronize: process.env.NODE_ENV !== "production",
   // logging: process.env.NODE_ENV === "development",
   migrations: ["src/migrations/*.ts"],

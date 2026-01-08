@@ -55,7 +55,7 @@ export class DialogMembersService {
     createdMembers
       .filter(member => member !== null)
       .forEach(member => {
-        const client = this._socketService.getClient(member!.userId);
+        const client = this._socketService.getClient(member.userId);
 
         if (client) {
           client.emit("newDialog", dialogId);

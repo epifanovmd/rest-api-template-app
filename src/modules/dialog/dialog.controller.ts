@@ -349,7 +349,9 @@ export class DialogController extends Controller {
   ): Promise<DialogMessagesDto> {
     const user = getContextUser(req);
 
-    return this._dialogMessagesService.appendMessage(user.id, message);
+    return this._dialogService
+      .appendMessage(user.id, message)
+      .then(DialogMessagesDto.fromEntity);
   }
 
   /**
@@ -376,7 +378,9 @@ export class DialogController extends Controller {
   ): Promise<DialogMessagesDto> {
     const user = getContextUser(req);
 
-    return this._dialogMessagesService.updateMessage(id, user.id, body);
+    return this._dialogService
+      .updateMessage(id, user.id, body)
+      .then(DialogMessagesDto.fromEntity);
   }
 
   /**
@@ -397,6 +401,6 @@ export class DialogController extends Controller {
   deleteMessage(id: string, @Request() req: KoaRequest): Promise<boolean> {
     const user = getContextUser(req);
 
-    return this._dialogMessagesService.deleteMessage(id, user.id);
+    return this._dialogService.deleteMessage(id, user.id);
   }
 }

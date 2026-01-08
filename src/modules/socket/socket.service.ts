@@ -126,12 +126,14 @@ export class SocketService {
 
   private handleNewConnection(socket: TSocket, user: User): void {
     this._clients.set(user.id, { socket, user });
+    socket.join(`user_${user.id}`);
 
     // Отправляем клиенту его ID
     socket.emit("authenticated", { userId: user.id });
   }
 
   private handleDisconnect(socket: TSocket, userId: string): void {
+    socket.leave(`user_${userId}`);
     this._clients.delete(userId);
     console.info(`Client disconnected: ${userId}`, { clientId: socket.id });
   }
@@ -169,7 +171,14 @@ export class SocketService {
     event: K,
     ...args: Parameters<ISocketEmitEvents[K]>
   ): void {
-    this._io.to(room).emit<any>(event, args);
+    this._io.to(room).emit<any>(event, ...args);
+  }
+
+  emit<K extends keyof ISocketEmitEvents>(
+    event: K,
+    ...args: Parameters<ISocketEmitEvents[K]>
+  ): void {
+    this._io.emit<any>(event, ...args);
   }
 
   notifyUser<K extends keyof ISocketEmitEvents>(
@@ -181,7 +190,7 @@ export class SocketService {
 
     if (!client) return false;
 
-    client.socket.emit<any>(event, args);
+    client.socket.emit<any>(event, ...args);
 
     return true;
   }

@@ -2,6 +2,7 @@ import { Server, Socket as SocketIO } from "socket.io";
 import { DefaultEventsMap } from "socket.io/dist/typed-events";
 
 import { DialogMessagesDto } from "../dialog-messages/dto";
+import { PublicUserDto } from "../user/dto";
 import { User } from "../user/user.entity";
 
 export interface ISocketEvents {
@@ -10,9 +11,9 @@ export interface ISocketEvents {
   checkOnline: (
     ...args: [userId: string, callback: (isOnline: boolean) => void]
   ) => void;
-  typingStart: (...args: [dialogId: string]) => void;
-  typingStop: (...args: [dialogId: string]) => void;
-  typing: (...args: [userId: string]) => void;
+  typing: (...args: [dialogId: string]) => void;
+  join_dialog: (...args: [dialogId: string]) => void;
+  leave_dialog: (...args: [dialogId: string]) => void;
 }
 
 export interface ISocketEmitEvents {
@@ -27,7 +28,7 @@ export interface ISocketEmitEvents {
   deleteDialog: (...args: [dialogId: string]) => void;
   online: (...args: [{ userId: string; isOnline: boolean }]) => void;
   checkOnline: (...args: [isOnline: boolean]) => void;
-  typing: (...args: [{ userId: string; isTyping: boolean }]) => void;
+  typing: (...args: [{ user: PublicUserDto; isTyping: boolean }]) => void;
 }
 
 export type TSocket = SocketIO<

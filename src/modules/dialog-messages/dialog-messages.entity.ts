@@ -59,7 +59,7 @@ export class DialogMessages {
     type: "uuid",
     nullable: true,
   })
-  replyId: string;
+  replyId: string | null;
 
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
