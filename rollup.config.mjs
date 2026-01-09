@@ -13,7 +13,7 @@ const config = defineConfig(() => {
         dir: "./build",
         format: "cjs",
         exports: "named",
-        preserveModules: false,
+        preserveModules: true, // для Type ORM нужно сохранить структуру для динамической загрузки entity
         preserveModulesRoot: "src",
         sourcemap: true,
       },
@@ -27,12 +27,12 @@ const config = defineConfig(() => {
         extensions: [".js", ".jsx", ".ts", ".tsx", ".json"],
       }),
       commonjs(),
-      terser({
-        mangle: {
-          keep_fnames: true,
-          keep_classnames: true,
-        },
-      }),
+      // terser({
+      //   mangle: {
+      //     keep_fnames: true,
+      //     keep_classnames: true,
+      //   },
+      // }),
       json(),
       typescript({
         useTsconfigDeclarationDir: true,

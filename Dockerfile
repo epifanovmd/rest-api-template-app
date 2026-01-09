@@ -11,7 +11,8 @@ COPY package*.json yarn.lock ./
 COPY ./patches ./patches
 
 # Устанавливаем зависимости
-RUN yarn install --production
+# RUN yarn install --production # проблемы с типами при сборке, нужно разобраться
+RUN yarn install
 
 # Второй этап: сборка и настройка образа
 FROM node:${NODE_VERSION}
