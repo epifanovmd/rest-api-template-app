@@ -52,7 +52,12 @@ export class DialogService {
       .innerJoin("dialog.members", "member", "member.userId = :userId", {
         userId,
       })
-      .leftJoinAndSelect("dialog.members", "members")
+      .leftJoinAndSelect(
+        "dialog.members",
+        "members",
+        "members.userId != :userId", // ← фильтрация участников
+        { userId },
+      )
       .leftJoinAndSelect("members.user", "memberUser")
       .leftJoinAndSelect("memberUser.profile", "memberUserProfile")
       .leftJoinAndSelect("dialog.lastMessage", "lastMessage")
@@ -91,9 +96,9 @@ export class DialogService {
       this._dialogRepository.findOne({
         where: {
           id,
-          // members: {
-          //   userId: Not(userId),
-          // },
+          members: {
+            userId: Not(userId),
+          },
         },
         relations: {
           owner: {
