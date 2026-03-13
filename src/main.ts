@@ -1,12 +1,6 @@
 import "reflect-metadata";
 
-import dotenv from "dotenv";
-
 import { App } from "./app";
-
-dotenv.config({
-  path: [`.env.${process.env.NODE_ENV || "development"}`, ".env"],
-});
 
 const bootstrap = async () => {
   const app = new App();

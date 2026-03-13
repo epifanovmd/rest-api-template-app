@@ -1,74 +1,179 @@
 import dotenv from "dotenv";
+import { z } from "zod";
 
 dotenv.config({
   path: [`.env.${process.env.NODE_ENV || "development"}`, ".env"],
 });
 
-export const config = {
+// Схемы валидации
+const serverSchema = z.object({
+  publicHost: z.ipv4().default("localhost"),
+  host: z.string().default("0.0.0.0"),
+  port: z.coerce.number().int().positive().max(65535).default(8181),
+  filesFolderPath: z.string().default("./files"),
+});
+
+const socketSchema = z.object({
+  port: z.coerce.number().int().positive().max(65535).default(3232),
+});
+
+const t = z.coerce.number().safeParse("");
+
+const rateLimitSchema = z.object({
+  limit: z.coerce
+    .number()
+    .int()
+    .transform(value => (value === 0 ? undefined : value))
+    .default(1000),
+  intervalMs: z.coerce
+    .number()
+    .int()
+    .transform(value => (value === 0 ? undefined : value))
+    .default(15 * 60 * 1000),
+});
+
+const corsSchema = z.object({
+  allowedIps: z
+    .string()
+    .transform(str => str.split(",").map(ip => ip.trim()))
+    .default(["http://localhost:3000,https://socket-test-client.netlify.app"])
+    .pipe(z.array(z.url())),
+});
+
+const jwtSchema = z.object({
+  secretKey: z.string().min(1).default("rest-api--auth-secret-key"),
+});
+
+const adminSchema = z.object({
+  email: z.string().email().default("admin@admin.com"),
+  password: z.string().min(6).default("admin"),
+});
+
+const webAuthnSchema = z.object({
+  rpName: z.string().min(1).default("domain"),
+  rpHost: z.string().min(1).default("domain.ru"),
+  rpSchema: z.enum(["http", "https"]).default("https"),
+  rpPort: z.string().default(""),
+});
+
+const otpSchema = z.object({
+  expireMinutes: z.coerce.number().int().positive().default(10),
+});
+
+const resetPasswordSchema = z.object({
+  expireMinutes: z.coerce.number().int().positive().default(60),
+  webUrl: z.url().default("https://domain/reset-password?token={{token}}"),
+});
+
+const authSchema = z.object({
+  jwt: jwtSchema,
+  admin: adminSchema,
+  webAuthn: webAuthnSchema,
+  otp: otpSchema,
+  resetPassword: resetPasswordSchema,
+});
+
+const redisSchema = z.object({
+  host: z.string().default("localhost"),
+  port: z.coerce.number().int().positive().max(65535).default(6379),
+  password: z.string().default("redisPass"),
+});
+
+const postgresSchema = z.object({
+  host: z.string().default("localhost"),
+  port: z.coerce.number().int().positive().max(65535).default(5432),
+  database: z.string().min(1).default("postgres"),
+  username: z.string().min(1).default("pg_user_name"),
+  password: z.string().default("pg_password"),
+  dataPath: z.string().default("/data/postgres"),
+});
+
+const databaseSchema = z.object({
+  postgres: postgresSchema,
+});
+
+const smtpSchema = z.object({
+  user: z.email().optional().default(""),
+  pass: z.string().optional().default(""),
+});
+
+const emailSchema = z.object({
+  smtp: smtpSchema,
+});
+
+// Основная схема конфигурации
+const configSchema = z.object({
+  server: serverSchema,
+  socket: socketSchema,
+  rateLimit: rateLimitSchema,
+  cors: corsSchema,
+  auth: authSchema,
+  redis: redisSchema,
+  database: databaseSchema,
+  email: emailSchema,
+});
+
+// Тип на основе схемы
+export type Config = z.infer<typeof configSchema>;
+// Создание и валидация конфигурации
+export const config = configSchema.parse({
   server: {
-    publicHost: process.env.PUBLIC_HOST || "http://localhost:3000",
-    host: process.env.SERVER_HOST || "0.0.0.0",
-    port: Number(process.env.SERVER_PORT || 8181),
-    filesFolderPath: process.env.SERVER_FILES_FOLDER_PATH || "./files",
+    publicHost: process.env.PUBLIC_HOST,
+    host: process.env.SERVER_HOST,
+    port: process.env.SERVER_PORT,
+    filesFolderPath: process.env.SERVER_FILES_FOLDER_PATH,
   },
   socket: {
-    port: Number(process.env.SOCKET_PORT || 3232),
+    port: process.env.SOCKET_PORT,
   },
   rateLimit: {
-    limit: Number(process.env.RATE_LIMIT || 1000),
-    intervalMs: Number(process.env.RATE_LIMIT_INTERVAL || 15 * 60 * 1000),
+    limit: process.env.RATE_LIMIT,
+    intervalMs: process.env.RATE_LIMIT_INTERVAL,
   },
   cors: {
-    allowedIps: (
-      process.env.CORS_ALLOW_IPS ||
-      "http://localhost:3000,https://socket-test-client.netlify.app"
-    )
-      .split(",")
-      .map(ip => ip.trim()),
+    allowedIps: process.env.CORS_ALLOW_IPS,
   },
   auth: {
     jwt: {
-      secretKey: process.env.JWT_SECRET_KEY || "rest-api--auth-secret-key",
+      secretKey: process.env.JWT_SECRET_KEY,
     },
     admin: {
-      email: process.env.ADMIN_EMAIL || "admin@admin.com",
-      password: process.env.ADMIN_PASSWORD || "admin",
+      email: process.env.ADMIN_EMAIL,
+      password: process.env.ADMIN_PASSWORD,
     },
     webAuthn: {
-      rpName: process.env.WEB_AUTHN_RP_NAME || "domain",
-      rpHost: process.env.WEB_AUTHN_RP_HOST || "domain.ru",
-      rpSchema: process.env.WEB_AUTHN_RP_SCHEMA || "https",
-      rpPort: process.env.WEB_AUTHN_RP_PORT || "",
+      rpName: process.env.WEB_AUTHN_RP_NAME,
+      rpHost: process.env.WEB_AUTHN_RP_HOST,
+      rpSchema: process.env.WEB_AUTHN_RP_SCHEMA,
+      rpPort: process.env.WEB_AUTHN_RP_PORT,
     },
     otp: {
-      expireMinutes: Number(process.env.OTP_EXPIRE_MINUTES || 10),
+      expireMinutes: process.env.OTP_EXPIRE_MINUTES,
     },
     resetPassword: {
-      expireMinutes: Number(process.env.RESET_PASS_TOKEN_EXPIRE_MINUTES || 60),
-      webUrl:
-        process.env.WEB_URL_RESET_PASSWORD ||
-        "https://domain/reset-password?token={{token}}",
+      expireMinutes: process.env.RESET_PASS_TOKEN_EXPIRE_MINUTES,
+      webUrl: process.env.WEB_URL_RESET_PASSWORD,
     },
   },
   redis: {
-    host: process.env.REDIS_HOST || "localhost",
-    port: Number(process.env.REDIS_PORT || 6379),
-    password: process.env.REDIS_PASS || "redisPass",
+    host: process.env.REDIS_HOST,
+    port: process.env.REDIS_PORT,
+    password: process.env.REDIS_PASS,
   },
   database: {
     postgres: {
-      host: process.env.POSTGRES_HOST || "localhost",
-      port: Number(process.env.POSTGRES_PORT || 5432),
-      database: process.env.POSTGRES_DB || "postgres",
-      username: process.env.POSTGRES_USER || "pg_user_name",
-      password: process.env.POSTGRES_PASSWORD || "pg_password",
-      dataPath: process.env.POSTGRES_DATA || "/data/postgres",
+      host: process.env.POSTGRES_HOST,
+      port: process.env.POSTGRES_PORT,
+      database: process.env.POSTGRES_DB,
+      username: process.env.POSTGRES_USER,
+      password: process.env.POSTGRES_PASSWORD,
+      dataPath: process.env.POSTGRES_DATA,
     },
   },
   email: {
     smtp: {
-      user: process.env.SMTP_USER || "",
-      pass: process.env.SMTP_PASS || "",
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS,
     },
   },
-};
+});

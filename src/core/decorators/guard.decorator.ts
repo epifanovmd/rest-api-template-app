@@ -14,22 +14,3 @@ export const UseGuards = (...guards: (new () => IGuard)[]): MethodDecorator => {
     }),
   );
 };
-
-// export const UseGuards = (...guards: (new () => IGuard)[]): MethodDecorator => {
-//   return (
-//     target: any,
-//     propertyKey: string | symbol,
-//     descriptor: PropertyDescriptor,
-//   ) => {
-//     // Сохраняем guards в метаданных
-//     const existingGuards =
-//       Reflect.getMetadata("guards", target, propertyKey) || [];
-//
-//     Reflect.defineMetadata(
-//       "guards",
-//       [...existingGuards, ...guards],
-//       target,
-//       propertyKey,
-//     );
-//   };
-// };
