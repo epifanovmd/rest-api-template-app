@@ -6,8 +6,14 @@ import { Controller } from "tsoa";
 import { DataSource } from "typeorm";
 
 import { iocContainer } from "./app.container";
-import { AdminBootstrap, DatabaseBootstrap, SocketBootstrap } from "./bootstrap";
+import {
+  AdminBootstrap,
+  DatabaseBootstrap,
+  SocketBootstrap,
+} from "./bootstrap";
 import { BOOTSTRAP, IBootstrap, TypeOrmDataSource } from "./core";
+import { DialogSocketHandler } from "./modules/dialog";
+import { ISocketHandler, SOCKET_HANDLER } from "./modules/socket";
 
 export const loadAppModule = (koa: Koa) => {
   decorate(injectable(), Controller);
@@ -15,6 +21,13 @@ export const loadAppModule = (koa: Koa) => {
   iocContainer.bind(DataSource).toConstantValue(TypeOrmDataSource);
   iocContainer.bind<Koa>(Koa).toConstantValue(koa);
 
+  // Socket handlers — добавляй сюда новые domain-хендлеры по мере роста
+  iocContainer
+    .bind<ISocketHandler>(SOCKET_HANDLER)
+    .to(DialogSocketHandler)
+    .inSingletonScope();
+
+  // Bootstrappers
   iocContainer
     .bind<IBootstrap>(BOOTSTRAP)
     .to(DatabaseBootstrap)

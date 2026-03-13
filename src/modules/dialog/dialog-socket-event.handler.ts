@@ -1,7 +1,7 @@
 import { inject } from "inversify";
 
 import { EventBus, Injectable } from "../../core";
-import { SocketService } from "../socket";
+import { SocketEmitterService } from "../socket";
 import {
   DialogCreatedEvent,
   DialogDeletedEvent,
@@ -16,7 +16,8 @@ import {
 export class DialogSocketEventHandler {
   constructor(
     @inject(EventBus) private readonly eventBus: EventBus,
-    @inject(SocketService) private readonly socketService: SocketService,
+    @inject(SocketEmitterService)
+    private readonly emitter: SocketEmitterService,
   ) {}
 
   register(): void {
@@ -29,12 +30,15 @@ export class DialogSocketEventHandler {
     this.eventBus.on(MemberRemovedEvent, e => this.onMemberRemoved(e));
   }
 
-  private onMessageCreated({ message, recipientIds }: MessageCreatedEvent): void {
-    recipientIds.forEach(id => this.socketService.notifyUser(id, "message", message));
+  private onMessageCreated({
+    message,
+    recipientIds,
+  }: MessageCreatedEvent): void {
+    recipientIds.forEach(id => this.emitter.toUser(id, "message", message));
   }
 
   private onMessageUpdated({ message, memberIds }: MessageUpdatedEvent): void {
-    memberIds.forEach(id => this.socketService.notifyUser(id, "message", message));
+    memberIds.forEach(id => this.emitter.toUser(id, "message", message));
   }
 
   private onMessageDeleted({
@@ -43,25 +47,23 @@ export class DialogSocketEventHandler {
     memberIds,
   }: MessageDeletedEvent): void {
     memberIds.forEach(id =>
-      this.socketService.notifyUser(id, "deleteMessage", dialogId, messageId),
+      this.emitter.toUser(id, "deleteMessage", dialogId, messageId),
     );
   }
 
   private onDialogCreated({ dialogId, memberIds }: DialogCreatedEvent): void {
-    memberIds.forEach(id => this.socketService.notifyUser(id, "newDialog", dialogId));
+    memberIds.forEach(id => this.emitter.toUser(id, "newDialog", dialogId));
   }
 
   private onDialogDeleted({ dialogId, memberIds }: DialogDeletedEvent): void {
-    memberIds.forEach(id =>
-      this.socketService.notifyUser(id, "deleteDialog", dialogId),
-    );
+    memberIds.forEach(id => this.emitter.toUser(id, "deleteDialog", dialogId));
   }
 
   private onMemberAdded({ dialogId, memberIds }: MemberAddedEvent): void {
-    memberIds.forEach(id => this.socketService.notifyUser(id, "newDialog", dialogId));
+    memberIds.forEach(id => this.emitter.toUser(id, "newDialog", dialogId));
   }
 
   private onMemberRemoved({ dialogId, memberId }: MemberRemovedEvent): void {
-    this.socketService.notifyUser(memberId, "deleteDialog", dialogId);
+    this.emitter.toUser(memberId, "deleteDialog", dialogId);
   }
 }
