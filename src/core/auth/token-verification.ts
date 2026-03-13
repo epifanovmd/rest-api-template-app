@@ -17,7 +17,7 @@ type PermissionStrings = `permission:${EPermissions}`;
 export type SecurityScopes = (RoleStrings | PermissionStrings)[];
 
 @Injectable()
-export class TokenVerificationService {
+export class TokenVerification {
   constructor(@inject(DataSource) private readonly dataSource: DataSource) {}
 
   async verifyAuthToken(

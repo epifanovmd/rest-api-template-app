@@ -1,3 +1,3 @@
 export * from "./jwt";
-export * from "./token-verification.service";
+export * from "./token-verification";
 export * from "./user-context";

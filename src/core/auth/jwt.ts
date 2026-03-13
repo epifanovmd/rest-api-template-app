@@ -4,10 +4,7 @@ import { config } from "../../../config";
 import { iocContainer } from "../../app.container";
 import { User } from "../../modules/user/user.entity";
 import { JWTDecoded } from "../../types/koa";
-import {
-  SecurityScopes,
-  TokenVerificationService,
-} from "./token-verification.service";
+import { SecurityScopes, TokenVerification } from "./token-verification";
 
 export type { SecurityScopes };
 
@@ -46,4 +43,4 @@ export const verifyAuthToken = (
   token?: string,
   scopes?: SecurityScopes,
 ): Promise<User> =>
-  iocContainer.get(TokenVerificationService).verifyAuthToken(token, scopes);
+  iocContainer.get(TokenVerification).verifyAuthToken(token, scopes);
