@@ -15,8 +15,10 @@ import {
 
 import {
   ApiResponseDto,
+  AuthGuard,
   getContextUser,
   Injectable,
+  UseGuards,
   ValidateBody,
 } from "../../core";
 import { KoaRequest } from "../../types/koa";
@@ -46,11 +48,13 @@ export class UserController extends Controller {
    * @summary Получение данных текущего пользователя
    * @returns Пользователь
    */
-  // @UseGuards(AuthGuard)
-  @Security("jwt")
+  @UseGuards(AuthGuard)
+  // @Security("jwt")
   @Get("my")
   getMyUser(@Request() req: KoaRequest): Promise<UserDto> {
     const user = getContextUser(req);
+
+    console.log("user", user);
 
     return this._userService.getUser(user.id).then(UserDto.fromEntity);
   }

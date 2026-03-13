@@ -17,7 +17,7 @@ import { SocketGateway } from "./modules/socket/socket.gateway";
 import { UserService } from "./modules/user";
 import { RegisterRoutes } from "./routes";
 
-const isDevelopment = process.env.NODE_ENV;
+const isDevelopment = process.env.NODE_ENV === "development";
 
 export class App {
   private readonly koaApp: Koa;

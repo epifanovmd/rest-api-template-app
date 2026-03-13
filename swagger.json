@@ -2054,11 +2054,7 @@
 				"tags": [
 					"User"
 				],
-				"security": [
-					{
-						"jwt": []
-					}
-				],
+				"security": [],
 				"parameters": []
 			}
 		},
