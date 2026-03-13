@@ -2,7 +2,7 @@ import { ForbiddenException, NotFoundException } from "@force-dev/utils";
 import { inject } from "inversify";
 import { Not } from "typeorm";
 
-import { Injectable } from "../../core";
+import { EventBus, Injectable } from "../../core";
 import {
   DialogMembersRepository,
   DialogMembersService,
@@ -15,23 +15,28 @@ import {
 } from "../dialog-messages/dto";
 import { FcmTokenService } from "../fcm-token";
 import { MessageFilesRepository } from "../message-files";
-import { SocketService } from "../socket";
 import { UserRepository } from "../user";
 import { DialogRepository } from "./dialog.repository";
 import { IDialogFindOrCreateResponseDto, IDialogFindResponseDto } from "./dto";
+import {
+  DialogCreatedEvent,
+  DialogDeletedEvent,
+  MessageCreatedEvent,
+  MessageDeletedEvent,
+  MessageUpdatedEvent,
+} from "./events";
 
 @Injectable()
 export class DialogService {
   constructor(
+    @inject(EventBus) private readonly eventBus: EventBus,
     @inject(DialogMembersService)
     private _dialogMembersService: DialogMembersService,
-    @inject(SocketService) private _socketService: SocketService,
     @inject(DialogRepository) private _dialogRepository: DialogRepository,
     @inject(DialogMessagesRepository)
     private _dialogMessagesRepository: DialogMessagesRepository,
     @inject(UserRepository) private _userRepository: UserRepository,
     @inject(FcmTokenService) private _fcmTokenService: FcmTokenService,
-
     @inject(DialogMembersRepository)
     private _dialogMembersRepository: DialogMembersRepository,
     @inject(MessageFilesRepository)
@@ -46,7 +51,6 @@ export class DialogService {
   }
 
   async getDialogs(userId: string, offset?: number, limit?: number) {
-    // Все в одном запросе
     const result = await this._dialogRepository
       .createQueryBuilder("dialog")
       .innerJoin("dialog.members", "member", "member.userId = :userId", {
@@ -55,13 +59,12 @@ export class DialogService {
       .leftJoinAndSelect(
         "dialog.members",
         "members",
-        "members.userId != :userId", // ← фильтрация участников
+        "members.userId != :userId",
         { userId },
       )
       .leftJoinAndSelect("members.user", "memberUser")
       .leftJoinAndSelect("memberUser.profile", "memberUserProfile")
       .leftJoinAndSelect("dialog.lastMessage", "lastMessage")
-      // Непрочитанные сообщения
       .addSelect(
         qb =>
           qb
@@ -83,12 +86,10 @@ export class DialogService {
       return [];
     }
 
-    return dialogs.map((dialog, index) => {
-      return {
-        ...dialog,
-        unreadMessagesCount: parseInt(result.raw[index]?.unreadCount || "0"),
-      };
-    });
+    return dialogs.map((dialog, index) => ({
+      ...dialog,
+      unreadMessagesCount: parseInt(result.raw[index]?.unreadCount || "0"),
+    }));
   }
 
   async getDialog(id: string, userId: string) {
@@ -186,38 +187,25 @@ export class DialogService {
     await queryRunner.startTransaction();
 
     try {
-      // Проверяем существование пользователей
       const users = await Promise.all(
-        recipientId.map(recipientId =>
+        recipientId.map(id =>
           this._userRepository.findOne({
-            where: { id: recipientId },
+            where: { id },
           }),
         ),
       );
 
-      const allUsersExist = users.every(user => user !== null);
-
-      if (!allUsersExist) {
+      if (!users.every(user => user !== null)) {
         throw new NotFoundException(
           "Один или несколько пользователей не найдены",
         );
       }
 
-      // Создаем диалог
       const dialog = await this._dialogRepository.createAndSave({
         ownerId: userId,
       });
 
-      // Добавляем участников
       const members = Array.from(new Set([userId, ...recipientId]));
-
-      members.forEach(member => {
-        const client = this._socketService.getClient(member);
-
-        if (client) {
-          client.emit("newDialog", member);
-        }
-      });
 
       await this._dialogMembersService.addMembers({
         dialogId: dialog.id,
@@ -226,7 +214,8 @@ export class DialogService {
 
       await queryRunner.commitTransaction();
 
-      // Получаем полный объект диалога
+      this.eventBus.emit(new DialogCreatedEvent(dialog.id, members));
+
       return this.getDialog(dialog.id, userId);
     } catch (error) {
       await queryRunner.rollbackTransaction();
@@ -251,16 +240,8 @@ export class DialogService {
         throw new NotFoundException("Диалог не найден");
       }
 
-      // Уведомляем участников
-      dialog.members.forEach(member => {
-        const client = this._socketService.getClient(member.userId);
+      const memberIds = dialog.members.map(m => m.userId);
 
-        if (client) {
-          client.emit("deleteDialog", id);
-        }
-      });
-
-      // Удаляем диалог
       const deleted = await this._dialogRepository.delete(id);
 
       if (!deleted) {
@@ -268,6 +249,8 @@ export class DialogService {
       }
 
       await queryRunner.commitTransaction();
+
+      this.eventBus.emit(new DialogDeletedEvent(id, memberIds));
     } catch (error) {
       await queryRunner.rollbackTransaction();
       throw error;
@@ -303,34 +286,20 @@ export class DialogService {
     });
 
     if (message) {
-      const members = dialog.members.filter(member => member.userId !== userId);
-
-      members.forEach(member => {
-        this.sendSocketMessage(
-          member.userId,
-          DialogMessagesDto.fromEntity(message),
-        );
-        this.sendPushNotification(member.userId, message);
-      });
-
       await this.updateDialogLastMessage(body.dialogId, message.id);
-    }
 
-    // if (body.imageIds?.length) {
-    //   const files = await this._fileRepository.findByIds(body.imageIds);
-    //   // Здесь нужно будет добавить логику для связывания файлов с сообщением
-    //   // через MessageFilesRepository
-    // }
-    //
-    // if (body.videoIds?.length) {
-    //   const files = await this._fileRepository.findByIds(body.videoIds);
-    //   // Аналогично для видео
-    // }
-    //
-    // if (body.audioIds?.length) {
-    //   const files = await this._fileRepository.findByIds(body.audioIds);
-    //   // Аналогично для аудио
-    // }
+      const recipientIds = dialog.members
+        .filter(member => member.userId !== userId)
+        .map(member => member.userId);
+
+      const dto = DialogMessagesDto.fromEntity(message);
+
+      this.eventBus.emit(new MessageCreatedEvent(dto, recipientIds));
+
+      recipientIds.forEach(recipientId =>
+        this.sendPushNotification(recipientId, message),
+      );
+    }
 
     return message;
   }
@@ -364,13 +333,11 @@ export class DialogService {
     }
 
     const dialog = await this.getDialog(updatedMessage.dialogId, userId);
+    const memberIds = dialog.members.map(m => m.userId);
 
-    dialog.members.forEach(member => {
-      this.sendSocketMessage(
-        member.userId,
-        DialogMessagesDto.fromEntity(updatedMessage),
-      );
-    });
+    this.eventBus.emit(
+      new MessageUpdatedEvent(DialogMessagesDto.fromEntity(updatedMessage), memberIds),
+    );
 
     return updatedMessage;
   }
@@ -400,24 +367,18 @@ export class DialogService {
       .withTransaction(async (repository, manager) => {
         const messageWithDialog = await repository.findOne({
           where: { id },
-          relations: {
-            dialog: true,
-          },
+          relations: { dialog: true },
         });
 
         if (!messageWithDialog) {
           throw new NotFoundException("Сообщение не найдено");
         }
 
-        const dialogId = messageWithDialog.dialogId;
-        const dialog = messageWithDialog.dialog;
+        const { dialogId, dialog } = messageWithDialog;
 
         if (dialog.lastMessageId === id) {
           const previousMessage = await repository.findOne({
-            where: {
-              dialogId: dialogId,
-              id: Not(id),
-            },
+            where: { dialogId, id: Not(id) },
             order: { createdAt: "DESC" },
             select: ["id"],
           });
@@ -443,22 +404,16 @@ export class DialogService {
           message.dialogId,
         );
 
-        members.forEach(({ userId: memberId }) => {
-          const client = this._socketService.getClient(memberId);
-
-          if (client) {
-            client.emit("deleteMessage", message.dialogId, id);
-          }
-        });
+        this.eventBus.emit(
+          new MessageDeletedEvent(
+            message.dialogId,
+            id,
+            members.map(m => m.userId),
+          ),
+        );
 
         return result;
       });
-  }
-
-  sendSocketMessage(recipientId: string, message: DialogMessagesDto) {
-    const client = this._socketService.getClient(recipientId);
-
-    return !!client?.emit("message", message);
   }
 
   async sendPushNotification(recipientId: string, message: DialogMessages) {

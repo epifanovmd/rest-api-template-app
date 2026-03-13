@@ -1,14 +1,14 @@
 import { NotFoundException } from "@force-dev/utils";
 import { inject } from "inversify";
 
-import { Injectable } from "../../core";
-import { SocketService } from "../socket";
+import { EventBus, Injectable } from "../../core";
+import { MemberAddedEvent, MemberRemovedEvent } from "../dialog/events";
 import { DialogMembersRepository } from "./dialog-members.repository";
 
 @Injectable()
 export class DialogMembersService {
   constructor(
-    @inject(SocketService) private _socketService: SocketService,
+    @inject(EventBus) private readonly eventBus: EventBus,
     @inject(DialogMembersRepository)
     private _dialogMembersRepository: DialogMembersRepository,
   ) {}
@@ -45,22 +45,21 @@ export class DialogMembersService {
             userId: memberUserId,
             dialogId,
           });
-        } catch (error) {
+        } catch {
           // Игнорируем дубликаты
           return null;
         }
       }),
     );
 
-    createdMembers
+    const addedIds = createdMembers
       .filter(member => member !== null)
-      .forEach(member => {
-        const client = this._socketService.getClient(member.userId);
+      .map(member => member.userId);
 
-        if (client) {
-          client.emit("newDialog", dialogId);
-        }
-      });
+    // Уведомляем только когда участники добавляются в существующий диалог
+    if (userId && addedIds.length > 0) {
+      this.eventBus.emit(new MemberAddedEvent(dialogId, addedIds));
+    }
 
     return this.getMembers(dialogId);
   }
@@ -72,13 +71,11 @@ export class DialogMembersService {
       throw new NotFoundException("Участник не найден");
     }
 
-    const client = this._socketService.getClient(member.userId);
-
-    if (client) {
-      client.emit("deleteDialog", member.dialogId);
-    }
-
     const deleted = await this._dialogMembersRepository.delete(id);
+
+    if (deleted.affected) {
+      this.eventBus.emit(new MemberRemovedEvent(member.dialogId, member.userId));
+    }
 
     return !!deleted.affected;
   }

@@ -1,12 +1,12 @@
 import { ForbiddenException } from "@force-dev/utils";
 import { createServer } from "http";
-import { Container } from "inversify";
+import { inject } from "inversify";
 import Koa from "koa";
 import { Server } from "socket.io";
 
 // import { RateLimiterMemory } from "rate-limiter-flexible";
 import { config } from "../../../config";
-import { verifyAuthToken } from "../../core";
+import { Injectable, verifyAuthToken } from "../../core";
 import { User } from "../user/user.entity";
 import { ISocketEmitEvents, TServer, TSocket } from "./socket.types";
 
@@ -20,21 +20,14 @@ const { socket, cors } = config;
 //   duration: 1, // за 1 секунду
 // });
 
+@Injectable()
 export class SocketService {
-  static setup = (container: Container, koaApp: Koa) => {
-    const socketService = new SocketService(koaApp);
-
-    container.bind(SocketService).toConstantValue(socketService);
-
-    return socketService;
-  };
-
-  private _server: ReturnType<typeof createServer>;
-  private _io: TServer;
+  private readonly _server: ReturnType<typeof createServer>;
+  private readonly _io: TServer;
   public _clients = new Map<string, { socket: TSocket; user: User }>();
 
-  constructor(app: Koa) {
-    this._server = createServer(app.callback());
+  constructor(@inject(Koa) koa: Koa) {
+    this._server = createServer(koa.callback());
 
     this._io = new Server(this._server, {
       cors: {
@@ -72,7 +65,6 @@ export class SocketService {
   }
 
   private setupConnectionHandling(): void {
-    // Применяем промежуточное ПО
     this._io.use(async (socket, next) => {
       try {
         await new Promise<void>((resolve, reject) => {
@@ -101,7 +93,6 @@ export class SocketService {
       }
     });
 
-    // Обработка подключений
     this._io.on("connection", async (socket: TSocket) => {
       try {
         // Проверка ограничения скорости
@@ -128,7 +119,6 @@ export class SocketService {
     this._clients.set(user.id, { socket, user });
     socket.join(`user_${user.id}`);
 
-    // Отправляем клиенту его ID
     socket.emit("authenticated", { userId: user.id });
   }
 
@@ -166,6 +156,20 @@ export class SocketService {
     return this._clients.get(userId)?.socket;
   }
 
+  notifyUser<K extends keyof ISocketEmitEvents>(
+    userId: string,
+    event: K,
+    ...args: Parameters<ISocketEmitEvents[K]>
+  ): boolean {
+    const client = this._clients.get(userId);
+
+    if (!client) return false;
+
+    client.socket.emit<any>(event, ...args);
+
+    return true;
+  }
+
   broadcastToRoom<K extends keyof ISocketEmitEvents>(
     room: string,
     event: K,
@@ -181,27 +185,11 @@ export class SocketService {
     this._io.emit<any>(event, ...args);
   }
 
-  notifyUser<K extends keyof ISocketEmitEvents>(
-    userId: string,
-    event: K,
-    ...args: Parameters<ISocketEmitEvents[K]>
-  ): boolean {
-    const client = this._clients.get(userId);
-
-    if (!client) return false;
-
-    client.socket.emit<any>(event, ...args);
-
-    return true;
-  }
-
   async close(): Promise<void> {
     return new Promise((resolve, reject) => {
-      // Отключаем всех клиентов
       this._clients.forEach(({ socket }) => socket.disconnect(true));
       this._clients.clear();
 
-      // Закрываем сервер
       this._io.close(err => {
         if (err) return reject(err);
         this._server.close(() => resolve());
