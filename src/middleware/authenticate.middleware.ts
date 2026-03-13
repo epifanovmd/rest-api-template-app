@@ -1,7 +1,8 @@
 import { UnauthorizedException } from "@force-dev/utils";
 import { Request } from "koa";
 
-import { SecurityScopes, verifyAuthToken } from "../core";
+import { iocContainer } from "../app.container";
+import { SecurityScopes, TokenVerificationService } from "../core";
 import { User } from "../modules/user/user.entity";
 
 export const koaAuthentication = (
@@ -16,7 +17,11 @@ export const koaAuthentication = (
       if (!token) {
         reject(new UnauthorizedException());
       } else {
-        resolve(verifyAuthToken(token, scopes as SecurityScopes));
+        resolve(
+          iocContainer
+            .get(TokenVerificationService)
+            .verifyAuthToken(token, scopes as SecurityScopes),
+        );
       }
     });
   }

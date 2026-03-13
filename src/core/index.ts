@@ -1,4 +1,5 @@
 export * from "./auth";
+export * from "./bootstrap";
 export * from "./db";
 export * from "./decorators";
 export * from "./dto";

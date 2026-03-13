@@ -8,6 +8,8 @@ export class AuthGuard implements IGuard {
   async process(ctx: Context): Promise<boolean> {
     const token = ctx.headers.authorization?.replace("Bearer ", "");
 
+    console.log("token", token);
+
     if (!token) {
       throw new UnauthorizedException();
     }
