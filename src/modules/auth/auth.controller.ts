@@ -1,4 +1,4 @@
-import { inject } from "inversify";
+import { inject, injectable } from "inversify";
 import { Body, Controller, Post, Route, Tags } from "tsoa";
 
 import { ApiResponseDto, Injectable } from "../../core";
@@ -12,7 +12,7 @@ import {
 } from "./auth.dto";
 import { AuthService } from "./auth.service";
 
-@Injectable()
+@injectable()
 @Tags("Authorization")
 @Route("api/auth")
 export class AuthController extends Controller {

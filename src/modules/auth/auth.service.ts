@@ -4,7 +4,7 @@ import {
   UnauthorizedException,
 } from "@force-dev/utils";
 import axios from "axios";
-import { inject } from "inversify";
+import { inject, injectable } from "inversify";
 import sha256 from "sha256";
 
 import {
@@ -28,7 +28,7 @@ import {
 const GITHUB_CLIENT_ID = "Ov23lizh9Zepze4yliRV";
 const GITHUB_CLIENT_SECRET = "d1cbef76205d2d527ca8c6646c03eca70b4c6f8a";
 
-@Injectable()
+@injectable()
 export class AuthService {
   constructor(
     @inject(UserService) private _userService: UserService,

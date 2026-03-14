@@ -12,6 +12,7 @@ import {
   SocketBootstrap,
 } from "./bootstrap";
 import { BOOTSTRAP, IBootstrap, TypeOrmDataSource } from "./core";
+import { AuthModule } from "./modules/auth";
 import { DialogSocketHandler } from "./modules/dialog";
 import { ISocketHandler, SOCKET_HANDLER } from "./modules/socket";
 
@@ -20,6 +21,8 @@ export const loadAppModule = (koa: Koa) => {
 
   iocContainer.bind(DataSource).toConstantValue(TypeOrmDataSource);
   iocContainer.bind<Koa>(Koa).toConstantValue(koa);
+
+  new AuthModule(iocContainer).configure();
 
   // Socket handlers — добавляй сюда новые domain-хендлеры по мере роста
   iocContainer
