@@ -20,6 +20,8 @@
   },
   "scripts": {
     "dev": "yarn generate && nodemon",
+    "dev:types": "tsc --noEmit --watch --preserveWatchOutput",
+    "dev:routes": "nodemon --watch \"src/modules\" --ext ts --exec \"yarn generate\" --ignore \"src/routes.ts\" --delay 1",
     "build": "yarn generate && rollup -c",
     "server": "NODE_ENV=production node build/main.js",
     "generate": "tsoa routes && tsoa swagger",
