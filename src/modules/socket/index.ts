@@ -1,5 +1,6 @@
 export * from "./socket.bootstrap";
 export * from "./socket.helpers";
+export * from "./socket.module";
 export * from "./socket.types";
 export * from "./socket-auth.middleware";
 export * from "./socket-client-registry";

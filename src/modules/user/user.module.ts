@@ -1,6 +1,6 @@
-import { Module } from "../../core/decorators/module.decorator";
-import { PermissionRepository } from "../permission/permission.repository";
-import { RoleRepository } from "../role/role.repository";
+import { Module } from "../../core";
+import { PermissionRepository } from "../permission";
+import { RoleRepository } from "../role";
 import { AdminBootstrap } from "./admin.bootstrap";
 import { UserController } from "./user.controller";
 import { UserRepository } from "./user.repository";

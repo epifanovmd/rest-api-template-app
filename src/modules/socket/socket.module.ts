@@ -1,4 +1,4 @@
-import { Module } from "../../core/decorators/module.decorator";
+import { Module } from "../../core";
 import { SocketBootstrap } from "./socket.bootstrap";
 import { SocketAuthMiddleware } from "./socket-auth.middleware";
 import { SocketClientRegistry } from "./socket-client-registry";

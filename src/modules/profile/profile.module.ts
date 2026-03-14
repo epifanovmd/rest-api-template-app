@@ -1,4 +1,4 @@
-import { Module } from "../../core/decorators/module.decorator";
+import { Module } from "../../core";
 import { ProfileController } from "./profile.controller";
 import { ProfileRepository } from "./profile.repository";
 import { ProfileService } from "./profile.service";

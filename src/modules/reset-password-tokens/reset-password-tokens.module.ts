@@ -1,4 +1,4 @@
-import { Module } from "../../core/decorators/module.decorator";
+import { Module } from "../../core";
 import { ResetPasswordTokensRepository } from "./reset-password-tokens.repository";
 import { ResetPasswordTokensService } from "./reset-password-tokens.service";
 

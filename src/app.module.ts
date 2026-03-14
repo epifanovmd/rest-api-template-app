@@ -1,20 +1,19 @@
 import "reflect-metadata";
 
-import { CoreModule } from "./core/core.module";
-import { Module } from "./core/decorators/module.decorator";
-import { AuthModule } from "./modules/auth/auth.module";
-import { BiometricModule } from "./modules/biometric/biometric.module";
-import { DialogModule } from "./modules/dialog/dialog.module";
-import { FcmTokenModule } from "./modules/fcm-token/fcm-token.module";
-import { FileModule } from "./modules/file/file.module";
-import { MailerModule } from "./modules/mailer/mailer.module";
-import { OtpModule } from "./modules/otp/otp.module";
-import { PasskeysModule } from "./modules/passkeys/passkeys.module";
-import { ProfileModule } from "./modules/profile/profile.module";
-import { ResetPasswordTokensModule } from "./modules/reset-password-tokens/reset-password-tokens.module";
-import { SocketModule } from "./modules/socket/socket.module";
-import { UserModule } from "./modules/user/user.module";
-import { UtilsModule } from "./modules/utils/utils.module";
+import { CoreModule, Module } from "./core";
+import { AuthModule } from "./modules/auth";
+import { BiometricModule } from "./modules/biometric";
+import { DialogModule } from "./modules/dialog";
+import { FcmTokenModule } from "./modules/fcm-token";
+import { FileModule } from "./modules/file";
+import { MailerModule } from "./modules/mailer";
+import { OtpModule } from "./modules/otp";
+import { PasskeysModule } from "./modules/passkeys";
+import { ProfileModule } from "./modules/profile";
+import { ResetPasswordTokensModule } from "./modules/reset-password-tokens";
+import { SocketModule } from "./modules/socket";
+import { UserModule } from "./modules/user";
+import { UtilsModule } from "./modules/utils";
 
 /**
  * Корневой модуль приложения.

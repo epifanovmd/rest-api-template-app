@@ -1,4 +1,5 @@
 export * from "./dialog.controller";
+export * from "./dialog.module";
 export * from "./dialog.repository";
 export * from "./dialog.service";
 export * from "./dialog-presence.handler";

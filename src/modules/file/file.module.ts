@@ -1,4 +1,4 @@
-import { Module } from "../../core/decorators/module.decorator";
+import { Module } from "../../core";
 import { FileController } from "./file.controller";
 import { FileRepository } from "./file.repository";
 import { FileService } from "./file.service";

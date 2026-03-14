@@ -1,9 +1,13 @@
 import { Module } from "../../core";
-import { DialogMembersRepository } from "../dialog-members/dialog-members.repository";
-import { DialogMembersService } from "../dialog-members/dialog-members.service";
-import { DialogMessagesRepository } from "../dialog-messages/dialog-messages.repository";
-import { DialogMessagesService } from "../dialog-messages/dialog-messages.service";
-import { MessageFilesRepository } from "../message-files/message-files.repository";
+import {
+  DialogMembersRepository,
+  DialogMembersService,
+} from "../dialog-members";
+import {
+  DialogMessagesRepository,
+  DialogMessagesService,
+} from "../dialog-messages";
+import { MessageFilesRepository } from "../message-files";
 import { asSocketHandler, asSocketListener } from "../socket";
 import { DialogController } from "./dialog.controller";
 import { DialogRepository } from "./dialog.repository";

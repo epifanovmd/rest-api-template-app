@@ -1,4 +1,4 @@
-import { Module } from "../../core/decorators/module.decorator";
+import { Module } from "../../core";
 import { OtpRepository } from "./otp.repository";
 import { OtpService } from "./otp.service";
 
