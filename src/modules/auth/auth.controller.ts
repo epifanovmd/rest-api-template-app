@@ -1,10 +1,9 @@
 import { inject, injectable } from "inversify";
 import { Body, Controller, Post, Route, Tags } from "tsoa";
 
-import { ApiResponseDto, Injectable } from "../../core";
+import { ApiResponseDto, ITokensDto } from "../../core";
 import {
   ISignInRequestDto,
-  ITokensDto,
   IUserLoginRequestDto,
   IUserResetPasswordRequestDto,
   IUserWithTokensDto,

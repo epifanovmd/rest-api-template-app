@@ -12,6 +12,7 @@ import { config } from "../../config";
 import {
   ApiResponseDto,
   Injectable,
+  ITokensDto,
   logger,
   TokenService,
   verifyToken,
@@ -23,7 +24,6 @@ import { UserDto } from "../user/dto";
 import {
   IAuthenticateRequestDto,
   ISignInRequestDto,
-  ITokensDto,
   IUserWithTokensDto,
   TSignUpRequestDto,
 } from "./auth.dto";
@@ -274,11 +274,11 @@ export class AuthService {
             "https://api.github.com/user/emails",
             { headers: { Authorization: `Bearer ${accessToken}` } },
           );
-          const primaryEmail = emailsResponse.data.find(
-            (e: any) => e.primary,
-          );
+          const primaryEmail = emailsResponse.data.find((e: any) => e.primary);
 
-          email = primaryEmail ? primaryEmail.email : emailsResponse.data[0]?.email;
+          email = primaryEmail
+            ? primaryEmail.email
+            : emailsResponse.data[0]?.email;
         } catch (emailError) {
           logger.error({ err: emailError }, "Failed to fetch GitHub emails");
         }

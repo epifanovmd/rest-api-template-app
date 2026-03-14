@@ -13,8 +13,8 @@ export const RegisterAppMiddlewares = (
 ) => {
   app
     .use(requestIdMiddleware)
-    .use(errorMiddleware)
     .use(requestLoggerMiddleware)
+    .use(errorMiddleware)
     .use(corsMiddleware)
     .use(rateLimitMiddleware)
     .use(bodyParserMiddleware)
