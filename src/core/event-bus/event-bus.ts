@@ -1,4 +1,5 @@
 import { Injectable } from "../decorators";
+import { logger } from "../logger";
 
 type Constructor<T> = new (...args: any[]) => T;
 type Handler<T> = (event: T) => void | Promise<void>;
@@ -21,11 +22,11 @@ export class EventBus {
 
         if (result instanceof Promise) {
           result.catch(err =>
-            console.error(`[EventBus] Handler error for "${name}":`, err),
+            logger.error({ err }, `[EventBus] Handler error for "${name}"`),
           );
         }
       } catch (err) {
-        console.error(`[EventBus] Handler error for "${name}":`, err);
+        logger.error({ err }, `[EventBus] Handler error for "${name}"`);
       }
     }
   }

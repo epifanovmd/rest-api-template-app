@@ -1,12 +1,13 @@
 import KoaRouter from "@koa/router";
 import { Server } from "http";
 import Koa from "koa";
-import logger from "koa-logger";
+import { DataSource } from "typeorm";
 
 import { config } from "../config";
 import { iocContainer } from "./app.container";
 import { loadAppModule } from "./app.module";
 import { BOOTSTRAP, IBootstrap } from "./core";
+import { logger } from "./core/logger";
 import {
   notFoundMiddleware,
   RegisterAppMiddlewares,
@@ -44,15 +45,34 @@ export class App {
   }
 
   private configure(): void {
-    if (isDevelopment) {
-      this.koa.use(logger());
-    }
-
     const router = new KoaRouter();
 
     router.get("/ping", context => {
       context.status = 200;
       context.body = { serverTime: new Date().toISOString() };
+    });
+
+    router.get("/health", async context => {
+      let dbStatus = "ok";
+
+      try {
+        const dataSource = iocContainer.get(DataSource);
+
+        await dataSource.query("SELECT 1");
+      } catch {
+        dbStatus = "error";
+      }
+
+      const status = dbStatus === "ok" ? 200 : 503;
+
+      context.status = status;
+      context.body = {
+        status: status === 200 ? "ok" : "degraded",
+        uptime: Math.floor(process.uptime()),
+        timestamp: new Date().toISOString(),
+        version: process.env.npm_package_version ?? "unknown",
+        services: { db: dbStatus },
+      };
     });
 
     RegisterAppMiddlewares(this.koa);
@@ -81,29 +101,16 @@ export class App {
   }
 
   private logStartup(hostname: string, port: number): void {
-    const protocol = "http";
-    const fullUrl = `${protocol}://${hostname}:${port}`;
+    const { host: dbHost, port: dbPort, database } = config.database.postgres;
 
-    console.log("🚀  Server launched successfully!");
-    console.log("📊 API Status");
-    console.log(`   ├─ 🌐  Environment: ${process.env.NODE_ENV}`);
-    console.log(`   ├─ 🏠  Host: ${fullUrl}`);
-
-    if (hostname === "0.0.0.0" || hostname === "::") {
-      console.log(`   └─ 🌍  Network: ${protocol}://localhost:${port}`);
-    }
-
-    console.log("📚 Documentation");
-    console.log(`   ├─ 📖  Swagger UI: ${fullUrl}/api-docs`);
-    console.log(`   ├─ 📄  OpenAPI JSON: ${fullUrl}/swagger.json`);
-
-    console.log("🗄️ Database");
-    console.log(
-      `   ├─ 🌐  Host: ${config.database.postgres.host}:${config.database.postgres.port}`,
+    logger.info(
+      {
+        env: process.env.NODE_ENV,
+        url: `http://${hostname}:${port}`,
+        swagger: `http://${hostname}:${port}/api-docs`,
+        db: `${dbHost}:${dbPort}/${database}`,
+      },
+      "Server launched successfully",
     );
-    console.log(`   ├─ 📁  Database: ${config.database.postgres.database}`);
-    console.log(`   └─ 👤  User: ${config.database.postgres.username}`);
-
-    console.log("🎯  Ready to receive requests!\n");
   }
 }

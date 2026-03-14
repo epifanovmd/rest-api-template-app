@@ -1,6 +1,7 @@
 import "reflect-metadata";
 
 import { App } from "./app";
+import { logger } from "./core/logger";
 
 const bootstrap = async () => {
   const app = new App();
@@ -8,13 +9,13 @@ const bootstrap = async () => {
   await app.start();
 
   const shutdown = async (signal: string) => {
-    console.log(`\n${signal} received, shutting down gracefully...`);
+    logger.info({ signal }, "Shutting down gracefully...");
     try {
       await app.stop();
-      console.log("Server closed.");
+      logger.info("Server closed.");
       process.exit(0);
     } catch (error) {
-      console.error("Error during shutdown:", error);
+      logger.error({ err: error }, "Error during shutdown");
       process.exit(1);
     }
   };
@@ -24,6 +25,6 @@ const bootstrap = async () => {
 };
 
 bootstrap().catch(error => {
-  console.error("Failed to start application:", error);
+  logger.error({ err: error }, "Failed to start application");
   process.exit(1);
 });

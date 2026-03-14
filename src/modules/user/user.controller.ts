@@ -54,8 +54,6 @@ export class UserController extends Controller {
   getMyUser(@Request() req: KoaRequest): Promise<UserDto> {
     const user = getContextUser(req);
 
-    console.log("user", user);
-
     return this._userService.getUser(user.id).then(UserDto.fromEntity);
   }
 

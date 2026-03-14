@@ -1,6 +1,6 @@
 import { ConflictException, NotFoundException } from "@force-dev/utils";
+import bcrypt from "bcrypt";
 import { inject } from "inversify";
-import sha256 from "sha256";
 import { FindOptionsRelations, FindOptionsWhere } from "typeorm";
 
 import { ApiResponseDto, Injectable } from "../../core";
@@ -64,33 +64,14 @@ export class UserService {
   }
 
   async createUser(body: Partial<User>) {
-    const queryRunner = this._userRepository.createQueryRunner();
+    const user = await this._userRepository.createAndSave({ ...body });
 
-    await queryRunner.connect();
-    await queryRunner.startTransaction();
+    await this._profileRepository.createAndSave({
+      userId: user.id,
+      status: EProfileStatus.Offline,
+    });
 
-    try {
-      // Создаем пользователя
-      const user = await this._userRepository.createAndSave({
-        ...body,
-      });
-
-      // Создаем пустой профиль
-      await this._profileRepository.createAndSave({
-        userId: user.id,
-        status: EProfileStatus.Offline,
-      });
-
-      await queryRunner.commitTransaction();
-
-      // Устанавливаем роль по умолчанию
-      return this.setPrivileges(user.id, ERole.USER, [EPermissions.READ]);
-    } catch (error) {
-      await queryRunner.rollbackTransaction();
-      throw error;
-    } finally {
-      await queryRunner.release();
-    }
+    return this.setPrivileges(user.id, ERole.USER, [EPermissions.READ]);
   }
 
   async createAdmin(body: Partial<User>) {
@@ -157,47 +138,27 @@ export class UserService {
     roleName: IUserPrivilegesRequestDto["roleName"],
     permissions: IUserPrivilegesRequestDto["permissions"] = [],
   ) {
-    const queryRunner = this._userRepository.createQueryRunner();
+    const user = await this._userRepository.findById(userId);
 
-    await queryRunner.connect();
-    await queryRunner.startTransaction();
-
-    try {
-      const user = await this._userRepository.findById(userId);
-
-      if (!user) {
-        throw new NotFoundException("Пользователь не найден");
-      }
-
-      // Находим или создаем роль
-      let role = await this._roleRepository.findByName(roleName);
-
-      if (!role) {
-        role = await this._roleRepository.createAndSave({
-          name: roleName,
-        });
-      }
-
-      // Устанавливаем роль пользователю
-      user.role = role;
-      user.roleId = role.id;
-      await this._userRepository.save(user);
-
-      // Если есть разрешения, устанавливаем их для роли
-      if (permissions.length > 0) {
-        await this.setPermissions(role.id, permissions);
-      }
-
-      await queryRunner.commitTransaction();
-
-      // Возвращаем обновленного пользователя с отношениями
-      return this.getUser(userId);
-    } catch (error) {
-      await queryRunner.rollbackTransaction();
-      throw error;
-    } finally {
-      await queryRunner.release();
+    if (!user) {
+      throw new NotFoundException("Пользователь не найден");
     }
+
+    let role = await this._roleRepository.findByName(roleName);
+
+    if (!role) {
+      role = await this._roleRepository.createAndSave({ name: roleName });
+    }
+
+    user.role = role;
+    user.roleId = role.id;
+    await this._userRepository.save(user);
+
+    if (permissions.length > 0) {
+      await this.setPermissions(role.id, permissions);
+    }
+
+    return this.getUser(userId);
   }
 
   async requestVerifyEmail(userId: string, email?: string) {
@@ -236,7 +197,7 @@ export class UserService {
 
   async changePassword(userId: string, password: string) {
     await this._userRepository.update(userId, {
-      passwordHash: sha256(password),
+      passwordHash: await bcrypt.hash(password, 12),
     });
 
     return new ApiResponseDto({ message: "Пароль успешно изменен." });

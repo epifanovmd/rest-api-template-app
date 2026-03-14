@@ -680,106 +680,6 @@
 				"type": "object",
 				"additionalProperties": false
 			},
-			"IFCMMessageDto": {
-				"properties": {
-					"dialogId": {
-						"type": "string"
-					},
-					"link": {
-						"type": "string"
-					},
-					"to": {
-						"type": "string"
-					},
-					"message": {
-						"properties": {
-							"sound": {
-								"type": "string"
-							},
-							"image": {
-								"type": "string"
-							},
-							"description": {
-								"type": "string"
-							},
-							"title": {
-								"type": "string"
-							}
-						},
-						"required": [
-							"title"
-						],
-						"type": "object"
-					},
-					"badge": {
-						"type": "number",
-						"format": "double"
-					},
-					"type": {
-						"type": "string",
-						"enum": [
-							"token",
-							"topic"
-						]
-					},
-					"data": {
-						"properties": {},
-						"additionalProperties": {
-							"type": "string"
-						},
-						"type": "object"
-					}
-				},
-				"required": [
-					"to",
-					"message"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"FcmTokenDto": {
-				"properties": {
-					"id": {
-						"type": "number",
-						"format": "double"
-					},
-					"userId": {
-						"type": "string"
-					},
-					"token": {
-						"type": "string"
-					},
-					"createdAt": {
-						"type": "string",
-						"format": "date-time"
-					},
-					"updatedAt": {
-						"type": "string",
-						"format": "date-time"
-					}
-				},
-				"required": [
-					"id",
-					"userId",
-					"token",
-					"createdAt",
-					"updatedAt"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"FcmTokenRequestDto": {
-				"properties": {
-					"token": {
-						"type": "string"
-					}
-				},
-				"required": [
-					"token"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
 			"DialogLastMessagesDto": {
 				"properties": {
 					"id": {
@@ -1225,6 +1125,106 @@
 						"type": "array"
 					}
 				},
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IFCMMessageDto": {
+				"properties": {
+					"dialogId": {
+						"type": "string"
+					},
+					"link": {
+						"type": "string"
+					},
+					"to": {
+						"type": "string"
+					},
+					"message": {
+						"properties": {
+							"sound": {
+								"type": "string"
+							},
+							"image": {
+								"type": "string"
+							},
+							"description": {
+								"type": "string"
+							},
+							"title": {
+								"type": "string"
+							}
+						},
+						"required": [
+							"title"
+						],
+						"type": "object"
+					},
+					"badge": {
+						"type": "number",
+						"format": "double"
+					},
+					"type": {
+						"type": "string",
+						"enum": [
+							"token",
+							"topic"
+						]
+					},
+					"data": {
+						"properties": {},
+						"additionalProperties": {
+							"type": "string"
+						},
+						"type": "object"
+					}
+				},
+				"required": [
+					"to",
+					"message"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"FcmTokenDto": {
+				"properties": {
+					"id": {
+						"type": "number",
+						"format": "double"
+					},
+					"userId": {
+						"type": "string"
+					},
+					"token": {
+						"type": "string"
+					},
+					"createdAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"updatedAt": {
+						"type": "string",
+						"format": "date-time"
+					}
+				},
+				"required": [
+					"id",
+					"userId",
+					"token",
+					"createdAt",
+					"updatedAt"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"FcmTokenRequestDto": {
+				"properties": {
+					"token": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"token"
+				],
 				"type": "object",
 				"additionalProperties": false
 			},
@@ -2816,320 +2816,6 @@
 				}
 			}
 		},
-		"/api/fcm/register-apn-token": {
-			"post": {
-				"operationId": "RegisterApn",
-				"responses": {
-					"200": {
-						"description": "Список зарегистрированных APN-токенов.",
-						"content": {
-							"application/json": {
-								"schema": {
-									"items": {
-										"type": "string"
-									},
-									"type": "array"
-								}
-							}
-						}
-					}
-				},
-				"description": "Регистрирует APN-токены (Apple Push Notification) для iOS-устройств.",
-				"summary": "Регистрация APN-токенов",
-				"tags": [
-					"FCM"
-				],
-				"security": [
-					{
-						"jwt": []
-					}
-				],
-				"parameters": [],
-				"requestBody": {
-					"description": "Объект, содержащий APN-токены, название приложения и флаг песочницы.",
-					"required": true,
-					"content": {
-						"application/json": {
-							"schema": {
-								"properties": {
-									"sandbox": {
-										"type": "boolean"
-									},
-									"application": {
-										"type": "string"
-									},
-									"apns_tokens": {
-										"items": {
-											"type": "string"
-										},
-										"type": "array"
-									}
-								},
-								"required": [
-									"sandbox",
-									"application",
-									"apns_tokens"
-								],
-								"type": "object",
-								"description": "Объект, содержащий APN-токены, название приложения и флаг песочницы."
-							}
-						}
-					}
-				}
-			}
-		},
-		"/api/fcm/push": {
-			"post": {
-				"operationId": "SendPushNotification",
-				"responses": {
-					"200": {
-						"description": "ID отправленного уведомления.",
-						"content": {
-							"application/json": {
-								"schema": {
-									"type": "string"
-								}
-							}
-						}
-					}
-				},
-				"description": "Отправляет push-уведомление через Firebase Cloud Messaging (FCM).",
-				"summary": "Отправка push-уведомления",
-				"tags": [
-					"FCM"
-				],
-				"security": [
-					{
-						"jwt": []
-					}
-				],
-				"parameters": [],
-				"requestBody": {
-					"description": "Данные уведомления.",
-					"required": true,
-					"content": {
-						"application/json": {
-							"schema": {
-								"$ref": "#/components/schemas/IFCMMessageDto",
-								"description": "Данные уведомления."
-							}
-						}
-					}
-				}
-			}
-		},
-		"/api/fcm/tokens": {
-			"get": {
-				"operationId": "GetTokens",
-				"responses": {
-					"200": {
-						"description": "Список токенов, зарегистрированных за этим профилем.",
-						"content": {
-							"application/json": {
-								"schema": {
-									"items": {
-										"$ref": "#/components/schemas/FcmTokenDto"
-									},
-									"type": "array"
-								}
-							}
-						}
-					}
-				},
-				"description": "Получает все FCM-токены пользователя по его `userId`.",
-				"summary": "Получение токенов по `userId`",
-				"tags": [
-					"FCM"
-				],
-				"security": [
-					{
-						"jwt": []
-					}
-				],
-				"parameters": [
-					{
-						"description": "ID профиля пользователя.",
-						"in": "query",
-						"name": "userId",
-						"required": true,
-						"schema": {
-							"type": "string"
-						}
-					}
-				]
-			}
-		},
-		"/api/fcm/my-tokens": {
-			"get": {
-				"operationId": "GetMyTokens",
-				"responses": {
-					"200": {
-						"description": "Список FCM-токенов пользователя.",
-						"content": {
-							"application/json": {
-								"schema": {
-									"items": {
-										"$ref": "#/components/schemas/FcmTokenDto"
-									},
-									"type": "array"
-								}
-							}
-						}
-					}
-				},
-				"description": "Получает все FCM-токены текущего аутентифицированного пользователя.",
-				"summary": "Получение токенов текущего пользователя",
-				"tags": [
-					"FCM"
-				],
-				"security": [
-					{
-						"jwt": []
-					}
-				],
-				"parameters": []
-			},
-			"delete": {
-				"operationId": "DeleteTokens",
-				"responses": {
-					"200": {
-						"description": "Количество удалённых токенов.",
-						"content": {
-							"application/json": {
-								"schema": {
-									"type": "boolean"
-								}
-							}
-						}
-					}
-				},
-				"description": "Удаляет все FCM-токены текущего пользователя.",
-				"summary": "Удаление всех токенов пользователя",
-				"tags": [
-					"FCM"
-				],
-				"security": [
-					{
-						"jwt": []
-					}
-				],
-				"parameters": []
-			}
-		},
-		"/api/fcm/token/{id}": {
-			"get": {
-				"operationId": "GetToken",
-				"responses": {
-					"200": {
-						"description": "Объект FCM-токена.",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/FcmTokenDto"
-								}
-							}
-						}
-					}
-				},
-				"description": "Получает FCM-токен по его ID.",
-				"summary": "Получение токена по `id`",
-				"tags": [
-					"FCM"
-				],
-				"security": [
-					{
-						"jwt": []
-					}
-				],
-				"parameters": [
-					{
-						"description": "Уникальный идентификатор токена.",
-						"in": "path",
-						"name": "id",
-						"required": true,
-						"schema": {
-							"format": "double",
-							"type": "number"
-						}
-					}
-				]
-			},
-			"delete": {
-				"operationId": "DeleteToken",
-				"responses": {
-					"200": {
-						"description": "Количество удалённых записей (1 или 0).",
-						"content": {
-							"application/json": {
-								"schema": {
-									"type": "boolean"
-								}
-							}
-						}
-					}
-				},
-				"description": "Удаляет FCM-токен по его `id`.",
-				"summary": "Удаление токена",
-				"tags": [
-					"FCM"
-				],
-				"security": [
-					{
-						"jwt": []
-					}
-				],
-				"parameters": [
-					{
-						"description": "Уникальный идентификатор токена.",
-						"in": "path",
-						"name": "id",
-						"required": true,
-						"schema": {
-							"format": "double",
-							"type": "number"
-						}
-					}
-				]
-			}
-		},
-		"/api/fcm/token": {
-			"post": {
-				"operationId": "AddToken",
-				"responses": {
-					"200": {
-						"description": "Зарегистрированный FCM-токен.",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/FcmTokenDto"
-								}
-							}
-						}
-					}
-				},
-				"description": "Добавляет новый FCM-токен для текущего пользователя.",
-				"summary": "Добавление FCM-токена",
-				"tags": [
-					"FCM"
-				],
-				"security": [
-					{
-						"jwt": []
-					}
-				],
-				"parameters": [],
-				"requestBody": {
-					"required": true,
-					"content": {
-						"application/json": {
-							"schema": {
-								"$ref": "#/components/schemas/FcmTokenRequestDto"
-							}
-						}
-					}
-				}
-			}
-		},
 		"/api/dialog/unread-messages-count": {
 			"get": {
 				"operationId": "GetUnreadMessagesCount",
@@ -3822,6 +3508,320 @@
 							"schema": {
 								"$ref": "#/components/schemas/IMessagesRequestDto",
 								"description": "Данные сообщения."
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/fcm/register-apn-token": {
+			"post": {
+				"operationId": "RegisterApn",
+				"responses": {
+					"200": {
+						"description": "Список зарегистрированных APN-токенов.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"items": {
+										"type": "string"
+									},
+									"type": "array"
+								}
+							}
+						}
+					}
+				},
+				"description": "Регистрирует APN-токены (Apple Push Notification) для iOS-устройств.",
+				"summary": "Регистрация APN-токенов",
+				"tags": [
+					"FCM"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"description": "Объект, содержащий APN-токены, название приложения и флаг песочницы.",
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"properties": {
+									"sandbox": {
+										"type": "boolean"
+									},
+									"application": {
+										"type": "string"
+									},
+									"apns_tokens": {
+										"items": {
+											"type": "string"
+										},
+										"type": "array"
+									}
+								},
+								"required": [
+									"sandbox",
+									"application",
+									"apns_tokens"
+								],
+								"type": "object",
+								"description": "Объект, содержащий APN-токены, название приложения и флаг песочницы."
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/fcm/push": {
+			"post": {
+				"operationId": "SendPushNotification",
+				"responses": {
+					"200": {
+						"description": "ID отправленного уведомления.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "string"
+								}
+							}
+						}
+					}
+				},
+				"description": "Отправляет push-уведомление через Firebase Cloud Messaging (FCM).",
+				"summary": "Отправка push-уведомления",
+				"tags": [
+					"FCM"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"description": "Данные уведомления.",
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IFCMMessageDto",
+								"description": "Данные уведомления."
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/fcm/tokens": {
+			"get": {
+				"operationId": "GetTokens",
+				"responses": {
+					"200": {
+						"description": "Список токенов, зарегистрированных за этим профилем.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"items": {
+										"$ref": "#/components/schemas/FcmTokenDto"
+									},
+									"type": "array"
+								}
+							}
+						}
+					}
+				},
+				"description": "Получает все FCM-токены пользователя по его `userId`.",
+				"summary": "Получение токенов по `userId`",
+				"tags": [
+					"FCM"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"description": "ID профиля пользователя.",
+						"in": "query",
+						"name": "userId",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/fcm/my-tokens": {
+			"get": {
+				"operationId": "GetMyTokens",
+				"responses": {
+					"200": {
+						"description": "Список FCM-токенов пользователя.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"items": {
+										"$ref": "#/components/schemas/FcmTokenDto"
+									},
+									"type": "array"
+								}
+							}
+						}
+					}
+				},
+				"description": "Получает все FCM-токены текущего аутентифицированного пользователя.",
+				"summary": "Получение токенов текущего пользователя",
+				"tags": [
+					"FCM"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": []
+			},
+			"delete": {
+				"operationId": "DeleteTokens",
+				"responses": {
+					"200": {
+						"description": "Количество удалённых токенов.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "boolean"
+								}
+							}
+						}
+					}
+				},
+				"description": "Удаляет все FCM-токены текущего пользователя.",
+				"summary": "Удаление всех токенов пользователя",
+				"tags": [
+					"FCM"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": []
+			}
+		},
+		"/api/fcm/token/{id}": {
+			"get": {
+				"operationId": "GetToken",
+				"responses": {
+					"200": {
+						"description": "Объект FCM-токена.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/FcmTokenDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Получает FCM-токен по его ID.",
+				"summary": "Получение токена по `id`",
+				"tags": [
+					"FCM"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"description": "Уникальный идентификатор токена.",
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					}
+				]
+			},
+			"delete": {
+				"operationId": "DeleteToken",
+				"responses": {
+					"200": {
+						"description": "Количество удалённых записей (1 или 0).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "boolean"
+								}
+							}
+						}
+					}
+				},
+				"description": "Удаляет FCM-токен по его `id`.",
+				"summary": "Удаление токена",
+				"tags": [
+					"FCM"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"description": "Уникальный идентификатор токена.",
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					}
+				]
+			}
+		},
+		"/api/fcm/token": {
+			"post": {
+				"operationId": "AddToken",
+				"responses": {
+					"200": {
+						"description": "Зарегистрированный FCM-токен.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/FcmTokenDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Добавляет новый FCM-токен для текущего пользователя.",
+				"summary": "Добавление FCM-токена",
+				"tags": [
+					"FCM"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/FcmTokenRequestDto"
 							}
 						}
 					}

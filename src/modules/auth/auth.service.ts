@@ -4,13 +4,16 @@ import {
   UnauthorizedException,
 } from "@force-dev/utils";
 import axios from "axios";
-import { inject, injectable } from "inversify";
+import bcrypt from "bcrypt";
+import { inject } from "inversify";
 import sha256 from "sha256";
 
+import { config } from "../../../config";
 import {
   ApiResponseDto,
   createTokenAsync,
   Injectable,
+  logger,
   verifyAuthToken,
 } from "../../core";
 import { MailerService } from "../mailer";
@@ -25,10 +28,7 @@ import {
   TSignUpRequestDto,
 } from "./auth.dto";
 
-const GITHUB_CLIENT_ID = "Ov23lizh9Zepze4yliRV";
-const GITHUB_CLIENT_SECRET = "d1cbef76205d2d527ca8c6646c03eca70b4c6f8a";
-
-@injectable()
+@Injectable()
 export class AuthService {
   constructor(
     @inject(UserService) private _userService: UserService,
@@ -72,7 +72,7 @@ export class AuthService {
       ...rest,
       phone,
       email,
-      passwordHash: sha256(password),
+      passwordHash: await bcrypt.hash(password, 12),
     });
 
     // Выполняем вход
@@ -116,7 +116,10 @@ export class AuthService {
       }
 
       // Проверяем пароль
-      if (user.passwordHash === sha256(password)) {
+      if (
+        (await bcrypt.compare(password, user.passwordHash)) ||
+        user.passwordHash === sha256(password)
+      ) {
         // Получаем полную информацию о пользователе с ролью
         const fullUser = await this._userService.getUser(user.id);
 
@@ -128,7 +131,7 @@ export class AuthService {
     } catch (error) {
       // Логируем только реальные ошибки, не ошибки аутентификации
       if (!(error instanceof UnauthorizedException)) {
-        console.error("Sign in error:", error);
+        logger.error({ err: error }, "Sign in error");
       }
     }
 
@@ -164,7 +167,7 @@ export class AuthService {
 
           user = await this._userService.createUser({
             email: githubUser.email,
-            passwordHash: sha256(randomPassword),
+            passwordHash: await bcrypt.hash(randomPassword, 12),
             // emailVerified: true, // GitHub email уже верифицирован
           });
         } else {
@@ -191,7 +194,7 @@ export class AuthService {
         tokens: await this.getTokens(data.id),
       };
     } catch (error) {
-      console.error("GitHub authentication error:", error);
+      logger.error({ err: error }, "GitHub authentication error");
       throw new UnauthorizedException("Ошибка аутентификации через GitHub");
     }
   }
@@ -292,8 +295,8 @@ export class AuthService {
       const response = await axios.post(
         "https://github.com/login/oauth/access_token",
         {
-          client_id: GITHUB_CLIENT_ID,
-          client_secret: GITHUB_CLIENT_SECRET,
+          client_id: config.auth.github.clientId,
+          client_secret: config.auth.github.clientSecret,
           code: code,
         },
         {
@@ -309,7 +312,7 @@ export class AuthService {
 
       return response.data.access_token;
     } catch (error) {
-      console.error("GitHub token exchange error:", error);
+      logger.error({ err: error }, "GitHub token exchange error");
       throw new Error("Failed to exchange code for token");
     }
   }
@@ -351,7 +354,7 @@ export class AuthService {
             ? primaryEmail.email
             : emailsResponse.data[0]?.email;
         } catch (emailError) {
-          console.error("Failed to fetch GitHub emails:", emailError);
+          logger.error({ err: emailError }, "Failed to fetch GitHub emails");
         }
       }
 
@@ -363,7 +366,7 @@ export class AuthService {
         avatar_url: userResponse.data.avatar_url,
       };
     } catch (error) {
-      console.error("GitHub user fetch error:", error);
+      logger.error({ err: error }, "GitHub user fetch error");
       throw new Error("Failed to fetch user data from GitHub");
     }
   }

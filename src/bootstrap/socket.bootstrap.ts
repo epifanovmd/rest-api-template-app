@@ -1,8 +1,8 @@
 import { inject, injectable, multiInject } from "inversify";
 
-import { IBootstrap } from "../core";
-import { DialogRoomManager } from "../modules/dialog";
-import { DialogSocketEventHandler } from "../modules/dialog";
+import { IBootstrap, logger } from "../core";
+import { DialogRoomManager, DialogSocketEventHandler } from "../modules/dialog";
+import { PushNotificationListener } from "../modules/fcm-token";
 import {
   ISocketHandler,
   SOCKET_HANDLER,
@@ -25,6 +25,8 @@ export class SocketBootstrap implements IBootstrap {
     private readonly socketEventHandler: DialogSocketEventHandler,
     @inject(DialogRoomManager)
     private readonly roomManager: DialogRoomManager,
+    @inject(PushNotificationListener)
+    private readonly pushListener: PushNotificationListener,
     @multiInject(SOCKET_HANDLER)
     private readonly handlers: ISocketHandler[],
   ) {}
@@ -47,12 +49,12 @@ export class SocketBootstrap implements IBootstrap {
       await Promise.all(this.handlers.map(h => h.onConnection(socket)));
 
       socket.on("error", err => {
-        console.error(`[Socket] Error for user ${user.id}:`, err);
+        logger.error({ err, userId: user.id }, "[Socket] Socket error");
         socket.disconnect(true);
       });
 
       socket.on("disconnect", reason => {
-        console.info(`[Socket] User ${user.id} disconnected: ${reason}`);
+        logger.info({ userId: user.id, reason }, "[Socket] User disconnected");
         this.clientRegistry.unregister(user.id);
       });
     });
@@ -62,6 +64,9 @@ export class SocketBootstrap implements IBootstrap {
 
     // 4. EventBus → Room management (реактивный join/leave)
     this.roomManager.register();
+
+    // 5. EventBus → Push notifications (FCM)
+    this.pushListener.register();
 
     // 5. Start
     await this.serverService.listen();

@@ -9,7 +9,7 @@ import fs from "fs";
 import { inject } from "inversify";
 import path from "path";
 
-import { Injectable } from "../../core";
+import { Injectable, logger } from "../../core";
 import { IApnRegisterTokenResponseDto, IFCMMessageDto } from "./fcm-token.dto";
 import { FcmTokenRepository } from "./fcm-token.repository";
 
@@ -28,14 +28,12 @@ try {
     firebaseAdmin = admin.initializeApp({
       credential: firebaseCredential,
     });
-    console.log("Firebase Admin инициализирован успешно");
+    logger.info("Firebase Admin initialized successfully");
   } else {
-    console.warn(
-      "Файл firebaseAccount.json не найден. Firebase функции будут недоступны.",
-    );
+    logger.warn("firebaseAccount.json not found. Firebase features will be unavailable.");
   }
 } catch (error) {
-  console.error("Ошибка инициализации Firebase Admin:", error);
+  logger.error({ err: error }, "Firebase Admin initialization error");
 }
 
 @Injectable()
@@ -140,7 +138,7 @@ export class FcmTokenService {
 
   async getFcmToken(apnsToken: string) {
     if (firebaseAdmin === null || firebaseCredential === null) {
-      console.warn("Firebase не инициализирован.");
+      logger.warn("Firebase not initialized");
 
       return;
     }
@@ -148,11 +146,11 @@ export class FcmTokenService {
     try {
       const tokenData = await admin.auth().verifyIdToken(apnsToken);
 
-      console.log("FCM-токен пользователя:", tokenData.fcmToken);
+      logger.debug({ fcmToken: tokenData.fcmToken }, "FCM token retrieved");
 
       return tokenData.fcmToken;
     } catch (error) {
-      console.error("Ошибка получения FCM-токена:", error);
+      logger.error({ err: error }, "Error retrieving FCM token");
     }
   }
 

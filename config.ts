@@ -65,12 +65,18 @@ const resetPasswordSchema = z.object({
   webUrl: z.url().default("https://domain/reset-password?token={{token}}"),
 });
 
+const githubSchema = z.object({
+  clientId: z.string().default(""),
+  clientSecret: z.string().default(""),
+});
+
 const authSchema = z.object({
   jwt: jwtSchema,
   admin: adminSchema,
   webAuthn: webAuthnSchema,
   otp: otpSchema,
   resetPassword: resetPasswordSchema,
+  github: githubSchema,
 });
 
 const redisSchema = z.object({
@@ -153,6 +159,10 @@ export const config = configSchema.parse({
     resetPassword: {
       expireMinutes: process.env.RESET_PASS_TOKEN_EXPIRE_MINUTES,
       webUrl: process.env.WEB_URL_RESET_PASSWORD,
+    },
+    github: {
+      clientId: process.env.GITHUB_CLIENT_ID,
+      clientSecret: process.env.GITHUB_CLIENT_SECRET,
     },
   },
   redis: {

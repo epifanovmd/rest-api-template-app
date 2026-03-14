@@ -5,12 +5,16 @@ import { corsMiddleware } from "./cors.middleware";
 import { errorMiddleware } from "./error.middleware";
 import { helmetMiddleware } from "./helmet.middleware";
 import { rateLimitMiddleware } from "./rate-limit.middleware";
+import { requestIdMiddleware } from "./request-id.middleware";
+import { requestLoggerMiddleware } from "./request-logger.middleware";
 
 export const RegisterAppMiddlewares = (
   app: Koa<Koa.DefaultState, Koa.DefaultContext>,
 ) => {
   app
+    .use(requestIdMiddleware)
     .use(errorMiddleware)
+    .use(requestLoggerMiddleware)
     .use(corsMiddleware)
     .use(rateLimitMiddleware)
     .use(bodyParserMiddleware)

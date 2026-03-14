@@ -4,7 +4,7 @@ import Koa from "koa";
 import { Server } from "socket.io";
 
 import { config } from "../../../config";
-import { Injectable } from "../../core";
+import { Injectable, logger } from "../../core";
 import { TServer } from "./socket.types";
 
 const { socket, cors } = config;
@@ -38,7 +38,7 @@ export class SocketServerService {
   async listen(): Promise<void> {
     return new Promise(resolve => {
       this._httpServer.listen(socket.port, () => {
-        console.info(`[Socket] Server listening on port ${socket.port}`);
+        logger.info({ port: socket.port }, "[Socket] Server listening");
         resolve();
       });
     });

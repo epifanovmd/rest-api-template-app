@@ -6,7 +6,7 @@ import { File } from "tsoa";
 import { v4 } from "uuid";
 
 import { config } from "../../../config";
-import { Injectable } from "../../core";
+import { Injectable, logger } from "../../core";
 import { FileRepository } from "./file.repository";
 
 @Injectable()
@@ -73,7 +73,7 @@ export class FileService {
         }
       });
     } catch (e) {
-      console.error("Error deleting file from server:", e);
+      logger.error({ err: e, url }, "Error deleting file from server");
       throw e;
     }
   }

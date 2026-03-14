@@ -13,7 +13,6 @@ import {
   DialogMessagesDto,
   IMessagesUpdateRequestDto,
 } from "../dialog-messages/dto";
-import { FcmTokenService } from "../fcm-token";
 import { MessageFilesRepository } from "../message-files";
 import { UserRepository } from "../user";
 import { DialogRepository } from "./dialog.repository";
@@ -36,7 +35,6 @@ export class DialogService {
     @inject(DialogMessagesRepository)
     private _dialogMessagesRepository: DialogMessagesRepository,
     @inject(UserRepository) private _userRepository: UserRepository,
-    @inject(FcmTokenService) private _fcmTokenService: FcmTokenService,
     @inject(DialogMembersRepository)
     private _dialogMembersRepository: DialogMembersRepository,
     @inject(MessageFilesRepository)
@@ -181,82 +179,47 @@ export class DialogService {
   }
 
   async createDialog(userId: string, recipientId: string[]) {
-    const queryRunner = this._dialogRepository.createQueryRunner();
+    const users = await Promise.all(
+      recipientId.map(id => this._userRepository.findOne({ where: { id } })),
+    );
 
-    await queryRunner.connect();
-    await queryRunner.startTransaction();
-
-    try {
-      const users = await Promise.all(
-        recipientId.map(id =>
-          this._userRepository.findOne({
-            where: { id },
-          }),
-        ),
+    if (!users.every(user => user !== null)) {
+      throw new NotFoundException(
+        "Один или несколько пользователей не найдены",
       );
-
-      if (!users.every(user => user !== null)) {
-        throw new NotFoundException(
-          "Один или несколько пользователей не найдены",
-        );
-      }
-
-      const dialog = await this._dialogRepository.createAndSave({
-        ownerId: userId,
-      });
-
-      const members = Array.from(new Set([userId, ...recipientId]));
-
-      await this._dialogMembersService.addMembers({
-        dialogId: dialog.id,
-        members,
-      });
-
-      await queryRunner.commitTransaction();
-
-      this.eventBus.emit(new DialogCreatedEvent(dialog.id, members));
-
-      return this.getDialog(dialog.id, userId);
-    } catch (error) {
-      await queryRunner.rollbackTransaction();
-      throw error;
-    } finally {
-      await queryRunner.release();
     }
+
+    const dialog = await this._dialogRepository.createAndSave({
+      ownerId: userId,
+    });
+
+    const members = Array.from(new Set([userId, ...recipientId]));
+
+    await this._dialogMembersService.addMembers({
+      dialogId: dialog.id,
+      members,
+    });
+
+    this.eventBus.emit(new DialogCreatedEvent(dialog.id, members));
+
+    return this.getDialog(dialog.id, userId);
   }
 
   async removeDialog(id: string) {
-    const queryRunner = this._dialogRepository.createQueryRunner();
+    const dialog = await this._dialogRepository.findById(id, { members: true });
 
-    await queryRunner.connect();
-    await queryRunner.startTransaction();
-
-    try {
-      const dialog = await this._dialogRepository.findById(id, {
-        members: true,
-      });
-
-      if (!dialog) {
-        throw new NotFoundException("Диалог не найден");
-      }
-
-      const memberIds = dialog.members.map(m => m.userId);
-
-      const deleted = await this._dialogRepository.delete(id);
-
-      if (!deleted) {
-        throw new NotFoundException("Не удалось удалить диалог");
-      }
-
-      await queryRunner.commitTransaction();
-
-      this.eventBus.emit(new DialogDeletedEvent(id, memberIds));
-    } catch (error) {
-      await queryRunner.rollbackTransaction();
-      throw error;
-    } finally {
-      await queryRunner.release();
+    if (!dialog) {
+      throw new NotFoundException("Диалог не найден");
     }
+
+    const memberIds = dialog.members.map(m => m.userId);
+    const deleted = await this._dialogRepository.delete(id);
+
+    if (!deleted) {
+      throw new NotFoundException("Не удалось удалить диалог");
+    }
+
+    this.eventBus.emit(new DialogDeletedEvent(id, memberIds));
   }
 
   async updateDialogLastMessage(
@@ -295,10 +258,6 @@ export class DialogService {
       const dto = DialogMessagesDto.fromEntity(message);
 
       this.eventBus.emit(new MessageCreatedEvent(dto, recipientIds));
-
-      recipientIds.forEach(recipientId =>
-        this.sendPushNotification(recipientId, message),
-      );
     }
 
     return message;
@@ -336,7 +295,10 @@ export class DialogService {
     const memberIds = dialog.members.map(m => m.userId);
 
     this.eventBus.emit(
-      new MessageUpdatedEvent(DialogMessagesDto.fromEntity(updatedMessage), memberIds),
+      new MessageUpdatedEvent(
+        DialogMessagesDto.fromEntity(updatedMessage),
+        memberIds,
+      ),
     );
 
     return updatedMessage;
@@ -414,31 +376,5 @@ export class DialogService {
 
         return result;
       });
-  }
-
-  async sendPushNotification(recipientId: string, message: DialogMessages) {
-    try {
-      const fcmTokens = await this._fcmTokenService.getTokens(recipientId);
-      const badge = await this.getUnreadMessagesCount(recipientId);
-
-      for (const token of fcmTokens) {
-        try {
-          await this._fcmTokenService.sendFcmMessage({
-            dialogId: message.dialogId,
-            to: token.token,
-            badge,
-            message: {
-              sound: "default",
-              description: message.text,
-              title: "message.user.email",
-            },
-          });
-        } catch (error) {
-          await this._fcmTokenService.deleteToken(token.id);
-        }
-      }
-    } catch (error) {
-      console.error("Error sending push notification:", error);
-    }
   }
 }

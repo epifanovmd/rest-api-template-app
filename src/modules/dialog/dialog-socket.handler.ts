@@ -1,6 +1,6 @@
-import { injectable } from "inversify";
-import { inject } from "inversify";
+import { inject, injectable } from "inversify";
 
+import { logger } from "../../core";
 import { DialogMessagesService } from "../dialog-messages";
 import {
   ISocketHandler,
@@ -53,7 +53,7 @@ export class DialogSocketHandler implements ISocketHandler {
             dialogId,
           });
         } catch (err) {
-          console.error("[DialogSocketHandler] messageReceived error:", err);
+          logger.error({ err }, "[DialogSocketHandler] messageReceived error");
         }
       },
     );
