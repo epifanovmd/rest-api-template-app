@@ -1,7 +1,5 @@
-import { Module } from "../../core/decorators/module.decorator";
-import {
-  SOCKET_EVENT_LISTENER,
-} from "../socket/socket-event-listener.interface";
+import { Module } from "../../core";
+import { asSocketListener } from "../socket";
 import { FcmTokenController } from "./fcm-token.controller";
 import { FcmTokenService } from "./fcm-token.service";
 import { PushNotificationListener } from "./push-notification.listener";
@@ -15,7 +13,7 @@ import { PushNotificationListener } from "./push-notification.listener";
   providers: [
     FcmTokenController,
     FcmTokenService,
-    { provide: SOCKET_EVENT_LISTENER, useClass: PushNotificationListener },
+    asSocketListener(PushNotificationListener),
   ],
 })
 export class FcmTokenModule {}

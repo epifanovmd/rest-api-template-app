@@ -38,7 +38,7 @@ export class DialogSocketEventHandler implements ISocketEventListener {
   }
 
   private onMessageUpdated({ message, memberIds }: MessageUpdatedEvent): void {
-    memberIds.forEach(id => this.emitter.toUser(id, "message", message));
+    memberIds.forEach(id => this.emitter.toUser(id, "updateMessage", message));
   }
 
   private onMessageDeleted({

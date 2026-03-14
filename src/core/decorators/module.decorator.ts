@@ -1,6 +1,6 @@
 import { interfaces } from "inversify";
 
-import { IBootstrap } from "../bootstrap/bootstrap.interface";
+import { IBootstrap } from "../bootstrap";
 
 type Constructor<T = any> = new (...args: any[]) => T;
 type ServiceIdentifier<T = any> = interfaces.ServiceIdentifier<T>;

@@ -1,7 +1,7 @@
-import { TokenService } from "./auth/token.service";
-import { Module } from "./decorators/module.decorator";
-import { EventBus } from "./event-bus/event-bus";
-import { LoggerService } from "./logger/logger.service";
+import { TokenService } from "./auth";
+import { Module } from "./decorators";
+import { EventBus } from "./event-bus";
+import { LoggerService } from "./logger";
 
 /**
  * Базовые инфраструктурные сервисы: EventBus, Logger, TokenService.

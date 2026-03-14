@@ -2,29 +2,25 @@ import { inject } from "inversify";
 
 import { Injectable } from "../../core";
 import { ISocketEmitEvents } from "./socket.types";
-import { SocketClientRegistry } from "./socket-client-registry";
 import { SocketServerService } from "./socket-server.service";
 
 @Injectable()
 export class SocketEmitterService {
   constructor(
     @inject(SocketServerService) private readonly server: SocketServerService,
-    @inject(SocketClientRegistry)
-    private readonly registry: SocketClientRegistry,
   ) {}
 
+  /**
+   * Отправляет событие конкретному пользователю.
+   * Работает для всех активных соединений пользователя (несколько вкладок/устройств)
+   * через Socket.IO room 'user_${userId}', в которую автоматически вступает каждый сокет.
+   */
   toUser<K extends keyof ISocketEmitEvents>(
     userId: string,
     event: K,
     ...args: Parameters<ISocketEmitEvents[K]>
-  ): boolean {
-    const socket = this.registry.getSocket(userId);
-
-    if (!socket) return false;
-
-    socket.emit<any>(event, ...args);
-
-    return true;
+  ): void {
+    this.server.io.to(`user_${userId}`).emit<any>(event, ...args);
   }
 
   toRoom<K extends keyof ISocketEmitEvents>(

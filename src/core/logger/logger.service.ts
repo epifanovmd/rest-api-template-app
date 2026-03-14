@@ -1,6 +1,5 @@
 import pino, { Logger } from "pino";
 
-import { config } from "../../../config";
 import { Injectable } from "../decorators";
 
 const isDevelopment = process.env.NODE_ENV !== "production";
@@ -8,7 +7,14 @@ const isDevelopment = process.env.NODE_ENV !== "production";
 const pinoInstance: Logger = pino({
   level: isDevelopment ? "debug" : "info",
   transport: isDevelopment
-    ? { target: "pino-pretty", options: { colorize: true, translateTime: "SYS:HH:MM:ss", ignore: "pid,hostname" } }
+    ? {
+        target: "pino-pretty",
+        options: {
+          colorize: true,
+          translateTime: "SYS:HH:MM:ss",
+          ignore: "pid,hostname",
+        },
+      }
     : undefined,
 });
 

@@ -1,7 +1,7 @@
 import { ForbiddenException, UnauthorizedException } from "@force-dev/utils";
 import { Context } from "koa";
 
-import { verifyToken } from "../auth/jwt";
+import { verifyToken } from "../auth";
 import { IGuard } from "./types";
 
 /**

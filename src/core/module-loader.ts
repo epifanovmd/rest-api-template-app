@@ -1,12 +1,12 @@
 import { Container, decorate, injectable } from "inversify";
 
-import { BOOTSTRAP, IBootstrap } from "./bootstrap/bootstrap.interface";
+import { BOOTSTRAP, IBootstrap } from "./bootstrap";
 import {
   isTokenProvider,
   MODULE_METADATA_KEY,
   ModuleOptions,
   ModuleProvider,
-} from "./decorators/module.decorator";
+} from "./decorators";
 
 type Constructor<T = any> = new (...args: any[]) => T;
 
@@ -54,18 +54,14 @@ export class ModuleLoader {
 
   private bindProvider(provider: ModuleProvider): void {
     if (isTokenProvider(provider)) {
-      // Привязка по символу/токену — поддерживает multi-inject
       this.ensureInjectable(provider.useClass);
       this.container
         .bind(provider.provide)
         .to(provider.useClass)
         .inSingletonScope();
-    } else {
-      // Привязка класса к самому себе (singleton)
-      if (!this.container.isBound(provider)) {
-        this.ensureInjectable(provider);
-        this.container.bind(provider).toSelf().inSingletonScope();
-      }
+    } else if (!this.container.isBound(provider)) {
+      this.ensureInjectable(provider);
+      this.container.bind(provider).toSelf().inSingletonScope();
     }
   }
 

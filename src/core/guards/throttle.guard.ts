@@ -1,3 +1,4 @@
+import { HttpStatus } from "@force-dev/utils";
 import { Context } from "koa";
 
 import { IGuard } from "./types";
@@ -36,7 +37,7 @@ export const ThrottleGuard = (limit: number, windowMs: number) => {
           "Retry-After",
           String(Math.ceil((record.resetAt - now) / 1000)),
         );
-        ctx.throw(429, "Too Many Requests");
+        ctx.throw(HttpStatus.TOO_MANY_REQUESTS, "Too Many Requests");
       }
 
       record.count += 1;

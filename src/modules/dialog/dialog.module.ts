@@ -1,32 +1,26 @@
-import { Module } from "../../core/decorators/module.decorator";
-import { DialogMembersService } from "../dialog-members/dialog-members.service";
-import { DialogMessagesService } from "../dialog-messages/dialog-messages.service";
-import {
-  SOCKET_EVENT_LISTENER,
-} from "../socket/socket-event-listener.interface";
-import { SOCKET_HANDLER } from "../socket/socket-handler.interface";
+import { Module } from "../../core";
+import { DialogMembersService } from "../dialog-members";
+import { DialogMessagesService } from "../dialog-messages";
+import { asSocketHandler, asSocketListener } from "../socket";
 import { DialogController } from "./dialog.controller";
 import { DialogService } from "./dialog.service";
+import { DialogMessagingHandler } from "./dialog-messaging.handler";
+import { DialogPresenceHandler } from "./dialog-presence.handler";
 import { DialogRoomManager } from "./dialog-room.manager";
-import { DialogSocketHandler } from "./dialog-socket.handler";
 import { DialogSocketEventHandler } from "./dialog-socket-event.handler";
+import { DialogTypingHandler } from "./dialog-typing.handler";
 
-/**
- * Модуль диалогов (сообщений, участников, socket-обработчиков).
- *
- * DialogSocketHandler — ISocketHandler: обрабатывает входящие socket-события.
- * DialogSocketEventHandler — ISocketEventListener: EventBus → socket-уведомления.
- * DialogRoomManager — ISocketEventListener: EventBus → управление socket-комнатами.
- */
 @Module({
   providers: [
     DialogController,
     DialogService,
     DialogMembersService,
     DialogMessagesService,
-    { provide: SOCKET_HANDLER, useClass: DialogSocketHandler },
-    { provide: SOCKET_EVENT_LISTENER, useClass: DialogSocketEventHandler },
-    { provide: SOCKET_EVENT_LISTENER, useClass: DialogRoomManager },
+    asSocketHandler(DialogMessagingHandler),
+    asSocketHandler(DialogPresenceHandler),
+    asSocketHandler(DialogTypingHandler),
+    asSocketListener(DialogSocketEventHandler),
+    asSocketListener(DialogRoomManager),
   ],
 })
 export class DialogModule {}

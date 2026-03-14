@@ -1,6 +1,6 @@
 import { inject, multiInject } from "inversify";
 
-import { IBootstrap, Injectable, logger } from "../../core";
+import { EventBus, IBootstrap, Injectable, logger } from "../../core";
 import { TSocket } from "./socket.types";
 import { SocketAuthMiddleware } from "./socket-auth.middleware";
 import { SocketClientRegistry } from "./socket-client-registry";
@@ -20,6 +20,8 @@ export class SocketBootstrap implements IBootstrap {
     private readonly authMiddleware: SocketAuthMiddleware,
     @inject(SocketClientRegistry)
     private readonly clientRegistry: SocketClientRegistry,
+    @inject(EventBus)
+    private readonly eventBus: EventBus,
     @multiInject(SOCKET_HANDLER)
     private readonly handlers: ISocketHandler[],
     @multiInject(SOCKET_EVENT_LISTENER)
@@ -36,7 +38,11 @@ export class SocketBootstrap implements IBootstrap {
     io.on("connection", async (socket: TSocket) => {
       const user = socket.data;
 
+      // Регистрируем соединение (для проверки isOnline)
       this.clientRegistry.register(user.userId, socket);
+      // Личная room пользователя — через неё доставляются все push-уведомления.
+      // SocketEmitterService.toUser() использует io.to('user_${userId}'),
+      // поэтому все соединения (несколько вкладок/устройств) получат событие.
       socket.join(`user_${user.userId}`);
       socket.emit("authenticated", { userId: user.userId });
 
@@ -53,7 +59,8 @@ export class SocketBootstrap implements IBootstrap {
           { userId: user.userId, reason },
           "[Socket] User disconnected",
         );
-        this.clientRegistry.unregister(user.userId);
+        // Удаляем именно это соединение; остальные соединения пользователя остаются
+        this.clientRegistry.unregister(user.userId, socket);
       });
     });
 
@@ -64,6 +71,8 @@ export class SocketBootstrap implements IBootstrap {
   }
 
   async destroy(): Promise<void> {
+    // Снимаем все EventBus-подписки перед закрытием
+    this.eventBus.clear();
     await this.serverService.close();
   }
 }

@@ -20,7 +20,10 @@ export interface ISocketEvents {
 export interface ISocketEmitEvents {
   authenticated: (...args: [{ userId: string }]) => void;
   auth_error: (...args: [{ message: string }]) => void;
+  /** Новое сообщение */
   message: (...args: [message: DialogMessagesDto]) => void;
+  /** Обновлённое сообщение */
+  updateMessage: (...args: [message: DialogMessagesDto]) => void;
   messageReceived: (
     ...args: [{ messageIds: string[]; dialogId: string }]
   ) => void;
