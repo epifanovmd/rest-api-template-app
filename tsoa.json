@@ -3,9 +3,7 @@
   "controllerPathGlobs": ["./src/modules/**/*.*controller.ts"],
   "noImplicitAdditionalProperties": "silently-remove-extras",
   "spec": {
-    "schemes": [
-      "http"
-    ],
+    "schemes": ["http"],
     "securityDefinitions": {
       "jwt": {
         "type": "http",
@@ -35,7 +33,7 @@
   },
   "routes": {
     "authenticationModule": "./src/core/auth/koa-authentication.ts",
-    "routesDir": "./src",
+    "routesDir": "./src/routing",
     "basePath": "/",
     "middleware": "koa",
     "iocModule": "./src/app.container.ts"

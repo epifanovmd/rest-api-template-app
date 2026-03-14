@@ -10,8 +10,11 @@ import { config } from "./config";
 import { BOOTSTRAP, HttpServer, IBootstrap } from "./core";
 import { logger, ModuleLoader, TypeOrmDataSource } from "./core";
 import { notFoundMiddleware, RegisterAppMiddlewares } from "./middleware";
-import { RegisterRoutes } from "./routes";
-import { RegisterSwagger, RegisterSystemRoutes } from "./routing";
+import {
+  RegisterRoutes,
+  RegisterSwagger,
+  RegisterSystemRoutes,
+} from "./routing";
 
 type Constructor = new (...args: any[]) => any;
 
