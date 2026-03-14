@@ -1,16 +1,15 @@
 import { inject, multiInject } from "inversify";
 
-import { IBootstrap, Injectable, logger } from "../core";
+import { IBootstrap, Injectable, logger } from "../../core";
+import { TSocket } from "./socket.types";
+import { SocketAuthMiddleware } from "./socket-auth.middleware";
+import { SocketClientRegistry } from "./socket-client-registry";
 import {
   ISocketEventListener,
-  ISocketHandler,
   SOCKET_EVENT_LISTENER,
-  SOCKET_HANDLER,
-  SocketAuthMiddleware,
-  SocketClientRegistry,
-  SocketServerService,
-  TSocket,
-} from "../modules/socket";
+} from "./socket-event-listener.interface";
+import { ISocketHandler, SOCKET_HANDLER } from "./socket-handler.interface";
+import { SocketServerService } from "./socket-server.service";
 
 @Injectable()
 export class SocketBootstrap implements IBootstrap {
@@ -37,21 +36,24 @@ export class SocketBootstrap implements IBootstrap {
     io.on("connection", async (socket: TSocket) => {
       const user = socket.data;
 
-      this.clientRegistry.register(user.id, socket);
-      socket.join(`user_${user.id}`);
-      socket.emit("authenticated", { userId: user.id });
+      this.clientRegistry.register(user.userId, socket);
+      socket.join(`user_${user.userId}`);
+      socket.emit("authenticated", { userId: user.userId });
 
       // Передаём управление domain-хендлерам
       await Promise.all(this.handlers.map(h => h.onConnection(socket)));
 
       socket.on("error", err => {
-        logger.error({ err, userId: user.id }, "[Socket] Socket error");
+        logger.error({ err, userId: user.userId }, "[Socket] Socket error");
         socket.disconnect(true);
       });
 
       socket.on("disconnect", reason => {
-        logger.info({ userId: user.id, reason }, "[Socket] User disconnected");
-        this.clientRegistry.unregister(user.id);
+        logger.info(
+          { userId: user.userId, reason },
+          "[Socket] User disconnected",
+        );
+        this.clientRegistry.unregister(user.userId);
       });
     });
 
@@ -59,9 +61,6 @@ export class SocketBootstrap implements IBootstrap {
     for (const listener of this.eventListeners) {
       listener.register();
     }
-
-    // 4. Запускаем сервер
-    await this.serverService.listen();
   }
 
   async destroy(): Promise<void> {

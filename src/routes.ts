@@ -18,7 +18,7 @@ import { DialogController } from './modules/dialog/dialog.controller';
 import { FcmTokenController } from './modules/fcm-token/fcm-token.controller';
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 import { PasskeysController } from './modules/passkeys/passkeys.controller';
-import { koaAuthentication } from './middleware/authenticate.middleware';
+import { koaAuthentication } from './core/auth/koa-authentication';
 // @ts-ignore - no great way to install types from subpackage
 const promiseAny = require('promise.any');
 import { iocContainer } from './app.container';

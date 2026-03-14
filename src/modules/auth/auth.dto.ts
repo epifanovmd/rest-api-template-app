@@ -1,12 +1,10 @@
+import { ITokensDto } from "../../core";
 import { IUserChangePasswordDto, UserDto } from "../user/dto";
+
+export { ITokensDto };
 
 export interface IUserResetPasswordRequestDto extends IUserChangePasswordDto {
   token: string;
-}
-
-export interface ITokensDto {
-  accessToken: string;
-  refreshToken: string;
 }
 
 export interface IUserWithTokensDto extends UserDto {

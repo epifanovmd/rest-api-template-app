@@ -1,23 +1,18 @@
-import { createServer, Server as HttpServer } from "http";
 import { inject } from "inversify";
-import Koa from "koa";
 import { Server } from "socket.io";
 
 import { config } from "../../../config";
-import { Injectable, logger } from "../../core";
+import { HttpServer, Injectable, logger } from "../../core";
 import { TServer } from "./socket.types";
 
-const { socket, cors } = config;
+const { cors } = config;
 
 @Injectable()
 export class SocketServerService {
-  private readonly _httpServer: HttpServer;
   private readonly _io: TServer;
 
-  constructor(@inject(Koa) koa: Koa) {
-    this._httpServer = createServer(koa.callback());
-
-    this._io = new Server(this._httpServer, {
+  constructor(@inject(HttpServer) httpServer: HttpServer) {
+    this._io = new Server(httpServer, {
       cors: {
         origin: cors.allowedIps.join() === "*" ? true : cors.allowedIps,
         methods: ["GET", "POST"],
@@ -35,20 +30,12 @@ export class SocketServerService {
     return this._io;
   }
 
-  async listen(): Promise<void> {
-    return new Promise(resolve => {
-      this._httpServer.listen(socket.port, () => {
-        logger.info({ port: socket.port }, "[Socket] Server listening");
-        resolve();
-      });
-    });
-  }
-
   async close(): Promise<void> {
     return new Promise((resolve, reject) => {
       this._io.close(err => {
         if (err) return reject(err);
-        this._httpServer.close(() => resolve());
+        logger.info("[Socket] Server closed");
+        resolve();
       });
     });
   }

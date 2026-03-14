@@ -3,12 +3,15 @@ import { Middlewares } from "tsoa";
 
 import { IGuard } from "../guards";
 
-export const UseGuards = (...guards: (new () => IGuard)[]): MethodDecorator => {
-  return Middlewares(
-    ...guards.map(Guard => async (ctx: Context, next: () => Promise<void>) => {
-      const guard = new Guard();
+type GuardType = (new () => IGuard) | IGuard;
 
-      if (await guard.process(ctx)) {
+export const UseGuards = (...guards: GuardType[]): MethodDecorator => {
+  return Middlewares(
+    ...guards.map(guard => async (ctx: Context, next: () => Promise<void>) => {
+      const instance =
+        typeof guard === "function" ? new (guard as new () => IGuard)() : guard;
+
+      if (await instance.process(ctx)) {
         await next();
       }
     }),

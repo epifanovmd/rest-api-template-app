@@ -46,7 +46,7 @@ export class ProfileController extends Controller {
   getMyProfile(@Request() req: KoaRequest): Promise<ProfileDto> {
     const user = getContextUser(req);
 
-    return this._profileService.getProfileByUserId(user.id);
+    return this._profileService.getProfileByUserId(user.userId);
   }
 
   /**
@@ -65,7 +65,7 @@ export class ProfileController extends Controller {
   ): Promise<ProfileDto> {
     const user = getContextUser(req);
 
-    return this._profileService.updateProfile(user.id, body);
+    return this._profileService.updateProfile(user.userId, body);
   }
 
   /**
@@ -80,7 +80,7 @@ export class ProfileController extends Controller {
   deleteMyProfile(@Request() req: KoaRequest): Promise<string> {
     const user = getContextUser(req);
 
-    return this._profileService.deleteProfile(user.id);
+    return this._profileService.deleteProfile(user.userId);
   }
 
   /**
@@ -157,7 +157,7 @@ export class ProfileController extends Controller {
   ): Promise<ProfileDto> {
     const user = getContextUser(req);
 
-    return this._profileService.addAvatar(user.id, file);
+    return this._profileService.addAvatar(user.userId, file);
   }
 
   /**
@@ -171,7 +171,7 @@ export class ProfileController extends Controller {
   removeAvatar(@Request() req: KoaRequest): Promise<ProfileDto> {
     const user = getContextUser(req);
 
-    return this._profileService.removeAvatar(user.id);
+    return this._profileService.removeAvatar(user.userId);
   }
 
   /**

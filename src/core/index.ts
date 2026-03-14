@@ -1,5 +1,6 @@
 export * from "./auth";
 export * from "./bootstrap";
+export * from "./http";
 export * from "./core.module";
 export * from "./db";
 export * from "./decorators";

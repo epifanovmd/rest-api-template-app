@@ -1,46 +1,43 @@
 import jwt, { sign, SignOptions, VerifyErrors } from "jsonwebtoken";
 
 import { config } from "../../../config";
-import { iocContainer } from "../../app.container";
-import { User } from "../../modules/user/user.entity";
+import { EPermissions } from "../../modules/permission/permission.types";
+import { ERole } from "../../modules/role/role.types";
 import { JWTDecoded } from "../../types/koa";
-import { SecurityScopes, TokenVerification } from "./token-verification";
 
-export type { SecurityScopes };
+export type { SecurityScopes } from "./token.service";
 
-export const createToken = (userId: string, opts?: SignOptions) =>
+export type TokenPayload = {
+  userId: string;
+  role: ERole | null;
+  permissions: EPermissions[];
+  emailVerified: boolean;
+};
+
+export const createToken = (
+  payload: TokenPayload,
+  opts?: SignOptions,
+): Promise<string> =>
   new Promise<string>((resolve, reject) => {
     try {
-      const token = sign({ userId }, config.auth.jwt.secretKey, opts);
-
-      resolve(token);
+      resolve(sign(payload, config.auth.jwt.secretKey, opts));
     } catch (error) {
       reject(error);
     }
   });
 
 export const createTokenAsync = (
-  data: { userId: string; opts?: SignOptions }[],
-) => Promise.all(data.map(value => createToken(value.userId, value.opts)));
+  data: { payload: TokenPayload; opts?: SignOptions }[],
+) => Promise.all(data.map(({ payload, opts }) => createToken(payload, opts)));
 
-export const verifyToken = (token: string) => {
-  return new Promise<JWTDecoded>((resolve, reject) => {
+export const verifyToken = (token: string): Promise<JWTDecoded> =>
+  new Promise<JWTDecoded>((resolve, reject) => {
     jwt.verify(
       token,
       config.auth.jwt.secretKey,
-      async (err: VerifyErrors, decoded: JWTDecoded) => {
-        if (err) {
-          reject(err);
-        } else {
-          resolve(decoded);
-        }
+      (err: VerifyErrors, decoded: JWTDecoded) => {
+        if (err) reject(err);
+        else resolve(decoded);
       },
     );
   });
-};
-
-export const verifyAuthToken = (
-  token?: string,
-  scopes?: SecurityScopes,
-): Promise<User> =>
-  iocContainer.get(TokenVerification).verifyAuthToken(token, scopes);

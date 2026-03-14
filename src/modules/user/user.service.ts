@@ -161,8 +161,9 @@ export class UserService {
     return this.getUser(userId);
   }
 
-  async requestVerifyEmail(userId: string, email?: string) {
+  async requestVerifyEmail(userId: string) {
     const user = await this.getUser(userId);
+    const email = user.email;
 
     if (user.emailVerified) {
       throw new ConflictException("Email уже подтвержден.");

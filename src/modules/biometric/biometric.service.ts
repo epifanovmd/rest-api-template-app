@@ -2,8 +2,7 @@ import { InternalServerErrorException } from "@force-dev/utils";
 import { createVerify, randomBytes } from "crypto";
 import { inject } from "inversify";
 
-import { Injectable } from "../../core";
-import { AuthService } from "../auth";
+import { Injectable, TokenService } from "../../core";
 import { UserService } from "../user";
 import { BiometricRepository } from "./biometric.repository";
 
@@ -11,7 +10,7 @@ import { BiometricRepository } from "./biometric.repository";
 export class BiometricService {
   constructor(
     @inject(UserService) private _userService: UserService,
-    @inject(AuthService) private _authService: AuthService,
+    @inject(TokenService) private _tokenService: TokenService,
     @inject(BiometricRepository)
     private _biometricRepository: BiometricRepository,
   ) {}
@@ -74,7 +73,7 @@ export class BiometricService {
 
     return {
       verified: true,
-      tokens: await this._authService.getTokens(userId),
+      tokens: await this._tokenService.issue(user),
     };
   }
 

@@ -34,7 +34,7 @@
     "specVersion": 3
   },
   "routes": {
-    "authenticationModule": "./src/middleware/authenticate.middleware.ts",
+    "authenticationModule": "./src/core/auth/koa-authentication.ts",
     "routesDir": "./src",
     "basePath": "/",
     "middleware": "koa",

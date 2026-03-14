@@ -1,9 +1,16 @@
 import Koa from "koa";
 
-import { User } from "../modules/user/user.entity";
+import { EPermissions } from "../modules/permission/permission.types";
+import { ERole } from "../modules/role/role.types";
 
-export type JWTDecoded = {
+export type AuthContext = {
   userId: string;
+  role: ERole | null;
+  permissions: EPermissions[];
+  emailVerified: boolean;
+};
+
+export type JWTDecoded = AuthContext & {
   iat: number;
   exp: number;
 };
@@ -11,7 +18,7 @@ export type JWTDecoded = {
 interface RequestClient {
   ctx: {
     request: {
-      user: User | undefined;
+      user: AuthContext | undefined;
     };
   };
 }

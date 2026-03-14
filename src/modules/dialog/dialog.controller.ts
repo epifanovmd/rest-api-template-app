@@ -70,7 +70,7 @@ export class DialogController extends Controller {
   ): Promise<number> {
     const user = getContextUser(req);
 
-    return this._dialogService.getUnreadMessagesCount(user.id, dialogId);
+    return this._dialogService.getUnreadMessagesCount(user.userId, dialogId);
   }
 
   /**
@@ -90,7 +90,7 @@ export class DialogController extends Controller {
     @Query("limit") limit?: number,
   ): Promise<IDialogListDto> {
     const user = getContextUser(req);
-    const data = await this._dialogService.getDialogs(user.id);
+    const data = await this._dialogService.getDialogs(user.userId);
 
     return {
       offset,
@@ -120,7 +120,7 @@ export class DialogController extends Controller {
 
     return (
       this._dialogService
-        .getDialog(id, user.id)
+        .getDialog(id, user.userId)
         // .then(({ unreadMessagesCount, ...entity }) =>
         //   DialogDetailDto.fromEntity(entity, unreadMessagesCount),
         // );
@@ -145,9 +145,9 @@ export class DialogController extends Controller {
     @Request() req: KoaRequest,
     @Path() userId: string,
   ): Promise<IDialogFindResponseDto> {
-    const currentUser = getContextUser(req);
+    const user = getContextUser(req);
 
-    return this._dialogService.getPrivateDialogWithUser(currentUser.id, userId);
+    return this._dialogService.getPrivateDialogWithUser(user.userId, userId);
   }
 
   /**
@@ -166,7 +166,7 @@ export class DialogController extends Controller {
   ): Promise<IDialogFindResponseDto> {
     const user = getContextUser(req);
 
-    return this._dialogService.findDialog(user.id, body.recipientId);
+    return this._dialogService.findDialog(user.userId, body.recipientId);
   }
 
   /**
@@ -185,7 +185,7 @@ export class DialogController extends Controller {
   ): Promise<IDialogFindOrCreateResponseDto> {
     const user = getContextUser(req);
 
-    return this._dialogService.findOrCreate(user.id, body.recipientId);
+    return this._dialogService.findOrCreate(user.userId, body.recipientId);
   }
 
   /**
@@ -205,7 +205,7 @@ export class DialogController extends Controller {
     const user = getContextUser(req);
 
     return this._dialogService
-      .createDialog(user.id, body.recipientId)
+      .createDialog(user.userId, body.recipientId)
       .then(({ unreadMessagesCount, ...entity }) =>
         DialogDetailDto.fromEntity(entity, unreadMessagesCount),
       );
@@ -244,7 +244,7 @@ export class DialogController extends Controller {
 
     return this._dialogMembersService
       .addMembers({
-        userId: user.id,
+        userId: user.userId,
         dialogId: body.dialogId,
         members: body.members,
       })
@@ -350,7 +350,7 @@ export class DialogController extends Controller {
     const user = getContextUser(req);
 
     return this._dialogService
-      .appendMessage(user.id, message)
+      .appendMessage(user.userId, message)
       .then(DialogMessagesDto.fromEntity);
   }
 
@@ -379,7 +379,7 @@ export class DialogController extends Controller {
     const user = getContextUser(req);
 
     return this._dialogService
-      .updateMessage(id, user.id, body)
+      .updateMessage(id, user.userId, body)
       .then(DialogMessagesDto.fromEntity);
   }
 
@@ -401,6 +401,6 @@ export class DialogController extends Controller {
   deleteMessage(id: string, @Request() req: KoaRequest): Promise<boolean> {
     const user = getContextUser(req);
 
-    return this._dialogService.deleteMessage(id, user.id);
+    return this._dialogService.deleteMessage(id, user.userId);
   }
 }

@@ -13,10 +13,6 @@ const serverSchema = z.object({
   filesFolderPath: z.string().default("./files"),
 });
 
-const socketSchema = z.object({
-  port: z.coerce.number().int().positive().max(65535).default(3232),
-});
-
 const t = z.coerce.number().safeParse("");
 
 const rateLimitSchema = z.object({
@@ -110,7 +106,6 @@ const emailSchema = z.object({
 // Основная схема конфигурации
 const configSchema = z.object({
   server: serverSchema,
-  socket: socketSchema,
   rateLimit: rateLimitSchema,
   cors: corsSchema,
   auth: authSchema,
@@ -128,9 +123,6 @@ export const config = configSchema.parse({
     host: process.env.SERVER_HOST,
     port: process.env.SERVER_PORT,
     filesFolderPath: process.env.SERVER_FILES_FOLDER_PATH,
-  },
-  socket: {
-    port: process.env.SOCKET_PORT,
   },
   rateLimit: {
     limit: process.env.RATE_LIMIT,

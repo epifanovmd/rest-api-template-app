@@ -17,9 +17,10 @@ export class ResetPasswordTokensService {
   ) {}
 
   async create(userId: string) {
-    const token = await createToken(userId, {
-      expiresIn: `${resetPassword.expireMinutes}m`,
-    });
+    const token = await createToken(
+      { userId, role: null, permissions: [], emailVerified: false },
+      { expiresIn: `${resetPassword.expireMinutes}m` },
+    );
 
     const findResetPasswordTokens =
       await this._resetPasswordTokensRepository.findByUserId(userId);

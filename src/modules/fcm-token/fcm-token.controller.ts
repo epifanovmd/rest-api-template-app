@@ -95,7 +95,7 @@ export class FcmTokenController extends Controller {
   getMyTokens(@Request() req: KoaRequest): Promise<FcmTokenDto[]> {
     const user = getContextUser(req);
 
-    return this._fcmTokenService.getTokens(user.id);
+    return this._fcmTokenService.getTokens(user.userId);
   }
 
   /**
@@ -110,7 +110,7 @@ export class FcmTokenController extends Controller {
   deleteTokens(@Request() req: KoaRequest): Promise<boolean> {
     const user = getContextUser(req);
 
-    return this._fcmTokenService.deleteTokens(user.id);
+    return this._fcmTokenService.deleteTokens(user.userId);
   }
 
   /**
@@ -142,7 +142,7 @@ export class FcmTokenController extends Controller {
   ): Promise<FcmTokenDto> {
     const user = getContextUser(req);
 
-    return this._fcmTokenService.addToken(user.id, token);
+    return this._fcmTokenService.addToken(user.userId, token);
   }
 
   /**

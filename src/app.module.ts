@@ -1,6 +1,5 @@
 import "reflect-metadata";
 
-import { DatabaseModule } from "./bootstrap/database.module";
 import { CoreModule } from "./core/core.module";
 import { Module } from "./core/decorators/module.decorator";
 import { AuthModule } from "./modules/auth/auth.module";
@@ -21,7 +20,6 @@ import { UtilsModule } from "./modules/utils/utils.module";
  * Корневой модуль приложения.
  *
  * Порядок imports имеет значение только для bootstrappers:
- * - DatabaseModule первый — DataSource инициализируется до всего остального.
  * - SocketModule последний — Socket-сервер стартует после всех бизнес-модулей.
  *
  * Все провайдеры регистрируются в глобальном IoC контейнере.
@@ -30,7 +28,6 @@ import { UtilsModule } from "./modules/utils/utils.module";
   imports: [
     // Инфраструктура
     CoreModule,
-    DatabaseModule,
 
     // Служебные модули (нет HTTP контроллеров)
     MailerModule,

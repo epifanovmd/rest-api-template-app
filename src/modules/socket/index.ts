@@ -1,3 +1,4 @@
+export * from "./socket.bootstrap";
 export * from "./socket.types";
 export * from "./socket-auth.middleware";
 export * from "./socket-client-registry";

@@ -1,5 +1,5 @@
 import KoaRouter from "@koa/router";
-import { Server } from "http";
+import { createServer } from "http";
 import { decorate, injectable } from "inversify";
 import Koa from "koa";
 import { Controller } from "tsoa";
@@ -7,34 +7,30 @@ import { DataSource } from "typeorm";
 
 import { config } from "../config";
 import { iocContainer } from "./app.container";
-import { BOOTSTRAP, IBootstrap } from "./core";
-import { TypeOrmDataSource } from "./core/db";
-import { logger } from "./core/logger";
-import { ModuleLoader } from "./core/module-loader";
-import {
-  notFoundMiddleware,
-  RegisterAppMiddlewares,
-  RegisterSwagger,
-} from "./middleware";
+import { BOOTSTRAP, HttpServer, IBootstrap } from "./core";
+import { logger, ModuleLoader, TypeOrmDataSource } from "./core";
+import { notFoundMiddleware, RegisterAppMiddlewares } from "./middleware";
+import { RegisterSwagger, RegisterSystemRoutes } from "./routing";
 import { RegisterRoutes } from "./routes";
 
 type Constructor = new (...args: any[]) => any;
 
 export class App {
   private readonly koa: Koa;
-  private server?: Server;
+  private httpServer?: HttpServer;
 
   constructor() {
     this.koa = new Koa();
   }
 
   async start(RootModule: Constructor): Promise<void> {
+    await TypeOrmDataSource.initialize();
     this.registerCoreBindings();
     this.loadModules(RootModule);
     this.configureMiddleware();
     this.configureRoutes();
     await this.runBootstrappers();
-    this.server = await this.listen();
+    await this.listen();
   }
 
   async stop(): Promise<void> {
@@ -45,19 +41,25 @@ export class App {
     }
 
     await new Promise<void>((resolve, reject) => {
-      this.server?.close(err => (err ? reject(err) : resolve()));
+      this.httpServer?.close(err => (err ? reject(err) : resolve()));
     });
+
+    if (TypeOrmDataSource.isInitialized) {
+      await TypeOrmDataSource.destroy();
+    }
   }
 
   /**
    * Регистрирует примитивы, которые не могут быть частью модуля:
-   * DataSource (создан статически) и Koa (создан в конструкторе App).
+   * DataSource (создан статически), Koa и единый HttpServer.
    * tsoa требует, чтобы базовый класс Controller был injectable.
    */
   private registerCoreBindings(): void {
     decorate(injectable(), Controller);
     iocContainer.bind(DataSource).toConstantValue(TypeOrmDataSource);
     iocContainer.bind<Koa>(Koa).toConstantValue(this.koa);
+    this.httpServer = createServer(this.koa.callback());
+    iocContainer.bind(HttpServer).toConstantValue(this.httpServer);
   }
 
   /**
@@ -74,34 +76,7 @@ export class App {
   private configureRoutes(): void {
     const router = new KoaRouter();
 
-    router.get("/ping", ctx => {
-      ctx.status = 200;
-      ctx.body = { serverTime: new Date().toISOString() };
-    });
-
-    router.get("/health", async ctx => {
-      let dbStatus = "ok";
-
-      try {
-        const dataSource = iocContainer.get(DataSource);
-
-        await dataSource.query("SELECT 1");
-      } catch {
-        dbStatus = "error";
-      }
-
-      const status = dbStatus === "ok" ? 200 : 503;
-
-      ctx.status = status;
-      ctx.body = {
-        status: status === 200 ? "ok" : "degraded",
-        uptime: Math.floor(process.uptime()),
-        timestamp: new Date().toISOString(),
-        version: process.env.npm_package_version ?? "unknown",
-        services: { db: dbStatus },
-      };
-    });
-
+    RegisterSystemRoutes(router, TypeOrmDataSource);
     RegisterSwagger(router, "/api-docs");
     RegisterRoutes(router);
 
@@ -116,12 +91,13 @@ export class App {
     }
   }
 
-  private listen(): Promise<Server> {
+  private listen(): Promise<void> {
     return new Promise(resolve => {
       const { port, host } = config.server;
-      const server = this.koa.listen(port, host, () => {
+
+      this.httpServer!.listen(port, host, () => {
         this.logStartup(host, port);
-        resolve(server);
+        resolve();
       });
     });
   }

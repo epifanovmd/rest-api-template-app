@@ -1,8 +1,13 @@
 import { UnauthorizedException } from "@force-dev/utils";
 
-import { assertNotNull } from "../../common";
-import { KoaRequest } from "../../types/koa";
+import { AuthContext, KoaRequest } from "../../types/koa";
 
-export const getContextUser = (req: KoaRequest) => {
-  return assertNotNull(req.ctx.request.user, new UnauthorizedException());
+export const getContextUser = (req: KoaRequest): AuthContext => {
+  const user = req.ctx.request.user;
+
+  if (!user) {
+    throw new UnauthorizedException();
+  }
+
+  return user;
 };

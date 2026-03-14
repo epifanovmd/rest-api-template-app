@@ -15,10 +15,8 @@ import {
 
 import {
   ApiResponseDto,
-  AuthGuard,
   getContextUser,
   Injectable,
-  UseGuards,
   ValidateBody,
 } from "../../core";
 import { KoaRequest } from "../../types/koa";
@@ -48,13 +46,12 @@ export class UserController extends Controller {
    * @summary Получение данных текущего пользователя
    * @returns Пользователь
    */
-  @UseGuards(AuthGuard)
-  // @Security("jwt")
+  @Security("jwt")
   @Get("my")
   getMyUser(@Request() req: KoaRequest): Promise<UserDto> {
     const user = getContextUser(req);
 
-    return this._userService.getUser(user.id).then(UserDto.fromEntity);
+    return this._userService.getUser(user.userId).then(UserDto.fromEntity);
   }
 
   /**
@@ -75,7 +72,9 @@ export class UserController extends Controller {
   ): Promise<UserDto> {
     const user = getContextUser(req);
 
-    return this._userService.updateUser(user.id, body).then(UserDto.fromEntity);
+    return this._userService
+      .updateUser(user.userId, body)
+      .then(UserDto.fromEntity);
   }
 
   /**
@@ -90,7 +89,7 @@ export class UserController extends Controller {
   deleteMyUser(@Request() req: KoaRequest): Promise<boolean> {
     const user = getContextUser(req);
 
-    return this._userService.deleteUser(user.id);
+    return this._userService.deleteUser(user.userId);
   }
 
   /**
@@ -163,7 +162,7 @@ export class UserController extends Controller {
   requestVerifyEmail(@Request() req: KoaRequest): Promise<boolean> {
     const user = getContextUser(req);
 
-    return this._userService.requestVerifyEmail(user.id, user.email);
+    return this._userService.requestVerifyEmail(user.userId);
   }
 
   /**
@@ -183,7 +182,7 @@ export class UserController extends Controller {
   ): Promise<ApiResponseDto> {
     const user = getContextUser(req);
 
-    return this._userService.verifyEmail(user.id, code);
+    return this._userService.verifyEmail(user.userId, code);
   }
 
   /**
@@ -221,7 +220,7 @@ export class UserController extends Controller {
   ): Promise<ApiResponseDto> {
     const user = getContextUser(req);
 
-    return this._userService.changePassword(user.id, body.password);
+    return this._userService.changePassword(user.userId, body.password);
   }
 
   /**

@@ -1,3 +1,4 @@
 export * from "./jwt";
-export * from "./token-verification";
+export * from "./koa-authentication";
+export * from "./token.service";
 export * from "./user-context";

@@ -1,14 +1,14 @@
 import { ForbiddenException } from "@force-dev/utils";
 import { inject } from "inversify";
 
-import { Injectable, TokenVerification } from "../../core";
+import { Injectable, TokenService } from "../../core";
 import { TSocket } from "./socket.types";
 
 @Injectable()
 export class SocketAuthMiddleware {
   constructor(
-    @inject(TokenVerification)
-    private readonly verifier: TokenVerification,
+    @inject(TokenService)
+    private readonly tokenService: TokenService,
   ) {}
 
   readonly handle = async (
@@ -22,7 +22,7 @@ export class SocketAuthMiddleware {
     }
 
     try {
-      socket.data = await this.verifier.verifyAuthToken(token);
+      socket.data = await this.tokenService.verify(token);
       next();
     } catch (err) {
       next(

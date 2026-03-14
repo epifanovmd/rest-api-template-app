@@ -1,9 +1,9 @@
 import bcrypt from "bcrypt";
 import { inject } from "inversify";
 
-import { config } from "../../config";
-import { IBootstrap, Injectable } from "../core";
-import { UserService } from "../modules/user";
+import { config } from "../../../config";
+import { IBootstrap, Injectable } from "../../core";
+import { UserService } from "./user.service";
 
 @Injectable()
 export class AdminBootstrap implements IBootstrap {

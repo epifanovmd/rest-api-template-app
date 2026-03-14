@@ -8,7 +8,9 @@ import {
   SocketEmitterService,
   TSocket,
 } from "../socket";
+import { UserService } from "../user";
 import { PublicUserDto } from "../user/dto";
+import { User } from "../user/user.entity";
 import { DialogRepository } from "./dialog.repository";
 
 @injectable()
@@ -25,21 +27,26 @@ export class DialogSocketHandler implements ISocketHandler {
     private readonly dialogRepository: DialogRepository,
     @inject(DialogMessagesService)
     private readonly messagesService: DialogMessagesService,
+    @inject(UserService)
+    private readonly userService: UserService,
   ) {}
 
   async onConnection(socket: TSocket): Promise<void> {
-    const user = socket.data;
+    const { userId } = socket.data;
 
-    const dialogs = await this.dialogRepository.find({
-      where: { members: { userId: user.id } },
-      select: { id: true },
-    });
+    const [dialogs, user] = await Promise.all([
+      this.dialogRepository.find({
+        where: { members: { userId } },
+        select: { id: true },
+      }),
+      this.userService.getUser(userId),
+    ]);
 
     dialogs.forEach(dialog => socket.join(`dialog_${dialog.id}`));
 
     this.registerMessageHandlers(socket);
     this.registerPresenceHandlers(socket);
-    this.registerTypingHandlers(socket);
+    this.registerTypingHandlers(socket, user);
   }
 
   private registerMessageHandlers(socket: TSocket): void {
@@ -68,7 +75,7 @@ export class DialogSocketHandler implements ISocketHandler {
   }
 
   private registerPresenceHandlers(socket: TSocket): void {
-    const { id: userId } = socket.data;
+    const { userId } = socket.data;
 
     socket.on("online", (isOnline: boolean) => {
       socket.rooms.forEach(room => {
@@ -86,9 +93,7 @@ export class DialogSocketHandler implements ISocketHandler {
     );
   }
 
-  private registerTypingHandlers(socket: TSocket): void {
-    const user = socket.data;
-
+  private registerTypingHandlers(socket: TSocket, user: User): void {
     socket.on("typing", (dialogId: string) => {
       const key = `${user.id}_${dialogId}`;
       const existing = this.typingTimeouts.get(key);

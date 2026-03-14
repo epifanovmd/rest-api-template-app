@@ -1,5 +1,4 @@
 export * from "./app.middleware";
-export * from "./authenticate.middleware";
 export * from "./body-parser.middleware";
 export * from "./cors.middleware";
 export * from "./error.middleware";
@@ -8,4 +7,3 @@ export * from "./not-found.middleware";
 export * from "./rate-limit.middleware";
 export * from "./request-id.middleware";
 export * from "./request-logger.middleware";
-export * from "./swagger.middleware";

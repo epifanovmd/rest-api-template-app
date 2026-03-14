@@ -12,8 +12,7 @@ import type {
 import { inject } from "inversify";
 
 import { config } from "../../../config";
-import { Injectable } from "../../core";
-import { AuthService } from "../auth";
+import { Injectable, TokenService } from "../../core";
 import { UserService } from "../user";
 import { PasskeyRepository } from "./passkeys.repository";
 
@@ -32,7 +31,7 @@ const origin = `${schema}://${rpID}${port}`;
 export class PasskeysService {
   constructor(
     @inject(UserService) private _userService: UserService,
-    @inject(AuthService) private _authService: AuthService,
+    @inject(TokenService) private _tokenService: TokenService,
     @inject(PasskeyRepository) private _passkeyRepository: PasskeyRepository,
   ) {}
 
@@ -176,7 +175,7 @@ export class PasskeysService {
 
     return {
       verified: verifyData.verified,
-      tokens: await this._authService.getTokens(userId),
+      tokens: await this._tokenService.issue(user),
     };
   }
 }

@@ -1,6 +1,7 @@
 import { Server, Socket as SocketIO } from "socket.io";
 import { DefaultEventsMap } from "socket.io/dist/typed-events";
 
+import { AuthContext } from "../../types/koa";
 import { DialogMessagesDto } from "../dialog-messages/dto";
 import { PublicUserDto } from "../user/dto";
 import { User } from "../user/user.entity";
@@ -35,12 +36,12 @@ export type TSocket = SocketIO<
   ISocketEvents,
   ISocketEmitEvents,
   DefaultEventsMap,
-  User
+  AuthContext
 >;
 
 export type TServer = Server<
   ISocketEvents,
   ISocketEmitEvents,
   DefaultEventsMap,
-  User
+  AuthContext
 >;
