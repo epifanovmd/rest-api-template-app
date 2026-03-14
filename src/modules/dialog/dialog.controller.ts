@@ -14,7 +14,7 @@ import {
   Tags,
 } from "tsoa";
 
-import { getContextUser, Injectable } from "../../core";
+import { getContextUser, Injectable, ValidateBody } from "../../core";
 import { KoaRequest } from "../../types/koa";
 import { DialogMembersService } from "../dialog-members";
 import {
@@ -39,6 +39,13 @@ import {
   IDialogFindResponseDto,
   IDialogListDto,
 } from "./dto";
+import {
+  AddMembersSchema,
+  DialogCreateSchema,
+  DialogFindSchema,
+  NewMessageSchema,
+  UpdateMessageSchema,
+} from "./validation";
 
 @Injectable()
 @Tags("Dialog")
@@ -160,6 +167,7 @@ export class DialogController extends Controller {
    */
   @Security("jwt")
   @Post("/find")
+  @ValidateBody(DialogFindSchema)
   findDialog(
     @Request() req: KoaRequest,
     @Body() body: IDialogFindRequestDto,
@@ -179,6 +187,7 @@ export class DialogController extends Controller {
    */
   @Security("jwt")
   @Post("/findOrCreate")
+  @ValidateBody(DialogFindSchema)
   findOrCreate(
     @Request() req: KoaRequest,
     @Body() body: IDialogFindRequestDto,
@@ -198,6 +207,7 @@ export class DialogController extends Controller {
    */
   @Security("jwt")
   @Post()
+  @ValidateBody(DialogCreateSchema)
   createDialog(
     @Request() req: KoaRequest,
     @Body() body: IDialogCreateRequestDto,
@@ -236,6 +246,7 @@ export class DialogController extends Controller {
    */
   @Security("jwt")
   @Post("/member")
+  @ValidateBody(AddMembersSchema)
   addMembers(
     @Request() req: KoaRequest,
     @Body() body: IDialogMembersAddRequestDto,
@@ -345,6 +356,7 @@ export class DialogController extends Controller {
    */
   @Security("jwt")
   @Post("/message/")
+  @ValidateBody(NewMessageSchema)
   newMessage(
     @Body() message: IMessagesRequestDto,
     @Request() req: KoaRequest,
@@ -373,6 +385,7 @@ export class DialogController extends Controller {
    */
   @Security("jwt")
   @Patch("/message/{id}")
+  @ValidateBody(UpdateMessageSchema)
   updateMessage(
     id: string,
     @Request() req: KoaRequest,

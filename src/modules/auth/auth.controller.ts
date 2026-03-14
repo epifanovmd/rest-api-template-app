@@ -1,7 +1,7 @@
 import { inject, injectable } from "inversify";
 import { Body, Controller, Post, Route, Tags } from "tsoa";
 
-import { ApiResponseDto, ITokensDto } from "../../core";
+import { ApiResponseDto, ITokensDto, ValidateBody } from "../../core";
 import {
   ISignInRequestDto,
   IUserLoginRequestDto,
@@ -10,6 +10,14 @@ import {
   TSignUpRequestDto,
 } from "./auth.dto";
 import { AuthService } from "./auth.service";
+import {
+  AuthenticateSchema,
+  RefreshSchema,
+  RequestResetPasswordSchema,
+  ResetPasswordSchema,
+  SignInSchema,
+  SignUpSchema,
+} from "./validation";
 
 @injectable()
 @Tags("Authorization")
@@ -34,6 +42,7 @@ export class AuthController extends Controller {
    * @response 400 - Некорректные данные
    */
   @Post("/sign-up")
+  @ValidateBody(SignUpSchema)
   signUp(@Body() body: TSignUpRequestDto): Promise<IUserWithTokensDto> {
     return this._authService.signUp(body);
   }
@@ -51,6 +60,7 @@ export class AuthController extends Controller {
    * @response 401 - Неверные учетные данные
    */
   @Post("/sign-in")
+  @ValidateBody(SignInSchema)
   signIn(@Body() body: ISignInRequestDto): Promise<IUserWithTokensDto> {
     return this._authService.signIn(body);
   }
@@ -67,6 +77,7 @@ export class AuthController extends Controller {
    * @response 401 - Не найден пользователь
    */
   @Post("/authenticate")
+  @ValidateBody(AuthenticateSchema)
   authenticate(@Body() body: { code: string }): Promise<IUserWithTokensDto> {
     return this._authService.authenticate(body);
   }
@@ -83,6 +94,7 @@ export class AuthController extends Controller {
    * @response 404 - Пользователь не найден
    */
   @Post("/request-reset-password")
+  @ValidateBody(RequestResetPasswordSchema)
   requestResetPassword(
     @Body() { login }: IUserLoginRequestDto,
   ): Promise<ApiResponseDto> {
@@ -102,6 +114,7 @@ export class AuthController extends Controller {
    * @response 400 - Некорректный или просроченный токен
    */
   @Post("/reset-password")
+  @ValidateBody(ResetPasswordSchema)
   resetPassword(
     @Body() body: IUserResetPasswordRequestDto,
   ): Promise<ApiResponseDto> {
@@ -120,6 +133,7 @@ export class AuthController extends Controller {
    * @response 401 - Неверный или просроченный refresh-токен
    */
   @Post("/refresh")
+  @ValidateBody(RefreshSchema)
   refresh(@Body() body: { refreshToken: string }): Promise<ITokensDto> {
     return this._authService.updateTokens(body.refreshToken);
   }

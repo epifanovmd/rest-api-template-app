@@ -21,10 +21,18 @@ const createZodValidationMiddleware = (
     const { error, data: _data } = await schema.safeParseAsync(data);
 
     if (error) {
-      throw new BadRequestException(
-        "Ошибка валидации запроса",
-        error.issues.map(issue => issue.message).join(", "),
+      const errors = error.issues.reduce<Record<string, string>>(
+        (acc, issue) => {
+          const field = issue.path.join(".") || "_";
+
+          acc[field] = issue.message;
+
+          return acc;
+        },
+        {},
       );
+
+      throw new BadRequestException("Ошибка валидации запроса", errors);
     }
 
     if (source === "body") {

@@ -29,7 +29,11 @@ import {
   UserDto,
 } from "./dto";
 import { UserService } from "./user.service";
-import { UserUpdateSchema } from "./validation";
+import {
+  ChangePasswordSchema,
+  SetPrivilegesSchema,
+  UserUpdateSchema,
+} from "./validation";
 
 @Injectable()
 @Tags("User")
@@ -141,6 +145,7 @@ export class UserController extends Controller {
    */
   @Security("jwt", ["role:admin"])
   @Patch("setPrivileges/{id}")
+  @ValidateBody(SetPrivilegesSchema)
   setPrivileges(
     id: string,
     @Body() body: IUserPrivilegesRequestDto,
@@ -196,6 +201,7 @@ export class UserController extends Controller {
    */
   @Security("jwt", ["role:admin"])
   @Patch("update/{id}")
+  @ValidateBody(UserUpdateSchema)
   updateUser(
     id: string,
     @Body() body: IUserUpdateRequestDto,
@@ -214,6 +220,7 @@ export class UserController extends Controller {
    */
   @Security("jwt")
   @Post("changePassword")
+  @ValidateBody(ChangePasswordSchema)
   changePassword(
     @Request() req: KoaRequest,
     @Body() body: IUserChangePasswordDto,
