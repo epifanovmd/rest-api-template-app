@@ -14,7 +14,7 @@ import { inject } from "inversify";
 import { config } from "../../../config";
 import { Injectable, TokenService } from "../../core";
 import { UserService } from "../user";
-import { PasskeyRepository } from "./passkeys.repository";
+import { PasskeysRepository } from "./passkeys.repository";
 
 const {
   auth: { webAuthn },
@@ -32,7 +32,7 @@ export class PasskeysService {
   constructor(
     @inject(UserService) private _userService: UserService,
     @inject(TokenService) private _tokenService: TokenService,
-    @inject(PasskeyRepository) private _passkeyRepository: PasskeyRepository,
+    @inject(PasskeysRepository) private _passkeysRepository: PasskeysRepository,
   ) {}
 
   async generateRegistrationOptions(userId: string) {
@@ -46,7 +46,7 @@ export class PasskeysService {
       );
     }
 
-    const passkeys = await this._passkeyRepository.findByUserId(userId);
+    const passkeys = await this._passkeysRepository.findByUserId(userId);
     const userIdBuffer = Buffer.from(user.id, "utf-8");
 
     const options = await generateRegistrationOptions({
@@ -92,7 +92,7 @@ export class PasskeysService {
       });
 
       if (verification.verified && verification.registrationInfo) {
-        await this._passkeyRepository.createAndSave({
+        await this._passkeysRepository.createAndSave({
           id: verification.registrationInfo.credential.id,
           publicKey: new Uint8Array(
             verification.registrationInfo.credential.publicKey,
@@ -114,7 +114,7 @@ export class PasskeysService {
 
   async generateAuthenticationOptions(userId: string) {
     const user = await this._userService.getUser(userId);
-    const passkeys = await this._passkeyRepository.findByUserId(userId);
+    const passkeys = await this._passkeysRepository.findByUserId(userId);
 
     if (!passkeys || passkeys.length === 0) {
       throw new InternalServerErrorException("Credentials not found");
@@ -138,7 +138,7 @@ export class PasskeysService {
 
   async verifyAuthentication(userId: string, data: AuthenticationResponseJSON) {
     const user = await this._userService.getUser(userId);
-    const passkey = await this._passkeyRepository.findByUserIdAndId(
+    const passkey = await this._passkeysRepository.findByUserIdAndId(
       userId,
       data.id,
     );
@@ -170,7 +170,7 @@ export class PasskeysService {
 
     if (verifyData.verified) {
       passkey.counter = verifyData.authenticationInfo.newCounter;
-      await this._passkeyRepository.save(passkey);
+      await this._passkeysRepository.save(passkey);
     }
 
     return {

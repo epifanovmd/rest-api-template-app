@@ -1,8 +1,9 @@
-import { Module } from "../../core/decorators/module.decorator";
+import { Module } from "../../core";
 import { PasskeysController } from "./passkeys.controller";
+import { PasskeysRepository } from "./passkeys.repository";
 import { PasskeysService } from "./passkeys.service";
 
 @Module({
-  providers: [PasskeysController, PasskeysService],
+  providers: [PasskeysRepository, PasskeysController, PasskeysService],
 })
 export class PasskeysModule {}

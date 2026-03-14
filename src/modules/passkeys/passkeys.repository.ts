@@ -2,7 +2,7 @@ import { BaseRepository, InjectableRepository } from "../../core";
 import { Passkey } from "./passkey.entity";
 
 @InjectableRepository(Passkey)
-export class PasskeyRepository extends BaseRepository<Passkey> {
+export class PasskeysRepository extends BaseRepository<Passkey> {
   async findById(id: string): Promise<Passkey | null> {
     return this.findOne({
       where: { id },

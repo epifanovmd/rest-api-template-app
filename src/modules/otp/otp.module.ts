@@ -1,7 +1,8 @@
 import { Module } from "../../core/decorators/module.decorator";
+import { OtpRepository } from "./otp.repository";
 import { OtpService } from "./otp.service";
 
 @Module({
-  providers: [OtpService],
+  providers: [OtpRepository, OtpService],
 })
 export class OtpModule {}
