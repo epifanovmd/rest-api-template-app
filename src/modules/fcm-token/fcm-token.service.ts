@@ -2,61 +2,47 @@ import {
   InternalServerErrorException,
   NotFoundException,
 } from "@force-dev/utils";
-import axios from "axios";
+import axios, { AxiosInstance } from "axios";
 import admin from "firebase-admin";
 import { Message } from "firebase-admin/lib/messaging/messaging-api";
 import fs from "fs";
 import { inject } from "inversify";
 import path from "path";
 
+import { config } from "../../config";
 import { Injectable, logger } from "../../core";
 import { IApnRegisterTokenResponseDto, IFCMMessageDto } from "./fcm-token.dto";
 import { FcmTokenRepository } from "./fcm-token.repository";
 
 const BATCH_IMPORT_URL = "https://iid.googleapis.com/iid/v1:batchImport";
 
-// Проверка существования firebaseAccount.json
-const serviceAccountPath = path.join(process.cwd(), "firebaseAccount.json");
-let firebaseAdmin: admin.app.App | null = null;
-let firebaseCredential: admin.credential.Credential | null = null;
-
-try {
-  if (fs.existsSync(serviceAccountPath)) {
-    const serviceAccount = require(serviceAccountPath);
-
-    firebaseCredential = admin.credential.cert(serviceAccount);
-    firebaseAdmin = admin.initializeApp({
-      credential: firebaseCredential,
-    });
-    logger.info("Firebase Admin initialized successfully");
-  } else {
-    logger.warn("firebaseAccount.json not found. Firebase features will be unavailable.");
-  }
-} catch (error) {
-  logger.error({ err: error }, "Firebase Admin initialization error");
-}
-
 @Injectable()
 export class FcmTokenService {
   private _accessToken: string | undefined = undefined;
-  private _fetch = axios.create({
+  private _firebaseApp: admin.app.App | null = null;
+  private _firebaseCredential: admin.credential.Credential | null = null;
+
+  private _fetch: AxiosInstance = axios.create({
     timeout: 2 * 60 * 1000,
     withCredentials: true,
     headers: {
       Accept: "application/json",
       "Content-Type": "application/json",
-      Authorization: this._accessToken && `Bearer ${this._accessToken}`,
     },
   });
 
   constructor(
     @inject(FcmTokenRepository) private _fcmTokenRepository: FcmTokenRepository,
   ) {
-    if (firebaseAdmin !== null && firebaseCredential !== null) {
-      this.getAccessToken().then(token => {
-        this._accessToken = token;
-      });
-    }
+    this._initializeFirebase();
+
+    this._fetch.interceptors.request.use(requestConfig => {
+      if (this._accessToken) {
+        requestConfig.headers.Authorization = `Bearer ${this._accessToken}`;
+      }
+
+      return requestConfig;
+    });
   }
 
   async getTokens(userId: string) {
@@ -112,23 +98,25 @@ export class FcmTokenService {
       .then(res => !!res.affected);
   }
 
-  async getAccessToken() {
-    if (firebaseAdmin === null || firebaseCredential === null) {
+  async getAccessToken(): Promise<string> {
+    if (!this._firebaseCredential) {
       throw new InternalServerErrorException("Firebase не инициализирован.");
     }
 
-    const token = await firebaseCredential.getAccessToken();
+    const token = await this._firebaseCredential.getAccessToken();
 
-    return token.access_token;
+    this._accessToken = token.access_token;
+
+    return this._accessToken;
   }
 
   async sendFcmMessage(message: IFCMMessageDto): Promise<string> {
-    if (firebaseAdmin === null || firebaseCredential === null) {
+    if (!this._firebaseApp) {
       throw new InternalServerErrorException("Firebase не инициализирован.");
     }
 
     try {
-      return await firebaseAdmin!
+      return await this._firebaseApp
         .messaging()
         .send(this._getMessagePayload(message));
     } catch (e) {
@@ -137,7 +125,7 @@ export class FcmTokenService {
   }
 
   async getFcmToken(apnsToken: string) {
-    if (firebaseAdmin === null || firebaseCredential === null) {
+    if (!this._firebaseApp) {
       logger.warn("Firebase not initialized");
 
       return;
@@ -159,9 +147,11 @@ export class FcmTokenService {
     application: string,
     sandbox: boolean,
   ) {
-    if (firebaseAdmin === null || firebaseCredential === null) {
+    if (!this._firebaseApp) {
       throw new InternalServerErrorException("Firebase не инициализирован.");
     }
+
+    await this.getAccessToken();
 
     const response = await this._fetch.post<IApnRegisterTokenResponseDto>(
       BATCH_IMPORT_URL,
@@ -173,6 +163,40 @@ export class FcmTokenService {
     );
 
     return response.data;
+  }
+
+  private _initializeFirebase(): void {
+    const serviceAccountPath = path.join(
+      process.cwd(),
+      config.fcm.serviceAccountPath,
+    );
+
+    try {
+      if (fs.existsSync(serviceAccountPath)) {
+        const serviceAccount = require(serviceAccountPath);
+
+        this._firebaseCredential = admin.credential.cert(serviceAccount);
+        this._firebaseApp = admin.initializeApp({
+          credential: this._firebaseCredential,
+        });
+        logger.info("Firebase Admin initialized successfully");
+
+        this._firebaseCredential
+          .getAccessToken()
+          .then(token => {
+            this._accessToken = token.access_token;
+          })
+          .catch(err =>
+            logger.error({ err }, "Failed to pre-fetch Firebase access token"),
+          );
+      } else {
+        logger.warn(
+          `Firebase service account not found at "${serviceAccountPath}". Firebase features will be unavailable.`,
+        );
+      }
+    } catch (error) {
+      logger.error({ err: error }, "Firebase Admin initialization error");
+    }
   }
 
   private _getMessagePayload = (message: IFCMMessageDto): Message => ({

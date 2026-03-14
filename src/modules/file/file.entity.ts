@@ -7,8 +7,8 @@ import {
   UpdateDateColumn,
 } from "typeorm";
 
-import type { MessageFiles } from "../message-files/message-files.entity";
-import type { Profile } from "../profile/profile.entity";
+import { MessageFiles } from "../message-files/message-files.entity";
+import { Profile } from "../profile/profile.entity";
 
 @Entity("files")
 export class File {
@@ -34,12 +34,10 @@ export class File {
   updatedAt: Date;
 
   // Relations
-  // @OneToMany(() => Profile, profile => profile.avatar)
-  @OneToMany("Profile", "avatar")
+  @OneToMany(() => Profile, profile => profile.avatar)
   avatarProfiles: Profile[];
 
-  // @OneToMany(() => MessageFiles, messageFile => messageFile.file)
-  @OneToMany("MessageFiles", "file")
+  @OneToMany(() => MessageFiles, messageFile => messageFile.file)
   messageFiles: MessageFiles[];
 
   toDTO() {

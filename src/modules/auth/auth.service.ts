@@ -8,7 +8,7 @@ import bcrypt from "bcrypt";
 import { inject } from "inversify";
 import sha256 from "sha256";
 
-import { config } from "../../../config";
+import { config } from "../../config";
 import {
   ApiResponseDto,
   Injectable,

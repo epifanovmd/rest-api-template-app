@@ -5,8 +5,8 @@ import Koa from "koa";
 import { Controller } from "tsoa";
 import { DataSource } from "typeorm";
 
-import { config } from "../config";
 import { iocContainer } from "./app.container";
+import { config } from "./config";
 import { BOOTSTRAP, HttpServer, IBootstrap } from "./core";
 import { logger, ModuleLoader, TypeOrmDataSource } from "./core";
 import { notFoundMiddleware, RegisterAppMiddlewares } from "./middleware";

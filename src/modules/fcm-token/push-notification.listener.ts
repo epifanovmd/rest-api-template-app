@@ -1,7 +1,6 @@
 import { inject } from "inversify";
 
 import { EventBus, Injectable, logger } from "../../core";
-import { DialogService } from "../dialog/dialog.service";
 import { MessageCreatedEvent } from "../dialog/events";
 import { ISocketEventListener } from "../socket/socket-event-listener.interface";
 import { FcmTokenService } from "./fcm-token.service";
@@ -11,7 +10,6 @@ export class PushNotificationListener implements ISocketEventListener {
   constructor(
     @inject(EventBus) private readonly eventBus: EventBus,
     @inject(FcmTokenService) private readonly fcmTokenService: FcmTokenService,
-    @inject(DialogService) private readonly dialogService: DialogService,
   ) {}
 
   register(): void {
@@ -19,11 +17,16 @@ export class PushNotificationListener implements ISocketEventListener {
   }
 
   private async onMessageCreated(event: MessageCreatedEvent): Promise<void> {
-    const { message, recipientIds } = event;
+    const { message, recipientIds, unreadCounts } = event;
 
     await Promise.allSettled(
       recipientIds.map(recipientId =>
-        this.sendPush(recipientId, message.text, message.dialogId),
+        this.sendPush(
+          recipientId,
+          message.text,
+          message.dialogId,
+          unreadCounts[recipientId] ?? 0,
+        ),
       ),
     );
   }
@@ -32,12 +35,12 @@ export class PushNotificationListener implements ISocketEventListener {
     recipientId: string,
     text: string,
     dialogId: string,
+    badge: number,
   ): Promise<void> {
     try {
-      const [tokens, badge] = await Promise.all([
-        this.fcmTokenService.getTokens(recipientId).catch(() => []),
-        this.dialogService.getUnreadMessagesCount(recipientId),
-      ]);
+      const tokens = await this.fcmTokenService
+        .getTokens(recipientId)
+        .catch(() => []);
 
       await Promise.allSettled(
         tokens.map(async token => {

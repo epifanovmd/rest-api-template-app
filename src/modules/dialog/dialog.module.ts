@@ -6,11 +6,11 @@ import { DialogMessagesService } from "../dialog-messages/dialog-messages.servic
 import { MessageFilesRepository } from "../message-files/message-files.repository";
 import { asSocketHandler, asSocketListener } from "../socket";
 import { DialogController } from "./dialog.controller";
+import { DialogRepository } from "./dialog.repository";
+import { DialogService } from "./dialog.service";
 import { DialogMessagingHandler } from "./dialog-messaging.handler";
 import { DialogPresenceHandler } from "./dialog-presence.handler";
-import { DialogRepository } from "./dialog.repository";
 import { DialogRoomManager } from "./dialog-room.manager";
-import { DialogService } from "./dialog.service";
 import { DialogSocketEventHandler } from "./dialog-socket-event.handler";
 import { DialogTypingHandler } from "./dialog-typing.handler";
 

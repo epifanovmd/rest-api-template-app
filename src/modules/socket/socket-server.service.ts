@@ -1,7 +1,7 @@
 import { inject } from "inversify";
 import { Server } from "socket.io";
 
-import { config } from "../../../config";
+import { config } from "../../config";
 import { HttpServer, Injectable, logger } from "../../core";
 import { TServer } from "./socket.types";
 

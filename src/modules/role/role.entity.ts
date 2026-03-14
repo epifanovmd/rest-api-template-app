@@ -8,7 +8,7 @@ import {
   UpdateDateColumn,
 } from "typeorm";
 
-import type { Permission } from "../permission/permission.entity";
+import { Permission } from "../permission/permission.entity";
 import { ERole } from "./role.types";
 
 @Entity("roles")
@@ -26,8 +26,7 @@ export class Role {
   updatedAt: Date;
 
   // Relations
-  // @ManyToMany(() => Permission, permission => permission.roles, { eager: true })
-  @ManyToMany("Permission", "roles", { eager: true })
+  @ManyToMany(() => Permission, permission => permission.roles, { eager: true })
   @JoinTable({
     name: "role_permissions",
     joinColumn: { name: "role_id" },

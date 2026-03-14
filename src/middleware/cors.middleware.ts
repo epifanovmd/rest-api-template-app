@@ -1,6 +1,6 @@
 import cors from "@koa/cors";
 
-import { config } from "../../config";
+import { config } from "../config";
 
 export const corsMiddleware = cors({
   origin(ctx) {

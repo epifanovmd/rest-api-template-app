@@ -9,7 +9,7 @@ import {
   UpdateDateColumn,
 } from "typeorm";
 
-import type { User } from "../user/user.entity";
+import { User } from "../user/user.entity";
 
 @Entity("fcm_tokens")
 @Index("IDX_FCM_TOKENS_TOKEN", ["token"], { unique: true })
@@ -31,8 +31,7 @@ export class FcmToken {
   updatedAt: Date;
 
   // Relations
-  // @ManyToOne(() => User, user => user.fcmTokens, { onDelete: "CASCADE" })
-  @ManyToOne("User", "fcmTokens", { onDelete: "CASCADE" })
+  @ManyToOne(() => User, user => user.fcmTokens, { onDelete: "CASCADE" })
   @JoinColumn({ name: "user_id" })
   user: User;
 

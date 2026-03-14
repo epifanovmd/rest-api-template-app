@@ -5,7 +5,7 @@ import path from "path";
 import { File } from "tsoa";
 import { v4 } from "uuid";
 
-import { config } from "../../../config";
+import { config } from "../../config";
 import { Injectable, logger } from "../../core";
 import { FileRepository } from "./file.repository";
 

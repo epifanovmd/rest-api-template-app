@@ -2,13 +2,13 @@ import { Container, decorate, injectable } from "inversify";
 import { DataSource } from "typeorm";
 
 import { BOOTSTRAP, IBootstrap } from "./bootstrap";
-import { REPOSITORY_ENTITY_KEY } from "./decorators/repository.decoration";
 import {
   isTokenProvider,
   MODULE_METADATA_KEY,
   ModuleOptions,
   ModuleProvider,
 } from "./decorators";
+import { REPOSITORY_ENTITY_KEY } from "./decorators/repository.decoration";
 
 type Constructor<T = any> = new (...args: any[]) => T;
 

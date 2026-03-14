@@ -8,8 +8,8 @@ import {
   UpdateDateColumn,
 } from "typeorm";
 
-import type { DialogMessages } from "../dialog-messages/dialog-messages.entity";
-import type { File } from "../file/file.entity";
+import { DialogMessages } from "../dialog-messages/dialog-messages.entity";
+import { File } from "../file/file.entity";
 
 export type TMessageFileType = "image" | "video" | "audio";
 
@@ -38,15 +38,13 @@ export class MessageFiles {
   updatedAt: Date;
 
   // Relations
-  // @ManyToOne(() => DialogMessages, message => message.messageFiles, {
-  @ManyToOne("DialogMessages", "messageFiles", {
+  @ManyToOne(() => DialogMessages, message => message.messageFiles, {
     onDelete: "CASCADE",
   })
   @JoinColumn({ name: "message_id" })
   message: DialogMessages;
 
-  // @ManyToOne(() => File, file => file.messageFiles, { onDelete: "CASCADE" })
-  @ManyToOne("File", "messageFiles", { onDelete: "CASCADE" })
+  @ManyToOne(() => File, file => file.messageFiles, { onDelete: "CASCADE" })
   @JoinColumn({ name: "file_id" })
   file: File;
 

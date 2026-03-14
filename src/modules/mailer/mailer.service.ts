@@ -2,7 +2,7 @@ import { render } from "ejs";
 import fs from "fs";
 import { createTransport, SendMailOptions } from "nodemailer";
 
-import { config } from "../../../config";
+import { config } from "../../config";
 import { Injectable } from "../../core";
 
 @Injectable()

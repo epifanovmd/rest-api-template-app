@@ -9,7 +9,7 @@ import {
   UpdateDateColumn,
 } from "typeorm";
 
-import type { User } from "../user/user.entity";
+import { User } from "../user/user.entity";
 
 @Entity("reset_password_tokens")
 @Index("IDX_RESET_TOKENS_TOKEN", ["token"], { unique: true })
@@ -27,8 +27,7 @@ export class ResetPasswordTokens {
   updatedAt: Date;
 
   // Relations
-  // @ManyToOne(() => User, user => user.resetPasswordTokens, {
-  @ManyToOne("User", "resetPasswordTokens", {
+  @ManyToOne(() => User, user => user.resetPasswordTokens, {
     onDelete: "CASCADE",
   })
   @JoinColumn({ name: "user_id" })

@@ -1,6 +1,6 @@
 import RateLimit from "koa-ratelimit";
 
-import { config } from "../../config";
+import { config } from "../config";
 
 const { rateLimit } = config;
 

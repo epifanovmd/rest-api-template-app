@@ -205,11 +205,15 @@ export class DialogService {
     return this.getDialog(dialog.id, userId);
   }
 
-  async removeDialog(id: string) {
+  async removeDialog(id: string, userId: string) {
     const dialog = await this._dialogRepository.findById(id, { members: true });
 
     if (!dialog) {
       throw new NotFoundException("Диалог не найден");
+    }
+
+    if (dialog.ownerId !== userId) {
+      throw new ForbiddenException("Нет прав на удаление диалога");
     }
 
     const memberIds = dialog.members.map(m => m.userId);
@@ -257,7 +261,19 @@ export class DialogService {
 
       const dto = DialogMessagesDto.fromEntity(message);
 
-      this.eventBus.emit(new MessageCreatedEvent(dto, recipientIds));
+      const unreadCounts: Record<string, number> = {};
+
+      await Promise.all(
+        recipientIds.map(async id => {
+          unreadCounts[id] =
+            await this._dialogMessagesRepository.countUnreadMessages(
+              id,
+              body.dialogId,
+            );
+        }),
+      );
+
+      this.eventBus.emit(new MessageCreatedEvent(dto, recipientIds, unreadCounts));
     }
 
     return message;

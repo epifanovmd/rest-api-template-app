@@ -1,7 +1,7 @@
 import { BadRequestException } from "@force-dev/utils";
 import { inject } from "inversify";
 
-import { config } from "../../../config";
+import { config } from "../../config";
 import { createToken, Injectable, verifyToken } from "../../core";
 import { ResetPasswordTokensRepository } from "./reset-password-tokens.repository";
 

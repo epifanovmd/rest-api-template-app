@@ -1,10 +1,12 @@
 import { NotFoundException } from "@force-dev/utils";
 import { inject } from "inversify";
 import { File } from "tsoa";
+import { FindOptionsWhere } from "typeorm";
 
-import { Injectable } from "../../core";
+import { Injectable, logger } from "../../core";
 import { FileService } from "../file";
 import { IProfileUpdateRequestDto } from "./dto";
+import { Profile } from "./profile.entity";
 import { ProfileRepository } from "./profile.repository";
 
 @Injectable()
@@ -29,29 +31,14 @@ export class ProfileService {
       queryBuilder.take(limit);
     }
 
-    const profiles = await queryBuilder.getMany();
-
-    return profiles.map(profile => profile);
+    return queryBuilder.getMany();
   }
 
-  async getProfileByAttr(where: any) {
-    const queryBuilder = this._profileRepository
-      .createQueryBuilder("profile")
-      .leftJoinAndSelect("profile.avatar", "avatar")
-      .leftJoinAndSelect("profile.user", "user");
-
-    // Добавляем условия where
-    Object.keys(where).forEach((key, index) => {
-      if (index === 0) {
-        queryBuilder.where(`profile.${key} = :${key}`, { [key]: where[key] });
-      } else {
-        queryBuilder.andWhere(`profile.${key} = :${key}`, {
-          [key]: where[key],
-        });
-      }
+  async getProfileByAttr(where: FindOptionsWhere<Profile>) {
+    const profile = await this._profileRepository.findOne({
+      where,
+      relations: { avatar: true, user: true },
     });
-
-    const profile = await queryBuilder.getOne();
 
     if (!profile) {
       throw new NotFoundException("Пользователь не найден");
@@ -82,68 +69,36 @@ export class ProfileService {
   }
 
   async addAvatar(userId: string, file: File) {
-    const queryRunner = this._profileRepository.createQueryRunner();
+    const profile = await this.getProfileByUserId(userId);
+    const oldAvatarId = profile.avatarId;
 
-    await queryRunner.connect();
-    await queryRunner.startTransaction();
+    const uploadedFiles = await this._fileService.uploadFile([file]);
+    const uploadedFile = uploadedFiles[0];
 
-    try {
-      const profile = await this.getProfileByUserId(userId);
+    await this._profileRepository.update({ userId }, { avatarId: uploadedFile.id });
 
-      // Загружаем файл
-      const uploadedFiles = await this._fileService.uploadFile([file]);
-      const uploadedFile = uploadedFiles[0];
-
-      // Удаляем старый аватар если есть
-      if (profile.avatarId) {
-        await this._fileService.deleteFile(profile.avatarId);
-      }
-
-      // Обновляем профиль с новым аватаром
-      await this._profileRepository.update(
-        { userId },
-        {
-          avatarId: uploadedFile.id,
-        },
+    if (oldAvatarId) {
+      this._fileService.deleteFile(oldAvatarId).catch(err =>
+        logger.warn({ err, oldAvatarId }, "Failed to delete old avatar file"),
       );
-
-      await queryRunner.commitTransaction();
-
-      return this.getProfileByUserId(userId);
-    } catch (error) {
-      await queryRunner.rollbackTransaction();
-      throw error;
-    } finally {
-      await queryRunner.release();
     }
+
+    return this.getProfileByUserId(userId);
   }
 
   async removeAvatar(userId: string) {
-    const queryRunner = this._profileRepository.createQueryRunner();
+    const profile = await this.getProfileByUserId(userId);
+    const oldAvatarId = profile.avatarId;
 
-    await queryRunner.connect();
-    await queryRunner.startTransaction();
+    await this._profileRepository.update({ userId }, { avatarId: null });
 
-    try {
-      const profile = await this.getProfileByUserId(userId);
-
-      if (profile.avatarId) {
-        await this._fileService.deleteFile(profile.avatarId);
-      }
-
-      await this._profileRepository.update(userId, {
-        avatarId: null,
-      });
-
-      await queryRunner.commitTransaction();
-
-      return this.getProfileByUserId(userId);
-    } catch (error) {
-      await queryRunner.rollbackTransaction();
-      throw error;
-    } finally {
-      await queryRunner.release();
+    if (oldAvatarId) {
+      this._fileService.deleteFile(oldAvatarId).catch(err =>
+        logger.warn({ err, oldAvatarId }, "Failed to delete avatar file"),
+      );
     }
+
+    return this.getProfileByUserId(userId);
   }
 
   async deleteProfile(userId: string) {

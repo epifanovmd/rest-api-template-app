@@ -10,7 +10,7 @@ import {
   UpdateDateColumn,
 } from "typeorm";
 
-import type { User } from "../user/user.entity";
+import { User } from "../user/user.entity";
 
 export type CredentialDeviceType = "singleDevice" | "multiDevice";
 
@@ -21,7 +21,14 @@ export class Passkey {
   @PrimaryColumn({ type: "varchar" })
   id: string;
 
-  @Column({ name: "public_key", type: "bytea" })
+  @Column({
+    name: "public_key",
+    type: "bytea",
+    transformer: {
+      to: (value: Uint8Array) => Buffer.from(value),
+      from: (value: Buffer) => new Uint8Array(value),
+    },
+  })
   publicKey: Uint8Array;
 
   @Column({ name: "user_id", type: "uuid" })
@@ -58,8 +65,7 @@ export class Passkey {
   updatedAt: Date;
 
   // Relations
-  // @ManyToOne(() => User, user => user.passkeys, { onDelete: "CASCADE" })
-  @ManyToOne("User", "passkeys", { onDelete: "CASCADE" })
+  @ManyToOne(() => User, user => user.passkeys, { onDelete: "CASCADE" })
   @JoinColumn({ name: "user_id" })
   user: User;
 

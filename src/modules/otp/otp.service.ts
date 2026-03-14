@@ -2,8 +2,8 @@ import { BadRequestException, GoneException } from "@force-dev/utils";
 import { inject } from "inversify";
 import moment from "moment";
 
-import { config } from "../../../config";
 import { generateOtp } from "../../common";
+import { config } from "../../config";
 import { Injectable } from "../../core";
 import { OtpRepository } from "./otp.repository";
 

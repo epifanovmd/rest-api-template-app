@@ -1,7 +1,7 @@
 import bcrypt from "bcrypt";
 import { inject } from "inversify";
 
-import { config } from "../../../config";
+import { config } from "../../config";
 import { IBootstrap, Injectable } from "../../core";
 import { UserService } from "./user.service";
 

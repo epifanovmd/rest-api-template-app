@@ -271,8 +271,10 @@ export class DialogController extends Controller {
    */
   @Security("jwt")
   @Delete("/{id}")
-  removeDialog(@Path() id: string): Promise<void> {
-    return this._dialogService.removeDialog(id);
+  removeDialog(@Request() req: KoaRequest, @Path() id: string): Promise<void> {
+    const user = getContextUser(req);
+
+    return this._dialogService.removeDialog(id, user.userId);
   }
 
   /**

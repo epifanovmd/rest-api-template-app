@@ -1,6 +1,6 @@
 import { DataSource } from "typeorm";
 
-import { config } from "../../../config";
+import { config } from "../../config";
 
 export const TypeOrmDataSource = new DataSource({
   type: "postgres",

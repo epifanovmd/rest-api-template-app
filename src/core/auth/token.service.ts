@@ -2,7 +2,7 @@ import { ForbiddenException, UnauthorizedException } from "@force-dev/utils";
 import { inject } from "inversify";
 import jwt, { VerifyErrors } from "jsonwebtoken";
 
-import { config } from "../../../config";
+import { config } from "../../config";
 import { EPermissions } from "../../modules/permission/permission.types";
 import { ERole } from "../../modules/role/role.types";
 import { User } from "../../modules/user/user.entity";

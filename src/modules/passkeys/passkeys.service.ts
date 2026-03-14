@@ -11,7 +11,7 @@ import type {
 } from "@simplewebauthn/types";
 import { inject } from "inversify";
 
-import { config } from "../../../config";
+import { config } from "../../config";
 import { Injectable, TokenService } from "../../core";
 import { UserService } from "../user";
 import { PasskeysRepository } from "./passkeys.repository";

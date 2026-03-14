@@ -34,7 +34,7 @@ export class DialogMembersService {
         );
 
       if (!member) {
-        throw new NotFoundException("Диалог не найден");
+        throw new NotFoundException("Вы не являетесь участником диалога");
       }
     }
 

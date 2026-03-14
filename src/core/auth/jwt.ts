@@ -1,6 +1,6 @@
 import jwt, { sign, SignOptions, VerifyErrors } from "jsonwebtoken";
 
-import { config } from "../../../config";
+import { config } from "../../config";
 import { EPermissions } from "../../modules/permission/permission.types";
 import { ERole } from "../../modules/role/role.types";
 import { JWTDecoded } from "../../types/koa";
