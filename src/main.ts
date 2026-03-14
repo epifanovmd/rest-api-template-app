@@ -2,7 +2,7 @@ import "reflect-metadata";
 
 import { App } from "./app";
 import { AppModule } from "./app.module";
-import { logger } from "./core/logger";
+import { logger } from "./core";
 
 const bootstrap = async () => {
   const app = new App();

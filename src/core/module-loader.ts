@@ -7,8 +7,8 @@ import {
   MODULE_METADATA_KEY,
   ModuleOptions,
   ModuleProvider,
+  REPOSITORY_ENTITY_KEY,
 } from "./decorators";
-import { REPOSITORY_ENTITY_KEY } from "./decorators/repository.decoration";
 
 type Constructor<T = any> = new (...args: any[]) => T;
 
