@@ -1,11 +1,11 @@
 import bcrypt from "bcrypt";
-import { inject, injectable } from "inversify";
+import { inject } from "inversify";
 
 import { config } from "../../config";
-import { IBootstrap } from "../core";
+import { IBootstrap, Injectable } from "../core";
 import { UserService } from "../modules/user";
 
-@injectable()
+@Injectable()
 export class AdminBootstrap implements IBootstrap {
   constructor(@inject(UserService) private readonly userService: UserService) {}
 

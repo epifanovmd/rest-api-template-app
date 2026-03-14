@@ -1,11 +1,15 @@
 import { injectable } from "inversify";
 
-import { iocContainer } from "../../app.container";
-
+/**
+ * Маркирует класс как injectable для inversify.
+ * Регистрация в IoC контейнере происходит через @Module({ providers: [...] }).
+ *
+ * @example
+ * @Injectable()
+ * export class UserService {
+ *   constructor(@inject(UserRepository) private repo: UserRepository) {}
+ * }
+ */
 export function Injectable() {
-  return <T extends new (...args: any[]) => any>(constructor: T) => {
-    iocContainer.bind(constructor).to(constructor).inSingletonScope();
-
-    return injectable()(constructor);
-  };
+  return injectable();
 }

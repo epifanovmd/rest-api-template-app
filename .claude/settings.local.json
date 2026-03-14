@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(yarn add:*)"
+      "Bash(yarn add:*)",
+      "Bash(grep -E \"\\\\.\\(ts|json|md\\)$\")"
     ]
   }
 }

@@ -1,7 +1,7 @@
 import { inject } from "inversify";
 
 import { EventBus, Injectable } from "../../core";
-import { SocketClientRegistry } from "../socket";
+import { ISocketEventListener, SocketClientRegistry } from "../socket";
 import {
   DialogCreatedEvent,
   DialogDeletedEvent,
@@ -15,7 +15,7 @@ import {
  * он мгновенно вступает/покидает соответствующую room без переподключения.
  */
 @Injectable()
-export class DialogRoomManager {
+export class DialogRoomManager implements ISocketEventListener {
   constructor(
     @inject(EventBus) private readonly eventBus: EventBus,
     @inject(SocketClientRegistry)

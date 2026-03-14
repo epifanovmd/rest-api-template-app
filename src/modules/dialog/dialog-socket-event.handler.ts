@@ -1,7 +1,7 @@
 import { inject } from "inversify";
 
 import { EventBus, Injectable } from "../../core";
-import { SocketEmitterService } from "../socket";
+import { ISocketEventListener, SocketEmitterService } from "../socket";
 import {
   DialogCreatedEvent,
   DialogDeletedEvent,
@@ -13,7 +13,7 @@ import {
 } from "./events";
 
 @Injectable()
-export class DialogSocketEventHandler {
+export class DialogSocketEventHandler implements ISocketEventListener {
   constructor(
     @inject(EventBus) private readonly eventBus: EventBus,
     @inject(SocketEmitterService)

@@ -1,12 +1,13 @@
 import "reflect-metadata";
 
 import { App } from "./app";
+import { AppModule } from "./app.module";
 import { logger } from "./core/logger";
 
 const bootstrap = async () => {
   const app = new App();
 
-  await app.start();
+  await app.start(AppModule);
 
   const shutdown = async (signal: string) => {
     logger.info({ signal }, "Shutting down gracefully...");

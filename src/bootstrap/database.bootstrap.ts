@@ -1,9 +1,9 @@
-import { inject, injectable } from "inversify";
+import { inject } from "inversify";
 import { DataSource } from "typeorm";
 
-import { IBootstrap } from "../core";
+import { IBootstrap, Injectable } from "../core";
 
-@injectable()
+@Injectable()
 export class DatabaseBootstrap implements IBootstrap {
   constructor(@inject(DataSource) private readonly dataSource: DataSource) {}
 

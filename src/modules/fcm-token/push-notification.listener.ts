@@ -3,10 +3,11 @@ import { inject } from "inversify";
 import { EventBus, Injectable, logger } from "../../core";
 import { DialogService } from "../dialog/dialog.service";
 import { MessageCreatedEvent } from "../dialog/events";
+import { ISocketEventListener } from "../socket/socket-event-listener.interface";
 import { FcmTokenService } from "./fcm-token.service";
 
 @Injectable()
-export class PushNotificationListener {
+export class PushNotificationListener implements ISocketEventListener {
   constructor(
     @inject(EventBus) private readonly eventBus: EventBus,
     @inject(FcmTokenService) private readonly fcmTokenService: FcmTokenService,

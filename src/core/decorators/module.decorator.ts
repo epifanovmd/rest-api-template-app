@@ -1,67 +1,53 @@
-import { Container, interfaces } from "inversify";
+import { interfaces } from "inversify";
+
+import { IBootstrap } from "../bootstrap/bootstrap.interface";
 
 type Constructor<T = any> = new (...args: any[]) => T;
+type ServiceIdentifier<T = any> = interfaces.ServiceIdentifier<T>;
 
-export const Module = (...providers: Constructor[]): ClassDecorator => {
+/**
+ * Конфигурация провайдера с токеном.
+ * Используется для multi-bind и привязок по интерфейс-символу.
+ */
+export interface TokenProvider<T = any> {
+  provide: ServiceIdentifier<T>;
+  useClass: Constructor<T>;
+}
+
+/**
+ * Провайдер модуля — либо класс (bind to self), либо token-binding.
+ */
+export type ModuleProvider = Constructor | TokenProvider;
+
+export interface ModuleOptions {
+  /** Другие модули, чьи провайдеры будут доступны в этом модуле */
+  imports?: Constructor[];
+  /** Сервисы и классы, регистрируемые в IoC контейнере */
+  providers?: ModuleProvider[];
+  /** Bootstrapper-классы, реализующие IBootstrap */
+  bootstrappers?: Constructor<IBootstrap>[];
+}
+
+export const MODULE_METADATA_KEY = "module:metadata";
+
+/**
+ * Декоратор модуля, определяет границы фичи и регистрирует провайдеры.
+ * Вдохновлён подходом NestJS, но реализован нативно через inversify.
+ *
+ * @example
+ * @Module({
+ *   imports: [DatabaseModule],
+ *   providers: [UserService, { provide: SOCKET_HANDLER, useClass: UserSocketHandler }],
+ *   bootstrappers: [AdminBootstrap],
+ * })
+ * export class UserModule {}
+ */
+export function Module(options: ModuleOptions = {}): ClassDecorator {
   return (target: Function) => {
-    Reflect.defineMetadata("module:providers", providers, target);
+    Reflect.defineMetadata(MODULE_METADATA_KEY, options, target);
   };
-};
+}
 
-export class BaseModule {
-  protected container: Container;
-
-  constructor(container?: Container) {
-    this.container = container || new Container();
-  }
-
-  /**
-   * Конфигурирует контейнер с провайдерами модуля
-   */
-  configure(container: Container = this.container): void {
-    const providers = this.getProviders();
-
-    providers.forEach(provider => {
-      this.bindProvider(container, provider);
-    });
-
-    this.onConfigure(container);
-  }
-
-  /**
-   * Возвращает провайдеры модуля из метаданных
-   */
-  protected getProviders(): Constructor[] {
-    return Reflect.getMetadata("module:providers", this.constructor) || [];
-  }
-
-  /**
-   * Регистрирует провайдер в контейнере
-   */
-  protected bindProvider(container: Container, provider: Constructor): void {
-    if (!container.isBound(provider)) {
-      container.bind(provider).toSelf().inSingletonScope();
-    }
-  }
-
-  /**
-   * Хук для дополнительной конфигурации после регистрации провайдеров
-   */
-  protected onConfigure(container: Container): void {
-    // Переопределяется в наследниках для дополнительной конфигурации
-  }
-
-  /**
-   * Получает экземпляр провайдера из контейнера
-   */
-  get<T>(serviceIdentifier: interfaces.ServiceIdentifier<T>): T {
-    return this.container.get(serviceIdentifier);
-  }
-
-  /**
-   * Проверяет, зарегистрирован ли провайдер
-   */
-  has(serviceIdentifier: interfaces.ServiceIdentifier): boolean {
-    return this.container.isBound(serviceIdentifier);
-  }
+export function isTokenProvider(p: ModuleProvider): p is TokenProvider {
+  return typeof p === "object" && "provide" in p && "useClass" in p;
 }

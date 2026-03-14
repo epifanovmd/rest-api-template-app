@@ -1,46 +1,55 @@
 import "reflect-metadata";
 
-import { decorate, injectable } from "inversify";
-import Koa from "koa";
-import { Controller } from "tsoa";
-import { DataSource } from "typeorm";
+import { DatabaseModule } from "./bootstrap/database.module";
+import { CoreModule } from "./core/core.module";
+import { Module } from "./core/decorators/module.decorator";
+import { AuthModule } from "./modules/auth/auth.module";
+import { BiometricModule } from "./modules/biometric/biometric.module";
+import { DialogModule } from "./modules/dialog/dialog.module";
+import { FcmTokenModule } from "./modules/fcm-token/fcm-token.module";
+import { FileModule } from "./modules/file/file.module";
+import { MailerModule } from "./modules/mailer/mailer.module";
+import { OtpModule } from "./modules/otp/otp.module";
+import { PasskeysModule } from "./modules/passkeys/passkeys.module";
+import { ProfileModule } from "./modules/profile/profile.module";
+import { ResetPasswordTokensModule } from "./modules/reset-password-tokens/reset-password-tokens.module";
+import { SocketModule } from "./modules/socket/socket.module";
+import { UserModule } from "./modules/user/user.module";
+import { UtilsModule } from "./modules/utils/utils.module";
 
-import { iocContainer } from "./app.container";
-import {
-  AdminBootstrap,
-  DatabaseBootstrap,
-  SocketBootstrap,
-} from "./bootstrap";
-import { BOOTSTRAP, IBootstrap, TypeOrmDataSource } from "./core";
-import { AuthModule } from "./modules/auth";
-import { DialogSocketHandler } from "./modules/dialog";
-import { ISocketHandler, SOCKET_HANDLER } from "./modules/socket";
+/**
+ * Корневой модуль приложения.
+ *
+ * Порядок imports имеет значение только для bootstrappers:
+ * - DatabaseModule первый — DataSource инициализируется до всего остального.
+ * - SocketModule последний — Socket-сервер стартует после всех бизнес-модулей.
+ *
+ * Все провайдеры регистрируются в глобальном IoC контейнере.
+ */
+@Module({
+  imports: [
+    // Инфраструктура
+    CoreModule,
+    DatabaseModule,
 
-export const loadAppModule = (koa: Koa) => {
-  decorate(injectable(), Controller);
+    // Служебные модули (нет HTTP контроллеров)
+    MailerModule,
+    UtilsModule,
+    OtpModule,
+    ResetPasswordTokensModule,
 
-  iocContainer.bind(DataSource).toConstantValue(TypeOrmDataSource);
-  iocContainer.bind<Koa>(Koa).toConstantValue(koa);
+    // Доменные модули (с HTTP контроллерами)
+    UserModule,
+    ProfileModule,
+    FileModule,
+    AuthModule,
+    BiometricModule,
+    PasskeysModule,
+    FcmTokenModule,
+    DialogModule,
 
-  new AuthModule(iocContainer).configure();
-
-  // Socket handlers — добавляй сюда новые domain-хендлеры по мере роста
-  iocContainer
-    .bind<ISocketHandler>(SOCKET_HANDLER)
-    .to(DialogSocketHandler)
-    .inSingletonScope();
-
-  // Bootstrappers
-  iocContainer
-    .bind<IBootstrap>(BOOTSTRAP)
-    .to(DatabaseBootstrap)
-    .inSingletonScope();
-  iocContainer
-    .bind<IBootstrap>(BOOTSTRAP)
-    .to(SocketBootstrap)
-    .inSingletonScope();
-  iocContainer
-    .bind<IBootstrap>(BOOTSTRAP)
-    .to(AdminBootstrap)
-    .inSingletonScope();
-};
+    // Socket — последним, чтобы все ISocketHandler / ISocketEventListener уже зарегистрированы
+    SocketModule,
+  ],
+})
+export class AppModule {}

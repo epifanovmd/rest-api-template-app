@@ -1,10 +1,10 @@
-import { inject, injectable, multiInject } from "inversify";
+import { inject, multiInject } from "inversify";
 
-import { IBootstrap, logger } from "../core";
-import { DialogRoomManager, DialogSocketEventHandler } from "../modules/dialog";
-import { PushNotificationListener } from "../modules/fcm-token";
+import { IBootstrap, Injectable, logger } from "../core";
 import {
+  ISocketEventListener,
   ISocketHandler,
+  SOCKET_EVENT_LISTENER,
   SOCKET_HANDLER,
   SocketAuthMiddleware,
   SocketClientRegistry,
@@ -12,7 +12,7 @@ import {
   TSocket,
 } from "../modules/socket";
 
-@injectable()
+@Injectable()
 export class SocketBootstrap implements IBootstrap {
   constructor(
     @inject(SocketServerService)
@@ -21,23 +21,19 @@ export class SocketBootstrap implements IBootstrap {
     private readonly authMiddleware: SocketAuthMiddleware,
     @inject(SocketClientRegistry)
     private readonly clientRegistry: SocketClientRegistry,
-    @inject(DialogSocketEventHandler)
-    private readonly socketEventHandler: DialogSocketEventHandler,
-    @inject(DialogRoomManager)
-    private readonly roomManager: DialogRoomManager,
-    @inject(PushNotificationListener)
-    private readonly pushListener: PushNotificationListener,
     @multiInject(SOCKET_HANDLER)
     private readonly handlers: ISocketHandler[],
+    @multiInject(SOCKET_EVENT_LISTENER)
+    private readonly eventListeners: ISocketEventListener[],
   ) {}
 
   async initialize(): Promise<void> {
     const { io } = this.serverService;
 
-    // 1. Auth — верифицирует JWT и кладёт User в socket.data
+    // 1. JWT-аутентификация при подключении
     io.use(this.authMiddleware.handle);
 
-    // 2. Connection lifecycle
+    // 2. Жизненный цикл соединения
     io.on("connection", async (socket: TSocket) => {
       const user = socket.data;
 
@@ -59,16 +55,12 @@ export class SocketBootstrap implements IBootstrap {
       });
     });
 
-    // 3. EventBus → Socket (outbound notifications)
-    this.socketEventHandler.register();
+    // 3. Регистрируем все EventBus-слушатели (уведомления, rooms, push)
+    for (const listener of this.eventListeners) {
+      listener.register();
+    }
 
-    // 4. EventBus → Room management (реактивный join/leave)
-    this.roomManager.register();
-
-    // 5. EventBus → Push notifications (FCM)
-    this.pushListener.register();
-
-    // 5. Start
+    // 4. Запускаем сервер
     await this.serverService.listen();
   }
 
