@@ -59,9 +59,10 @@ export class App {
    */
   private registerCoreBindings(): void {
     decorate(injectable(), Controller);
+    this.httpServer = createServer(this.koa.callback());
+
     iocContainer.bind(DataSource).toConstantValue(TypeOrmDataSource);
     iocContainer.bind<Koa>(Koa).toConstantValue(this.koa);
-    this.httpServer = createServer(this.koa.callback());
     iocContainer.bind(HttpServer).toConstantValue(this.httpServer);
   }
 
