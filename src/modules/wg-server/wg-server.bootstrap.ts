@@ -5,6 +5,7 @@ import { IBootstrap, Injectable, logger } from "../../core";
 import { WgPeerRepository } from "../wg-peer";
 import { WgServerRepository } from "./wg-server.repository";
 import { WgServerService } from "./wg-server.service";
+import { EWgServerStatus } from "./wg-server.types";
 
 @Injectable()
 export class WgServerBootstrap implements IBootstrap {
@@ -59,6 +60,21 @@ export class WgServerBootstrap implements IBootstrap {
           { err, serverId: server.id, interface: server.interface },
           "[WgServerBootstrap] Failed to sync config",
         );
+      }
+
+      if (server.status === EWgServerStatus.UP) {
+        try {
+          await this.serverService.start(server.id);
+          logger.info(
+            { serverId: server.id, interface: server.interface },
+            "[WgServerBootstrap] Interface started",
+          );
+        } catch (err) {
+          logger.error(
+            { err, serverId: server.id, interface: server.interface },
+            "[WgServerBootstrap] Failed to start interface",
+          );
+        }
       }
     }
   }

@@ -251,6 +251,7 @@ const models: TsoaRoute.Models = {
             "userId": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
             "name": {"dataType":"string","required":true},
             "publicKey": {"dataType":"string","required":true},
+            "hasPresharedKey": {"dataType":"boolean","required":true},
             "allowedIPs": {"dataType":"string","required":true},
             "endpoint": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
             "persistentKeepalive": {"dataType":"union","subSchemas":[{"dataType":"double"},{"dataType":"enum","enums":[null]}],"required":true},
@@ -279,8 +280,6 @@ const models: TsoaRoute.Models = {
         "dataType": "refObject",
         "properties": {
             "name": {"dataType":"string","required":true},
-            "allowedIPs": {"dataType":"string"},
-            "userId": {"dataType":"string"},
             "presharedKey": {"dataType":"boolean"},
             "persistentKeepalive": {"dataType":"double"},
             "dns": {"dataType":"string"},
@@ -300,6 +299,7 @@ const models: TsoaRoute.Models = {
             "name": {"dataType":"string"},
             "allowedIPs": {"dataType":"string"},
             "userId": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}]},
+            "presharedKey": {"dataType":"union","subSchemas":[{"dataType":"boolean"},{"dataType":"enum","enums":[null]}]},
             "persistentKeepalive": {"dataType":"union","subSchemas":[{"dataType":"double"},{"dataType":"enum","enums":[null]}]},
             "dns": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}]},
             "mtu": {"dataType":"union","subSchemas":[{"dataType":"double"},{"dataType":"enum","enums":[null]}]},
@@ -321,6 +321,7 @@ const models: TsoaRoute.Models = {
         "dataType": "refObject",
         "properties": {
             "id": {"dataType":"string","required":true},
+            "userId": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
             "name": {"dataType":"string","required":true},
             "interface": {"dataType":"string","required":true},
             "listenPort": {"dataType":"double","required":true},
@@ -354,6 +355,7 @@ const models: TsoaRoute.Models = {
     "IWgServerCreateRequestDto": {
         "dataType": "refObject",
         "properties": {
+            "userId": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}]},
             "name": {"dataType":"string","required":true},
             "interface": {"dataType":"string","required":true},
             "listenPort": {"dataType":"double","required":true},
@@ -1286,6 +1288,7 @@ export function RegisterRoutes(router: KoaRouter) {
             async function WgPeerController_createPeer(context: any, next: any) {
             const args = {
                     serverId: {"in":"path","name":"serverId","required":true,"dataType":"string"},
+                    req: {"in":"request","name":"req","required":true,"dataType":"object"},
                     body: {"in":"body","name":"body","required":true,"ref":"IWgPeerCreateRequestDto"},
             };
 
@@ -1491,6 +1494,66 @@ export function RegisterRoutes(router: KoaRouter) {
             return promiseHandler(controller, promise, context, undefined, undefined);
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        router.post('/api/wg/peers/:id/rotate-psk',
+            authenticateMiddleware([{"jwt":["role:admin"]}]),
+            ...(fetchMiddlewares<Middleware>(WgPeerController)),
+            ...(fetchMiddlewares<Middleware>(WgPeerController.prototype.rotatePresharedKey)),
+
+            async function WgPeerController_rotatePresharedKey(context: any, next: any) {
+            const args = {
+                    id: {"in":"path","name":"id","required":true,"dataType":"string"},
+            };
+
+            let validatedArgs: any[] = [];
+            try {
+              validatedArgs = getValidatedArgs(args, context, next);
+            } catch (err) {
+              const error = err as any;
+              context.status = error.status;
+              context.throw(error.status, JSON.stringify({ fields: error.fields }));
+            }
+
+            const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(context.request) : iocContainer;
+
+            const controller: any = await container.get<WgPeerController>(WgPeerController);
+            if (typeof controller['setStatus'] === 'function') {
+                controller.setStatus(undefined);
+            }
+
+            const promise = controller.rotatePresharedKey.apply(controller, validatedArgs as any);
+            return promiseHandler(controller, promise, context, undefined, undefined);
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        router.delete('/api/wg/peers/:id/psk',
+            authenticateMiddleware([{"jwt":["role:admin"]}]),
+            ...(fetchMiddlewares<Middleware>(WgPeerController)),
+            ...(fetchMiddlewares<Middleware>(WgPeerController.prototype.removePresharedKey)),
+
+            async function WgPeerController_removePresharedKey(context: any, next: any) {
+            const args = {
+                    id: {"in":"path","name":"id","required":true,"dataType":"string"},
+            };
+
+            let validatedArgs: any[] = [];
+            try {
+              validatedArgs = getValidatedArgs(args, context, next);
+            } catch (err) {
+              const error = err as any;
+              context.status = error.status;
+              context.throw(error.status, JSON.stringify({ fields: error.fields }));
+            }
+
+            const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(context.request) : iocContainer;
+
+            const controller: any = await container.get<WgPeerController>(WgPeerController);
+            if (typeof controller['setStatus'] === 'function') {
+                controller.setStatus(undefined);
+            }
+
+            const promise = controller.removePresharedKey.apply(controller, validatedArgs as any);
+            return promiseHandler(controller, promise, context, undefined, undefined);
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         router.get('/api/wg/peers/:id/config',
             authenticateMiddleware([{"jwt":[]}]),
             ...(fetchMiddlewares<Middleware>(WgPeerController)),
@@ -1617,6 +1680,7 @@ export function RegisterRoutes(router: KoaRouter) {
 
             async function WgServerController_createServer(context: any, next: any) {
             const args = {
+                    req: {"in":"request","name":"req","required":true,"dataType":"object"},
                     body: {"in":"body","name":"body","required":true,"ref":"IWgServerCreateRequestDto"},
             };
 

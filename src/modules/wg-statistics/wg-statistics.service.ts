@@ -52,10 +52,10 @@ export class WgStatisticsService {
    * Main polling tick — called by WgStatisticsBootstrap on interval.
    * 1. Query `wg show all dump`
    * 2. Calculate speeds from deltas
-   * 3. Persist traffic snapshots and speed samples
+   * 3. Persist traffic snapshots and speed samples (only if persistToDb=true)
    * 4. Emit WgStatsUpdatedEvent for socket broadcast
    */
-  async poll(): Promise<void> {
+  async poll(persistToDb = true): Promise<void> {
     try {
       const servers = await this.serverRepo.findAllEnabled();
       const upServers = servers.filter(s => s.status === EWgServerStatus.UP);
@@ -190,12 +190,14 @@ export class WgStatisticsService {
         });
       }
 
-      // Batch persist
-      if (trafficInserts.length > 0) {
-        await this.trafficRepo.save(trafficInserts as WgTrafficStat[]);
-      }
-      if (speedInserts.length > 0) {
-        await this.speedRepo.save(speedInserts as WgSpeedSample[]);
+      // Batch persist (only on DB ticks)
+      if (persistToDb) {
+        if (trafficInserts.length > 0) {
+          await this.trafficRepo.save(trafficInserts as WgTrafficStat[]);
+        }
+        if (speedInserts.length > 0) {
+          await this.speedRepo.save(speedInserts as WgSpeedSample[]);
+        }
       }
 
       const overview: WgOverviewStatsPayload = {

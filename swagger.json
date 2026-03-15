@@ -534,6 +534,9 @@
 					"publicKey": {
 						"type": "string"
 					},
+					"hasPresharedKey": {
+						"type": "boolean"
+					},
 					"allowedIPs": {
 						"type": "string"
 					},
@@ -585,6 +588,7 @@
 					"userId",
 					"name",
 					"publicKey",
+					"hasPresharedKey",
 					"allowedIPs",
 					"endpoint",
 					"persistentKeepalive",
@@ -623,13 +627,6 @@
 			"IWgPeerCreateRequestDto": {
 				"properties": {
 					"name": {
-						"type": "string"
-					},
-					"allowedIPs": {
-						"type": "string",
-						"description": "VPN IP for this peer (e.g. 10.0.0.2/32). Auto-allocated from server subnet if omitted."
-					},
-					"userId": {
 						"type": "string"
 					},
 					"presharedKey": {
@@ -680,6 +677,11 @@
 						"type": "string",
 						"nullable": true
 					},
+					"presharedKey": {
+						"type": "boolean",
+						"nullable": true,
+						"description": "true — сгенерировать новый, false/null — удалить существующий"
+					},
 					"persistentKeepalive": {
 						"type": "number",
 						"format": "double",
@@ -729,6 +731,10 @@
 				"properties": {
 					"id": {
 						"type": "string"
+					},
+					"userId": {
+						"type": "string",
+						"nullable": true
 					},
 					"name": {
 						"type": "string"
@@ -796,6 +802,7 @@
 				},
 				"required": [
 					"id",
+					"userId",
 					"name",
 					"interface",
 					"listenPort",
@@ -839,6 +846,10 @@
 			},
 			"IWgServerCreateRequestDto": {
 				"properties": {
+					"userId": {
+						"type": "string",
+						"nullable": true
+					},
 					"name": {
 						"type": "string"
 					},
@@ -2509,6 +2520,84 @@
 				},
 				"description": "Revoke peer from its current user.",
 				"summary": "Revoke peer from user",
+				"tags": [
+					"WireGuard Peers"
+				],
+				"security": [
+					{
+						"jwt": [
+							"role:admin"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/wg/peers/{id}/rotate-psk": {
+			"post": {
+				"operationId": "RotatePresharedKey",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/WgPeerDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Rotate (regenerate) preshared key for a peer.",
+				"summary": "Rotate preshared key",
+				"tags": [
+					"WireGuard Peers"
+				],
+				"security": [
+					{
+						"jwt": [
+							"role:admin"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/wg/peers/{id}/psk": {
+			"delete": {
+				"operationId": "RemovePresharedKey",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/WgPeerDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Remove preshared key from a peer.",
+				"summary": "Remove preshared key",
 				"tags": [
 					"WireGuard Peers"
 				],

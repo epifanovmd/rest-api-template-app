@@ -38,10 +38,5 @@ COPY --from=builder /app/node_modules ./node_modules
 
 COPY --from=builder /app/build ./build
 
-# Экспонируем порты
-EXPOSE 3232
-EXPOSE 8181
-EXPOSE 51820/udp
-
 # Определяем команду запуска контейнера
 CMD ["yarn", "server"]

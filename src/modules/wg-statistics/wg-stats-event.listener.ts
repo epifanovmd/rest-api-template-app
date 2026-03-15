@@ -2,11 +2,7 @@ import { inject } from "inversify";
 
 import { EventBus, Injectable } from "../../core";
 import { SocketEmitterService } from "../socket/socket-emitter.service";
-import {
-  ISocketEventListener,
-  SOCKET_EVENT_LISTENER,
-} from "../socket/socket-event-listener.interface";
-import { SocketServerService } from "../socket/socket-server.service";
+import { ISocketEventListener } from "../socket/socket-event-listener.interface";
 import { WgStatsUpdatedEvent } from "./events";
 
 /**
@@ -24,27 +20,19 @@ export class WgStatsEventListener implements ISocketEventListener {
     @inject(EventBus) private readonly eventBus: EventBus,
     @inject(SocketEmitterService)
     private readonly emitter: SocketEmitterService,
-    @inject(SocketServerService)
-    private readonly server: SocketServerService,
   ) {}
 
   register(): void {
     this.eventBus.on(WgStatsUpdatedEvent, (event: WgStatsUpdatedEvent) => {
-        this.server.io
-          .to("wg:overview")
-          .emit("wg:stats:overview", event.overview);
+      this.emitter.toRoom("wg:overview", "wg:stats:overview", event.overview);
 
-        for (const srv of event.servers) {
-          this.server.io
-            .to(`wg:server:${srv.serverId}`)
-            .emit("wg:server:stats", srv);
-        }
+      for (const srv of event.servers) {
+        this.emitter.toRoom(`wg:server:${srv.serverId}`, "wg:server:stats", srv);
+      }
 
-        for (const peer of event.peers) {
-          this.server.io
-            .to(`wg:peer:${peer.peerId}`)
-            .emit("wg:peer:stats", peer);
-        }
+      for (const peer of event.peers) {
+        this.emitter.toRoom(`wg:peer:${peer.peerId}`, "wg:peer:stats", peer);
+      }
     });
   }
 }

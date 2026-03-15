@@ -1,8 +1,6 @@
 import { Module } from "../../core";
 import { SOCKET_EVENT_LISTENER } from "../socket/socket-event-listener.interface";
 import { SOCKET_HANDLER } from "../socket/socket-handler.interface";
-import { WgPeerRepository } from "../wg-peer/wg-peer.repository";
-import { WgServerRepository } from "../wg-server/wg-server.repository";
 import { WgServerStatusListener } from "./wg-server-status.listener";
 import { WgSocketHandler } from "./wg-socket.handler";
 import { WgStatisticsBootstrap } from "./wg-statistics.bootstrap";

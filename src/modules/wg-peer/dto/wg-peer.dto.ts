@@ -2,8 +2,6 @@ import { WgPeer } from "../wg-peer.entity";
 
 export interface IWgPeerCreateRequestDto {
   name: string;
-  /** VPN IP for this peer (e.g. 10.0.0.2/32). Auto-allocated from server subnet if omitted. */
-  allowedIPs?: string;
   presharedKey?: boolean;
   persistentKeepalive?: number;
   dns?: string;

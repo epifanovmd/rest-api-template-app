@@ -70,10 +70,7 @@ export class WgPeerService {
       ? await this.keyService.generatePresharedKey()
       : null;
 
-    // Auto-allocate IP if not explicitly provided
-    const allowedIPs =
-      dto.allowedIPs ??
-      (await this.ipAllocator.allocate(server.address, serverId));
+    const allowedIPs = await this.ipAllocator.allocate(server.address, serverId);
 
     const peer = this.peerRepo.create({
       serverId,
@@ -84,7 +81,7 @@ export class WgPeerService {
       presharedKey,
       allowedIPs,
       endpoint: dto.endpoint ?? null,
-      persistentKeepalive: dto.persistentKeepalive ?? null,
+      persistentKeepalive: dto.persistentKeepalive ?? 25,
       dns: dto.dns ?? null,
       mtu: dto.mtu ?? null,
       clientAllowedIPs: dto.clientAllowedIPs ?? "0.0.0.0/0, ::/0",
@@ -258,8 +255,16 @@ export class WgPeerService {
       throw Object.assign(new Error("Peer not found"), { status: 404 });
 
     const server = peer.server;
-    const endpoint =
-      server.endpoint ?? `${server.interface}:${server.listenPort}`;
+    const endpoint = server.endpoint;
+
+    if (!endpoint) {
+      throw Object.assign(
+        new Error(
+          "Server has no public endpoint configured. Set server.endpoint (e.g. vpn.example.com:51820) before generating client configs.",
+        ),
+        { status: 400 },
+      );
+    }
 
     return this.configService.buildClientConfig({
       privateKey: peer.privateKey,

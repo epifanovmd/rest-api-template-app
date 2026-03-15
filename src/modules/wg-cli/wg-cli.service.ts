@@ -55,12 +55,14 @@ export class WgCliService {
    * Get status of all or a specific interface
    */
   async show(interfaceName?: string): Promise<WgShowOutput[]> {
-    const target = interfaceName ?? "all";
-    const { stdout } = await execAsync(
-      `${this.wg} show ${target} dump`,
-    );
+    const { stdout } = await execAsync(`${this.wg} show all dump`);
+    const all = this.parseDump(stdout);
 
-    return this.parseDump(stdout);
+    if (interfaceName) {
+      return all.filter(i => i.interface === interfaceName);
+    }
+
+    return all;
   }
 
   /**

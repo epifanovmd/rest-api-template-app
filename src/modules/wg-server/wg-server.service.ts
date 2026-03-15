@@ -3,6 +3,7 @@ import { inject } from "inversify";
 import { config } from "../../config";
 import { EventBus, Injectable, logger } from "../../core";
 import { WgCliService, WgConfigService, WgKeyService } from "../wg-cli";
+import { WgPeerRepository } from "../wg-peer/wg-peer.repository";
 import {
   IWgServerCreateRequestDto,
   IWgServerStatusDto,
@@ -18,6 +19,8 @@ export class WgServerService {
   constructor(
     @inject(WgServerRepository)
     private readonly serverRepo: WgServerRepository,
+    @inject(WgPeerRepository)
+    private readonly peerRepo: WgPeerRepository,
     @inject(WgCliService)
     private readonly cli: WgCliService,
     @inject(WgKeyService)
@@ -114,7 +117,9 @@ export class WgServerService {
     const prev = server.status;
 
     try {
-      await this.writeConfig(server);
+      const peers = await this.peerRepo.findEnabledByServer(id);
+
+      await this.writeConfig(server, peers);
       await this.cli.up(server.interface);
       server.status = EWgServerStatus.UP;
     } catch (err) {

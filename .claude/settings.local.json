@@ -7,7 +7,13 @@
       "Bash(find /Users/epifanovmd/dev/rest-api-template-app/src -not -path */.* -type d)",
       "Bash(npx tsc:*)",
       "Bash(yarn generate:*)",
-      "Bash(yarn build:*)"
+      "Bash(yarn build:*)",
+      "Bash(grep -r \"useTheme\\\\|ThemeContext\\\\|ThemeProvider\\\\|ITheme\\\\|IThemeContext\" /Users/epifanovmd/dev/wireguard-web/src/ --include=*.ts --include=*.tsx -l)",
+      "Bash(grep -r \"useClientsDataStore\\\\|useClientDataStore\\\\|useServerDataStore\\\\|useClientConfigurationDataStore\\\\|IClientsDataStore\\\\|IClientDataStore\\\\|IServerDataStore\\\\|IClientConfigurationDataDataStore\" /Users/epifanovmd/dev/wireguard-web/src --include=*.ts --include=*.tsx -l)",
+      "Bash(ls /Users/epifanovmd/dev/wireguard-web/babel.config.* /Users/epifanovmd/dev/wireguard-web/.babelrc*)",
+      "Bash(docker compose:*)",
+      "Bash(cat /Users/epifanovmd/dev/wireguard-web/.env*)",
+      "Bash(ls /Users/epifanovmd/dev/wireguard-web/.env*)"
     ]
   }
 }
