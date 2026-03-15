@@ -134,7 +134,7 @@ export class WgStatisticsService {
           srvTx += wgPeer.txBytes;
           srvRxSpeed += rxSpeed;
           srvTxSpeed += txSpeed;
-          if (isActive) srvActivePeers++;
+          if (isActive) srvActivePeers += 1;
 
           // Persist traffic snapshot
           trafficInserts.push({
@@ -210,7 +210,9 @@ export class WgStatisticsService {
         timestamp: now,
       };
 
-      this.eventBus.emit(new WgStatsUpdatedEvent(overview, serverStats, peerStats));
+      this.eventBus.emit(
+        new WgStatsUpdatedEvent(overview, serverStats, peerStats),
+      );
     } catch (err) {
       logger.error({ err }, "[WgStats] Poll error");
     }

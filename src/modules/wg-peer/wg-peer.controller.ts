@@ -181,6 +181,30 @@ export class WgPeerController extends Controller {
   }
 
   /**
+   * Rotate (regenerate) preshared key for a peer.
+   * @summary Rotate preshared key
+   */
+  @Security("jwt", ["role:admin"])
+  @Post("/peers/{id}/rotate-psk")
+  async rotatePresharedKey(id: string): Promise<WgPeerDto> {
+    const peer = await this.service.update(id, { presharedKey: true });
+
+    return WgPeerDto.fromEntity(peer);
+  }
+
+  /**
+   * Remove preshared key from a peer.
+   * @summary Remove preshared key
+   */
+  @Security("jwt", ["role:admin"])
+  @Delete("/peers/{id}/psk")
+  async removePresharedKey(id: string): Promise<WgPeerDto> {
+    const peer = await this.service.update(id, { presharedKey: null });
+
+    return WgPeerDto.fromEntity(peer);
+  }
+
+  /**
    * Download the WireGuard client .conf file for this peer.
    * @summary Get peer config file
    */

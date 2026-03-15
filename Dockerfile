@@ -28,12 +28,8 @@ WORKDIR /app
 COPY package*.json yarn.lock ./
 COPY ./patches ./patches
 
-ARG WG_CONFIG_DIR=/etc/wireguard
-
 RUN apk update && \
-    apk add --no-cache iptables iproute2 wireguard-tools && \
-    mkdir -p ${WG_CONFIG_DIR} && \
-    chmod 700 ${WG_CONFIG_DIR}
+    apk add --no-cache iptables iproute2 wireguard-tools
 
 USER root
 

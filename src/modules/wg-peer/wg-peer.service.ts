@@ -9,8 +9,8 @@ import { WgServerService } from "../wg-server/wg-server.service";
 import { EWgServerStatus } from "../wg-server/wg-server.types";
 import { IWgPeerCreateRequestDto, IWgPeerUpdateRequestDto } from "./dto";
 import { WgPeerCreatedEvent, WgPeerDeletedEvent } from "./events";
-import { WgPeer } from "./wg-peer.entity";
 import { WgIpAllocatorService } from "./wg-ip-allocator.service";
+import { WgPeer } from "./wg-peer.entity";
 import { WgPeerRepository } from "./wg-peer.repository";
 
 @Injectable()
@@ -110,8 +110,19 @@ export class WgPeerService {
     const peer = await this.getById(id);
     const oldEnabled = peer.enabled;
 
+    let presharedKey = peer.presharedKey;
+
+    if (dto.presharedKey === true) {
+      presharedKey = await this.keyService.generatePresharedKey();
+    } else if (dto.presharedKey === false || dto.presharedKey === null) {
+      presharedKey = null;
+    }
+
+    const { presharedKey: _psk, ...rest } = dto;
+
     Object.assign(peer, {
-      ...dto,
+      ...rest,
+      presharedKey,
       expiresAt: dto.expiresAt
         ? new Date(dto.expiresAt)
         : dto.expiresAt === null
@@ -121,14 +132,16 @@ export class WgPeerService {
 
     const saved = await this.peerRepo.save(peer);
 
-    // Handle enable/disable on live interface
-    if (dto.enabled !== undefined && dto.enabled !== oldEnabled) {
+    // Handle enable/disable or presharedKey change on live interface
+    const pskChanged = dto.presharedKey !== undefined;
+
+    if ((dto.enabled !== undefined && dto.enabled !== oldEnabled) || pskChanged) {
       const server = await this.serverRepo.findOne({
         where: { id: peer.serverId },
       });
 
       if (server && server.status === EWgServerStatus.UP) {
-        if (!dto.enabled) {
+        if (!peer.enabled) {
           await this.cli
             .removePeer(server.interface, peer.publicKey)
             .catch(() => {});

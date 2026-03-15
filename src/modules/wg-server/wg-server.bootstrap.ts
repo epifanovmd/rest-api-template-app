@@ -2,8 +2,8 @@ import { inject } from "inversify";
 
 import { config } from "../../config";
 import { IBootstrap, Injectable, logger } from "../../core";
-import { WgServerService } from "./wg-server.service";
 import { WgServerRepository } from "./wg-server.repository";
+import { WgServerService } from "./wg-server.service";
 
 @Injectable()
 export class WgServerBootstrap implements IBootstrap {

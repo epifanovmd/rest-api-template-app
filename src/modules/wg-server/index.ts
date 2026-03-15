@@ -1,4 +1,3 @@
-export { WgServerBootstrap } from "./wg-server.bootstrap";
 export type {
   IWgServerCreateRequestDto,
   IWgServerListDto,
@@ -7,6 +6,7 @@ export type {
   WgServerDto,
 } from "./dto";
 export { WgServerStatusChangedEvent } from "./events";
+export { WgServerBootstrap } from "./wg-server.bootstrap";
 export { WgServerController } from "./wg-server.controller";
 export { WgServer } from "./wg-server.entity";
 export { WgServerModule } from "./wg-server.module";

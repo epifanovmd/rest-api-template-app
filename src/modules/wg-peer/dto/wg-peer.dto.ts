@@ -20,6 +20,8 @@ export interface IWgPeerUpdateRequestDto {
   name?: string;
   allowedIPs?: string;
   userId?: string | null;
+  /** true — сгенерировать новый, false/null — удалить существующий */
+  presharedKey?: boolean | null;
   persistentKeepalive?: number | null;
   dns?: string | null;
   mtu?: number | null;
@@ -36,6 +38,7 @@ export class WgPeerDto {
   userId: string | null;
   name: string;
   publicKey: string;
+  hasPresharedKey: boolean;
   allowedIPs: string;
   endpoint: string | null;
   persistentKeepalive: number | null;
@@ -56,6 +59,7 @@ export class WgPeerDto {
     dto.userId = e.userId;
     dto.name = e.name;
     dto.publicKey = e.publicKey;
+    dto.hasPresharedKey = e.presharedKey !== null;
     dto.allowedIPs = e.allowedIPs;
     dto.endpoint = e.endpoint;
     dto.persistentKeepalive = e.persistentKeepalive;
