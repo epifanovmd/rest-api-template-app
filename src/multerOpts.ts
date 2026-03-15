@@ -4,8 +4,6 @@ import { v4 } from "uuid";
 
 import { config } from "./config";
 
-const MAX_FILE_SIZE_MB = 10;
-
 const ALLOWED_MIME_TYPES = new Set([
   // Images
   "image/jpeg",
@@ -38,9 +36,6 @@ const multerOpts: multer.Options = {
       cb(null, `${v4()}${ext}`);
     },
   }),
-  limits: {
-    fileSize: MAX_FILE_SIZE_MB * 1024 * 1024,
-  },
   fileFilter(_req, file, cb) {
     if (ALLOWED_MIME_TYPES.has(file.mimetype)) {
       cb(null, true);
