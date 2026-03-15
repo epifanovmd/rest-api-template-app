@@ -1,8 +1,10 @@
+node_modules
 dist
 build
 .vscode/
 .idea
 yarn-error.log
+*.log
 start.sh
 README.md
 nodemon.json
@@ -11,3 +13,5 @@ nodemon.json
 .eslintrc
 .git
 .husky
+.env
+.env.*

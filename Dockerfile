@@ -1,36 +1,48 @@
-# Используем аргумент для версии Node.js
-ARG NODE_VERSION=23.11.1
+ARG NODE_VERSION=23-alpine
 
-# Первый этап: установка зависимостей
+# Stage 1: install all dependencies (dev + prod) for build
 FROM node:${NODE_VERSION} AS installer
 
 WORKDIR /app
 
-# Копируем необходимые файлы для установки зависимостей
 COPY package*.json yarn.lock ./
 COPY ./patches ./patches
 
-# Устанавливаем зависимости
-# RUN yarn install --production # проблемы с типами при сборке, нужно разобраться
-RUN yarn install
+RUN apk add --no-cache --virtual .build-deps python3 make g++ \
+    && yarn install --frozen-lockfile --cache-folder /tmp/yarn-cache \
+    && apk del .build-deps \
+    && rm -rf /tmp/yarn-cache
 
-# Второй этап: сборка и настройка образа
-FROM node:${NODE_VERSION}
+# Stage 2: build
+FROM node:${NODE_VERSION} AS builder
 
 WORKDIR /app
 
-# Копируем зависимости из первого этапа
-COPY --from=installer /app /app
-
-# Копируем остальные файлы проекта
+COPY --from=installer /app/node_modules ./node_modules
 COPY . .
 
-# Сборка проекта
 RUN yarn build
 
-# Экспонируем порты
-EXPOSE 3232
-EXPOSE 8181
+# Stage 3: production runtime
+FROM node:${NODE_VERSION} AS runner
 
-# Определяем команду запуска контейнера
-CMD ["yarn", "server"]
+WORKDIR /app
+
+COPY package*.json yarn.lock ./
+COPY ./patches ./patches
+
+RUN apk add --no-cache su-exec \
+    && apk add --no-cache --virtual .build-deps python3 make g++ \
+    && yarn install --production --frozen-lockfile --cache-folder /tmp/yarn-cache \
+    && apk del .build-deps \
+    && rm -rf /tmp/yarn-cache
+
+COPY --from=builder /app/build ./build
+
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup \
+    && chown -R appuser:appgroup /app
+
+EXPOSE 3232 8181
+
+# entrypoint гарантирует права на files/ после монтирования volume
+ENTRYPOINT ["sh", "-c", "mkdir -p /app/files && chown appuser:appgroup /app/files && exec su-exec appuser node build/main.js"]
