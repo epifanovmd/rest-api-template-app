@@ -1,0 +1,14 @@
+diff --git a/node_modules/@tsoa/cli/dist/routeGeneration/templates/koa.hbs b/node_modules/@tsoa/cli/dist/routeGeneration/templates/koa.hbs
+index 3baf882..1bc980c 100644
+--- a/node_modules/@tsoa/cli/dist/routeGeneration/templates/koa.hbs
++++ b/node_modules/@tsoa/cli/dist/routeGeneration/templates/koa.hbs
+@@ -27,7 +27,8 @@ import type { Middleware } from 'koa';
+ import * as KoaRouter from '@koa/router';
+ {{#if useFileUploads}}
+ const multer = require('@koa/multer');
+-const upload = multer({{{json multerOpts}}});
++import multerOpts from '../multerOpts';
++const upload = multer(multerOpts);
+ {{/if}}
+ 
+ // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
