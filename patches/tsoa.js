@@ -4,7 +4,7 @@ const files_folder = process.env.SERVER_FILES_FOLDER_PATH ?? "./files";
 
 const pathToKoaHbsFile =
   "./node_modules/@tsoa/cli/dist/routeGeneration/templates/koa.hbs";
-const pathToMulterOptsFile = "./multerOpts.ts";
+const pathToMulterOptsFile = "./src/multerOpts.ts";
 
 const variantReplace = [
   "const upload = multer();",
