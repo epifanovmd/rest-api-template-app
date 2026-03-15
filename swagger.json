@@ -6,45 +6,6 @@
 		"requestBodies": {},
 		"responses": {},
 		"schemas": {
-			"IFileDto": {
-				"properties": {
-					"id": {
-						"type": "string"
-					},
-					"name": {
-						"type": "string"
-					},
-					"type": {
-						"type": "string"
-					},
-					"url": {
-						"type": "string"
-					},
-					"size": {
-						"type": "number",
-						"format": "double"
-					},
-					"createdAt": {
-						"type": "string",
-						"format": "date-time"
-					},
-					"updatedAt": {
-						"type": "string",
-						"format": "date-time"
-					}
-				},
-				"required": [
-					"id",
-					"name",
-					"type",
-					"url",
-					"size",
-					"createdAt",
-					"updatedAt"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
 			"ProfileDto": {
 				"properties": {
 					"id": {
@@ -79,21 +40,12 @@
 					"updatedAt": {
 						"type": "string",
 						"format": "date-time"
-					},
-					"avatar": {
-						"allOf": [
-							{
-								"$ref": "#/components/schemas/IFileDto"
-							}
-						],
-						"nullable": true
 					}
 				},
 				"required": [
 					"id",
 					"createdAt",
-					"updatedAt",
-					"avatar"
+					"updatedAt"
 				],
 				"type": "object",
 				"additionalProperties": false
@@ -140,10 +92,6 @@
 					},
 					"lastName": {
 						"type": "string"
-					},
-					"avatar": {
-						"type": "string",
-						"nullable": true
 					},
 					"status": {
 						"$ref": "#/components/schemas/EProfileStatus"
@@ -199,7 +147,15 @@
 				"enum": [
 					"read",
 					"write",
-					"delete"
+					"delete",
+					"wg:server:view",
+					"wg:server:manage",
+					"wg:server:control",
+					"wg:peer:view",
+					"wg:peer:manage",
+					"wg:peer:own",
+					"wg:stats:view",
+					"wg:stats:export"
 				],
 				"type": "string"
 			},
@@ -276,10 +232,6 @@
 					"phone": {
 						"type": "string"
 					},
-					"challenge": {
-						"type": "string",
-						"nullable": true
-					},
 					"profile": {
 						"$ref": "#/components/schemas/ProfileDto"
 					},
@@ -314,10 +266,6 @@
 					},
 					"roleId": {
 						"type": "string"
-					},
-					"challenge": {
-						"type": "string",
-						"nullable": true
 					}
 				},
 				"type": "object",
@@ -440,10 +388,6 @@
 					},
 					"phone": {
 						"type": "string"
-					},
-					"challenge": {
-						"type": "string",
-						"nullable": true
 					},
 					"profile": {
 						"$ref": "#/components/schemas/ProfileDto"
@@ -572,965 +516,639 @@
 				"type": "object",
 				"additionalProperties": false
 			},
-			"IRegisterBiometricResponseDto": {
+			"WgPeerDto": {
 				"properties": {
-					"registered": {
+					"id": {
+						"type": "string"
+					},
+					"serverId": {
+						"type": "string"
+					},
+					"userId": {
+						"type": "string",
+						"nullable": true
+					},
+					"name": {
+						"type": "string"
+					},
+					"publicKey": {
+						"type": "string"
+					},
+					"allowedIPs": {
+						"type": "string"
+					},
+					"endpoint": {
+						"type": "string",
+						"nullable": true
+					},
+					"persistentKeepalive": {
+						"type": "number",
+						"format": "double",
+						"nullable": true
+					},
+					"dns": {
+						"type": "string",
+						"nullable": true
+					},
+					"mtu": {
+						"type": "number",
+						"format": "double",
+						"nullable": true
+					},
+					"clientAllowedIPs": {
+						"type": "string"
+					},
+					"enabled": {
 						"type": "boolean"
+					},
+					"expiresAt": {
+						"type": "string",
+						"format": "date-time",
+						"nullable": true
+					},
+					"description": {
+						"type": "string",
+						"nullable": true
+					},
+					"createdAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"updatedAt": {
+						"type": "string",
+						"format": "date-time"
 					}
 				},
 				"required": [
-					"registered"
+					"id",
+					"serverId",
+					"userId",
+					"name",
+					"publicKey",
+					"allowedIPs",
+					"endpoint",
+					"persistentKeepalive",
+					"dns",
+					"mtu",
+					"clientAllowedIPs",
+					"enabled",
+					"expiresAt",
+					"description",
+					"createdAt",
+					"updatedAt"
 				],
 				"type": "object",
 				"additionalProperties": false
 			},
-			"IRegisterBiometricRequestDto": {
+			"IWgPeerListDto": {
 				"properties": {
+					"count": {
+						"type": "number",
+						"format": "double"
+					},
+					"data": {
+						"items": {
+							"$ref": "#/components/schemas/WgPeerDto"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"count",
+					"data"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IWgPeerCreateRequestDto": {
+				"properties": {
+					"name": {
+						"type": "string"
+					},
+					"allowedIPs": {
+						"type": "string",
+						"description": "VPN IP for this peer (e.g. 10.0.0.2/32). Auto-allocated from server subnet if omitted."
+					},
 					"userId": {
 						"type": "string"
 					},
-					"deviceId": {
+					"presharedKey": {
+						"type": "boolean"
+					},
+					"persistentKeepalive": {
+						"type": "number",
+						"format": "double"
+					},
+					"dns": {
 						"type": "string"
 					},
-					"deviceName": {
+					"mtu": {
+						"type": "number",
+						"format": "double"
+					},
+					"clientAllowedIPs": {
 						"type": "string"
+					},
+					"endpoint": {
+						"type": "string"
+					},
+					"description": {
+						"type": "string"
+					},
+					"expiresAt": {
+						"type": "string"
+					},
+					"enabled": {
+						"type": "boolean"
+					}
+				},
+				"required": [
+					"name"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IWgPeerUpdateRequestDto": {
+				"properties": {
+					"name": {
+						"type": "string"
+					},
+					"allowedIPs": {
+						"type": "string"
+					},
+					"userId": {
+						"type": "string",
+						"nullable": true
+					},
+					"persistentKeepalive": {
+						"type": "number",
+						"format": "double",
+						"nullable": true
+					},
+					"dns": {
+						"type": "string",
+						"nullable": true
+					},
+					"mtu": {
+						"type": "number",
+						"format": "double",
+						"nullable": true
+					},
+					"clientAllowedIPs": {
+						"type": "string"
+					},
+					"endpoint": {
+						"type": "string",
+						"nullable": true
+					},
+					"description": {
+						"type": "string",
+						"nullable": true
+					},
+					"expiresAt": {
+						"type": "string",
+						"nullable": true
+					},
+					"enabled": {
+						"type": "boolean"
+					}
+				},
+				"type": "object",
+				"additionalProperties": false
+			},
+			"EWgServerStatus": {
+				"enum": [
+					"up",
+					"down",
+					"error",
+					"unknown"
+				],
+				"type": "string"
+			},
+			"WgServerDto": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"name": {
+						"type": "string"
+					},
+					"interface": {
+						"type": "string"
+					},
+					"listenPort": {
+						"type": "number",
+						"format": "double"
+					},
+					"publicKey": {
+						"type": "string"
+					},
+					"address": {
+						"type": "string"
+					},
+					"dns": {
+						"type": "string",
+						"nullable": true
+					},
+					"endpoint": {
+						"type": "string",
+						"nullable": true
+					},
+					"mtu": {
+						"type": "number",
+						"format": "double",
+						"nullable": true
+					},
+					"preUp": {
+						"type": "string",
+						"nullable": true
+					},
+					"preDown": {
+						"type": "string",
+						"nullable": true
+					},
+					"postUp": {
+						"type": "string",
+						"nullable": true
+					},
+					"postDown": {
+						"type": "string",
+						"nullable": true
+					},
+					"status": {
+						"$ref": "#/components/schemas/EWgServerStatus"
+					},
+					"enabled": {
+						"type": "boolean"
+					},
+					"description": {
+						"type": "string",
+						"nullable": true
+					},
+					"createdAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"updatedAt": {
+						"type": "string",
+						"format": "date-time"
+					}
+				},
+				"required": [
+					"id",
+					"name",
+					"interface",
+					"listenPort",
+					"publicKey",
+					"address",
+					"dns",
+					"endpoint",
+					"mtu",
+					"preUp",
+					"preDown",
+					"postUp",
+					"postDown",
+					"status",
+					"enabled",
+					"description",
+					"createdAt",
+					"updatedAt"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IWgServerListDto": {
+				"properties": {
+					"count": {
+						"type": "number",
+						"format": "double"
+					},
+					"data": {
+						"items": {
+							"$ref": "#/components/schemas/WgServerDto"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"count",
+					"data"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IWgServerCreateRequestDto": {
+				"properties": {
+					"name": {
+						"type": "string"
+					},
+					"interface": {
+						"type": "string"
+					},
+					"listenPort": {
+						"type": "number",
+						"format": "double"
+					},
+					"address": {
+						"type": "string"
+					},
+					"dns": {
+						"type": "string"
+					},
+					"endpoint": {
+						"type": "string"
+					},
+					"mtu": {
+						"type": "number",
+						"format": "double"
+					},
+					"preUp": {
+						"type": "string"
+					},
+					"preDown": {
+						"type": "string"
+					},
+					"postUp": {
+						"type": "string"
+					},
+					"postDown": {
+						"type": "string"
+					},
+					"description": {
+						"type": "string"
+					},
+					"enabled": {
+						"type": "boolean"
+					}
+				},
+				"required": [
+					"name",
+					"interface",
+					"listenPort",
+					"address"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IWgServerUpdateRequestDto": {
+				"properties": {
+					"name": {
+						"type": "string"
+					},
+					"listenPort": {
+						"type": "number",
+						"format": "double"
+					},
+					"address": {
+						"type": "string"
+					},
+					"dns": {
+						"type": "string"
+					},
+					"endpoint": {
+						"type": "string"
+					},
+					"mtu": {
+						"type": "number",
+						"format": "double"
+					},
+					"preUp": {
+						"type": "string",
+						"nullable": true
+					},
+					"preDown": {
+						"type": "string",
+						"nullable": true
+					},
+					"postUp": {
+						"type": "string",
+						"nullable": true
+					},
+					"postDown": {
+						"type": "string",
+						"nullable": true
+					},
+					"description": {
+						"type": "string"
+					},
+					"enabled": {
+						"type": "boolean"
+					}
+				},
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IWgServerStatusDto": {
+				"properties": {
+					"serverId": {
+						"type": "string"
+					},
+					"interface": {
+						"type": "string"
+					},
+					"status": {
+						"$ref": "#/components/schemas/EWgServerStatus"
+					},
+					"listenPort": {
+						"type": "number",
+						"format": "double"
+					},
+					"peerCount": {
+						"type": "number",
+						"format": "double"
+					},
+					"activePeerCount": {
+						"type": "number",
+						"format": "double"
 					},
 					"publicKey": {
 						"type": "string"
 					}
 				},
 				"required": [
-					"userId",
-					"deviceId",
-					"deviceName",
+					"serverId",
+					"interface",
+					"status",
+					"listenPort",
+					"peerCount",
+					"activePeerCount",
 					"publicKey"
 				],
 				"type": "object",
 				"additionalProperties": false
 			},
-			"IGenerateNonceResponseDto": {
+			"WgTrafficStatDto": {
 				"properties": {
-					"nonce": {
+					"id": {
 						"type": "string"
+					},
+					"peerId": {
+						"type": "string"
+					},
+					"serverId": {
+						"type": "string"
+					},
+					"rxBytes": {
+						"type": "number",
+						"format": "double"
+					},
+					"txBytes": {
+						"type": "number",
+						"format": "double"
+					},
+					"lastHandshake": {
+						"type": "string",
+						"format": "date-time",
+						"nullable": true
+					},
+					"endpoint": {
+						"type": "string",
+						"nullable": true
+					},
+					"timestamp": {
+						"type": "string",
+						"format": "date-time"
 					}
 				},
 				"required": [
-					"nonce"
+					"id",
+					"peerId",
+					"serverId",
+					"rxBytes",
+					"txBytes",
+					"lastHandshake",
+					"endpoint",
+					"timestamp"
 				],
 				"type": "object",
 				"additionalProperties": false
 			},
-			"IGenerateNonceRequestDto": {
+			"WgSpeedSampleDto": {
 				"properties": {
-					"userId": {
+					"id": {
 						"type": "string"
-					}
-				},
-				"required": [
-					"userId"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"IVerifyBiometricSignatureResponseDto": {
-				"properties": {
-					"verified": {
+					},
+					"peerId": {
+						"type": "string"
+					},
+					"serverId": {
+						"type": "string"
+					},
+					"rxSpeedBps": {
+						"type": "number",
+						"format": "double"
+					},
+					"txSpeedBps": {
+						"type": "number",
+						"format": "double"
+					},
+					"isActive": {
 						"type": "boolean"
 					},
-					"tokens": {
+					"timestamp": {
+						"type": "string",
+						"format": "date-time"
+					}
+				},
+				"required": [
+					"id",
+					"peerId",
+					"serverId",
+					"rxSpeedBps",
+					"txSpeedBps",
+					"isActive",
+					"timestamp"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IWgPeerStatsResponse": {
+				"properties": {
+					"peerId": {
+						"type": "string"
+					},
+					"traffic": {
+						"items": {
+							"$ref": "#/components/schemas/WgTrafficStatDto"
+						},
+						"type": "array"
+					},
+					"speed": {
+						"items": {
+							"$ref": "#/components/schemas/WgSpeedSampleDto"
+						},
+						"type": "array"
+					},
+					"latest": {
 						"properties": {
-							"refreshToken": {
-								"type": "string"
+							"lastHandshake": {
+								"type": "string",
+								"format": "date-time",
+								"nullable": true
 							},
-							"accessToken": {
-								"type": "string"
+							"isActive": {
+								"type": "boolean"
+							},
+							"txSpeedBps": {
+								"type": "number",
+								"format": "double"
+							},
+							"rxSpeedBps": {
+								"type": "number",
+								"format": "double"
+							},
+							"txBytes": {
+								"type": "number",
+								"format": "double"
+							},
+							"rxBytes": {
+								"type": "number",
+								"format": "double"
 							}
 						},
 						"required": [
-							"refreshToken",
-							"accessToken"
+							"lastHandshake",
+							"isActive",
+							"txSpeedBps",
+							"rxSpeedBps",
+							"txBytes",
+							"rxBytes"
 						],
-						"type": "object"
-					}
-				},
-				"required": [
-					"verified",
-					"tokens"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"IVerifyBiometricSignatureRequestDto": {
-				"properties": {
-					"userId": {
-						"type": "string"
-					},
-					"deviceId": {
-						"type": "string"
-					},
-					"signature": {
-						"type": "string"
-					}
-				},
-				"required": [
-					"userId",
-					"deviceId",
-					"signature"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"DialogLastMessagesDto": {
-				"properties": {
-					"id": {
-						"type": "string"
-					},
-					"text": {
-						"type": "string"
-					},
-					"received": {
-						"type": "boolean"
-					},
-					"createdAt": {
-						"type": "string",
-						"format": "date-time"
-					},
-					"updatedAt": {
-						"type": "string",
-						"format": "date-time"
-					}
-				},
-				"required": [
-					"id",
-					"text",
-					"createdAt",
-					"updatedAt"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"DialogDto": {
-				"properties": {
-					"id": {
-						"type": "string"
-					},
-					"ownerId": {
-						"type": "string"
-					},
-					"createdAt": {
-						"type": "string",
-						"format": "date-time"
-					},
-					"updatedAt": {
-						"type": "string",
-						"format": "date-time"
-					},
-					"participants": {
-						"items": {
-							"$ref": "#/components/schemas/PublicUserDto"
-						},
-						"type": "array"
-					},
-					"lastMessage": {
-						"allOf": [
-							{
-								"$ref": "#/components/schemas/DialogLastMessagesDto"
-							}
-						],
-						"nullable": true
-					},
-					"unreadMessagesCount": {
-						"type": "number",
-						"format": "double"
-					}
-				},
-				"required": [
-					"id",
-					"ownerId",
-					"createdAt",
-					"updatedAt",
-					"participants",
-					"lastMessage",
-					"unreadMessagesCount"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"IDialogListDto": {
-				"properties": {
-					"count": {
-						"type": "number",
-						"format": "double"
-					},
-					"offset": {
-						"type": "number",
-						"format": "double"
-					},
-					"limit": {
-						"type": "number",
-						"format": "double"
-					},
-					"data": {
-						"items": {
-							"$ref": "#/components/schemas/DialogDto"
-						},
-						"type": "array"
-					}
-				},
-				"required": [
-					"data"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"DialogDetailDto": {
-				"properties": {
-					"id": {
-						"type": "string"
-					},
-					"ownerId": {
-						"type": "string"
-					},
-					"createdAt": {
-						"type": "string",
-						"format": "date-time"
-					},
-					"updatedAt": {
-						"type": "string",
-						"format": "date-time"
-					},
-					"owner": {
-						"$ref": "#/components/schemas/PublicUserDto"
-					},
-					"participants": {
-						"items": {
-							"$ref": "#/components/schemas/PublicUserDto"
-						},
-						"type": "array"
-					},
-					"lastMessage": {
-						"allOf": [
-							{
-								"$ref": "#/components/schemas/DialogLastMessagesDto"
-							}
-						],
-						"nullable": true
-					},
-					"unreadMessagesCount": {
-						"type": "number",
-						"format": "double"
-					}
-				},
-				"required": [
-					"id",
-					"ownerId",
-					"createdAt",
-					"updatedAt",
-					"owner",
-					"participants",
-					"lastMessage",
-					"unreadMessagesCount"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"IDialogFindResponseDto": {
-				"properties": {
-					"dialogId": {
-						"type": "string",
+						"type": "object",
 						"nullable": true
 					}
 				},
 				"required": [
-					"dialogId"
+					"peerId",
+					"traffic",
+					"speed",
+					"latest"
 				],
 				"type": "object",
 				"additionalProperties": false
 			},
-			"IDialogFindRequestDto": {
+			"IWgServerStatsResponse": {
 				"properties": {
-					"recipientId": {
+					"serverId": {
+						"type": "string"
+					},
+					"traffic": {
 						"items": {
-							"type": "string"
+							"$ref": "#/components/schemas/WgTrafficStatDto"
+						},
+						"type": "array"
+					},
+					"speed": {
+						"items": {
+							"$ref": "#/components/schemas/WgSpeedSampleDto"
 						},
 						"type": "array"
 					}
 				},
 				"required": [
-					"recipientId"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"IDialogFindOrCreateResponseDto": {
-				"properties": {
-					"dialogId": {
-						"type": "string"
-					}
-				},
-				"required": [
-					"dialogId"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"IDialogCreateRequestDto": {
-				"properties": {
-					"recipientId": {
-						"items": {
-							"type": "string"
-						},
-						"type": "array"
-					}
-				},
-				"required": [
-					"recipientId"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"DialogMembersDto": {
-				"properties": {
-					"id": {
-						"type": "string"
-					},
-					"userId": {
-						"type": "string"
-					},
-					"dialogId": {
-						"type": "string"
-					},
-					"createdAt": {
-						"type": "string",
-						"format": "date-time"
-					},
-					"updatedAt": {
-						"type": "string",
-						"format": "date-time"
-					},
-					"user": {
-						"$ref": "#/components/schemas/PublicUserDto"
-					}
-				},
-				"required": [
-					"id",
-					"userId",
-					"dialogId",
-					"createdAt",
-					"updatedAt",
-					"user"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"IDialogMembersAddRequestDto": {
-				"properties": {
-					"dialogId": {
-						"type": "string"
-					},
-					"members": {
-						"items": {
-							"type": "string"
-						},
-						"type": "array"
-					}
-				},
-				"required": [
-					"dialogId",
-					"members"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"DialogMessagesDto": {
-				"properties": {
-					"id": {
-						"type": "string"
-					},
-					"userId": {
-						"type": "string"
-					},
-					"dialogId": {
-						"type": "string"
-					},
-					"text": {
-						"type": "string"
-					},
-					"system": {
-						"type": "boolean"
-					},
-					"sent": {
-						"type": "boolean"
-					},
-					"received": {
-						"type": "boolean"
-					},
-					"replyId": {
-						"type": "string",
-						"nullable": true
-					},
-					"createdAt": {
-						"type": "string",
-						"format": "date-time"
-					},
-					"updatedAt": {
-						"type": "string",
-						"format": "date-time"
-					},
-					"user": {
-						"$ref": "#/components/schemas/PublicUserDto"
-					},
-					"images": {
-						"items": {
-							"$ref": "#/components/schemas/IFileDto"
-						},
-						"type": "array"
-					},
-					"videos": {
-						"items": {
-							"$ref": "#/components/schemas/IFileDto"
-						},
-						"type": "array"
-					},
-					"audios": {
-						"items": {
-							"$ref": "#/components/schemas/IFileDto"
-						},
-						"type": "array"
-					},
-					"reply": {
-						"$ref": "#/components/schemas/DialogMessagesDto"
-					}
-				},
-				"required": [
-					"id",
-					"userId",
-					"dialogId",
-					"text",
-					"createdAt",
-					"updatedAt",
-					"user"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"IDialogListMessagesDto": {
-				"properties": {
-					"count": {
-						"type": "number",
-						"format": "double"
-					},
-					"offset": {
-						"type": "number",
-						"format": "double"
-					},
-					"limit": {
-						"type": "number",
-						"format": "double"
-					},
-					"data": {
-						"items": {
-							"$ref": "#/components/schemas/DialogMessagesDto"
-						},
-						"type": "array"
-					}
-				},
-				"required": [
-					"data"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"IMessagesRequestDto": {
-				"properties": {
-					"dialogId": {
-						"type": "string"
-					},
-					"text": {
-						"type": "string"
-					},
-					"system": {
-						"type": "boolean"
-					},
-					"received": {
-						"type": "boolean"
-					},
-					"replyId": {
-						"type": "string",
-						"nullable": true
-					},
-					"imageIds": {
-						"items": {
-							"type": "string"
-						},
-						"type": "array"
-					},
-					"videoIds": {
-						"items": {
-							"type": "string"
-						},
-						"type": "array"
-					},
-					"audioIds": {
-						"items": {
-							"type": "string"
-						},
-						"type": "array"
-					}
-				},
-				"required": [
-					"dialogId",
-					"text"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"IMessagesUpdateRequestDto": {
-				"properties": {
-					"text": {
-						"type": "string"
-					},
-					"system": {
-						"type": "boolean"
-					},
-					"received": {
-						"type": "boolean"
-					},
-					"replyId": {
-						"type": "string",
-						"nullable": true
-					},
-					"imageIds": {
-						"items": {
-							"type": "string"
-						},
-						"type": "array"
-					},
-					"videoIds": {
-						"items": {
-							"type": "string"
-						},
-						"type": "array"
-					},
-					"audioIds": {
-						"items": {
-							"type": "string"
-						},
-						"type": "array"
-					},
-					"deleteFileIds": {
-						"items": {
-							"type": "string"
-						},
-						"type": "array"
-					}
-				},
-				"type": "object",
-				"additionalProperties": false
-			},
-			"IFCMMessageDto": {
-				"properties": {
-					"dialogId": {
-						"type": "string"
-					},
-					"link": {
-						"type": "string"
-					},
-					"to": {
-						"type": "string"
-					},
-					"message": {
-						"properties": {
-							"sound": {
-								"type": "string"
-							},
-							"image": {
-								"type": "string"
-							},
-							"description": {
-								"type": "string"
-							},
-							"title": {
-								"type": "string"
-							}
-						},
-						"required": [
-							"title"
-						],
-						"type": "object"
-					},
-					"badge": {
-						"type": "number",
-						"format": "double"
-					},
-					"type": {
-						"type": "string",
-						"enum": [
-							"token",
-							"topic"
-						]
-					},
-					"data": {
-						"properties": {},
-						"additionalProperties": {
-							"type": "string"
-						},
-						"type": "object"
-					}
-				},
-				"required": [
-					"to",
-					"message"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"FcmTokenDto": {
-				"properties": {
-					"id": {
-						"type": "number",
-						"format": "double"
-					},
-					"userId": {
-						"type": "string"
-					},
-					"token": {
-						"type": "string"
-					},
-					"createdAt": {
-						"type": "string",
-						"format": "date-time"
-					},
-					"updatedAt": {
-						"type": "string",
-						"format": "date-time"
-					}
-				},
-				"required": [
-					"id",
-					"userId",
-					"token",
-					"createdAt",
-					"updatedAt"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"FcmTokenRequestDto": {
-				"properties": {
-					"token": {
-						"type": "string"
-					}
-				},
-				"required": [
-					"token"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"Base64URLString": {
-				"type": "string",
-				"description": "An attempt to communicate that this isn't just any string, but a Base64URL-encoded string"
-			},
-			"PublicKeyCredentialType": {
-				"type": "string",
-				"enum": [
-					"public-key"
-				],
-				"nullable": false
-			},
-			"AuthenticatorTransportFuture": {
-				"type": "string",
-				"enum": [
-					"ble",
-					"cable",
-					"hybrid",
-					"internal",
-					"nfc",
-					"smart-card",
-					"usb"
-				],
-				"description": "A super class of TypeScript's `AuthenticatorTransport` that includes support for the latest\ntransports. Should eventually be replaced by TypeScript's when TypeScript gets updated to\nknow about it (sometime after 4.6.3)"
-			},
-			"PublicKeyCredentialDescriptorJSON": {
-				"description": "https://w3c.github.io/webauthn/#dictdef-publickeycredentialdescriptorjson",
-				"properties": {
-					"id": {
-						"$ref": "#/components/schemas/Base64URLString"
-					},
-					"type": {
-						"$ref": "#/components/schemas/PublicKeyCredentialType"
-					},
-					"transports": {
-						"items": {
-							"$ref": "#/components/schemas/AuthenticatorTransportFuture"
-						},
-						"type": "array"
-					}
-				},
-				"required": [
-					"id",
-					"type"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"UserVerificationRequirement": {
-				"type": "string",
-				"enum": [
-					"discouraged",
-					"preferred",
-					"required"
-				]
-			},
-			"AuthenticationExtensionsClientInputs": {
-				"properties": {
-					"appid": {
-						"type": "string"
-					},
-					"credProps": {
-						"type": "boolean"
-					},
-					"hmacCreateSecret": {
-						"type": "boolean"
-					},
-					"minPinLength": {
-						"type": "boolean"
-					}
-				},
-				"type": "object",
-				"additionalProperties": false
-			},
-			"PublicKeyCredentialRequestOptionsJSON": {
-				"description": "A variant of PublicKeyCredentialRequestOptions suitable for JSON transmission to the browser to\n(eventually) get passed into navigator.credentials.get(...) in the browser.",
-				"properties": {
-					"challenge": {
-						"$ref": "#/components/schemas/Base64URLString"
-					},
-					"timeout": {
-						"type": "number",
-						"format": "double"
-					},
-					"rpId": {
-						"type": "string"
-					},
-					"allowCredentials": {
-						"items": {
-							"$ref": "#/components/schemas/PublicKeyCredentialDescriptorJSON"
-						},
-						"type": "array"
-					},
-					"userVerification": {
-						"$ref": "#/components/schemas/UserVerificationRequirement"
-					},
-					"extensions": {
-						"$ref": "#/components/schemas/AuthenticationExtensionsClientInputs"
-					}
-				},
-				"required": [
-					"challenge"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"COSEAlgorithmIdentifier": {
-				"type": "number",
-				"format": "double"
-			},
-			"AuthenticatorAttestationResponseJSON": {
-				"description": "A slightly-modified AuthenticatorAttestationResponse to simplify working with ArrayBuffers that\nare Base64URL-encoded in the browser so that they can be sent as JSON to the server.\n\nhttps://w3c.github.io/webauthn/#dictdef-authenticatorattestationresponsejson",
-				"properties": {
-					"clientDataJSON": {
-						"$ref": "#/components/schemas/Base64URLString"
-					},
-					"attestationObject": {
-						"$ref": "#/components/schemas/Base64URLString"
-					},
-					"authenticatorData": {
-						"$ref": "#/components/schemas/Base64URLString"
-					},
-					"transports": {
-						"items": {
-							"$ref": "#/components/schemas/AuthenticatorTransportFuture"
-						},
-						"type": "array"
-					},
-					"publicKeyAlgorithm": {
-						"$ref": "#/components/schemas/COSEAlgorithmIdentifier"
-					},
-					"publicKey": {
-						"$ref": "#/components/schemas/Base64URLString"
-					}
-				},
-				"required": [
-					"clientDataJSON",
-					"attestationObject"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"AuthenticatorAttachment": {
-				"type": "string",
-				"enum": [
-					"cross-platform",
-					"platform"
-				]
-			},
-			"CredentialPropertiesOutput": {
-				"properties": {
-					"rk": {
-						"type": "boolean"
-					}
-				},
-				"type": "object",
-				"additionalProperties": false
-			},
-			"AuthenticationExtensionsClientOutputs": {
-				"properties": {
-					"appid": {
-						"type": "boolean"
-					},
-					"credProps": {
-						"$ref": "#/components/schemas/CredentialPropertiesOutput"
-					},
-					"hmacCreateSecret": {
-						"type": "boolean"
-					}
-				},
-				"type": "object",
-				"additionalProperties": false
-			},
-			"RegistrationResponseJSON": {
-				"description": "A slightly-modified RegistrationCredential to simplify working with ArrayBuffers that\nare Base64URL-encoded in the browser so that they can be sent as JSON to the server.\n\nhttps://w3c.github.io/webauthn/#dictdef-registrationresponsejson",
-				"properties": {
-					"id": {
-						"$ref": "#/components/schemas/Base64URLString"
-					},
-					"rawId": {
-						"$ref": "#/components/schemas/Base64URLString"
-					},
-					"response": {
-						"$ref": "#/components/schemas/AuthenticatorAttestationResponseJSON"
-					},
-					"authenticatorAttachment": {
-						"$ref": "#/components/schemas/AuthenticatorAttachment"
-					},
-					"clientExtensionResults": {
-						"$ref": "#/components/schemas/AuthenticationExtensionsClientOutputs"
-					},
-					"type": {
-						"$ref": "#/components/schemas/PublicKeyCredentialType"
-					}
-				},
-				"required": [
-					"id",
-					"rawId",
-					"response",
-					"clientExtensionResults",
-					"type"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"IVerifyRegistrationRequestDto": {
-				"properties": {
-					"userId": {
-						"type": "string"
-					},
-					"data": {
-						"$ref": "#/components/schemas/RegistrationResponseJSON"
-					}
-				},
-				"required": [
-					"userId",
-					"data"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"IVerifyAuthenticationResponseDto": {
-				"properties": {
-					"verified": {
-						"type": "boolean"
-					},
-					"tokens": {
-						"$ref": "#/components/schemas/ITokensDto"
-					}
-				},
-				"required": [
-					"verified"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"AuthenticatorAssertionResponseJSON": {
-				"description": "A slightly-modified AuthenticatorAssertionResponse to simplify working with ArrayBuffers that\nare Base64URL-encoded in the browser so that they can be sent as JSON to the server.\n\nhttps://w3c.github.io/webauthn/#dictdef-authenticatorassertionresponsejson",
-				"properties": {
-					"clientDataJSON": {
-						"$ref": "#/components/schemas/Base64URLString"
-					},
-					"authenticatorData": {
-						"$ref": "#/components/schemas/Base64URLString"
-					},
-					"signature": {
-						"$ref": "#/components/schemas/Base64URLString"
-					},
-					"userHandle": {
-						"$ref": "#/components/schemas/Base64URLString"
-					}
-				},
-				"required": [
-					"clientDataJSON",
-					"authenticatorData",
-					"signature"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"AuthenticationResponseJSON": {
-				"description": "A slightly-modified AuthenticationCredential to simplify working with ArrayBuffers that\nare Base64URL-encoded in the browser so that they can be sent as JSON to the server.\n\nhttps://w3c.github.io/webauthn/#dictdef-authenticationresponsejson",
-				"properties": {
-					"id": {
-						"$ref": "#/components/schemas/Base64URLString"
-					},
-					"rawId": {
-						"$ref": "#/components/schemas/Base64URLString"
-					},
-					"response": {
-						"$ref": "#/components/schemas/AuthenticatorAssertionResponseJSON"
-					},
-					"authenticatorAttachment": {
-						"$ref": "#/components/schemas/AuthenticatorAttachment"
-					},
-					"clientExtensionResults": {
-						"$ref": "#/components/schemas/AuthenticationExtensionsClientOutputs"
-					},
-					"type": {
-						"$ref": "#/components/schemas/PublicKeyCredentialType"
-					}
-				},
-				"required": [
-					"id",
-					"rawId",
-					"response",
-					"clientExtensionResults",
-					"type"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"IVerifyAuthenticationRequestDto": {
-				"properties": {
-					"userId": {
-						"type": "string"
-					},
-					"data": {
-						"$ref": "#/components/schemas/AuthenticationResponseJSON"
-					}
-				},
-				"required": [
-					"userId",
-					"data"
+					"serverId",
+					"traffic",
+					"speed"
 				],
 				"type": "object",
 				"additionalProperties": false
@@ -1558,131 +1176,6 @@
 	},
 	"openapi": "3.0.0",
 	"paths": {
-		"/api/file": {
-			"get": {
-				"operationId": "GetFileById",
-				"responses": {
-					"200": {
-						"description": "Информацию о файле, включая метаданные и его содержимое",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/IFileDto"
-								}
-							}
-						}
-					}
-				},
-				"description": "Получить файл по ID.\nЭтот эндпоинт позволяет пользователю получить файл по его уникальному ID.\nОн защищен с использованием JWT-аутентификации, что означает, что только аутентифицированные пользователи могут получить доступ к этому ресурсу.",
-				"summary": "Получение файла по ID",
-				"tags": [
-					"Files"
-				],
-				"security": [
-					{
-						"jwt": []
-					}
-				],
-				"parameters": [
-					{
-						"description": "ID файла, который нужно получить",
-						"in": "query",
-						"name": "id",
-						"required": true,
-						"schema": {
-							"type": "string"
-						}
-					}
-				]
-			},
-			"post": {
-				"operationId": "UploadFile",
-				"responses": {
-					"200": {
-						"description": "Массив объектов, представляющих загруженные файлы с их метаданными",
-						"content": {
-							"application/json": {
-								"schema": {
-									"items": {
-										"$ref": "#/components/schemas/IFileDto"
-									},
-									"type": "array"
-								}
-							}
-						}
-					}
-				},
-				"description": "Загрузить файл.\nЭтот эндпоинт позволяет пользователю загрузить один файл на сервер.\nОн защищен с использованием JWT-аутентификации, что означает, что только аутентифицированные пользователи могут загружать файлы.",
-				"summary": "Загрузка файла",
-				"tags": [
-					"Files"
-				],
-				"security": [
-					{
-						"jwt": []
-					}
-				],
-				"parameters": [],
-				"requestBody": {
-					"required": true,
-					"content": {
-						"multipart/form-data": {
-							"schema": {
-								"type": "object",
-								"properties": {
-									"file": {
-										"type": "string",
-										"format": "binary",
-										"description": "Файл, который нужно загрузить"
-									}
-								},
-								"required": [
-									"file"
-								]
-							}
-						}
-					}
-				}
-			}
-		},
-		"/api/file/{id}": {
-			"delete": {
-				"operationId": "DeleteFile",
-				"responses": {
-					"200": {
-						"description": "Количество удаленных файлов (обычно 1, если файл существует)",
-						"content": {
-							"application/json": {
-								"schema": {
-									"type": "boolean"
-								}
-							}
-						}
-					}
-				},
-				"description": "Удалить файл.\nЭтот эндпоинт позволяет пользователю удалить файл по его ID. Доступ разрешен только пользователю, который загрузил файл, либо администратору.",
-				"summary": "Удаление файла",
-				"tags": [
-					"Files"
-				],
-				"security": [
-					{
-						"jwt": []
-					}
-				],
-				"parameters": [
-					{
-						"description": "ID файла, который нужно удалить",
-						"in": "path",
-						"name": "id",
-						"required": true,
-						"schema": {
-							"type": "string"
-						}
-					}
-				]
-			}
-		},
 		"/api/profile/my": {
 			"get": {
 				"operationId": "GetMyProfile",
@@ -1916,82 +1409,6 @@
 						}
 					}
 				}
-			}
-		},
-		"/api/profile/avatar/upload": {
-			"post": {
-				"operationId": "AddAvatar",
-				"responses": {
-					"200": {
-						"description": "Обновленный профиль с новым аватаром",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/ProfileDto"
-								}
-							}
-						}
-					}
-				},
-				"description": "Загрузить аватар для текущего пользователя.\nЭтот эндпоинт позволяет пользователю загрузить аватар для своего профиля.",
-				"summary": "Загрузка аватара",
-				"tags": [
-					"Profile"
-				],
-				"security": [
-					{
-						"jwt": []
-					}
-				],
-				"parameters": [],
-				"requestBody": {
-					"required": true,
-					"content": {
-						"multipart/form-data": {
-							"schema": {
-								"type": "object",
-								"properties": {
-									"file": {
-										"type": "string",
-										"format": "binary",
-										"description": "Файл изображения аватара"
-									}
-								},
-								"required": [
-									"file"
-								]
-							}
-						}
-					}
-				}
-			}
-		},
-		"/api/profile/avatar": {
-			"delete": {
-				"operationId": "RemoveAvatar",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/ProfileDto"
-								}
-							}
-						}
-					}
-				},
-				"description": "Удалить аватар пользователя.\nЭтот эндпоинт позволяет пользователю удалить свой аватар.",
-				"summary": "Удаление аватара",
-				"tags": [
-					"Profile"
-				],
-				"security": [
-					{
-						"jwt": []
-					}
-				],
-				"parameters": []
 			}
 		},
 		"/api/profile/delete/{userId}": {
@@ -2553,53 +1970,6 @@
 				}
 			}
 		},
-		"/api/auth/authenticate": {
-			"post": {
-				"operationId": "Authenticate",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/IUserWithTokensDto"
-								}
-							}
-						}
-					}
-				},
-				"description": "Авторизация пользователя через OAuth code GitHub",
-				"summary": "Вход в систему",
-				"tags": [
-					"Authorization"
-				],
-				"security": [],
-				"parameters": [],
-				"requestBody": {
-					"description": "Данные для входа",
-					"required": true,
-					"content": {
-						"application/json": {
-							"schema": {
-								"properties": {
-									"code": {
-										"type": "string"
-									}
-								},
-								"required": [
-									"code"
-								],
-								"type": "object",
-								"description": "Данные для входа"
-							},
-							"example": {
-								"code": "30d2d5e372a3f828254d"
-							}
-						}
-					}
-				}
-			}
-		},
 		"/api/auth/request-reset-password": {
 			"post": {
 				"operationId": "RequestResetPassword",
@@ -2721,259 +2091,149 @@
 				}
 			}
 		},
-		"/api/biometric/register": {
-			"post": {
-				"operationId": "RegisterBiometric",
+		"/api/wg/servers/{serverId}/peers": {
+			"get": {
+				"operationId": "GetPeersByServer",
 				"responses": {
 					"200": {
 						"description": "Ok",
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/IRegisterBiometricResponseDto"
+									"$ref": "#/components/schemas/IWgPeerListDto"
 								}
 							}
 						}
 					}
 				},
-				"description": "Регистрирует биометрические ключи с устройства",
+				"description": "List all peers for a given server.",
+				"summary": "Get peers by server",
 				"tags": [
-					"Biometric"
-				],
-				"security": [],
-				"parameters": [],
-				"requestBody": {
-					"required": true,
-					"content": {
-						"application/json": {
-							"schema": {
-								"$ref": "#/components/schemas/IRegisterBiometricRequestDto"
-							}
-						}
-					}
-				}
-			}
-		},
-		"/api/biometric/generate-nonce": {
-			"post": {
-				"operationId": "GenerateNonce",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/IGenerateNonceResponseDto"
-								}
-							}
-						}
-					}
-				},
-				"description": "Генерирует nonce, который необходимо подписать на устройстве",
-				"tags": [
-					"Biometric"
-				],
-				"security": [],
-				"parameters": [],
-				"requestBody": {
-					"required": true,
-					"content": {
-						"application/json": {
-							"schema": {
-								"$ref": "#/components/schemas/IGenerateNonceRequestDto"
-							}
-						}
-					}
-				}
-			}
-		},
-		"/api/biometric/verify-signature": {
-			"post": {
-				"operationId": "VerifySignature",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/IVerifyBiometricSignatureResponseDto"
-								}
-							}
-						}
-					}
-				},
-				"description": "Проверяет подпись и авторизует пользователя",
-				"tags": [
-					"Biometric"
-				],
-				"security": [],
-				"parameters": [],
-				"requestBody": {
-					"required": true,
-					"content": {
-						"application/json": {
-							"schema": {
-								"$ref": "#/components/schemas/IVerifyBiometricSignatureRequestDto"
-							}
-						}
-					}
-				}
-			}
-		},
-		"/api/dialog/unread-messages-count": {
-			"get": {
-				"operationId": "GetUnreadMessagesCount",
-				"responses": {
-					"200": {
-						"description": "Количество непрочитанных сообщений.",
-						"content": {
-							"application/json": {
-								"schema": {
-									"type": "number",
-									"format": "double"
-								}
-							}
-						}
-					}
-				},
-				"description": "Получает количество непрочитанных сообщений пользователя.",
-				"summary": "Количество непрочитанных сообщений",
-				"tags": [
-					"Dialog"
+					"WireGuard Peers"
 				],
 				"security": [
 					{
-						"jwt": []
+						"jwt": [
+							"role:admin"
+						]
 					}
 				],
 				"parameters": [
 					{
-						"description": "ID диалога (необязательно, если указано, то считает непрочитанные в конкретном диалоге).",
-						"in": "query",
-						"name": "dialogId",
-						"required": false,
-						"schema": {
-							"type": "string"
-						}
-					}
-				]
-			}
-		},
-		"/api/dialog/all": {
-			"get": {
-				"operationId": "GetDialogs",
-				"responses": {
-					"200": {
-						"description": "Список диалогов пользователя.",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/IDialogListDto"
-								}
-							}
-						}
-					}
-				},
-				"description": "Получает список всех диалогов пользователя.",
-				"summary": "Список диалогов",
-				"tags": [
-					"Dialog"
-				],
-				"security": [
-					{
-						"jwt": []
-					}
-				],
-				"parameters": [
-					{
-						"description": "Смещение (пагинация).",
-						"in": "query",
-						"name": "offset",
-						"required": false,
-						"schema": {
-							"format": "double",
-							"type": "number"
-						}
-					},
-					{
-						"description": "Количество элементов (пагинация).",
-						"in": "query",
-						"name": "limit",
-						"required": false,
-						"schema": {
-							"format": "double",
-							"type": "number"
-						}
-					}
-				]
-			}
-		},
-		"/api/dialog/info/{id}": {
-			"get": {
-				"operationId": "GetDialogById",
-				"responses": {
-					"200": {
-						"description": "Объект диалога.",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/DialogDetailDto"
-								}
-							}
-						}
-					}
-				},
-				"description": "Получает информацию о конкретном диалоге по ID.",
-				"summary": "Информация о диалоге",
-				"tags": [
-					"Dialog"
-				],
-				"security": [
-					{
-						"jwt": []
-					}
-				],
-				"parameters": [
-					{
-						"description": "ID диалога.",
 						"in": "path",
-						"name": "id",
+						"name": "serverId",
 						"required": true,
 						"schema": {
 							"type": "string"
 						}
 					}
 				]
-			}
-		},
-		"/api/dialog/private-with/{userId}": {
-			"get": {
-				"operationId": "GetPrivateDialogWithUser",
+			},
+			"post": {
+				"operationId": "CreatePeer",
 				"responses": {
 					"200": {
-						"description": "Массив найденных ID диалогов.",
+						"description": "Ok",
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/IDialogFindResponseDto"
+									"$ref": "#/components/schemas/WgPeerDto"
 								}
 							}
 						}
 					}
 				},
-				"description": "Ищет диалог между текущим пользователем и собеседником.",
-				"summary": "Поиск диалога",
+				"description": "Create a new peer on a server.\nKeys are auto-generated. Peer is applied to live interface if server is up.",
+				"summary": "Create peer",
 				"tags": [
-					"Dialog"
+					"WireGuard Peers"
+				],
+				"security": [
+					{
+						"jwt": [
+							"role:admin"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "serverId",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IWgPeerCreateRequestDto"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/wg/peers/my": {
+			"get": {
+				"operationId": "GetMyPeers",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IWgPeerListDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Get all peers owned by the current user.",
+				"summary": "Get my peers",
+				"tags": [
+					"WireGuard Peers"
 				],
 				"security": [
 					{
 						"jwt": []
 					}
 				],
+				"parameters": []
+			}
+		},
+		"/api/wg/peers/user/{userId}": {
+			"get": {
+				"operationId": "GetPeersByUser",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IWgPeerListDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Get all peers for a user (admin only).",
+				"summary": "Get peers by user",
+				"tags": [
+					"WireGuard Peers"
+				],
+				"security": [
+					{
+						"jwt": [
+							"role:admin"
+						]
+					}
+				],
 				"parameters": [
 					{
-						"description": "Данные поиска (ID собеседника).",
 						"in": "path",
 						"name": "userId",
 						"required": true,
@@ -2984,406 +2244,35 @@
 				]
 			}
 		},
-		"/api/dialog/find": {
-			"post": {
-				"operationId": "FindDialog",
-				"responses": {
-					"200": {
-						"description": "Найденый ID диалога.",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/IDialogFindResponseDto"
-								}
-							}
-						}
-					}
-				},
-				"description": "Ищет диалог между текущим пользователем и другим участником.",
-				"summary": "Поиск диалога",
-				"tags": [
-					"Dialog"
-				],
-				"security": [
-					{
-						"jwt": []
-					}
-				],
-				"parameters": [],
-				"requestBody": {
-					"description": "Данные поиска (ID получателя).",
-					"required": true,
-					"content": {
-						"application/json": {
-							"schema": {
-								"$ref": "#/components/schemas/IDialogFindRequestDto",
-								"description": "Данные поиска (ID получателя)."
-							}
-						}
-					}
-				}
-			}
-		},
-		"/api/dialog/findOrCreate": {
-			"post": {
-				"operationId": "FindOrCreate",
-				"responses": {
-					"200": {
-						"description": "Найденый ID диалога.",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/IDialogFindOrCreateResponseDto"
-								}
-							}
-						}
-					}
-				},
-				"description": "Ищет диалог или создает если не найден.",
-				"summary": "Поиск или создание диалога",
-				"tags": [
-					"Dialog"
-				],
-				"security": [
-					{
-						"jwt": []
-					}
-				],
-				"parameters": [],
-				"requestBody": {
-					"description": "Данные поиска (ID получателя).",
-					"required": true,
-					"content": {
-						"application/json": {
-							"schema": {
-								"$ref": "#/components/schemas/IDialogFindRequestDto",
-								"description": "Данные поиска (ID получателя)."
-							}
-						}
-					}
-				}
-			}
-		},
-		"/api/dialog": {
-			"post": {
-				"operationId": "CreateDialog",
-				"responses": {
-					"200": {
-						"description": "Созданный диалог.",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/DialogDetailDto"
-								}
-							}
-						}
-					}
-				},
-				"description": "Создает новый диалог.",
-				"summary": "Создание диалога",
-				"tags": [
-					"Dialog"
-				],
-				"security": [
-					{
-						"jwt": []
-					}
-				],
-				"parameters": [],
-				"requestBody": {
-					"description": "Данные для создания диалога.",
-					"required": true,
-					"content": {
-						"application/json": {
-							"schema": {
-								"$ref": "#/components/schemas/IDialogCreateRequestDto",
-								"description": "Данные для создания диалога."
-							}
-						}
-					}
-				}
-			}
-		},
-		"/api/dialog/members": {
+		"/api/wg/peers/{id}": {
 			"get": {
-				"operationId": "GetMembers",
-				"responses": {
-					"200": {
-						"description": "Список участников.",
-						"content": {
-							"application/json": {
-								"schema": {
-									"items": {
-										"$ref": "#/components/schemas/DialogMembersDto"
-									},
-									"type": "array"
-								}
-							}
-						}
-					}
-				},
-				"description": "Получает список участников диалога.",
-				"summary": "Участники диалога",
-				"tags": [
-					"Dialog"
-				],
-				"security": [
-					{
-						"jwt": []
-					}
-				],
-				"parameters": [
-					{
-						"description": "ID диалога.",
-						"in": "query",
-						"name": "dialogId",
-						"required": true,
-						"schema": {
-							"type": "string"
-						}
-					}
-				]
-			}
-		},
-		"/api/dialog/member": {
-			"post": {
-				"operationId": "AddMembers",
-				"responses": {
-					"200": {
-						"description": "Список обновленных участников.",
-						"content": {
-							"application/json": {
-								"schema": {
-									"items": {
-										"$ref": "#/components/schemas/DialogMembersDto"
-									},
-									"type": "array"
-								}
-							}
-						}
-					}
-				},
-				"description": "Добавляет новых участников в диалог.",
-				"summary": "Добавление участников",
-				"tags": [
-					"Dialog"
-				],
-				"security": [
-					{
-						"jwt": []
-					}
-				],
-				"parameters": [],
-				"requestBody": {
-					"description": "Данные с ID диалога и участниками.",
-					"required": true,
-					"content": {
-						"application/json": {
-							"schema": {
-								"$ref": "#/components/schemas/IDialogMembersAddRequestDto",
-								"description": "Данные с ID диалога и участниками."
-							}
-						}
-					}
-				}
-			}
-		},
-		"/api/dialog/member/{id}": {
-			"delete": {
-				"operationId": "DeleteMember",
+				"operationId": "GetPeer",
 				"responses": {
 					"200": {
 						"description": "Ok",
 						"content": {
 							"application/json": {
 								"schema": {
-									"type": "boolean"
+									"$ref": "#/components/schemas/WgPeerDto"
 								}
 							}
 						}
 					}
 				},
-				"description": "Удаляет участника из диалога.",
-				"summary": "Удаление участника",
+				"description": "Get a peer by ID.",
+				"summary": "Get peer",
 				"tags": [
-					"Dialog"
+					"WireGuard Peers"
 				],
 				"security": [
 					{
-						"jwt": []
+						"jwt": [
+							"role:admin"
+						]
 					}
 				],
 				"parameters": [
 					{
-						"description": "ID участника.",
-						"in": "path",
-						"name": "id",
-						"required": true,
-						"schema": {
-							"type": "string"
-						}
-					}
-				]
-			}
-		},
-		"/api/dialog/{id}": {
-			"delete": {
-				"operationId": "RemoveDialog",
-				"responses": {
-					"204": {
-						"description": "No content"
-					}
-				},
-				"description": "Удаляет диалог.",
-				"summary": "Удаление диалога",
-				"tags": [
-					"Dialog"
-				],
-				"security": [
-					{
-						"jwt": []
-					}
-				],
-				"parameters": [
-					{
-						"description": "ID диалога.",
-						"in": "path",
-						"name": "id",
-						"required": true,
-						"schema": {
-							"type": "string"
-						}
-					}
-				]
-			}
-		},
-		"/api/dialog/message/all": {
-			"get": {
-				"operationId": "GetMessages",
-				"responses": {
-					"200": {
-						"description": "Список сообщений.",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/IDialogListMessagesDto"
-								}
-							}
-						}
-					}
-				},
-				"description": "Получает сообщения диалога с пагинацией.",
-				"summary": "Получение сообщений",
-				"tags": [
-					"Dialog"
-				],
-				"security": [
-					{
-						"jwt": []
-					}
-				],
-				"parameters": [
-					{
-						"description": "ID диалога.",
-						"in": "query",
-						"name": "dialogId",
-						"required": true,
-						"schema": {
-							"type": "string"
-						}
-					},
-					{
-						"description": "Смещение.",
-						"in": "query",
-						"name": "offset",
-						"required": false,
-						"schema": {
-							"format": "double",
-							"type": "number"
-						}
-					},
-					{
-						"description": "Количество сообщений.",
-						"in": "query",
-						"name": "limit",
-						"required": false,
-						"schema": {
-							"format": "double",
-							"type": "number"
-						}
-					}
-				]
-			}
-		},
-		"/api/dialog/message/last-message": {
-			"get": {
-				"operationId": "GetLastMessage",
-				"responses": {
-					"200": {
-						"description": "Последнее сообщение.",
-						"content": {
-							"application/json": {
-								"schema": {
-									"items": {
-										"$ref": "#/components/schemas/DialogLastMessagesDto"
-									},
-									"type": "array"
-								}
-							}
-						}
-					}
-				},
-				"description": "Получает последнее сообщение в диалоге.",
-				"summary": "Последнее сообщение",
-				"tags": [
-					"Dialog"
-				],
-				"security": [
-					{
-						"jwt": []
-					}
-				],
-				"parameters": [
-					{
-						"description": "ID диалога.",
-						"in": "query",
-						"name": "dialogId",
-						"required": true,
-						"schema": {
-							"type": "string"
-						}
-					}
-				]
-			}
-		},
-		"/api/dialog/message/{id}": {
-			"get": {
-				"operationId": "GetMessageById",
-				"responses": {
-					"200": {
-						"description": "Сообщение.",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/DialogMessagesDto"
-								}
-							}
-						}
-					}
-				},
-				"description": "Получает сообщение по ID.",
-				"summary": "Получение сообщения по ID",
-				"tags": [
-					"Dialog"
-				],
-				"security": [
-					{
-						"jwt": []
-					}
-				],
-				"parameters": [
-					{
-						"description": "ID сообщения.",
 						"in": "path",
 						"name": "id",
 						"required": true,
@@ -3394,32 +2283,33 @@
 				]
 			},
 			"patch": {
-				"operationId": "UpdateMessage",
+				"operationId": "UpdatePeer",
 				"responses": {
 					"200": {
-						"description": "Обновлённое сообщение.\n\nЭтот метод позволяет пользователю обновить сообщение в диалоге.\nТолько автор сообщения может его обновить.\nМетод принимает ID сообщения, данные для обновления и текущий JWT-токен, чтобы удостовериться,\nчто запрос исходит от пользователя, который имеет право на изменения.\nПосле успешного обновления, возвращается обновлённое сообщение.",
+						"description": "Ok",
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/DialogMessagesDto"
+									"$ref": "#/components/schemas/WgPeerDto"
 								}
 							}
 						}
 					}
 				},
-				"description": "Обновляет существующее сообщение в диалоге.",
-				"summary": "Обновление сообщения",
+				"description": "Update a peer.",
+				"summary": "Update peer",
 				"tags": [
-					"Dialog"
+					"WireGuard Peers"
 				],
 				"security": [
 					{
-						"jwt": []
+						"jwt": [
+							"role:admin"
+						]
 					}
 				],
 				"parameters": [
 					{
-						"description": "ID сообщения, которое нужно обновить.",
 						"in": "path",
 						"name": "id",
 						"required": true,
@@ -3429,23 +2319,21 @@
 					}
 				],
 				"requestBody": {
-					"description": "Данные для обновления сообщения.",
 					"required": true,
 					"content": {
 						"application/json": {
 							"schema": {
-								"$ref": "#/components/schemas/IMessagesUpdateRequestDto",
-								"description": "Данные для обновления сообщения."
+								"$ref": "#/components/schemas/IWgPeerUpdateRequestDto"
 							}
 						}
 					}
 				}
 			},
 			"delete": {
-				"operationId": "DeleteMessage",
+				"operationId": "DeletePeer",
 				"responses": {
 					"200": {
-						"description": "Статус выполнения операции.\n\nЭтот метод позволяет пользователю удалить сообщение из диалога.\nУдаление доступно только для пользователя, который является автором сообщения.\nМетод принимает ID сообщения, которое необходимо удалить, и текущий JWT-токен для аутентификации.\nПосле успешного удаления сообщения возвращается статус выполнения операции.",
+						"description": "Ok",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -3455,19 +2343,20 @@
 						}
 					}
 				},
-				"description": "Удаляет сообщение из диалога.",
-				"summary": "Удаление сообщения",
+				"description": "Delete a peer.\nPeer is removed from live interface if server is up.",
+				"summary": "Delete peer",
 				"tags": [
-					"Dialog"
+					"WireGuard Peers"
 				],
 				"security": [
 					{
-						"jwt": []
+						"jwt": [
+							"role:admin"
+						]
 					}
 				],
 				"parameters": [
 					{
-						"description": "ID сообщения, которое нужно удалить.",
 						"in": "path",
 						"name": "id",
 						"required": true,
@@ -3478,179 +2367,121 @@
 				]
 			}
 		},
-		"/api/dialog/message": {
+		"/api/wg/peers/{id}/enable": {
 			"post": {
-				"operationId": "NewMessage",
+				"operationId": "EnablePeer",
 				"responses": {
 					"200": {
-						"description": "Созданное сообщение.",
+						"description": "Ok",
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/DialogMessagesDto"
+									"$ref": "#/components/schemas/WgPeerDto"
 								}
 							}
 						}
 					}
 				},
-				"description": "Отправляет новое сообщение в диалог.",
-				"summary": "Отправка сообщения",
+				"description": "Enable a peer (add to live WG interface).",
+				"summary": "Enable peer",
 				"tags": [
-					"Dialog"
+					"WireGuard Peers"
 				],
 				"security": [
 					{
-						"jwt": []
-					}
-				],
-				"parameters": [],
-				"requestBody": {
-					"description": "Данные сообщения.",
-					"required": true,
-					"content": {
-						"application/json": {
-							"schema": {
-								"$ref": "#/components/schemas/IMessagesRequestDto",
-								"description": "Данные сообщения."
-							}
-						}
-					}
-				}
-			}
-		},
-		"/api/fcm/register-apn-token": {
-			"post": {
-				"operationId": "RegisterApn",
-				"responses": {
-					"200": {
-						"description": "Список зарегистрированных APN-токенов.",
-						"content": {
-							"application/json": {
-								"schema": {
-									"items": {
-										"type": "string"
-									},
-									"type": "array"
-								}
-							}
-						}
-					}
-				},
-				"description": "Регистрирует APN-токены (Apple Push Notification) для iOS-устройств.",
-				"summary": "Регистрация APN-токенов",
-				"tags": [
-					"FCM"
-				],
-				"security": [
-					{
-						"jwt": []
-					}
-				],
-				"parameters": [],
-				"requestBody": {
-					"description": "Объект, содержащий APN-токены, название приложения и флаг песочницы.",
-					"required": true,
-					"content": {
-						"application/json": {
-							"schema": {
-								"properties": {
-									"sandbox": {
-										"type": "boolean"
-									},
-									"application": {
-										"type": "string"
-									},
-									"apns_tokens": {
-										"items": {
-											"type": "string"
-										},
-										"type": "array"
-									}
-								},
-								"required": [
-									"sandbox",
-									"application",
-									"apns_tokens"
-								],
-								"type": "object",
-								"description": "Объект, содержащий APN-токены, название приложения и флаг песочницы."
-							}
-						}
-					}
-				}
-			}
-		},
-		"/api/fcm/push": {
-			"post": {
-				"operationId": "SendPushNotification",
-				"responses": {
-					"200": {
-						"description": "ID отправленного уведомления.",
-						"content": {
-							"application/json": {
-								"schema": {
-									"type": "string"
-								}
-							}
-						}
-					}
-				},
-				"description": "Отправляет push-уведомление через Firebase Cloud Messaging (FCM).",
-				"summary": "Отправка push-уведомления",
-				"tags": [
-					"FCM"
-				],
-				"security": [
-					{
-						"jwt": []
-					}
-				],
-				"parameters": [],
-				"requestBody": {
-					"description": "Данные уведомления.",
-					"required": true,
-					"content": {
-						"application/json": {
-							"schema": {
-								"$ref": "#/components/schemas/IFCMMessageDto",
-								"description": "Данные уведомления."
-							}
-						}
-					}
-				}
-			}
-		},
-		"/api/fcm/tokens": {
-			"get": {
-				"operationId": "GetTokens",
-				"responses": {
-					"200": {
-						"description": "Список токенов, зарегистрированных за этим профилем.",
-						"content": {
-							"application/json": {
-								"schema": {
-									"items": {
-										"$ref": "#/components/schemas/FcmTokenDto"
-									},
-									"type": "array"
-								}
-							}
-						}
-					}
-				},
-				"description": "Получает все FCM-токены пользователя по его `userId`.",
-				"summary": "Получение токенов по `userId`",
-				"tags": [
-					"FCM"
-				],
-				"security": [
-					{
-						"jwt": []
+						"jwt": [
+							"role:admin"
+						]
 					}
 				],
 				"parameters": [
 					{
-						"description": "ID профиля пользователя.",
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/wg/peers/{id}/disable": {
+			"post": {
+				"operationId": "DisablePeer",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/WgPeerDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Disable a peer (remove from live WG interface).",
+				"summary": "Disable peer",
+				"tags": [
+					"WireGuard Peers"
+				],
+				"security": [
+					{
+						"jwt": [
+							"role:admin"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/wg/peers/{id}/assign": {
+			"post": {
+				"operationId": "AssignPeer",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/WgPeerDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Assign a peer to a user.",
+				"summary": "Assign peer to user",
+				"tags": [
+					"WireGuard Peers"
+				],
+				"security": [
+					{
+						"jwt": [
+							"role:admin"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
 						"in": "query",
 						"name": "userId",
 						"required": true,
@@ -3661,82 +2492,64 @@
 				]
 			}
 		},
-		"/api/fcm/my-tokens": {
-			"get": {
-				"operationId": "GetMyTokens",
+		"/api/wg/peers/{id}/revoke": {
+			"post": {
+				"operationId": "RevokePeer",
 				"responses": {
 					"200": {
-						"description": "Список FCM-токенов пользователя.",
+						"description": "Ok",
 						"content": {
 							"application/json": {
 								"schema": {
-									"items": {
-										"$ref": "#/components/schemas/FcmTokenDto"
-									},
-									"type": "array"
+									"$ref": "#/components/schemas/WgPeerDto"
 								}
 							}
 						}
 					}
 				},
-				"description": "Получает все FCM-токены текущего аутентифицированного пользователя.",
-				"summary": "Получение токенов текущего пользователя",
+				"description": "Revoke peer from its current user.",
+				"summary": "Revoke peer from user",
 				"tags": [
-					"FCM"
+					"WireGuard Peers"
 				],
 				"security": [
 					{
-						"jwt": []
+						"jwt": [
+							"role:admin"
+						]
 					}
 				],
-				"parameters": []
-			},
-			"delete": {
-				"operationId": "DeleteTokens",
-				"responses": {
-					"200": {
-						"description": "Количество удалённых токенов.",
-						"content": {
-							"application/json": {
-								"schema": {
-									"type": "boolean"
-								}
-							}
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
 						}
 					}
-				},
-				"description": "Удаляет все FCM-токены текущего пользователя.",
-				"summary": "Удаление всех токенов пользователя",
-				"tags": [
-					"FCM"
-				],
-				"security": [
-					{
-						"jwt": []
-					}
-				],
-				"parameters": []
+				]
 			}
 		},
-		"/api/fcm/token/{id}": {
+		"/api/wg/peers/{id}/config": {
 			"get": {
-				"operationId": "GetToken",
+				"operationId": "GetPeerConfig",
 				"responses": {
 					"200": {
-						"description": "Объект FCM-токена.",
+						"description": "Ok",
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/FcmTokenDto"
+									"type": "string"
 								}
 							}
 						}
 					}
 				},
-				"description": "Получает FCM-токен по его ID.",
-				"summary": "Получение токена по `id`",
+				"description": "Download the WireGuard client .conf file for this peer.",
+				"summary": "Get peer config file",
 				"tags": [
-					"FCM"
+					"WireGuard Peers"
 				],
 				"security": [
 					{
@@ -3745,151 +2558,32 @@
 				],
 				"parameters": [
 					{
-						"description": "Уникальный идентификатор токена.",
 						"in": "path",
 						"name": "id",
 						"required": true,
 						"schema": {
-							"format": "double",
-							"type": "number"
-						}
-					}
-				]
-			},
-			"delete": {
-				"operationId": "DeleteToken",
-				"responses": {
-					"200": {
-						"description": "Количество удалённых записей (1 или 0).",
-						"content": {
-							"application/json": {
-								"schema": {
-									"type": "boolean"
-								}
-							}
-						}
-					}
-				},
-				"description": "Удаляет FCM-токен по его `id`.",
-				"summary": "Удаление токена",
-				"tags": [
-					"FCM"
-				],
-				"security": [
-					{
-						"jwt": []
-					}
-				],
-				"parameters": [
-					{
-						"description": "Уникальный идентификатор токена.",
-						"in": "path",
-						"name": "id",
-						"required": true,
-						"schema": {
-							"format": "double",
-							"type": "number"
+							"type": "string"
 						}
 					}
 				]
 			}
 		},
-		"/api/fcm/token": {
-			"post": {
-				"operationId": "AddToken",
+		"/api/wg/peers/{id}/qr": {
+			"get": {
+				"operationId": "GetPeerQrCode",
 				"responses": {
 					"200": {
-						"description": "Зарегистрированный FCM-токен.",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/FcmTokenDto"
-								}
-							}
-						}
-					}
-				},
-				"description": "Добавляет новый FCM-токен для текущего пользователя.",
-				"summary": "Добавление FCM-токена",
-				"tags": [
-					"FCM"
-				],
-				"security": [
-					{
-						"jwt": []
-					}
-				],
-				"parameters": [],
-				"requestBody": {
-					"required": true,
-					"content": {
-						"application/json": {
-							"schema": {
-								"$ref": "#/components/schemas/FcmTokenRequestDto"
-							}
-						}
-					}
-				}
-			}
-		},
-		"/api/passkeys/generate-registration-options": {
-			"post": {
-				"operationId": "GenerateRegistrationOptions",
-				"responses": {
-					"200": {
-						"description": "Параметры для регистрации устройства, соответствующие спецификации WebAuthn.",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/PublicKeyCredentialRequestOptionsJSON"
-								}
-							}
-						}
-					}
-				},
-				"description": "Генерирует параметры для регистрации нового устройства с использованием Passkeys.\nЭтот эндпоинт используется для создания параметров, которые будут отправлены клиенту для\nрегистрации нового устройства. Клиент должен будет выполнить регистрацию, используя данные\nсгенерированные этим запросом.",
-				"summary": "Генерация параметров регистрации",
-				"tags": [
-					"Passkeys"
-				],
-				"security": [],
-				"parameters": [],
-				"requestBody": {
-					"required": true,
-					"content": {
-						"application/json": {
-							"schema": {
-								"properties": {
-									"userId": {
-										"type": "string"
-									}
-								},
-								"required": [
-									"userId"
-								],
-								"type": "object"
-							}
-						}
-					}
-				}
-			}
-		},
-		"/api/passkeys/verify-registration": {
-			"post": {
-				"operationId": "VerifyRegistration",
-				"responses": {
-					"200": {
-						"description": "Объект, который сообщает, был ли процесс регистрации успешным.",
+						"description": "Ok",
 						"content": {
 							"application/json": {
 								"schema": {
 									"properties": {
-										"verified": {
-											"type": "boolean"
+										"dataUrl": {
+											"type": "string"
 										}
 									},
 									"required": [
-										"verified"
+										"dataUrl"
 									],
 									"type": "object"
 								}
@@ -3897,99 +2591,733 @@
 						}
 					}
 				},
-				"description": "Проверяет данные регистрации для нового устройства.\nЭтот эндпоинт используется для подтверждения данных, которые были отправлены клиентом\nпосле попытки регистрации нового устройства. Он валидирует предоставленные данные\nи завершает процесс регистрации.",
-				"summary": "Проверка данных регистрации",
+				"description": "Get QR code PNG image for the client config.\nReturns base64-encoded PNG data URL.",
+				"summary": "Get peer QR code",
 				"tags": [
-					"Passkeys"
+					"WireGuard Peers"
 				],
-				"security": [],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/wg/servers": {
+			"get": {
+				"operationId": "GetServers",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IWgServerListDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "List all WireGuard servers.",
+				"summary": "Get all servers",
+				"tags": [
+					"WireGuard Servers"
+				],
+				"security": [
+					{
+						"jwt": [
+							"role:admin"
+						]
+					}
+				],
+				"parameters": []
+			},
+			"post": {
+				"operationId": "CreateServer",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/WgServerDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Create a new WireGuard server.\nKeys are generated automatically.\nThe config file is written to the WG config directory.",
+				"summary": "Create server",
+				"tags": [
+					"WireGuard Servers"
+				],
+				"security": [
+					{
+						"jwt": [
+							"role:admin"
+						]
+					}
+				],
 				"parameters": [],
 				"requestBody": {
 					"required": true,
 					"content": {
 						"application/json": {
 							"schema": {
-								"$ref": "#/components/schemas/IVerifyRegistrationRequestDto"
+								"$ref": "#/components/schemas/IWgServerCreateRequestDto"
 							}
 						}
 					}
 				}
 			}
 		},
-		"/api/passkeys/generate-authentication-options": {
-			"post": {
-				"operationId": "GenerateAuthenticationOptions",
+		"/api/wg/servers/{id}": {
+			"get": {
+				"operationId": "GetServer",
 				"responses": {
 					"200": {
-						"description": "Параметры для аутентификации устройства, соответствующие спецификации WebAuthn.",
+						"description": "Ok",
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/PublicKeyCredentialRequestOptionsJSON"
+									"$ref": "#/components/schemas/WgServerDto"
 								}
 							}
 						}
 					}
 				},
-				"description": "Генерирует параметры для аутентификации пользователя с использованием Passkeys.\nЭтот эндпоинт создает параметры аутентификации, которые будут отправлены клиенту для\nвыполнения аутентификации с помощью Passkeys. Эти параметры используются клиентом для\nвызова аутентификации на его устройстве.",
-				"summary": "Генерация параметров аутентификации",
+				"description": "Get a WireGuard server by ID.",
+				"summary": "Get server by ID",
 				"tags": [
-					"Passkeys"
+					"WireGuard Servers"
 				],
-				"security": [],
-				"parameters": [],
+				"security": [
+					{
+						"jwt": [
+							"role:admin"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			},
+			"patch": {
+				"operationId": "UpdateServer",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/WgServerDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Update a WireGuard server.\nConfig file is rewritten automatically.",
+				"summary": "Update server",
+				"tags": [
+					"WireGuard Servers"
+				],
+				"security": [
+					{
+						"jwt": [
+							"role:admin"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
 				"requestBody": {
 					"required": true,
 					"content": {
 						"application/json": {
 							"schema": {
-								"properties": {
-									"userId": {
-										"type": "string"
-									}
-								},
-								"required": [
-									"userId"
-								],
-								"type": "object"
+								"$ref": "#/components/schemas/IWgServerUpdateRequestDto"
 							}
 						}
 					}
 				}
+			},
+			"delete": {
+				"operationId": "DeleteServer",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "boolean"
+								}
+							}
+						}
+					}
+				},
+				"description": "Delete a WireGuard server.\nStops the interface and removes the config file.",
+				"summary": "Delete server",
+				"tags": [
+					"WireGuard Servers"
+				],
+				"security": [
+					{
+						"jwt": [
+							"role:admin"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
 			}
 		},
-		"/api/passkeys/verify-authentication": {
+		"/api/wg/servers/{id}/start": {
 			"post": {
-				"operationId": "VerifyAuthentication",
+				"operationId": "StartServer",
 				"responses": {
 					"200": {
-						"description": "Ответ, который включает в себя результат аутентификации и другие данные.",
+						"description": "Ok",
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/IVerifyAuthenticationResponseDto"
+									"$ref": "#/components/schemas/WgServerDto"
 								}
 							}
 						}
 					}
 				},
-				"description": "Проверяет данные аутентификации для пользователя.\nЭтот эндпоинт проверяет данные аутентификации, которые были отправлены с клиентской стороны,\nи завершается успешной или неудачной аутентификацией в зависимости от результатов проверки.",
-				"summary": "Проверка данных аутентификации",
+				"description": "Start a WireGuard interface (wg-quick up).",
+				"summary": "Start server",
 				"tags": [
-					"Passkeys"
+					"WireGuard Servers"
 				],
-				"security": [],
-				"parameters": [],
-				"requestBody": {
-					"required": true,
-					"content": {
-						"application/json": {
-							"schema": {
-								"$ref": "#/components/schemas/IVerifyAuthenticationRequestDto"
+				"security": [
+					{
+						"jwt": [
+							"role:admin"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/wg/servers/{id}/stop": {
+			"post": {
+				"operationId": "StopServer",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/WgServerDto"
+								}
 							}
 						}
 					}
-				}
+				},
+				"description": "Stop a WireGuard interface (wg-quick down).",
+				"summary": "Stop server",
+				"tags": [
+					"WireGuard Servers"
+				],
+				"security": [
+					{
+						"jwt": [
+							"role:admin"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/wg/servers/{id}/restart": {
+			"post": {
+				"operationId": "RestartServer",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/WgServerDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Restart a WireGuard interface.",
+				"summary": "Restart server",
+				"tags": [
+					"WireGuard Servers"
+				],
+				"security": [
+					{
+						"jwt": [
+							"role:admin"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/wg/servers/{id}/status": {
+			"get": {
+				"operationId": "GetServerStatus",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IWgServerStatusDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Get real-time status of a WireGuard interface.\nQueries the actual wg interface, not cached DB status.",
+				"summary": "Get live server status",
+				"tags": [
+					"WireGuard Servers"
+				],
+				"security": [
+					{
+						"jwt": [
+							"role:admin"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/wg/statistics/peers/{peerId}/traffic": {
+			"get": {
+				"operationId": "GetPeerTraffic",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"items": {
+										"$ref": "#/components/schemas/WgTrafficStatDto"
+									},
+									"type": "array"
+								}
+							}
+						}
+					}
+				},
+				"description": "Get traffic history for a specific peer.",
+				"summary": "Peer traffic history",
+				"tags": [
+					"WireGuard Statistics"
+				],
+				"security": [
+					{
+						"jwt": [
+							"role:admin"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"description": "Peer ID",
+						"in": "path",
+						"name": "peerId",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"description": "ISO date string (default: 24h ago)",
+						"in": "query",
+						"name": "from",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"description": "ISO date string (default: now)",
+						"in": "query",
+						"name": "to",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/wg/statistics/peers/{peerId}/speed": {
+			"get": {
+				"operationId": "GetPeerSpeed",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"items": {
+										"$ref": "#/components/schemas/WgSpeedSampleDto"
+									},
+									"type": "array"
+								}
+							}
+						}
+					}
+				},
+				"description": "Get speed samples for a specific peer.",
+				"summary": "Peer speed history",
+				"tags": [
+					"WireGuard Statistics"
+				],
+				"security": [
+					{
+						"jwt": [
+							"role:admin"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"description": "Peer ID",
+						"in": "path",
+						"name": "peerId",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"description": "ISO date string (default: 1h ago)",
+						"in": "query",
+						"name": "from",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"description": "ISO date string (default: now)",
+						"in": "query",
+						"name": "to",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/wg/statistics/peers/{peerId}": {
+			"get": {
+				"operationId": "GetPeerStats",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IWgPeerStatsResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Get combined latest stats + history for a peer.",
+				"summary": "Peer full stats",
+				"tags": [
+					"WireGuard Statistics"
+				],
+				"security": [
+					{
+						"jwt": [
+							"role:admin"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"description": "Peer ID",
+						"in": "path",
+						"name": "peerId",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"description": "ISO date string (default: 24h ago)",
+						"in": "query",
+						"name": "from",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"description": "ISO date string (default: now)",
+						"in": "query",
+						"name": "to",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/wg/statistics/servers/{serverId}/traffic": {
+			"get": {
+				"operationId": "GetServerTraffic",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"items": {
+										"$ref": "#/components/schemas/WgTrafficStatDto"
+									},
+									"type": "array"
+								}
+							}
+						}
+					}
+				},
+				"description": "Get traffic history for a server (all peers aggregated).",
+				"summary": "Server traffic history",
+				"tags": [
+					"WireGuard Statistics"
+				],
+				"security": [
+					{
+						"jwt": [
+							"role:admin"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"description": "Server ID",
+						"in": "path",
+						"name": "serverId",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"description": "ISO date string",
+						"in": "query",
+						"name": "from",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"description": "ISO date string",
+						"in": "query",
+						"name": "to",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/wg/statistics/servers/{serverId}/speed": {
+			"get": {
+				"operationId": "GetServerSpeed",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"items": {
+										"$ref": "#/components/schemas/WgSpeedSampleDto"
+									},
+									"type": "array"
+								}
+							}
+						}
+					}
+				},
+				"description": "Get speed history for a server.",
+				"summary": "Server speed history",
+				"tags": [
+					"WireGuard Statistics"
+				],
+				"security": [
+					{
+						"jwt": [
+							"role:admin"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"description": "Server ID",
+						"in": "path",
+						"name": "serverId",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"description": "ISO date string",
+						"in": "query",
+						"name": "from",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"description": "ISO date string",
+						"in": "query",
+						"name": "to",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/wg/statistics/servers/{serverId}": {
+			"get": {
+				"operationId": "GetServerStats",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IWgServerStatsResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Get combined stats for a server.",
+				"summary": "Server full stats",
+				"tags": [
+					"WireGuard Statistics"
+				],
+				"security": [
+					{
+						"jwt": [
+							"role:admin"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"description": "Server ID",
+						"in": "path",
+						"name": "serverId",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"description": "ISO date string",
+						"in": "query",
+						"name": "from",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"description": "ISO date string",
+						"in": "query",
+						"name": "to",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
 			}
 		}
 	},

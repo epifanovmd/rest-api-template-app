@@ -3,16 +3,13 @@ import {
   Body,
   Controller,
   Delete,
-  File,
   Get,
   Patch,
-  Post,
   Query,
   Request,
   Route,
   Security,
   Tags,
-  UploadedFile,
 } from "tsoa";
 
 import { getContextUser, Injectable } from "../../core";
@@ -139,39 +136,6 @@ export class ProfileController extends Controller {
     @Body() body: IProfileUpdateRequestDto,
   ): Promise<ProfileDto> {
     return this._profileService.updateProfile(userId, body);
-  }
-
-  /**
-   * Загрузить аватар для текущего пользователя.
-   * Этот эндпоинт позволяет пользователю загрузить аватар для своего профиля.
-   *
-   * @summary Загрузка аватара
-   * @param file Файл изображения аватара
-   * @returns Обновленный профиль с новым аватаром
-   */
-  @Security("jwt")
-  @Post("/avatar/upload")
-  addAvatar(
-    @Request() req: KoaRequest,
-    @UploadedFile() file: File,
-  ): Promise<ProfileDto> {
-    const user = getContextUser(req);
-
-    return this._profileService.addAvatar(user.userId, file);
-  }
-
-  /**
-   * Удалить аватар пользователя.
-   * Этот эндпоинт позволяет пользователю удалить свой аватар.
-   *
-   * @summary Удаление аватара
-   */
-  @Security("jwt")
-  @Delete("/avatar")
-  removeAvatar(@Request() req: KoaRequest): Promise<ProfileDto> {
-    const user = getContextUser(req);
-
-    return this._profileService.removeAvatar(user.userId);
   }
 
   /**

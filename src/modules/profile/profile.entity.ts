@@ -4,13 +4,11 @@ import {
   Entity,
   Index,
   JoinColumn,
-  ManyToOne,
   OneToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from "typeorm";
 
-import { File } from "../file/file.entity";
 import { User } from "../user/user.entity";
 import { EProfileStatus } from "./profile.types";
 
@@ -47,9 +45,6 @@ export class Profile {
   @Column({ name: "last_online", type: "timestamp", nullable: true })
   lastOnline: Date;
 
-  @Column({ name: "avatar_id", type: "uuid", nullable: true })
-  avatarId: string | null;
-
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 
@@ -61,7 +56,4 @@ export class Profile {
   @JoinColumn({ name: "user_id" })
   user: User;
 
-  @ManyToOne(() => File, file => file.avatarProfiles, { onDelete: "SET NULL" })
-  @JoinColumn({ name: "avatar_id" })
-  avatar: File;
 }

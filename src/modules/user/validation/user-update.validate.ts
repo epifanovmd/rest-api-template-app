@@ -15,7 +15,6 @@ export const UserUpdateSchema = z
       })
       .transform(val => {
         if (!val) return val;
-        // Нормализуем номер телефона
         const cleaned = val.replace(/\D/g, "");
 
         if (cleaned.startsWith("8") && cleaned.length === 11) {
@@ -30,23 +29,8 @@ export const UserUpdateSchema = z
       .optional(),
 
     roleId: z.uuid("ID роли должен быть валидным UUID").optional(),
-
-    challenge: z
-      .string()
-      .min(10, "Challenge должен содержать минимум 10 символов")
-      .max(255, "Challenge не должен превышать 255 символов")
-      .regex(/^[a-zA-Z0-9_-]+$/, {
-        message:
-          "Challenge может содержать только буквы, цифры, дефисы и подчеркивания",
-      })
-      .nullable()
-      .optional(),
   })
-  .refine(
-    data =>
-      data.email || data.phone || data.roleId || data.challenge !== undefined,
-    {
-      message: "Должно быть указано хотя бы одно поле для обновления",
-      path: ["general"],
-    },
-  );
+  .refine(data => data.email || data.phone || data.roleId, {
+    message: "Должно быть указано хотя бы одно поле для обновления",
+    path: ["general"],
+  });

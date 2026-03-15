@@ -9,7 +9,6 @@ export class UserDto extends BaseDto {
   email?: string;
   emailVerified?: boolean;
   phone?: string;
-  challenge?: string | null;
   profile?: ProfileDto;
   role: IRoleDto;
   createdAt: Date;
@@ -23,7 +22,6 @@ export class UserDto extends BaseDto {
     this.emailVerified = entity.emailVerified;
     this.phone = entity.phone;
     this.profile = entity.profile && ProfileDto.fromEntity(entity.profile);
-    this.challenge = entity.challenge;
     this.role = entity.role?.toDTO();
     this.createdAt = entity.createdAt;
     this.updatedAt = entity.updatedAt;

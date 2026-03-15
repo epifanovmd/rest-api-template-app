@@ -1,0 +1,259 @@
+import { inject } from "inversify";
+
+import { EventBus, Injectable, logger } from "../../core";
+import { WgCliService } from "../wg-cli/wg-cli.service";
+import { WgConfigService } from "../wg-cli/wg-config.service";
+import { WgKeyService } from "../wg-cli/wg-key.service";
+import { WgServerRepository } from "../wg-server/wg-server.repository";
+import { WgServerService } from "../wg-server/wg-server.service";
+import { EWgServerStatus } from "../wg-server/wg-server.types";
+import { IWgPeerCreateRequestDto, IWgPeerUpdateRequestDto } from "./dto";
+import { WgPeerCreatedEvent, WgPeerDeletedEvent } from "./events";
+import { WgPeer } from "./wg-peer.entity";
+import { WgIpAllocatorService } from "./wg-ip-allocator.service";
+import { WgPeerRepository } from "./wg-peer.repository";
+
+@Injectable()
+export class WgPeerService {
+  constructor(
+    @inject(WgPeerRepository) private readonly peerRepo: WgPeerRepository,
+    @inject(WgServerRepository) private readonly serverRepo: WgServerRepository,
+    @inject(WgServerService) private readonly serverService: WgServerService,
+    @inject(WgCliService) private readonly cli: WgCliService,
+    @inject(WgKeyService) private readonly keyService: WgKeyService,
+    @inject(WgConfigService) private readonly configService: WgConfigService,
+    @inject(WgIpAllocatorService)
+    private readonly ipAllocator: WgIpAllocatorService,
+    @inject(EventBus) private readonly eventBus: EventBus,
+  ) {}
+
+  async getByServer(serverId: string): Promise<WgPeer[]> {
+    return this.peerRepo.findByServer(serverId);
+  }
+
+  async getByUser(userId: string): Promise<WgPeer[]> {
+    return this.peerRepo.findByUser(userId);
+  }
+
+  async getById(id: string): Promise<WgPeer> {
+    const peer = await this.peerRepo.findOne({ where: { id } });
+
+    if (!peer)
+      throw Object.assign(new Error("Peer not found"), { status: 404 });
+
+    return peer;
+  }
+
+  async create(
+    serverId: string,
+    dto: IWgPeerCreateRequestDto,
+  ): Promise<WgPeer> {
+    const server = await this.serverRepo.findOne({ where: { id: serverId } });
+
+    if (!server)
+      throw Object.assign(new Error("Server not found"), { status: 404 });
+
+    const { privateKey, publicKey } = await this.keyService.generateKeyPair();
+    const presharedKey = dto.presharedKey
+      ? await this.keyService.generatePresharedKey()
+      : null;
+
+    // Auto-allocate IP if not explicitly provided
+    const allowedIPs =
+      dto.allowedIPs ??
+      (await this.ipAllocator.allocate(server.address, serverId));
+
+    const peer = this.peerRepo.create({
+      serverId,
+      userId: dto.userId ?? null,
+      name: dto.name,
+      publicKey,
+      privateKey,
+      presharedKey,
+      allowedIPs,
+      endpoint: dto.endpoint ?? null,
+      persistentKeepalive: dto.persistentKeepalive ?? null,
+      dns: dto.dns ?? null,
+      mtu: dto.mtu ?? null,
+      clientAllowedIPs: dto.clientAllowedIPs ?? "0.0.0.0/0, ::/0",
+      description: dto.description ?? null,
+      expiresAt: dto.expiresAt ? new Date(dto.expiresAt) : null,
+      enabled: dto.enabled ?? true,
+    });
+
+    const saved = await this.peerRepo.save(peer);
+
+    // Apply to live interface if it's up
+    if (server.status === EWgServerStatus.UP) {
+      try {
+        await this.cli.addPeer(
+          server.interface,
+          publicKey,
+          allowedIPs,
+          presharedKey ?? undefined,
+          dto.persistentKeepalive,
+        );
+      } catch (err) {
+        logger.warn({ err }, "[WgPeer] Could not add peer to live interface");
+      }
+    }
+
+    // Rewrite server config
+    await this.rewriteServerConfig(serverId);
+
+    this.eventBus.emit(new WgPeerCreatedEvent(saved.id, serverId, publicKey));
+
+    return saved;
+  }
+
+  async update(id: string, dto: IWgPeerUpdateRequestDto): Promise<WgPeer> {
+    const peer = await this.getById(id);
+    const oldEnabled = peer.enabled;
+
+    Object.assign(peer, {
+      ...dto,
+      expiresAt: dto.expiresAt
+        ? new Date(dto.expiresAt)
+        : dto.expiresAt === null
+        ? null
+        : peer.expiresAt,
+    });
+
+    const saved = await this.peerRepo.save(peer);
+
+    // Handle enable/disable on live interface
+    if (dto.enabled !== undefined && dto.enabled !== oldEnabled) {
+      const server = await this.serverRepo.findOne({
+        where: { id: peer.serverId },
+      });
+
+      if (server && server.status === EWgServerStatus.UP) {
+        if (!dto.enabled) {
+          await this.cli
+            .removePeer(server.interface, peer.publicKey)
+            .catch(() => {});
+        } else {
+          await this.cli
+            .addPeer(
+              server.interface,
+              peer.publicKey,
+              peer.allowedIPs,
+              peer.presharedKey ?? undefined,
+              peer.persistentKeepalive ?? undefined,
+            )
+            .catch(() => {});
+        }
+      }
+    }
+
+    await this.rewriteServerConfig(peer.serverId);
+
+    return saved;
+  }
+
+  async delete(id: string): Promise<boolean> {
+    const peer = await this.getById(id);
+    const server = await this.serverRepo.findOne({
+      where: { id: peer.serverId },
+    });
+
+    if (server && server.status === EWgServerStatus.UP) {
+      await this.cli
+        .removePeer(server.interface, peer.publicKey)
+        .catch(() => {});
+    }
+
+    await this.peerRepo.delete(id);
+    await this.rewriteServerConfig(peer.serverId);
+
+    this.eventBus.emit(
+      new WgPeerDeletedEvent(id, peer.serverId, peer.publicKey),
+    );
+
+    return true;
+  }
+
+  async enable(id: string): Promise<WgPeer> {
+    return this.update(id, { enabled: true });
+  }
+
+  async disable(id: string): Promise<WgPeer> {
+    return this.update(id, { enabled: false });
+  }
+
+  async assignToUser(id: string, userId: string): Promise<WgPeer> {
+    return this.update(id, { userId });
+  }
+
+  async revokeFromUser(id: string): Promise<WgPeer> {
+    return this.update(id, { userId: null });
+  }
+
+  /**
+   * Build the client .conf file text for this peer
+   */
+  async buildClientConfig(id: string): Promise<string> {
+    const peer = await this.peerRepo.findOne({
+      where: { id },
+      relations: ["server"],
+    });
+
+    if (!peer)
+      throw Object.assign(new Error("Peer not found"), { status: 404 });
+
+    const server = peer.server;
+    const endpoint =
+      server.endpoint ?? `${server.interface}:${server.listenPort}`;
+
+    return this.configService.buildClientConfig({
+      privateKey: peer.privateKey,
+      address: peer.allowedIPs,
+      dns: peer.dns ?? server.dns ?? undefined,
+      mtu: peer.mtu ?? server.mtu ?? undefined,
+      serverPublicKey: server.publicKey,
+      presharedKey: peer.presharedKey ?? undefined,
+      serverEndpoint: endpoint,
+      allowedIPs: peer.clientAllowedIPs,
+      persistentKeepalive: peer.persistentKeepalive ?? undefined,
+    });
+  }
+
+  /**
+   * Build QR code PNG buffer for this peer's client config
+   */
+  async buildQrCode(id: string): Promise<Buffer> {
+    const configText = await this.buildClientConfig(id);
+
+    return this.configService.buildQrCode(configText);
+  }
+
+  /**
+   * Disable all peers that have passed their expiresAt date
+   */
+  async disableExpiredPeers(): Promise<number> {
+    const expired = await this.peerRepo.findExpired();
+
+    let count = 0;
+
+    for (const peer of expired) {
+      await this.disable(peer.id).catch(() => {});
+      count += 1;
+    }
+
+    if (count > 0) {
+      logger.info({ count }, "[WgPeer] Disabled expired peers");
+    }
+
+    return count;
+  }
+
+  private async rewriteServerConfig(serverId: string): Promise<void> {
+    const server = await this.serverRepo.findOne({ where: { id: serverId } });
+
+    if (!server) return;
+
+    const peers = await this.peerRepo.findEnabledByServer(serverId);
+
+    await this.serverService.writeConfig(server, peers);
+  }
+}

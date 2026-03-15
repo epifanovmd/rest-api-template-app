@@ -11,7 +11,6 @@ import {
 } from "./auth.dto";
 import { AuthService } from "./auth.service";
 import {
-  AuthenticateSchema,
   RefreshSchema,
   RequestResetPasswordSchema,
   ResetPasswordSchema,
@@ -63,23 +62,6 @@ export class AuthController extends Controller {
   @ValidateBody(SignInSchema)
   signIn(@Body() body: ISignInRequestDto): Promise<IUserWithTokensDto> {
     return this._authService.signIn(body);
-  }
-
-  /**
-   * Авторизация пользователя через OAuth code GitHub
-   * @summary Вход в систему
-   * @description Проверяет учетные данные и возвращает токены доступа.
-   * @param body Данные для входа
-   * @example body {
-   *   "code": "30d2d5e372a3f828254d"
-   * }
-   * @response 200 - Успешный вход
-   * @response 401 - Не найден пользователь
-   */
-  @Post("/authenticate")
-  @ValidateBody(AuthenticateSchema)
-  authenticate(@Body() body: { code: string }): Promise<IUserWithTokensDto> {
-    return this._authService.authenticate(body);
   }
 
   /**

@@ -2,49 +2,51 @@ import "reflect-metadata";
 
 import { CoreModule, Module } from "./core";
 import { AuthModule } from "./modules/auth";
-import { BiometricModule } from "./modules/biometric";
-import { DialogModule } from "./modules/dialog";
-import { FcmTokenModule } from "./modules/fcm-token";
-import { FileModule } from "./modules/file";
 import { MailerModule } from "./modules/mailer";
 import { OtpModule } from "./modules/otp";
-import { PasskeysModule } from "./modules/passkeys";
 import { ProfileModule } from "./modules/profile";
 import { ResetPasswordTokensModule } from "./modules/reset-password-tokens";
 import { SocketModule } from "./modules/socket";
 import { UserModule } from "./modules/user";
-import { UtilsModule } from "./modules/utils";
+import { WgCliModule } from "./modules/wg-cli";
+import { WgPeerModule } from "./modules/wg-peer";
+import { WgServerModule } from "./modules/wg-server";
+import { WgStatisticsModule } from "./modules/wg-statistics";
 
 /**
- * Корневой модуль приложения.
+ * Root application module — WireGuard VPN Management API.
  *
- * Порядок imports имеет значение только для bootstrappers:
- * - SocketModule последний — Socket-сервер стартует после всех бизнес-модулей.
- *
- * Все провайдеры регистрируются в глобальном IoC контейнере.
+ * Module order matters for bootstrappers:
+ *   - WgStatisticsModule must come before SocketModule so that
+ *     SOCKET_EVENT_LISTENER and SOCKET_HANDLER bindings are registered first.
+ *   - SocketModule always last — SocketBootstrap starts the server.
  */
 @Module({
   imports: [
-    // Инфраструктура
+    // Infrastructure
     CoreModule,
 
-    // Служебные модули (нет HTTP контроллеров)
+    // Utility modules
     MailerModule,
-    UtilsModule,
     OtpModule,
     ResetPasswordTokensModule,
 
-    // Доменные модули (с HTTP контроллерами)
+    // User / Auth modules
     UserModule,
     ProfileModule,
-    FileModule,
     AuthModule,
-    BiometricModule,
-    PasskeysModule,
-    FcmTokenModule,
-    DialogModule,
 
-    // Socket — последним, чтобы все ISocketHandler / ISocketEventListener уже зарегистрированы
+    // WireGuard shared CLI services (no HTTP)
+    WgCliModule,
+
+    // WireGuard domain modules
+    WgServerModule,
+    WgPeerModule,
+
+    // WireGuard statistics + socket events (must register before SocketModule)
+    WgStatisticsModule,
+
+    // Socket — last, so all ISocketHandler / ISocketEventListener are bound
     SocketModule,
   ],
 })

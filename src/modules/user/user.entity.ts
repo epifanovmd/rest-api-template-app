@@ -11,10 +11,7 @@ import {
   UpdateDateColumn,
 } from "typeorm";
 
-import { Biometric } from "../biometric/biometric.entity";
-import { FcmToken } from "../fcm-token/fcm-token.entity";
 import { Otp } from "../otp/otp.entity";
-import { Passkey } from "../passkeys/passkey.entity";
 import { Profile } from "../profile/profile.entity";
 import { ResetPasswordTokens } from "../reset-password-tokens/reset-password-tokens.entity";
 import { Role } from "../role/role.entity";
@@ -37,9 +34,6 @@ export class User {
   @Column({ name: "password_hash", type: "varchar", length: 100 })
   passwordHash: string;
 
-  @Column({ type: "varchar", nullable: true })
-  challenge: string | null;
-
   @Column({ name: "role_id", type: "uuid", nullable: true })
   roleId: string;
 
@@ -60,18 +54,9 @@ export class User {
   })
   profile: Profile;
 
-  @OneToMany(() => Passkey, passkey => passkey.user, { cascade: true })
-  passkeys: Passkey[];
-
-  @OneToMany(() => Biometric, biometric => biometric.user, { cascade: true })
-  biometrics: Biometric[];
-
   @OneToMany(() => Otp, otp => otp.user, { cascade: true })
   otps: Otp[];
 
   @OneToMany(() => ResetPasswordTokens, token => token.user, { cascade: true })
   resetPasswordTokens: ResetPasswordTokens[];
-
-  @OneToMany(() => FcmToken, token => token.user, { cascade: true })
-  fcmTokens: FcmToken[];
 }

@@ -1,0 +1,33 @@
+import { Module } from "../../core";
+import { SOCKET_EVENT_LISTENER } from "../socket/socket-event-listener.interface";
+import { SOCKET_HANDLER } from "../socket/socket-handler.interface";
+import { WgPeerRepository } from "../wg-peer/wg-peer.repository";
+import { WgServerRepository } from "../wg-server/wg-server.repository";
+import { WgServerStatusListener } from "./wg-server-status.listener";
+import { WgSocketHandler } from "./wg-socket.handler";
+import { WgStatisticsBootstrap } from "./wg-statistics.bootstrap";
+import { WgStatisticsController } from "./wg-statistics.controller";
+import {
+  WgSpeedSampleRepository,
+  WgTrafficStatRepository,
+} from "./wg-statistics.repository";
+import { WgStatisticsService } from "./wg-statistics.service";
+import { WgStatsEventListener } from "./wg-stats-event.listener";
+
+@Module({
+  providers: [
+    WgTrafficStatRepository,
+    WgSpeedSampleRepository,
+    WgStatisticsService,
+    WgStatisticsController,
+
+    // Socket event listeners
+    { provide: SOCKET_EVENT_LISTENER, useClass: WgStatsEventListener },
+    { provide: SOCKET_EVENT_LISTENER, useClass: WgServerStatusListener },
+
+    // Socket handlers (client subscriptions)
+    { provide: SOCKET_HANDLER, useClass: WgSocketHandler },
+  ],
+  bootstrappers: [WgStatisticsBootstrap],
+})
+export class WgStatisticsModule {}

@@ -212,9 +212,7 @@ export class UserService {
 
   static get relations(): FindOptionsRelations<User> {
     return {
-      profile: {
-        avatar: true,
-      },
+      profile: true,
       role: {
         permissions: true,
       },
