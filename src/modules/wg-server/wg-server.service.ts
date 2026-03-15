@@ -2,9 +2,7 @@ import { inject } from "inversify";
 
 import { config } from "../../config";
 import { EventBus, Injectable, logger } from "../../core";
-import { WgCliService } from "../wg-cli/wg-cli.service";
-import { WgConfigService } from "../wg-cli/wg-config.service";
-import { WgKeyService } from "../wg-cli/wg-key.service";
+import { WgCliService, WgConfigService, WgKeyService } from "../wg-cli";
 import {
   IWgServerCreateRequestDto,
   IWgServerStatusDto,
@@ -37,15 +35,14 @@ export class WgServerService {
   async getById(id: string): Promise<WgServer> {
     const server = await this.serverRepo.findOne({ where: { id } });
 
-    if (!server) throw Object.assign(new Error("Server not found"), { status: 404 });
+    if (!server)
+      throw Object.assign(new Error("Server not found"), { status: 404 });
 
     return server;
   }
 
   async create(dto: IWgServerCreateRequestDto): Promise<WgServer> {
-    // Generate keys
     const { privateKey, publicKey } = await this.keyService.generateKeyPair();
-
     const { defaults } = config.wireguard;
 
     const server = this.serverRepo.create({
@@ -54,6 +51,7 @@ export class WgServerService {
       postUp: defaults.postUp || null,
       postDown: defaults.postDown || null,
       ...dto,
+      userId: dto.userId ?? null,
       privateKey,
       publicKey,
       status: EWgServerStatus.DOWN,
@@ -61,8 +59,13 @@ export class WgServerService {
 
     const saved = await this.serverRepo.save(server);
 
-    // Write config file
-    await this.writeConfig(saved);
+    try {
+      await this.writeConfig(saved);
+    } catch (err) {
+      await this.serverRepo.delete(saved.id).catch(() => {});
+      throw err;
+    }
+
     logger.info({ serverId: saved.id }, "[WgServer] Server created");
 
     return saved;
@@ -70,12 +73,17 @@ export class WgServerService {
 
   async update(id: string, dto: IWgServerUpdateRequestDto): Promise<WgServer> {
     const server = await this.getById(id);
+    const snapshot = { ...server };
 
     Object.assign(server, dto);
     const saved = await this.serverRepo.save(server);
 
-    // Re-write config file
-    await this.writeConfig(saved);
+    try {
+      await this.writeConfig(saved);
+    } catch (err) {
+      await this.serverRepo.save(snapshot).catch(() => {});
+      throw err;
+    }
 
     return saved;
   }
@@ -83,13 +91,19 @@ export class WgServerService {
   async delete(id: string): Promise<boolean> {
     const server = await this.getById(id);
 
-    // Stop if running
     if (server.status === EWgServerStatus.UP) {
       await this.stop(id).catch(() => {});
     }
 
-    await this.cli.deleteServerConfig(server.interface);
     await this.serverRepo.delete(id);
+
+    try {
+      await this.cli.deleteServerConfig(server.interface);
+    } catch (err) {
+      await this.serverRepo.save(server).catch(() => {});
+      throw err;
+    }
+
     logger.info({ serverId: id }, "[WgServer] Server deleted");
 
     return true;
@@ -184,14 +198,20 @@ export class WgServerService {
    * Write the server config file including all active peers.
    * Called after any server or peer modification.
    */
-  async writeConfig(server: WgServer, peers: Array<{
-    publicKey: string;
-    presharedKey?: string | null;
-    allowedIPs: string;
-    persistentKeepalive?: number | null;
-    endpoint?: string | null;
-    enabled: boolean;
-  }> = []): Promise<void> {
+  async writeConfig(
+    server: WgServer,
+    peers: Array<{
+      id: string;
+      name: string;
+      userId?: string | null;
+      publicKey: string;
+      presharedKey?: string | null;
+      allowedIPs: string;
+      persistentKeepalive?: number | null;
+      endpoint?: string | null;
+      enabled: boolean;
+    }> = [],
+  ): Promise<void> {
     const content = this.configService.buildServerConfig({
       privateKey: server.privateKey,
       address: server.address,
@@ -210,6 +230,7 @@ export class WgServerService {
           allowedIPs: p.allowedIPs,
           persistentKeepalive: p.persistentKeepalive ?? undefined,
           endpoint: p.endpoint ?? undefined,
+          meta: { id: p.id, name: p.name, userId: p.userId },
         })),
     });
 

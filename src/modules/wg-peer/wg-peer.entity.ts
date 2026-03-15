@@ -16,6 +16,7 @@ import { WgServer } from "../wg-server/wg-server.entity";
 @Index("IDX_WG_PEER_SERVER_PUBLIC_KEY", ["serverId", "publicKey"], {
   unique: true,
 })
+@Index("IDX_WG_PEER_SERVER_NAME", ["serverId", "name"], { unique: true })
 export class WgPeer {
   @PrimaryGeneratedColumn("uuid")
   id: string;

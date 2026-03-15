@@ -95,9 +95,11 @@ export class WgPeerController extends Controller {
   @ValidateBody(WgPeerCreateSchema)
   async createPeer(
     serverId: string,
+    @Request() req: KoaRequest,
     @Body() body: IWgPeerCreateRequestDto,
   ): Promise<WgPeerDto> {
-    const peer = await this.service.create(serverId, body);
+    const { userId } = getContextUser(req);
+    const peer = await this.service.create(serverId, body, userId);
 
     return WgPeerDto.fromEntity(peer);
   }

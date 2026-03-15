@@ -6,7 +6,6 @@ export const WgPeerCreateSchema = z.object({
   name: z.string().min(1).max(100),
   /** Auto-allocated from server subnet if omitted */
   allowedIPs: z.string().regex(cidrRegex, "Must be a valid CIDR address").optional(),
-  userId: z.string().uuid().optional(),
   presharedKey: z.boolean().optional(),
   persistentKeepalive: z.number().int().min(1).max(65535).optional(),
   dns: z.string().optional(),

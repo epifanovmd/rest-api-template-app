@@ -21,6 +21,12 @@ export interface PeerConfigSection {
   allowedIPs: string;
   persistentKeepalive?: number;
   endpoint?: string;
+  /** Meta info written as comments above the [Peer] block */
+  meta?: {
+    id: string;
+    name: string;
+    userId?: string | null;
+  };
 }
 
 export interface ClientConfigOptions {
@@ -61,7 +67,13 @@ export class WgConfigService {
     if (opts.postDown) lines.push(`PostDown = ${opts.postDown}`);
 
     for (const peer of opts.peers) {
-      lines.push("", "[Peer]", `PublicKey = ${peer.publicKey}`);
+      lines.push("");
+      if (peer.meta) {
+        lines.push(`# Name: ${peer.meta.name}`);
+        lines.push(`# ID: ${peer.meta.id}`);
+        if (peer.meta.userId) lines.push(`# UserID: ${peer.meta.userId}`);
+      }
+      lines.push("[Peer]", `PublicKey = ${peer.publicKey}`);
       if (peer.presharedKey) lines.push(`PresharedKey = ${peer.presharedKey}`);
       lines.push(`AllowedIPs = ${peer.allowedIPs}`);
       if (peer.endpoint) lines.push(`Endpoint = ${peer.endpoint}`);

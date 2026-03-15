@@ -6,12 +6,14 @@ import {
   Get,
   Patch,
   Post,
+  Request,
   Route,
   Security,
   Tags,
 } from "tsoa";
 
-import { Injectable, ValidateBody } from "../../core";
+import { getContextUser, Injectable, ValidateBody } from "../../core";
+import { KoaRequest } from "../../types/koa";
 import {
   IWgServerCreateRequestDto,
   IWgServerListDto,
@@ -66,9 +68,11 @@ export class WgServerController extends Controller {
   @Post("/")
   @ValidateBody(WgServerCreateSchema)
   async createServer(
+    @Request() req: KoaRequest,
     @Body() body: IWgServerCreateRequestDto,
   ): Promise<WgServerDto> {
-    const server = await this.service.create(body);
+    const { userId } = getContextUser(req);
+    const server = await this.service.create({ ...body, userId });
 
     return WgServerDto.fromEntity(server);
   }

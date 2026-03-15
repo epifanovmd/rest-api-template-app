@@ -47,11 +47,23 @@ export class WgPeerService {
   async create(
     serverId: string,
     dto: IWgPeerCreateRequestDto,
+    userId: string,
   ): Promise<WgPeer> {
     const server = await this.serverRepo.findOne({ where: { id: serverId } });
 
     if (!server)
       throw Object.assign(new Error("Server not found"), { status: 404 });
+
+    const nameConflict = await this.peerRepo.findOne({
+      where: { serverId, name: dto.name },
+    });
+
+    if (nameConflict) {
+      throw Object.assign(
+        new Error(`Peer with name "${dto.name}" already exists on this server`),
+        { status: 409 },
+      );
+    }
 
     const { privateKey, publicKey } = await this.keyService.generateKeyPair();
     const presharedKey = dto.presharedKey
@@ -65,7 +77,7 @@ export class WgPeerService {
 
     const peer = this.peerRepo.create({
       serverId,
-      userId: dto.userId ?? null,
+      userId,
       name: dto.name,
       publicKey,
       privateKey,
@@ -83,6 +95,13 @@ export class WgPeerService {
 
     const saved = await this.peerRepo.save(peer);
 
+    try {
+      await this.rewriteServerConfig(serverId);
+    } catch (err) {
+      await this.peerRepo.delete(saved.id).catch(() => {});
+      throw err;
+    }
+
     // Apply to live interface if it's up
     if (server.status === EWgServerStatus.UP) {
       try {
@@ -98,9 +117,6 @@ export class WgPeerService {
       }
     }
 
-    // Rewrite server config
-    await this.rewriteServerConfig(serverId);
-
     this.eventBus.emit(new WgPeerCreatedEvent(saved.id, serverId, publicKey));
 
     return saved;
@@ -109,6 +125,19 @@ export class WgPeerService {
   async update(id: string, dto: IWgPeerUpdateRequestDto): Promise<WgPeer> {
     const peer = await this.getById(id);
     const oldEnabled = peer.enabled;
+
+    if (dto.name && dto.name !== peer.name) {
+      const nameConflict = await this.peerRepo.findOne({
+        where: { serverId: peer.serverId, name: dto.name },
+      });
+
+      if (nameConflict) {
+        throw Object.assign(
+          new Error(`Peer with name "${dto.name}" already exists on this server`),
+          { status: 409 },
+        );
+      }
+    }
 
     let presharedKey = peer.presharedKey;
 
@@ -130,7 +159,15 @@ export class WgPeerService {
         : peer.expiresAt,
     });
 
+    const snapshot = { ...peer };
     const saved = await this.peerRepo.save(peer);
+
+    try {
+      await this.rewriteServerConfig(peer.serverId);
+    } catch (err) {
+      await this.peerRepo.save(snapshot).catch(() => {});
+      throw err;
+    }
 
     // Handle enable/disable or presharedKey change on live interface
     const pskChanged = dto.presharedKey !== undefined;
@@ -177,7 +214,13 @@ export class WgPeerService {
     }
 
     await this.peerRepo.delete(id);
-    await this.rewriteServerConfig(peer.serverId);
+
+    try {
+      await this.rewriteServerConfig(peer.serverId);
+    } catch (err) {
+      await this.peerRepo.save(peer).catch(() => {});
+      throw err;
+    }
 
     this.eventBus.emit(
       new WgPeerDeletedEvent(id, peer.serverId, peer.publicKey),

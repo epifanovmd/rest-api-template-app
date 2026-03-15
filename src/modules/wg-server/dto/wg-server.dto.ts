@@ -2,6 +2,7 @@ import { WgServer } from "../wg-server.entity";
 import { EWgServerStatus } from "../wg-server.types";
 
 export interface IWgServerCreateRequestDto {
+  userId?: string | null;
   name: string;
   interface: string;
   listenPort: number;
@@ -44,6 +45,7 @@ export interface IWgServerStatusDto {
 
 export class WgServerDto {
   id: string;
+  userId: string | null;
   name: string;
   interface: string;
   listenPort: number;
@@ -66,6 +68,7 @@ export class WgServerDto {
     const dto = new WgServerDto();
 
     dto.id = e.id;
+    dto.userId = e.userId;
     dto.name = e.name;
     dto.interface = e.interface;
     dto.listenPort = e.listenPort;

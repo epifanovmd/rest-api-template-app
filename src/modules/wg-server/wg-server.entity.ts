@@ -14,6 +14,10 @@ export class WgServer {
   @PrimaryGeneratedColumn("uuid")
   id: string;
 
+  /** User who created this server */
+  @Column({ name: "user_id", type: "uuid", nullable: true })
+  userId: string | null;
+
   /** Human-readable name, e.g. "Main Server" */
   @Column({ type: "varchar", length: 100 })
   name: string;
