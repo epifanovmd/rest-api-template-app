@@ -29,7 +29,7 @@ COPY package*.json yarn.lock ./
 COPY ./patches ./patches
 
 RUN apk update && \
-    apk add --no-cache iptables iproute2 wireguard-tools
+    apk add --no-cache iptables iproute2 wireguard-tools curl
 
 USER root
 

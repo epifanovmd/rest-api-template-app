@@ -22,6 +22,9 @@ import { WgTrafficStat } from "./wg-traffic-stat.entity";
 interface PeerPrevSnapshot {
   rxBytes: number;
   txBytes: number;
+  /** Cumulative offset accumulated from WireGuard counter resets */
+  rxOffset: number;
+  txOffset: number;
   timestamp: number;
 }
 
@@ -29,6 +32,13 @@ interface PeerPrevSnapshot {
 export class WgStatisticsService {
   /** In-memory snapshots for speed calculation */
   private prevSnapshots = new Map<string, PeerPrevSnapshot>();
+
+  /**
+   * Last adjusted bytes loaded from DB at startup.
+   * Used to compute the initial offset when prevSnapshots is empty
+   * (covers both app restart + WG restart scenarios).
+   */
+  private lastKnownDb = new Map<string, { rxBytes: number; txBytes: number }>();
 
   /** ACTIVE_THRESHOLD: peer is active if last handshake < 3 min ago */
   private readonly ACTIVE_THRESHOLD_MS = 3 * 60 * 1000;
@@ -47,6 +57,33 @@ export class WgStatisticsService {
     @inject(EventBus)
     private readonly eventBus: EventBus,
   ) {}
+
+  /**
+   * Load last known adjusted bytes from DB for all peers.
+   * Called once at bootstrap before polling starts so that after any restart
+   * (app or WG) the offsets are correctly restored and adjusted bytes stay monotonic.
+   */
+  async loadLastKnownFromDb(): Promise<void> {
+    const allPeers = await this.peerRepo.find();
+
+    await Promise.all(
+      allPeers.map(async peer => {
+        const [latest] = await this.trafficRepo.getLatestByPeer(peer.id, 1);
+
+        if (latest) {
+          this.lastKnownDb.set(peer.id, {
+            rxBytes: latest.rxBytes,
+            txBytes: latest.txBytes,
+          });
+        }
+      }),
+    );
+
+    logger.info(
+      { peers: this.lastKnownDb.size },
+      "[WgStats] Loaded last known bytes from DB",
+    );
+  }
 
   /**
    * Main polling tick — called by WgStatisticsBootstrap on interval.
@@ -108,40 +145,63 @@ export class WgStatisticsService {
             wgPeer.lastHandshake !== null &&
             nowMs - wgPeer.lastHandshake.getTime() < this.ACTIVE_THRESHOLD_MS;
 
-          // Speed calculation
+          // Speed calculation with counter-reset detection (WG restart resets counters to 0)
           const snapshotKey = dbPeer.id;
           const prev = this.prevSnapshots.get(snapshotKey);
           let rxSpeed = 0;
           let txSpeed = 0;
 
+          // Compute offset to keep adjusted bytes monotonically increasing:
+          // - prev exists: detect WG restart by raw drop
+          // - prev absent (first tick after app start): restore offset from last DB value
+          const lastKnown = this.lastKnownDb.get(snapshotKey);
+          const rxOffset = prev
+            ? wgPeer.rxBytes < prev.rxBytes
+              ? prev.rxOffset + prev.rxBytes
+              : prev.rxOffset
+            : Math.max(0, (lastKnown?.rxBytes ?? 0) - wgPeer.rxBytes);
+          const txOffset = prev
+            ? wgPeer.txBytes < prev.txBytes
+              ? prev.txOffset + prev.txBytes
+              : prev.txOffset
+            : Math.max(0, (lastKnown?.txBytes ?? 0) - wgPeer.txBytes);
+
+          const adjustedRx = wgPeer.rxBytes + rxOffset;
+          const adjustedTx = wgPeer.txBytes + txOffset;
+
           if (prev) {
             const dtSec = (nowMs - prev.timestamp) / 1000;
 
             if (dtSec > 0) {
-              rxSpeed = Math.max(0, (wgPeer.rxBytes - prev.rxBytes) / dtSec);
-              txSpeed = Math.max(0, (wgPeer.txBytes - prev.txBytes) / dtSec);
+              const prevAdjustedRx = prev.rxBytes + prev.rxOffset;
+              const prevAdjustedTx = prev.txBytes + prev.txOffset;
+
+              rxSpeed = Math.max(0, (adjustedRx - prevAdjustedRx) / dtSec);
+              txSpeed = Math.max(0, (adjustedTx - prevAdjustedTx) / dtSec);
             }
           }
 
           this.prevSnapshots.set(snapshotKey, {
             rxBytes: wgPeer.rxBytes,
             txBytes: wgPeer.txBytes,
+            rxOffset,
+            txOffset,
             timestamp: nowMs,
           });
 
-          // Accumulate
-          srvRx += wgPeer.rxBytes;
-          srvTx += wgPeer.txBytes;
+          // Accumulate adjusted (reset-safe) values
+          srvRx += adjustedRx;
+          srvTx += adjustedTx;
           srvRxSpeed += rxSpeed;
           srvTxSpeed += txSpeed;
           if (isActive) srvActivePeers += 1;
 
-          // Persist traffic snapshot
+          // Persist traffic snapshot (adjusted bytes survive WG restarts)
           trafficInserts.push({
             peerId: dbPeer.id,
             serverId: server.id,
-            rxBytes: wgPeer.rxBytes,
-            txBytes: wgPeer.txBytes,
+            rxBytes: adjustedRx,
+            txBytes: adjustedTx,
             lastHandshake: wgPeer.lastHandshake,
             endpoint: wgPeer.endpoint,
             timestamp: now,
@@ -160,8 +220,8 @@ export class WgStatisticsService {
           peerStats.push({
             peerId: dbPeer.id,
             serverId: server.id,
-            rxBytes: wgPeer.rxBytes,
-            txBytes: wgPeer.txBytes,
+            rxBytes: adjustedRx,
+            txBytes: adjustedTx,
             rxSpeedBps: rxSpeed,
             txSpeedBps: txSpeed,
             lastHandshake: wgPeer.lastHandshake,

@@ -18,6 +18,8 @@ export class WgStatisticsBootstrap implements IBootstrap {
   ) {}
 
   async initialize(): Promise<void> {
+    await this.statsService.loadLastKnownFromDb();
+
     const { statsIntervalSec, speedSampleIntervalSec } = config.wireguard;
 
     // Speed poll every speedSampleIntervalSec — always emits to socket,
