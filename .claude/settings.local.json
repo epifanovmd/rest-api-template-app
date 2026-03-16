@@ -17,7 +17,8 @@
       "Bash(grep -E \"\\\\.\\(ts\\)$\")",
       "Read(//Users/epifanovmd/dev/wireguard-web/**)",
       "Bash(find /Users/epifanovmd/dev/rest-api-template-app/src -name *wireguard* -o -name *wg*)",
-      "Bash(find /Users/epifanovmd/dev/rest-api-template-app/src -name *stat* -o -name *traffic* -o -name *usage*)"
+      "Bash(find /Users/epifanovmd/dev/rest-api-template-app/src -name *stat* -o -name *traffic* -o -name *usage*)",
+      "Bash(/dev/null echo:*)"
     ]
   }
 }

@@ -12,6 +12,7 @@ import {
 } from "typeorm";
 
 import { Otp } from "../otp/otp.entity";
+import { Passkey } from "../passkeys/passkey.entity";
 import { Profile } from "../profile/profile.entity";
 import { ResetPasswordTokens } from "../reset-password-tokens/reset-password-tokens.entity";
 import { Role } from "../role/role.entity";
@@ -37,6 +38,9 @@ export class User {
   @Column({ name: "role_id", type: "uuid", nullable: true })
   roleId: string;
 
+  @Column({ type: "varchar", nullable: true })
+  challenge?: string;
+
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 
@@ -59,4 +63,7 @@ export class User {
 
   @OneToMany(() => ResetPasswordTokens, token => token.user, { cascade: true })
   resetPasswordTokens: ResetPasswordTokens[];
+
+  @OneToMany(() => Passkey, passkey => passkey.user, { cascade: true })
+  passkeys: Passkey[];
 }

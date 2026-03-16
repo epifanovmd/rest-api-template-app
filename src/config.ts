@@ -50,6 +50,12 @@ const configSchema = z.object({
         .string()
         .default("http://localhost:3000/reset-password?token={{token}}"),
     }),
+    webAuthn: z.object({
+      rpName: z.string().default("WireGuard VPN"),
+      rpHost: z.string().default("localhost"),
+      rpSchema: z.string().default("http"),
+      rpPort: z.string().default("3000"),
+    }),
   }),
 
   database: z.object({
@@ -120,6 +126,12 @@ export const config = configSchema.parse({
     resetPassword: {
       expireMinutes: env.RESET_PASS_TOKEN_EXPIRE_MINUTES,
       webUrl: env.WEB_URL_RESET_PASSWORD,
+    },
+    webAuthn: {
+      rpName: env.WEB_AUTHN_RP_NAME,
+      rpHost: env.WEB_AUTHN_RP_HOST,
+      rpSchema: env.WEB_AUTHN_RP_SCHEMA,
+      rpPort: env.WEB_AUTHN_RP_PORT,
     },
   },
   database: {

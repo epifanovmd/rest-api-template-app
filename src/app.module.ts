@@ -3,6 +3,7 @@ import "reflect-metadata";
 import { CoreModule, Module } from "./core";
 import { AuthModule } from "./modules/auth";
 import { MailerModule } from "./modules/mailer";
+import { PasskeysModule } from "./modules/passkeys";
 import { OtpModule } from "./modules/otp";
 import { ProfileModule } from "./modules/profile";
 import { ResetPasswordTokensModule } from "./modules/reset-password-tokens";
@@ -35,6 +36,7 @@ import { WgStatisticsModule } from "./modules/wg-statistics";
     UserModule,
     ProfileModule,
     AuthModule,
+    PasskeysModule,
 
     // WireGuard shared CLI services (no HTTP)
     WgCliModule,

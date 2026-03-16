@@ -104,6 +104,11 @@ export class UserService {
     return user;
   }
 
+  async setChallenge(id: string, challenge: string | null) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await this._userRepository.update(id, { challenge: challenge as any });
+  }
+
   async setPermissions(
     roleId: string,
     permissions: EPermissions[],

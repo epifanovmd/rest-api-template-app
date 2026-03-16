@@ -516,6 +516,464 @@
 				"type": "object",
 				"additionalProperties": false
 			},
+			"PublicKeyCredentialRpEntity": {
+				"properties": {
+					"name": {
+						"type": "string"
+					},
+					"id": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"name"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"PublicKeyCredentialUserEntityJSON": {
+				"description": "https://w3c.github.io/webauthn/#dictdef-publickeycredentialuserentityjson",
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"name": {
+						"type": "string"
+					},
+					"displayName": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"id",
+					"name",
+					"displayName"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"Base64URLString": {
+				"type": "string",
+				"description": "An attempt to communicate that this isn't just any string, but a Base64URL-encoded string"
+			},
+			"COSEAlgorithmIdentifier": {
+				"type": "number",
+				"format": "double"
+			},
+			"PublicKeyCredentialType": {
+				"type": "string",
+				"enum": [
+					"public-key"
+				],
+				"nullable": false
+			},
+			"PublicKeyCredentialParameters": {
+				"properties": {
+					"alg": {
+						"$ref": "#/components/schemas/COSEAlgorithmIdentifier"
+					},
+					"type": {
+						"$ref": "#/components/schemas/PublicKeyCredentialType"
+					}
+				},
+				"required": [
+					"alg",
+					"type"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"AuthenticatorTransportFuture": {
+				"type": "string",
+				"enum": [
+					"ble",
+					"cable",
+					"hybrid",
+					"internal",
+					"nfc",
+					"smart-card",
+					"usb"
+				],
+				"description": "A super class of TypeScript's `AuthenticatorTransport` that includes support for the latest\ntransports. Should eventually be replaced by TypeScript's when TypeScript gets updated to\nknow about it (sometime after 4.6.3)"
+			},
+			"PublicKeyCredentialDescriptorJSON": {
+				"description": "https://w3c.github.io/webauthn/#dictdef-publickeycredentialdescriptorjson",
+				"properties": {
+					"id": {
+						"$ref": "#/components/schemas/Base64URLString"
+					},
+					"type": {
+						"$ref": "#/components/schemas/PublicKeyCredentialType"
+					},
+					"transports": {
+						"items": {
+							"$ref": "#/components/schemas/AuthenticatorTransportFuture"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"id",
+					"type"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"AuthenticatorAttachment": {
+				"type": "string",
+				"enum": [
+					"cross-platform",
+					"platform"
+				]
+			},
+			"ResidentKeyRequirement": {
+				"type": "string",
+				"enum": [
+					"discouraged",
+					"preferred",
+					"required"
+				]
+			},
+			"UserVerificationRequirement": {
+				"type": "string",
+				"enum": [
+					"discouraged",
+					"preferred",
+					"required"
+				]
+			},
+			"AuthenticatorSelectionCriteria": {
+				"properties": {
+					"authenticatorAttachment": {
+						"$ref": "#/components/schemas/AuthenticatorAttachment"
+					},
+					"requireResidentKey": {
+						"type": "boolean"
+					},
+					"residentKey": {
+						"$ref": "#/components/schemas/ResidentKeyRequirement"
+					},
+					"userVerification": {
+						"$ref": "#/components/schemas/UserVerificationRequirement"
+					}
+				},
+				"type": "object",
+				"additionalProperties": false
+			},
+			"AttestationConveyancePreference": {
+				"type": "string",
+				"enum": [
+					"direct",
+					"enterprise",
+					"indirect",
+					"none"
+				]
+			},
+			"AuthenticationExtensionsClientInputs": {
+				"properties": {
+					"appid": {
+						"type": "string"
+					},
+					"credProps": {
+						"type": "boolean"
+					},
+					"hmacCreateSecret": {
+						"type": "boolean"
+					},
+					"minPinLength": {
+						"type": "boolean"
+					}
+				},
+				"type": "object",
+				"additionalProperties": false
+			},
+			"PublicKeyCredentialCreationOptionsJSON": {
+				"description": "A variant of PublicKeyCredentialCreationOptions suitable for JSON transmission to the browser to\n(eventually) get passed into navigator.credentials.create(...) in the browser.\n\nThis should eventually get replaced with official TypeScript DOM types when WebAuthn L3 types\neventually make it into the language:\n\nhttps://w3c.github.io/webauthn/#dictdef-publickeycredentialcreationoptionsjson",
+				"properties": {
+					"rp": {
+						"$ref": "#/components/schemas/PublicKeyCredentialRpEntity"
+					},
+					"user": {
+						"$ref": "#/components/schemas/PublicKeyCredentialUserEntityJSON"
+					},
+					"challenge": {
+						"$ref": "#/components/schemas/Base64URLString"
+					},
+					"pubKeyCredParams": {
+						"items": {
+							"$ref": "#/components/schemas/PublicKeyCredentialParameters"
+						},
+						"type": "array"
+					},
+					"timeout": {
+						"type": "number",
+						"format": "double"
+					},
+					"excludeCredentials": {
+						"items": {
+							"$ref": "#/components/schemas/PublicKeyCredentialDescriptorJSON"
+						},
+						"type": "array"
+					},
+					"authenticatorSelection": {
+						"$ref": "#/components/schemas/AuthenticatorSelectionCriteria"
+					},
+					"attestation": {
+						"$ref": "#/components/schemas/AttestationConveyancePreference"
+					},
+					"extensions": {
+						"$ref": "#/components/schemas/AuthenticationExtensionsClientInputs"
+					}
+				},
+				"required": [
+					"rp",
+					"user",
+					"challenge",
+					"pubKeyCredParams"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IVerifyRegistrationResponseDto": {
+				"properties": {
+					"verified": {
+						"type": "boolean"
+					}
+				},
+				"required": [
+					"verified"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"AuthenticatorAttestationResponseJSON": {
+				"description": "A slightly-modified AuthenticatorAttestationResponse to simplify working with ArrayBuffers that\nare Base64URL-encoded in the browser so that they can be sent as JSON to the server.\n\nhttps://w3c.github.io/webauthn/#dictdef-authenticatorattestationresponsejson",
+				"properties": {
+					"clientDataJSON": {
+						"$ref": "#/components/schemas/Base64URLString"
+					},
+					"attestationObject": {
+						"$ref": "#/components/schemas/Base64URLString"
+					},
+					"authenticatorData": {
+						"$ref": "#/components/schemas/Base64URLString"
+					},
+					"transports": {
+						"items": {
+							"$ref": "#/components/schemas/AuthenticatorTransportFuture"
+						},
+						"type": "array"
+					},
+					"publicKeyAlgorithm": {
+						"$ref": "#/components/schemas/COSEAlgorithmIdentifier"
+					},
+					"publicKey": {
+						"$ref": "#/components/schemas/Base64URLString"
+					}
+				},
+				"required": [
+					"clientDataJSON",
+					"attestationObject"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"CredentialPropertiesOutput": {
+				"properties": {
+					"rk": {
+						"type": "boolean"
+					}
+				},
+				"type": "object",
+				"additionalProperties": false
+			},
+			"AuthenticationExtensionsClientOutputs": {
+				"properties": {
+					"appid": {
+						"type": "boolean"
+					},
+					"credProps": {
+						"$ref": "#/components/schemas/CredentialPropertiesOutput"
+					},
+					"hmacCreateSecret": {
+						"type": "boolean"
+					}
+				},
+				"type": "object",
+				"additionalProperties": false
+			},
+			"RegistrationResponseJSON": {
+				"description": "A slightly-modified RegistrationCredential to simplify working with ArrayBuffers that\nare Base64URL-encoded in the browser so that they can be sent as JSON to the server.\n\nhttps://w3c.github.io/webauthn/#dictdef-registrationresponsejson",
+				"properties": {
+					"id": {
+						"$ref": "#/components/schemas/Base64URLString"
+					},
+					"rawId": {
+						"$ref": "#/components/schemas/Base64URLString"
+					},
+					"response": {
+						"$ref": "#/components/schemas/AuthenticatorAttestationResponseJSON"
+					},
+					"authenticatorAttachment": {
+						"$ref": "#/components/schemas/AuthenticatorAttachment"
+					},
+					"clientExtensionResults": {
+						"$ref": "#/components/schemas/AuthenticationExtensionsClientOutputs"
+					},
+					"type": {
+						"$ref": "#/components/schemas/PublicKeyCredentialType"
+					}
+				},
+				"required": [
+					"id",
+					"rawId",
+					"response",
+					"clientExtensionResults",
+					"type"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IVerifyRegistrationRequestDto": {
+				"properties": {
+					"data": {
+						"$ref": "#/components/schemas/RegistrationResponseJSON"
+					}
+				},
+				"required": [
+					"data"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"PublicKeyCredentialRequestOptionsJSON": {
+				"description": "A variant of PublicKeyCredentialRequestOptions suitable for JSON transmission to the browser to\n(eventually) get passed into navigator.credentials.get(...) in the browser.",
+				"properties": {
+					"challenge": {
+						"$ref": "#/components/schemas/Base64URLString"
+					},
+					"timeout": {
+						"type": "number",
+						"format": "double"
+					},
+					"rpId": {
+						"type": "string"
+					},
+					"allowCredentials": {
+						"items": {
+							"$ref": "#/components/schemas/PublicKeyCredentialDescriptorJSON"
+						},
+						"type": "array"
+					},
+					"userVerification": {
+						"$ref": "#/components/schemas/UserVerificationRequirement"
+					},
+					"extensions": {
+						"$ref": "#/components/schemas/AuthenticationExtensionsClientInputs"
+					}
+				},
+				"required": [
+					"challenge"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IGenerateAuthenticationOptionsRequestDto": {
+				"properties": {
+					"login": {
+						"type": "string",
+						"description": "Email или телефон пользователя"
+					}
+				},
+				"required": [
+					"login"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IVerifyAuthenticationResponseDto": {
+				"properties": {
+					"verified": {
+						"type": "boolean"
+					},
+					"tokens": {
+						"$ref": "#/components/schemas/ITokensDto"
+					}
+				},
+				"required": [
+					"verified"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"AuthenticatorAssertionResponseJSON": {
+				"description": "A slightly-modified AuthenticatorAssertionResponse to simplify working with ArrayBuffers that\nare Base64URL-encoded in the browser so that they can be sent as JSON to the server.\n\nhttps://w3c.github.io/webauthn/#dictdef-authenticatorassertionresponsejson",
+				"properties": {
+					"clientDataJSON": {
+						"$ref": "#/components/schemas/Base64URLString"
+					},
+					"authenticatorData": {
+						"$ref": "#/components/schemas/Base64URLString"
+					},
+					"signature": {
+						"$ref": "#/components/schemas/Base64URLString"
+					},
+					"userHandle": {
+						"$ref": "#/components/schemas/Base64URLString"
+					}
+				},
+				"required": [
+					"clientDataJSON",
+					"authenticatorData",
+					"signature"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"AuthenticationResponseJSON": {
+				"description": "A slightly-modified AuthenticationCredential to simplify working with ArrayBuffers that\nare Base64URL-encoded in the browser so that they can be sent as JSON to the server.\n\nhttps://w3c.github.io/webauthn/#dictdef-authenticationresponsejson",
+				"properties": {
+					"id": {
+						"$ref": "#/components/schemas/Base64URLString"
+					},
+					"rawId": {
+						"$ref": "#/components/schemas/Base64URLString"
+					},
+					"response": {
+						"$ref": "#/components/schemas/AuthenticatorAssertionResponseJSON"
+					},
+					"authenticatorAttachment": {
+						"$ref": "#/components/schemas/AuthenticatorAttachment"
+					},
+					"clientExtensionResults": {
+						"$ref": "#/components/schemas/AuthenticationExtensionsClientOutputs"
+					},
+					"type": {
+						"$ref": "#/components/schemas/PublicKeyCredentialType"
+					}
+				},
+				"required": [
+					"id",
+					"rawId",
+					"response",
+					"clientExtensionResults",
+					"type"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IVerifyAuthenticationRequestDto": {
+				"properties": {
+					"data": {
+						"$ref": "#/components/schemas/AuthenticationResponseJSON"
+					}
+				},
+				"required": [
+					"data"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
 			"WgPeerDto": {
 				"properties": {
 					"id": {
@@ -2096,6 +2554,140 @@
 							},
 							"example": {
 								"refreshToken": "old-refresh-token"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/passkeys/generate-registration-options": {
+			"post": {
+				"operationId": "GenerateRegistrationOptions",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/PublicKeyCredentialCreationOptionsJSON"
+								}
+							}
+						}
+					}
+				},
+				"description": "Генерирует параметры для регистрации нового passkey.\nТребует авторизации — passkey привязывается к текущему пользователю.",
+				"summary": "Параметры регистрации passkey",
+				"tags": [
+					"Passkeys"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": []
+			}
+		},
+		"/api/passkeys/verify-registration": {
+			"post": {
+				"operationId": "VerifyRegistration",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IVerifyRegistrationResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Верифицирует ответ устройства и сохраняет passkey для текущего пользователя.",
+				"summary": "Верификация регистрации passkey",
+				"tags": [
+					"Passkeys"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IVerifyRegistrationRequestDto"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/passkeys/generate-authentication-options": {
+			"post": {
+				"operationId": "GenerateAuthenticationOptions",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/PublicKeyCredentialRequestOptionsJSON"
+								}
+							}
+						}
+					}
+				},
+				"description": "Генерирует параметры для аутентификации по passkey.\nПринимает login (email или телефон) пользователя.",
+				"summary": "Параметры аутентификации passkey",
+				"tags": [
+					"Passkeys"
+				],
+				"security": [],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IGenerateAuthenticationOptionsRequestDto"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/passkeys/verify-authentication": {
+			"post": {
+				"operationId": "VerifyAuthentication",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IVerifyAuthenticationResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Верифицирует ответ устройства и возвращает токены при успехе.",
+				"summary": "Аутентификация по passkey",
+				"tags": [
+					"Passkeys"
+				],
+				"security": [],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IVerifyAuthenticationRequestDto"
 							}
 						}
 					}
