@@ -297,10 +297,7 @@ export class WgStatisticsService {
               new WgPeerActiveChangedEvent(
                 dbPeer.id,
                 server.id,
-                dbPeer.publicKey,
-                isActive,
                 wgPeer.lastHandshake,
-                wgPeer.endpoint,
               ),
             );
           }
@@ -313,6 +310,11 @@ export class WgStatisticsService {
               txBytes: adjustedTx,
               timestamp: nowMs,
             });
+
+            await this.peerRepo.update(
+              { id: dbPeer.id },
+              { lastHandshake: wgPeer.lastHandshake },
+            );
 
             // Persist traffic snapshot (adjusted bytes survive WG restarts)
             trafficInserts.push({

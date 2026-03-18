@@ -47,6 +47,7 @@ export class WgPeerDto {
   status: EWgServerStatus;
   expiresAt: Date | null;
   description: string | null;
+  lastHandshake: Date | null;
   createdAt: Date;
   updatedAt: Date;
 
@@ -69,6 +70,7 @@ export class WgPeerDto {
     dto.status = e.status;
     dto.expiresAt = e.expiresAt;
     dto.description = e.description;
+    dto.lastHandshake = e.lastHandshake ?? null;
     dto.createdAt = e.createdAt;
     dto.updatedAt = e.updatedAt;
 

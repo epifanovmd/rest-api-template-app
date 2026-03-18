@@ -1050,6 +1050,11 @@
 						"type": "string",
 						"nullable": true
 					},
+					"lastHandshake": {
+						"type": "string",
+						"format": "date-time",
+						"nullable": true
+					},
 					"createdAt": {
 						"type": "string",
 						"format": "date-time"
@@ -1076,6 +1081,7 @@
 					"status",
 					"expiresAt",
 					"description",
+					"lastHandshake",
 					"createdAt",
 					"updatedAt"
 				],
@@ -2981,9 +2987,9 @@
 				]
 			}
 		},
-		"/api/wg/peers/{id}/enable": {
+		"/api/wg/peers/{id}/start": {
 			"post": {
-				"operationId": "EnablePeer",
+				"operationId": "StartPeer",
 				"responses": {
 					"200": {
 						"description": "Ok",
@@ -2996,8 +3002,8 @@
 						}
 					}
 				},
-				"description": "Enable a peer (add to live WG interface).",
-				"summary": "Enable peer",
+				"description": "Start a peer (add to live WG interface, status → UP).\nRequires peer to be enabled and server to be running.",
+				"summary": "Start peer",
 				"tags": [
 					"WireGuard Peers"
 				],
@@ -3020,9 +3026,9 @@
 				]
 			}
 		},
-		"/api/wg/peers/{id}/disable": {
+		"/api/wg/peers/{id}/stop": {
 			"post": {
-				"operationId": "DisablePeer",
+				"operationId": "StopPeer",
 				"responses": {
 					"200": {
 						"description": "Ok",
@@ -3035,8 +3041,8 @@
 						}
 					}
 				},
-				"description": "Disable a peer (remove from live WG interface).",
-				"summary": "Disable peer",
+				"description": "Stop a peer (remove from live WG interface, status → DOWN).",
+				"summary": "Stop peer",
 				"tags": [
 					"WireGuard Peers"
 				],

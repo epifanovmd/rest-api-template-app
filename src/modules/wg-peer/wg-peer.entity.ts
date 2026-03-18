@@ -94,6 +94,10 @@ export class WgPeer {
   @Column({ type: "text", nullable: true })
   description: string | null;
 
+  /** Last WireGuard handshake time (updated by statistics service) */
+  @Column({ name: "last_handshake", type: "timestamptz", nullable: true })
+  lastHandshake: Date | null;
+
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 
