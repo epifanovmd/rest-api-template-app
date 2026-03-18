@@ -67,9 +67,6 @@ export class WgStatisticsService {
   private lastServerSocketEmit = new Map<string, DeadbandSnapshot>();
   private lastOverviewSocketEmit: DeadbandSnapshot | undefined;
 
-  /** Track previous isActive and status state per peer to detect changes */
-  private prevActiveState = new Map<string, boolean>();
-
   private needsUpdate(
     last: DeadbandSnapshot | undefined,
     rxSpeedBps: number,
@@ -198,22 +195,6 @@ export class WgStatisticsService {
             wgPeer.lastHandshake !== null &&
             nowMs - wgPeer.lastHandshake.getTime() < this.ACTIVE_THRESHOLD_MS;
 
-          // Emit peer status change event when isActive transitions
-          const prevActive = this.prevActiveState.get(dbPeer.id);
-
-          if (prevActive === undefined || prevActive !== isActive) {
-            this.prevActiveState.set(dbPeer.id, isActive);
-            this.eventBus.emit(
-              new WgPeerActiveChangedEvent(
-                dbPeer.id,
-                server.id,
-                dbPeer.publicKey,
-                isActive,
-                wgPeer.lastHandshake,
-                wgPeer.endpoint,
-              ),
-            );
-          }
 
           // Speed calculation with counter-reset detection (WG restart resets counters to 0)
           const snapshotKey = dbPeer.id;
@@ -311,6 +292,17 @@ export class WgStatisticsService {
               isActive,
               timestamp: now,
             });
+
+            this.eventBus.emit(
+              new WgPeerActiveChangedEvent(
+                dbPeer.id,
+                server.id,
+                dbPeer.publicKey,
+                isActive,
+                wgPeer.lastHandshake,
+                wgPeer.endpoint,
+              ),
+            );
           }
 
           if (saveToDb) {

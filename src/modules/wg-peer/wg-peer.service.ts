@@ -322,7 +322,7 @@ export class WgPeerService {
       throw Object.assign(new Error("Peer not found"), { status: 404 });
 
     const server = peer.server;
-    const endpoint = server.endpoint;
+    const endpoint = peer.endpoint ?? server.endpoint;
 
     if (!endpoint) {
       throw Object.assign(
