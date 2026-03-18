@@ -3,13 +3,13 @@ import { inject } from "inversify";
 import { EventBus, Injectable } from "../../core";
 import { SocketEmitterService } from "../socket/socket-emitter.service";
 import { ISocketEventListener } from "../socket/socket-event-listener.interface";
-import { WgServerStatusChangedEvent } from "../wg-server/events";
+import { WgPeerStatusChangedEvent } from "./events";
 
 /**
- * Broadcasts server status changes to Socket.IO room wg:server:{id}
+ * Broadcasts peer DB status changes to Socket.IO room wg:peer:{id}
  */
 @Injectable()
-export class WgServerStatusListener implements ISocketEventListener {
+export class WgPeerStatusListener implements ISocketEventListener {
   constructor(
     @inject(EventBus) private readonly eventBus: EventBus,
     @inject(SocketEmitterService)
@@ -18,15 +18,12 @@ export class WgServerStatusListener implements ISocketEventListener {
 
   register(): void {
     this.eventBus.on(
-      WgServerStatusChangedEvent,
-      (event: WgServerStatusChangedEvent) => {
-        this.emitter.toRoom(`wg:server:${event.serverId}`, "wg:server:status", {
+      WgPeerStatusChangedEvent,
+      (event: WgPeerStatusChangedEvent) => {
+        this.emitter.toRoom(`wg:peer:${event.peerId}`, "wg:peer:status", {
+          peerId: event.peerId,
           serverId: event.serverId,
-          interface: event.interfaceName,
           status: event.status,
-          listenPort: 0,
-          peerCount: 0,
-          activePeerCount: 0,
           timestamp: new Date(),
         });
       },

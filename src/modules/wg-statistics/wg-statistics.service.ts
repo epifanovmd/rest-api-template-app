@@ -8,6 +8,7 @@ import {
   WgServerStatsPayload,
 } from "../socket/socket.types";
 import { WgCliService } from "../wg-cli/wg-cli.service";
+import { WgPeerActiveChangedEvent } from "../wg-peer/events";
 import { WgPeerRepository } from "../wg-peer/wg-peer.repository";
 import { WgServerRepository } from "../wg-server/wg-server.repository";
 import { EWgServerStatus } from "../wg-server/wg-server.types";
@@ -66,6 +67,9 @@ export class WgStatisticsService {
   private lastServerSocketEmit = new Map<string, DeadbandSnapshot>();
   private lastOverviewSocketEmit: DeadbandSnapshot | undefined;
 
+  /** Track previous isActive and status state per peer to detect changes */
+  private prevActiveState = new Map<string, boolean>();
+
   private needsUpdate(
     last: DeadbandSnapshot | undefined,
     rxSpeedBps: number,
@@ -80,7 +84,8 @@ export class WgStatisticsService {
     if (!last) return true;
     if (nowMs - last.timestamp >= maxSilenceMs) return true;
     if (rxBytes !== last.rxBytes || txBytes !== last.txBytes) return true;
-    if (activePeers !== undefined && activePeers !== last.activePeers) return true;
+    if (activePeers !== undefined && activePeers !== last.activePeers)
+      return true;
 
     return (
       Math.abs(rxSpeedBps - last.rxSpeedBps) > deadbandBps ||
@@ -192,6 +197,23 @@ export class WgStatisticsService {
           const isActive =
             wgPeer.lastHandshake !== null &&
             nowMs - wgPeer.lastHandshake.getTime() < this.ACTIVE_THRESHOLD_MS;
+
+          // Emit peer status change event when isActive transitions
+          const prevActive = this.prevActiveState.get(dbPeer.id);
+
+          if (prevActive === undefined || prevActive !== isActive) {
+            this.prevActiveState.set(dbPeer.id, isActive);
+            this.eventBus.emit(
+              new WgPeerActiveChangedEvent(
+                dbPeer.id,
+                server.id,
+                dbPeer.publicKey,
+                isActive,
+                wgPeer.lastHandshake,
+                wgPeer.endpoint,
+              ),
+            );
+          }
 
           // Speed calculation with counter-reset detection (WG restart resets counters to 0)
           const snapshotKey = dbPeer.id;
@@ -384,7 +406,11 @@ export class WgStatisticsService {
         activePeers,
       );
 
-      if (!overviewChanged && serverStats.length === 0 && peerStats.length === 0) {
+      if (
+        !overviewChanged &&
+        serverStats.length === 0 &&
+        peerStats.length === 0
+      ) {
         return;
       }
 

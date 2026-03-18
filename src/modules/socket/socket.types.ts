@@ -8,10 +8,16 @@ import { AuthContext } from "../../types/koa";
 export interface WgServerStatusPayload {
   serverId: string;
   status: "up" | "down" | "error" | "unknown";
-  interface: string;
-  listenPort: number;
-  peerCount: number;
-  activePeerCount: number;
+  timestamp: Date;
+}
+
+export interface WgPeerActivePayload {
+  peerId: string;
+  serverId: string;
+  publicKey: string;
+  isActive: boolean;
+  lastHandshake: Date | null;
+  endpoint: string | null;
   timestamp: Date;
 }
 
@@ -30,10 +36,7 @@ export interface WgServerStatsPayload {
 export interface WgPeerStatusPayload {
   peerId: string;
   serverId: string;
-  publicKey: string;
-  isActive: boolean;
-  lastHandshake: Date | null;
-  endpoint: string | null;
+  status: "up" | "down" | "error" | "unknown";
   timestamp: Date;
 }
 
@@ -89,8 +92,11 @@ export interface ISocketEmitEvents {
   /** Per-server aggregated traffic + speed stats */
   "wg:server:stats": (...args: [WgServerStatsPayload]) => void;
 
-  /** Per-peer connection status */
+  /** Per-peer DB status change */
   "wg:peer:status": (...args: [WgPeerStatusPayload]) => void;
+
+  /** Per-peer connection activity change */
+  "wg:peer:active": (...args: [WgPeerActivePayload]) => void;
 
   /** Per-peer traffic + speed stats */
   "wg:peer:stats": (...args: [WgPeerStatsPayload]) => void;

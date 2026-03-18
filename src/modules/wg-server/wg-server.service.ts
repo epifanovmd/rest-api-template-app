@@ -3,6 +3,7 @@ import { inject } from "inversify";
 import { config } from "../../config";
 import { EventBus, Injectable, logger } from "../../core";
 import { WgCliService, WgConfigService, WgKeyService } from "../wg-cli";
+import { WgPeerStatusChangedEvent } from "../wg-peer/events";
 import { WgPeerRepository } from "../wg-peer/wg-peer.repository";
 import {
   IWgServerCreateRequestDto,
@@ -128,10 +129,9 @@ export class WgServerService {
     }
 
     const prev = server.status;
+    const peers = await this.peerRepo.findEnabledByServer(id);
 
     try {
-      const peers = await this.peerRepo.findEnabledByServer(id);
-
       await this.writeConfig(server, peers);
       await this.cli.up(server.interface);
       server.status = EWgServerStatus.UP;
@@ -146,10 +146,16 @@ export class WgServerService {
       await this.peerRepo
         .update({ serverId: id, enabled: true }, { status: EWgServerStatus.UP })
         .catch(() => {});
+
+      for (const peer of peers) {
+        this.eventBus.emit(
+          new WgPeerStatusChangedEvent(peer.id, id, EWgServerStatus.UP),
+        );
+      }
     }
 
     this.eventBus.emit(
-      new WgServerStatusChangedEvent(id, server.interface, server.status, prev),
+      new WgServerStatusChangedEvent(id, server.status),
     );
 
     return saved;
@@ -157,7 +163,7 @@ export class WgServerService {
 
   async stop(id: string): Promise<WgServer> {
     const server = await this.getById(id);
-    const prev = server.status;
+    const peers = await this.peerRepo.findByServer(id);
 
     try {
       await this.cli.down(server.interface);
@@ -173,8 +179,14 @@ export class WgServerService {
       .update({ serverId: id }, { status: EWgServerStatus.DOWN })
       .catch(() => {});
 
+    for (const peer of peers) {
+      this.eventBus.emit(
+        new WgPeerStatusChangedEvent(peer.id, id, EWgServerStatus.DOWN),
+      );
+    }
+
     this.eventBus.emit(
-      new WgServerStatusChangedEvent(id, server.interface, server.status, prev),
+      new WgServerStatusChangedEvent(id, server.status),
     );
 
     return saved;

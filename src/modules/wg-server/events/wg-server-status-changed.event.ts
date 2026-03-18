@@ -5,8 +5,6 @@ export class WgServerStatusChangedEvent {
 
   constructor(
     public readonly serverId: string,
-    public readonly interfaceName: string,
     public readonly status: EWgServerStatus,
-    public readonly previousStatus: EWgServerStatus,
   ) {}
 }
