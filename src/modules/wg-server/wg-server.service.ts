@@ -88,12 +88,12 @@ export class WgServerService {
       throw err;
     }
 
-    if (
-      dto.enabled === false &&
-      snapshot.enabled !== false &&
-      saved.status === EWgServerStatus.UP
-    ) {
-      return this.stop(id);
+    if (dto.enabled === false && snapshot.enabled) {
+      if (saved.status === EWgServerStatus.UP) {
+        return this.stop(id);
+      }
+    } else if (dto.enabled === true && !snapshot.enabled) {
+      return this.start(id);
     }
 
     return saved;
