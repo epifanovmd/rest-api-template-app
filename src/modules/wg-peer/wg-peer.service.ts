@@ -74,7 +74,10 @@ export class WgPeerService {
       ? await this.keyService.generatePresharedKey()
       : null;
 
-    const allowedIPs = await this.ipAllocator.allocate(server.address, serverId);
+    const allowedIPs = await this.ipAllocator.allocate(
+      server.address,
+      serverId,
+    );
 
     const peer = this.peerRepo.create({
       serverId,
@@ -134,7 +137,9 @@ export class WgPeerService {
 
       if (nameConflict) {
         throw Object.assign(
-          new Error(`Peer with name "${dto.name}" already exists on this server`),
+          new Error(
+            `Peer with name "${dto.name}" already exists on this server`,
+          ),
           { status: 409 },
         );
       }
@@ -189,7 +194,13 @@ export class WgPeerService {
       }
     }
 
-    await this.rewriteServerConfig(peer.serverId);
+    if (dto.enabled === false && oldEnabled) {
+      if (saved.status === EWgServerStatus.UP) {
+        return this.stop(id);
+      }
+    } else if (dto.enabled === true && !oldEnabled) {
+      return this.start(id);
+    }
 
     return saved;
   }
@@ -222,10 +233,6 @@ export class WgPeerService {
     return true;
   }
 
-  async enable(id: string): Promise<WgPeer> {
-    return this.update(id, { enabled: true });
-  }
-
   async disable(id: string): Promise<WgPeer> {
     return this.update(id, { enabled: false });
   }
@@ -237,7 +244,9 @@ export class WgPeerService {
       throw Object.assign(new Error("Peer is disabled"), { status: 400 });
     }
 
-    const server = await this.serverRepo.findOne({ where: { id: peer.serverId } });
+    const server = await this.serverRepo.findOne({
+      where: { id: peer.serverId },
+    });
 
     if (!server || server.status !== EWgServerStatus.UP) {
       throw Object.assign(new Error("Server is not running"), { status: 400 });
@@ -265,7 +274,9 @@ export class WgPeerService {
 
   async stop(id: string): Promise<WgPeer> {
     const peer = await this.getById(id);
-    const server = await this.serverRepo.findOne({ where: { id: peer.serverId } });
+    const server = await this.serverRepo.findOne({
+      where: { id: peer.serverId },
+    });
 
     if (server && server.status === EWgServerStatus.UP) {
       await this.cli
@@ -273,11 +284,18 @@ export class WgPeerService {
         .catch(() => {});
     }
 
-    await this.peerRepo.update({ id: peer.id }, { status: EWgServerStatus.DOWN });
+    await this.peerRepo.update(
+      { id: peer.id },
+      { status: EWgServerStatus.DOWN },
+    );
     peer.status = EWgServerStatus.DOWN;
 
     this.eventBus.emit(
-      new WgPeerStatusChangedEvent(peer.id, peer.serverId, EWgServerStatus.DOWN),
+      new WgPeerStatusChangedEvent(
+        peer.id,
+        peer.serverId,
+        EWgServerStatus.DOWN,
+      ),
     );
 
     return peer;

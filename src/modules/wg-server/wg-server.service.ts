@@ -128,7 +128,6 @@ export class WgServerService {
       throw Object.assign(new Error("Server is disabled"), { status: 400 });
     }
 
-    const prev = server.status;
     const peers = await this.peerRepo.findEnabledByServer(id);
 
     try {
@@ -154,9 +153,7 @@ export class WgServerService {
       }
     }
 
-    this.eventBus.emit(
-      new WgServerStatusChangedEvent(id, server.status),
-    );
+    this.eventBus.emit(new WgServerStatusChangedEvent(id, server.status));
 
     return saved;
   }
@@ -185,9 +182,7 @@ export class WgServerService {
       );
     }
 
-    this.eventBus.emit(
-      new WgServerStatusChangedEvent(id, server.status),
-    );
+    this.eventBus.emit(new WgServerStatusChangedEvent(id, server.status));
 
     return saved;
   }
