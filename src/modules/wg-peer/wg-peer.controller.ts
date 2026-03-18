@@ -132,25 +132,26 @@ export class WgPeerController extends Controller {
   }
 
   /**
-   * Enable a peer (add to live WG interface).
-   * @summary Enable peer
+   * Start a peer (add to live WG interface, status → UP).
+   * Requires peer to be enabled and server to be running.
+   * @summary Start peer
    */
   @Security("jwt", ["role:admin"])
-  @Post("/peers/{id}/enable")
-  async enablePeer(id: string): Promise<WgPeerDto> {
-    const peer = await this.service.enable(id);
+  @Post("/peers/{id}/start")
+  async startPeer(id: string): Promise<WgPeerDto> {
+    const peer = await this.service.start(id);
 
     return WgPeerDto.fromEntity(peer);
   }
 
   /**
-   * Disable a peer (remove from live WG interface).
-   * @summary Disable peer
+   * Stop a peer (remove from live WG interface, status → DOWN).
+   * @summary Stop peer
    */
   @Security("jwt", ["role:admin"])
-  @Post("/peers/{id}/disable")
-  async disablePeer(id: string): Promise<WgPeerDto> {
-    const peer = await this.service.disable(id);
+  @Post("/peers/{id}/stop")
+  async stopPeer(id: string): Promise<WgPeerDto> {
+    const peer = await this.service.stop(id);
 
     return WgPeerDto.fromEntity(peer);
   }

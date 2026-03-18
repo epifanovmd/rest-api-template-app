@@ -8,7 +8,11 @@ import { WgServerRepository } from "../wg-server/wg-server.repository";
 import { WgServerService } from "../wg-server/wg-server.service";
 import { EWgServerStatus } from "../wg-server/wg-server.types";
 import { IWgPeerCreateRequestDto, IWgPeerUpdateRequestDto } from "./dto";
-import { WgPeerCreatedEvent, WgPeerDeletedEvent } from "./events";
+import {
+  WgPeerCreatedEvent,
+  WgPeerDeletedEvent,
+  WgPeerStatusChangedEvent,
+} from "./events";
 import { WgIpAllocatorService } from "./wg-ip-allocator.service";
 import { WgPeer } from "./wg-peer.entity";
 import { WgPeerRepository } from "./wg-peer.repository";
@@ -166,30 +170,22 @@ export class WgPeerService {
       throw err;
     }
 
-    // Handle enable/disable or presharedKey change on live interface
-    const pskChanged = dto.presharedKey !== undefined;
-
-    if ((dto.enabled !== undefined && dto.enabled !== oldEnabled) || pskChanged) {
+    // Handle presharedKey change on live interface
+    if (dto.presharedKey !== undefined) {
       const server = await this.serverRepo.findOne({
         where: { id: peer.serverId },
       });
 
-      if (server && server.status === EWgServerStatus.UP) {
-        if (!peer.enabled) {
-          await this.cli
-            .removePeer(server.interface, peer.publicKey)
-            .catch(() => {});
-        } else {
-          await this.cli
-            .addPeer(
-              server.interface,
-              peer.publicKey,
-              peer.allowedIPs,
-              peer.presharedKey ?? undefined,
-              peer.persistentKeepalive ?? undefined,
-            )
-            .catch(() => {});
-        }
+      if (server && server.status === EWgServerStatus.UP && peer.enabled) {
+        await this.cli
+          .addPeer(
+            server.interface,
+            peer.publicKey,
+            peer.allowedIPs,
+            peer.presharedKey ?? undefined,
+            peer.persistentKeepalive ?? undefined,
+          )
+          .catch(() => {});
       }
     }
 
@@ -232,6 +228,59 @@ export class WgPeerService {
 
   async disable(id: string): Promise<WgPeer> {
     return this.update(id, { enabled: false });
+  }
+
+  async start(id: string): Promise<WgPeer> {
+    const peer = await this.getById(id);
+
+    if (!peer.enabled) {
+      throw Object.assign(new Error("Peer is disabled"), { status: 400 });
+    }
+
+    const server = await this.serverRepo.findOne({ where: { id: peer.serverId } });
+
+    if (!server || server.status !== EWgServerStatus.UP) {
+      throw Object.assign(new Error("Server is not running"), { status: 400 });
+    }
+
+    await this.cli
+      .addPeer(
+        server.interface,
+        peer.publicKey,
+        peer.allowedIPs,
+        peer.presharedKey ?? undefined,
+        peer.persistentKeepalive ?? undefined,
+      )
+      .catch(() => {});
+
+    await this.peerRepo.update({ id: peer.id }, { status: EWgServerStatus.UP });
+    peer.status = EWgServerStatus.UP;
+
+    this.eventBus.emit(
+      new WgPeerStatusChangedEvent(peer.id, peer.serverId, EWgServerStatus.UP),
+    );
+
+    return peer;
+  }
+
+  async stop(id: string): Promise<WgPeer> {
+    const peer = await this.getById(id);
+    const server = await this.serverRepo.findOne({ where: { id: peer.serverId } });
+
+    if (server && server.status === EWgServerStatus.UP) {
+      await this.cli
+        .removePeer(server.interface, peer.publicKey)
+        .catch(() => {});
+    }
+
+    await this.peerRepo.update({ id: peer.id }, { status: EWgServerStatus.DOWN });
+    peer.status = EWgServerStatus.DOWN;
+
+    this.eventBus.emit(
+      new WgPeerStatusChangedEvent(peer.id, peer.serverId, EWgServerStatus.DOWN),
+    );
+
+    return peer;
   }
 
   async assignToUser(id: string, userId: string): Promise<WgPeer> {

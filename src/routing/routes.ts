@@ -1735,12 +1735,12 @@ export function RegisterRoutes(router: KoaRouter) {
             return promiseHandler(controller, promise, context, undefined, undefined);
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-        router.post('/api/wg/peers/:id/enable',
+        router.post('/api/wg/peers/:id/start',
             authenticateMiddleware([{"jwt":["role:admin"]}]),
             ...(fetchMiddlewares<Middleware>(WgPeerController)),
-            ...(fetchMiddlewares<Middleware>(WgPeerController.prototype.enablePeer)),
+            ...(fetchMiddlewares<Middleware>(WgPeerController.prototype.startPeer)),
 
-            async function WgPeerController_enablePeer(context: any, next: any) {
+            async function WgPeerController_startPeer(context: any, next: any) {
             const args = {
                     id: {"in":"path","name":"id","required":true,"dataType":"string"},
             };
@@ -1761,16 +1761,16 @@ export function RegisterRoutes(router: KoaRouter) {
                 controller.setStatus(undefined);
             }
 
-            const promise = controller.enablePeer.apply(controller, validatedArgs as any);
+            const promise = controller.startPeer.apply(controller, validatedArgs as any);
             return promiseHandler(controller, promise, context, undefined, undefined);
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-        router.post('/api/wg/peers/:id/disable',
+        router.post('/api/wg/peers/:id/stop',
             authenticateMiddleware([{"jwt":["role:admin"]}]),
             ...(fetchMiddlewares<Middleware>(WgPeerController)),
-            ...(fetchMiddlewares<Middleware>(WgPeerController.prototype.disablePeer)),
+            ...(fetchMiddlewares<Middleware>(WgPeerController.prototype.stopPeer)),
 
-            async function WgPeerController_disablePeer(context: any, next: any) {
+            async function WgPeerController_stopPeer(context: any, next: any) {
             const args = {
                     id: {"in":"path","name":"id","required":true,"dataType":"string"},
             };
@@ -1791,7 +1791,7 @@ export function RegisterRoutes(router: KoaRouter) {
                 controller.setStatus(undefined);
             }
 
-            const promise = controller.disablePeer.apply(controller, validatedArgs as any);
+            const promise = controller.stopPeer.apply(controller, validatedArgs as any);
             return promiseHandler(controller, promise, context, undefined, undefined);
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
