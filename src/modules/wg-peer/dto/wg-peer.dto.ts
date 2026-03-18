@@ -8,7 +8,6 @@ export interface IWgPeerCreateRequestDto {
   dns?: string;
   mtu?: number;
   clientAllowedIPs?: string;
-  endpoint?: string;
   description?: string;
   expiresAt?: string;
   enabled?: boolean;
@@ -24,7 +23,6 @@ export interface IWgPeerUpdateRequestDto {
   dns?: string | null;
   mtu?: number | null;
   clientAllowedIPs?: string;
-  endpoint?: string | null;
   description?: string | null;
   expiresAt?: string | null;
   enabled?: boolean;
@@ -38,7 +36,6 @@ export class WgPeerDto {
   publicKey: string;
   hasPresharedKey: boolean;
   allowedIPs: string;
-  endpoint: string | null;
   persistentKeepalive: number | null;
   dns: string | null;
   mtu: number | null;
@@ -61,7 +58,6 @@ export class WgPeerDto {
     dto.publicKey = e.publicKey;
     dto.hasPresharedKey = e.presharedKey !== null;
     dto.allowedIPs = e.allowedIPs;
-    dto.endpoint = e.endpoint;
     dto.persistentKeepalive = e.persistentKeepalive;
     dto.dns = e.dns;
     dto.mtu = e.mtu;

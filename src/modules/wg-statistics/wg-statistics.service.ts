@@ -7,7 +7,7 @@ import {
   WgPeerStatsPayload,
   WgServerStatsPayload,
 } from "../socket/socket.types";
-import { WgCliService } from "../wg-cli/wg-cli.service";
+import { WgCliService, WgShowOutput } from "../wg-cli/wg-cli.service";
 import { WgPeerActiveChangedEvent } from "../wg-peer/events";
 import { WgPeerRepository } from "../wg-peer/wg-peer.repository";
 import { WgServerRepository } from "../wg-server/wg-server.repository";
@@ -170,7 +170,7 @@ export class WgStatisticsService {
       const speedInserts: Partial<WgSpeedSample>[] = [];
 
       for (const server of upServers) {
-        let showData;
+        let showData: WgShowOutput;
 
         try {
           [showData] = await this.cli.show(server.interface);
@@ -194,7 +194,6 @@ export class WgStatisticsService {
           const isActive =
             wgPeer.lastHandshake !== null &&
             nowMs - wgPeer.lastHandshake.getTime() < this.ACTIVE_THRESHOLD_MS;
-
 
           // Speed calculation with counter-reset detection (WG restart resets counters to 0)
           const snapshotKey = dbPeer.id;

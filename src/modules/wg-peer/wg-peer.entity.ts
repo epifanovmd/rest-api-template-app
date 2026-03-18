@@ -49,10 +49,6 @@ export class WgPeer {
   @Column({ name: "allowed_ips", type: "varchar", length: 100 })
   allowedIPs: string;
 
-  /** Static endpoint if peer has known IP (optional) */
-  @Column({ type: "varchar", length: 255, nullable: true })
-  endpoint: string | null;
-
   /** PersistentKeepalive in seconds (optional) */
   @Column({ name: "persistent_keepalive", type: "int", nullable: true })
   persistentKeepalive: number | null;

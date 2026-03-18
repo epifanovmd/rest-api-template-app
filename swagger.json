@@ -1014,10 +1014,6 @@
 					"allowedIPs": {
 						"type": "string"
 					},
-					"endpoint": {
-						"type": "string",
-						"nullable": true
-					},
 					"persistentKeepalive": {
 						"type": "number",
 						"format": "double",
@@ -1072,7 +1068,6 @@
 					"publicKey",
 					"hasPresharedKey",
 					"allowedIPs",
-					"endpoint",
 					"persistentKeepalive",
 					"dns",
 					"mtu",
@@ -1130,9 +1125,6 @@
 					"clientAllowedIPs": {
 						"type": "string"
 					},
-					"endpoint": {
-						"type": "string"
-					},
 					"description": {
 						"type": "string"
 					},
@@ -1182,10 +1174,6 @@
 					},
 					"clientAllowedIPs": {
 						"type": "string"
-					},
-					"endpoint": {
-						"type": "string",
-						"nullable": true
 					},
 					"description": {
 						"type": "string",

@@ -87,7 +87,6 @@ export class WgPeerService {
       privateKey,
       presharedKey,
       allowedIPs,
-      endpoint: dto.endpoint ?? null,
       persistentKeepalive: dto.persistentKeepalive ?? 25,
       dns: dto.dns ?? null,
       mtu: dto.mtu ?? null,
@@ -322,7 +321,7 @@ export class WgPeerService {
       throw Object.assign(new Error("Peer not found"), { status: 404 });
 
     const server = peer.server;
-    const endpoint = peer.endpoint ?? server.endpoint;
+    const endpoint = server.endpoint;
 
     if (!endpoint) {
       throw Object.assign(
