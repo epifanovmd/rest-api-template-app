@@ -62,7 +62,7 @@ export class WgServerBootstrap implements IBootstrap {
         );
       }
 
-      if (server.status === EWgServerStatus.UP) {
+      if (server.status !== EWgServerStatus.DOWN) {
         try {
           await this.serverService.start(server.id);
           logger.info(

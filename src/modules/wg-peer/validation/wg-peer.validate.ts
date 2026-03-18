@@ -19,6 +19,7 @@ export const WgPeerUpdateSchema = z.object({
   name: z.string().min(1).max(100).optional(),
   allowedIPs: z.string().regex(cidrRegex).optional(),
   userId: z.string().uuid().nullable().optional(),
+  presharedKey: z.boolean().nullable().optional(),
   persistentKeepalive: z.number().int().min(1).max(65535).nullable().optional(),
   dns: z.string().nullable().optional(),
   mtu: z.number().int().min(576).max(9000).nullable().optional(),

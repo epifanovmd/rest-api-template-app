@@ -7,7 +7,7 @@ import {
   WgPeerStatsPayload,
   WgServerStatsPayload,
 } from "../socket/socket.types";
-import { WgCliService, WgPeerStats } from "../wg-cli/wg-cli.service";
+import { WgCliService } from "../wg-cli/wg-cli.service";
 import { WgPeerRepository } from "../wg-peer/wg-peer.repository";
 import { WgServerRepository } from "../wg-server/wg-server.repository";
 import { EWgServerStatus } from "../wg-server/wg-server.types";
@@ -28,6 +28,15 @@ interface PeerPrevSnapshot {
   timestamp: number;
 }
 
+interface DeadbandSnapshot {
+  rxSpeedBps: number;
+  txSpeedBps: number;
+  rxBytes: number;
+  txBytes: number;
+  timestamp: number;
+  activePeers?: number;
+}
+
 @Injectable()
 export class WgStatisticsService {
   /** In-memory snapshots for speed calculation */
@@ -39,6 +48,45 @@ export class WgStatisticsService {
    * (covers both app restart + WG restart scenarios).
    */
   private lastKnownDb = new Map<string, { rxBytes: number; txBytes: number }>();
+
+  /**
+   * Dead band compression: track last emitted/saved values per peer.
+   * Skip emission/write when values haven't changed significantly.
+   *
+   * Socket: emit if speed changed > 256 bps OR max 30 s silence.
+   * DB:     save  if speed changed > 1024 bps OR bytes changed OR max 60 s silence.
+   */
+  private readonly SOCKET_DEADBAND_BPS = 256;
+  private readonly SOCKET_MAX_SILENCE_MS = 30_000;
+  private readonly DB_DEADBAND_BPS = 1024;
+  private readonly DB_MAX_SILENCE_MS = 60_000;
+
+  private lastSocketEmit = new Map<string, DeadbandSnapshot>();
+  private lastDbSave = new Map<string, DeadbandSnapshot>();
+  private lastServerSocketEmit = new Map<string, DeadbandSnapshot>();
+  private lastOverviewSocketEmit: DeadbandSnapshot | undefined;
+
+  private needsUpdate(
+    last: DeadbandSnapshot | undefined,
+    rxSpeedBps: number,
+    txSpeedBps: number,
+    rxBytes: number,
+    txBytes: number,
+    nowMs: number,
+    maxSilenceMs: number,
+    deadbandBps: number,
+    activePeers?: number,
+  ): boolean {
+    if (!last) return true;
+    if (nowMs - last.timestamp >= maxSilenceMs) return true;
+    if (rxBytes !== last.rxBytes || txBytes !== last.txBytes) return true;
+    if (activePeers !== undefined && activePeers !== last.activePeers) return true;
+
+    return (
+      Math.abs(rxSpeedBps - last.rxSpeedBps) > deadbandBps ||
+      Math.abs(txSpeedBps - last.txSpeedBps) > deadbandBps
+    );
+  }
 
   /** ACTIVE_THRESHOLD: peer is active if last handshake < 3 min ago */
   private readonly ACTIVE_THRESHOLD_MS = 3 * 60 * 1000;
@@ -196,38 +244,83 @@ export class WgStatisticsService {
           srvTxSpeed += txSpeed;
           if (isActive) srvActivePeers += 1;
 
-          // Persist traffic snapshot (adjusted bytes survive WG restarts)
-          trafficInserts.push({
-            peerId: dbPeer.id,
-            serverId: server.id,
-            rxBytes: adjustedRx,
-            txBytes: adjustedTx,
-            lastHandshake: wgPeer.lastHandshake,
-            endpoint: wgPeer.endpoint,
-            timestamp: now,
-          });
+          // Dead band: only emit/save when value changed significantly or silence expired
+          const emitToSocket = this.needsUpdate(
+            this.lastSocketEmit.get(snapshotKey),
+            rxSpeed,
+            txSpeed,
+            adjustedRx,
+            adjustedTx,
+            nowMs,
+            this.SOCKET_MAX_SILENCE_MS,
+            this.SOCKET_DEADBAND_BPS,
+          );
 
-          // Persist speed sample
-          speedInserts.push({
-            peerId: dbPeer.id,
-            serverId: server.id,
-            rxSpeedBps: rxSpeed,
-            txSpeedBps: txSpeed,
-            isActive,
-            timestamp: now,
-          });
+          const saveToDb =
+            persistToDb &&
+            this.needsUpdate(
+              this.lastDbSave.get(snapshotKey),
+              rxSpeed,
+              txSpeed,
+              adjustedRx,
+              adjustedTx,
+              nowMs,
+              this.DB_MAX_SILENCE_MS,
+              this.DB_DEADBAND_BPS,
+            );
 
-          peerStats.push({
-            peerId: dbPeer.id,
-            serverId: server.id,
-            rxBytes: adjustedRx,
-            txBytes: adjustedTx,
-            rxSpeedBps: rxSpeed,
-            txSpeedBps: txSpeed,
-            lastHandshake: wgPeer.lastHandshake,
-            isActive,
-            timestamp: now,
-          });
+          if (emitToSocket) {
+            this.lastSocketEmit.set(snapshotKey, {
+              rxSpeedBps: rxSpeed,
+              txSpeedBps: txSpeed,
+              rxBytes: adjustedRx,
+              txBytes: adjustedTx,
+              timestamp: nowMs,
+            });
+
+            peerStats.push({
+              peerId: dbPeer.id,
+              serverId: server.id,
+              rxBytes: adjustedRx,
+              txBytes: adjustedTx,
+              rxSpeedBps: rxSpeed,
+              txSpeedBps: txSpeed,
+              lastHandshake: wgPeer.lastHandshake,
+              isActive,
+              timestamp: now,
+            });
+          }
+
+          if (saveToDb) {
+            this.lastDbSave.set(snapshotKey, {
+              rxSpeedBps: rxSpeed,
+              txSpeedBps: txSpeed,
+              rxBytes: adjustedRx,
+              txBytes: adjustedTx,
+              timestamp: nowMs,
+            });
+
+            // Persist traffic snapshot (adjusted bytes survive WG restarts)
+            trafficInserts.push({
+              peerId: dbPeer.id,
+              serverId: server.id,
+              rxBytes: adjustedRx,
+              txBytes: adjustedTx,
+              lastHandshake: wgPeer.lastHandshake,
+              endpoint: wgPeer.endpoint,
+              timestamp: now,
+            });
+
+            // Persist speed sample
+            speedInserts.push({
+              peerId: dbPeer.id,
+              serverId: server.id,
+              rxSpeedBps: rxSpeed,
+              txSpeedBps: txSpeed,
+              isActive,
+              timestamp: now,
+            });
+          }
         }
 
         globalRx += srvRx;
@@ -237,27 +330,73 @@ export class WgStatisticsService {
         totalPeers += showData.peers.length;
         activePeers += srvActivePeers;
 
-        serverStats.push({
-          serverId: server.id,
-          interface: server.interface,
-          totalRxBytes: srvRx,
-          totalTxBytes: srvTx,
-          rxSpeedBps: srvRxSpeed,
-          txSpeedBps: srvTxSpeed,
-          peerCount: showData.peers.length,
-          activePeerCount: srvActivePeers,
-          timestamp: now,
-        });
+        if (
+          this.needsUpdate(
+            this.lastServerSocketEmit.get(server.id),
+            srvRxSpeed,
+            srvTxSpeed,
+            srvRx,
+            srvTx,
+            nowMs,
+            this.SOCKET_MAX_SILENCE_MS,
+            this.SOCKET_DEADBAND_BPS,
+          )
+        ) {
+          this.lastServerSocketEmit.set(server.id, {
+            rxSpeedBps: srvRxSpeed,
+            txSpeedBps: srvTxSpeed,
+            rxBytes: srvRx,
+            txBytes: srvTx,
+            timestamp: nowMs,
+          });
+
+          serverStats.push({
+            serverId: server.id,
+            interface: server.interface,
+            totalRxBytes: srvRx,
+            totalTxBytes: srvTx,
+            rxSpeedBps: srvRxSpeed,
+            txSpeedBps: srvTxSpeed,
+            peerCount: showData.peers.length,
+            activePeerCount: srvActivePeers,
+            timestamp: now,
+          });
+        }
       }
 
-      // Batch persist (only on DB ticks)
-      if (persistToDb) {
-        if (trafficInserts.length > 0) {
-          await this.trafficRepo.save(trafficInserts as WgTrafficStat[]);
-        }
-        if (speedInserts.length > 0) {
-          await this.speedRepo.save(speedInserts as WgSpeedSample[]);
-        }
+      // Batch persist — inserts are already filtered by dead band + DB tick guard
+      if (trafficInserts.length > 0) {
+        await this.trafficRepo.save(trafficInserts as WgTrafficStat[]);
+      }
+      if (speedInserts.length > 0) {
+        await this.speedRepo.save(speedInserts as WgSpeedSample[]);
+      }
+
+      const overviewChanged = this.needsUpdate(
+        this.lastOverviewSocketEmit,
+        globalRxSpeed,
+        globalTxSpeed,
+        globalRx,
+        globalTx,
+        nowMs,
+        this.SOCKET_MAX_SILENCE_MS,
+        this.SOCKET_DEADBAND_BPS,
+        activePeers,
+      );
+
+      if (!overviewChanged && serverStats.length === 0 && peerStats.length === 0) {
+        return;
+      }
+
+      if (overviewChanged) {
+        this.lastOverviewSocketEmit = {
+          rxSpeedBps: globalRxSpeed,
+          txSpeedBps: globalTxSpeed,
+          rxBytes: globalRx,
+          txBytes: globalTx,
+          timestamp: nowMs,
+          activePeers,
+        };
       }
 
       const overview: WgOverviewStatsPayload = {
