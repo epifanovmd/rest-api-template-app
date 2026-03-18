@@ -122,6 +122,11 @@ export class WgServerService {
 
   async start(id: string): Promise<WgServer> {
     const server = await this.getById(id);
+
+    if (!server.enabled) {
+      throw Object.assign(new Error("Server is disabled"), { status: 400 });
+    }
+
     const prev = server.status;
 
     try {

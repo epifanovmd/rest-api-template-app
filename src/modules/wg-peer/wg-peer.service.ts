@@ -99,8 +99,8 @@ export class WgPeerService {
       throw err;
     }
 
-    // Apply to live interface if it's up
-    if (server.status === EWgServerStatus.UP) {
+    // Apply to live interface if it's up and peer is enabled
+    if (server.status === EWgServerStatus.UP && saved.enabled) {
       try {
         await this.cli.addPeer(
           server.interface,
