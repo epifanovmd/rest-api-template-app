@@ -142,6 +142,12 @@ export class WgServerService {
 
     const saved = await this.serverRepo.save(server);
 
+    if (server.status === EWgServerStatus.UP) {
+      await this.peerRepo
+        .update({ serverId: id, enabled: true }, { status: EWgServerStatus.UP })
+        .catch(() => {});
+    }
+
     this.eventBus.emit(
       new WgServerStatusChangedEvent(id, server.interface, server.status, prev),
     );
@@ -162,6 +168,10 @@ export class WgServerService {
     }
 
     const saved = await this.serverRepo.save(server);
+
+    await this.peerRepo
+      .update({ serverId: id }, { status: EWgServerStatus.DOWN })
+      .catch(() => {});
 
     this.eventBus.emit(
       new WgServerStatusChangedEvent(id, server.interface, server.status, prev),

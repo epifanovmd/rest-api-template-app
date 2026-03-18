@@ -11,6 +11,7 @@ import {
 
 import { User } from "../user/user.entity";
 import { WgServer } from "../wg-server/wg-server.entity";
+import { EWgServerStatus } from "../wg-server/wg-server.types";
 
 @Entity("wg_peers")
 @Index("IDX_WG_PEER_SERVER_PUBLIC_KEY", ["serverId", "publicKey"], {
@@ -76,6 +77,14 @@ export class WgPeer {
   /** Whether this peer is active on the WG interface */
   @Column({ type: "boolean", default: true })
   enabled: boolean;
+
+  /** Current runtime status on the WG interface */
+  @Column({
+    type: "enum",
+    enum: EWgServerStatus,
+    default: EWgServerStatus.DOWN,
+  })
+  status: EWgServerStatus;
 
   /** Optional expiry; peer is auto-disabled after this date */
   @Column({ name: "expires_at", type: "timestamptz", nullable: true })

@@ -485,6 +485,11 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "EWgServerStatus": {
+        "dataType": "refEnum",
+        "enums": ["up","down","error","unknown"],
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "WgPeerDto": {
         "dataType": "refObject",
         "properties": {
@@ -501,6 +506,7 @@ const models: TsoaRoute.Models = {
             "mtu": {"dataType":"union","subSchemas":[{"dataType":"double"},{"dataType":"enum","enums":[null]}],"required":true},
             "clientAllowedIPs": {"dataType":"string","required":true},
             "enabled": {"dataType":"boolean","required":true},
+            "status": {"ref":"EWgServerStatus","required":true},
             "expiresAt": {"dataType":"union","subSchemas":[{"dataType":"datetime"},{"dataType":"enum","enums":[null]}],"required":true},
             "description": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
             "createdAt": {"dataType":"datetime","required":true},
@@ -552,11 +558,6 @@ const models: TsoaRoute.Models = {
             "enabled": {"dataType":"boolean"},
         },
         "additionalProperties": false,
-    },
-    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "EWgServerStatus": {
-        "dataType": "refEnum",
-        "enums": ["up","down","error","unknown"],
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "WgServerDto": {

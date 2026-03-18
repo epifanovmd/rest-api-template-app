@@ -981,6 +981,15 @@
 				"type": "object",
 				"additionalProperties": false
 			},
+			"EWgServerStatus": {
+				"enum": [
+					"up",
+					"down",
+					"error",
+					"unknown"
+				],
+				"type": "string"
+			},
 			"WgPeerDto": {
 				"properties": {
 					"id": {
@@ -1029,6 +1038,9 @@
 					"enabled": {
 						"type": "boolean"
 					},
+					"status": {
+						"$ref": "#/components/schemas/EWgServerStatus"
+					},
 					"expiresAt": {
 						"type": "string",
 						"format": "date-time",
@@ -1061,6 +1073,7 @@
 					"mtu",
 					"clientAllowedIPs",
 					"enabled",
+					"status",
 					"expiresAt",
 					"description",
 					"createdAt",
@@ -1182,15 +1195,6 @@
 				},
 				"type": "object",
 				"additionalProperties": false
-			},
-			"EWgServerStatus": {
-				"enum": [
-					"up",
-					"down",
-					"error",
-					"unknown"
-				],
-				"type": "string"
 			},
 			"WgServerDto": {
 				"properties": {

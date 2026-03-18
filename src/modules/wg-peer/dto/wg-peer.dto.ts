@@ -1,3 +1,4 @@
+import { EWgServerStatus } from "../../wg-server/wg-server.types";
 import { WgPeer } from "../wg-peer.entity";
 
 export interface IWgPeerCreateRequestDto {
@@ -43,6 +44,7 @@ export class WgPeerDto {
   mtu: number | null;
   clientAllowedIPs: string;
   enabled: boolean;
+  status: EWgServerStatus;
   expiresAt: Date | null;
   description: string | null;
   createdAt: Date;
@@ -64,6 +66,7 @@ export class WgPeerDto {
     dto.mtu = e.mtu;
     dto.clientAllowedIPs = e.clientAllowedIPs;
     dto.enabled = e.enabled;
+    dto.status = e.status;
     dto.expiresAt = e.expiresAt;
     dto.description = e.description;
     dto.createdAt = e.createdAt;
