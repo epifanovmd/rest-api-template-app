@@ -18,7 +18,8 @@
       "Read(//Users/epifanovmd/dev/wireguard-web/**)",
       "Bash(find /Users/epifanovmd/dev/rest-api-template-app/src -name *wireguard* -o -name *wg*)",
       "Bash(find /Users/epifanovmd/dev/rest-api-template-app/src -name *stat* -o -name *traffic* -o -name *usage*)",
-      "Bash(/dev/null echo:*)"
+      "Bash(/dev/null echo:*)",
+      "Bash(find /Users/epifanovmd/dev/rest-api-template-app -type f -name *stat* -o -name *metric* -o -name *monitor* -o -name *wireguard* -o -name *vpn* -o -name *traffic* -o -name *bandwidth* -o -name *chart* -o -name *graph*)"
     ]
   }
 }
