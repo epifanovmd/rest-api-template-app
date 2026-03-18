@@ -11,6 +11,9 @@
 					"id": {
 						"type": "string"
 					},
+					"userId": {
+						"type": "string"
+					},
 					"firstName": {
 						"type": "string"
 					},
@@ -40,97 +43,16 @@
 					"updatedAt": {
 						"type": "string",
 						"format": "date-time"
+					},
+					"user": {
+						"$ref": "#/components/schemas/UserDto"
 					}
 				},
 				"required": [
 					"id",
+					"userId",
 					"createdAt",
 					"updatedAt"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"EProfileStatus": {
-				"enum": [
-					"online",
-					"offline"
-				],
-				"type": "string"
-			},
-			"IProfileUpdateRequestDto": {
-				"properties": {
-					"firstName": {
-						"type": "string"
-					},
-					"lastName": {
-						"type": "string"
-					},
-					"bio": {
-						"type": "string"
-					},
-					"birthDate": {
-						"type": "string",
-						"format": "date-time"
-					},
-					"gender": {
-						"type": "string"
-					},
-					"status": {
-						"$ref": "#/components/schemas/EProfileStatus"
-					}
-				},
-				"type": "object",
-				"additionalProperties": false
-			},
-			"PublicProfileDto": {
-				"properties": {
-					"id": {
-						"type": "string"
-					},
-					"firstName": {
-						"type": "string"
-					},
-					"lastName": {
-						"type": "string"
-					},
-					"status": {
-						"$ref": "#/components/schemas/EProfileStatus"
-					},
-					"lastOnline": {
-						"type": "string",
-						"format": "date-time"
-					}
-				},
-				"required": [
-					"id",
-					"status"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"IProfileListDto": {
-				"properties": {
-					"count": {
-						"type": "number",
-						"format": "double"
-					},
-					"offset": {
-						"type": "number",
-						"format": "double"
-					},
-					"limit": {
-						"type": "number",
-						"format": "double"
-					},
-					"data": {
-						"items": {
-							"$ref": "#/components/schemas/PublicProfileDto"
-						},
-						"type": "array"
-					}
-				},
-				"required": [
-					"data"
 				],
 				"type": "object",
 				"additionalProperties": false
@@ -252,6 +174,91 @@
 					"role",
 					"createdAt",
 					"updatedAt"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"EProfileStatus": {
+				"enum": [
+					"online",
+					"offline"
+				],
+				"type": "string"
+			},
+			"IProfileUpdateRequestDto": {
+				"properties": {
+					"firstName": {
+						"type": "string"
+					},
+					"lastName": {
+						"type": "string"
+					},
+					"bio": {
+						"type": "string"
+					},
+					"birthDate": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"gender": {
+						"type": "string"
+					},
+					"status": {
+						"$ref": "#/components/schemas/EProfileStatus"
+					}
+				},
+				"type": "object",
+				"additionalProperties": false
+			},
+			"PublicProfileDto": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"firstName": {
+						"type": "string"
+					},
+					"lastName": {
+						"type": "string"
+					},
+					"status": {
+						"$ref": "#/components/schemas/EProfileStatus"
+					},
+					"lastOnline": {
+						"type": "string",
+						"format": "date-time"
+					}
+				},
+				"required": [
+					"id",
+					"status"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IProfileListDto": {
+				"properties": {
+					"count": {
+						"type": "number",
+						"format": "double"
+					},
+					"offset": {
+						"type": "number",
+						"format": "double"
+					},
+					"limit": {
+						"type": "number",
+						"format": "double"
+					},
+					"data": {
+						"items": {
+							"$ref": "#/components/schemas/PublicProfileDto"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"data"
 				],
 				"type": "object",
 				"additionalProperties": false

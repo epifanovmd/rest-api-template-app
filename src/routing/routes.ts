@@ -31,6 +31,7 @@ const models: TsoaRoute.Models = {
         "dataType": "refObject",
         "properties": {
             "id": {"dataType":"string","required":true},
+            "userId": {"dataType":"string","required":true},
             "firstName": {"dataType":"string"},
             "lastName": {"dataType":"string"},
             "birthDate": {"dataType":"union","subSchemas":[{"dataType":"datetime"},{"dataType":"enum","enums":[null]}]},
@@ -39,47 +40,7 @@ const models: TsoaRoute.Models = {
             "lastOnline": {"dataType":"union","subSchemas":[{"dataType":"datetime"},{"dataType":"enum","enums":[null]}]},
             "createdAt": {"dataType":"datetime","required":true},
             "updatedAt": {"dataType":"datetime","required":true},
-        },
-        "additionalProperties": false,
-    },
-    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "EProfileStatus": {
-        "dataType": "refEnum",
-        "enums": ["online","offline"],
-    },
-    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "IProfileUpdateRequestDto": {
-        "dataType": "refObject",
-        "properties": {
-            "firstName": {"dataType":"string"},
-            "lastName": {"dataType":"string"},
-            "bio": {"dataType":"string"},
-            "birthDate": {"dataType":"datetime"},
-            "gender": {"dataType":"string"},
-            "status": {"ref":"EProfileStatus"},
-        },
-        "additionalProperties": false,
-    },
-    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "PublicProfileDto": {
-        "dataType": "refObject",
-        "properties": {
-            "id": {"dataType":"string","required":true},
-            "firstName": {"dataType":"string"},
-            "lastName": {"dataType":"string"},
-            "status": {"ref":"EProfileStatus","required":true},
-            "lastOnline": {"dataType":"datetime"},
-        },
-        "additionalProperties": false,
-    },
-    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "IProfileListDto": {
-        "dataType": "refObject",
-        "properties": {
-            "count": {"dataType":"double"},
-            "offset": {"dataType":"double"},
-            "limit": {"dataType":"double"},
-            "data": {"dataType":"array","array":{"dataType":"refObject","ref":"PublicProfileDto"},"required":true},
+            "user": {"ref":"UserDto"},
         },
         "additionalProperties": false,
     },
@@ -128,6 +89,47 @@ const models: TsoaRoute.Models = {
             "role": {"ref":"IRoleDto","required":true},
             "createdAt": {"dataType":"datetime","required":true},
             "updatedAt": {"dataType":"datetime","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "EProfileStatus": {
+        "dataType": "refEnum",
+        "enums": ["online","offline"],
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "IProfileUpdateRequestDto": {
+        "dataType": "refObject",
+        "properties": {
+            "firstName": {"dataType":"string"},
+            "lastName": {"dataType":"string"},
+            "bio": {"dataType":"string"},
+            "birthDate": {"dataType":"datetime"},
+            "gender": {"dataType":"string"},
+            "status": {"ref":"EProfileStatus"},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "PublicProfileDto": {
+        "dataType": "refObject",
+        "properties": {
+            "id": {"dataType":"string","required":true},
+            "firstName": {"dataType":"string"},
+            "lastName": {"dataType":"string"},
+            "status": {"ref":"EProfileStatus","required":true},
+            "lastOnline": {"dataType":"datetime"},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "IProfileListDto": {
+        "dataType": "refObject",
+        "properties": {
+            "count": {"dataType":"double"},
+            "offset": {"dataType":"double"},
+            "limit": {"dataType":"double"},
+            "data": {"dataType":"array","array":{"dataType":"refObject","ref":"PublicProfileDto"},"required":true},
         },
         "additionalProperties": false,
     },

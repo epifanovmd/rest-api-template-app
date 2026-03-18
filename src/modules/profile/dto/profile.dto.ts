@@ -1,10 +1,12 @@
 import { IListResponseDto } from "../../../core";
 import { BaseDto } from "../../../core/dto/BaseDto";
+import { UserDto } from "../../user/dto";
 import { Profile } from "../profile.entity";
 import { EProfileStatus } from "../profile.types";
 
 export class ProfileDto extends BaseDto {
   id: string;
+  userId: string;
   firstName?: string;
   lastName?: string;
   birthDate?: Date | null;
@@ -14,10 +16,13 @@ export class ProfileDto extends BaseDto {
   createdAt: Date;
   updatedAt: Date;
 
+  user?: UserDto;
+
   constructor(entity: Profile) {
     super(entity);
 
     this.id = entity.id;
+    this.userId = entity.userId;
     this.firstName = entity.firstName;
     this.lastName = entity.lastName;
     this.birthDate = entity.birthDate;
@@ -26,6 +31,8 @@ export class ProfileDto extends BaseDto {
     this.lastOnline = entity.lastOnline;
     this.createdAt = entity.createdAt;
     this.updatedAt = entity.updatedAt;
+
+    this.user = entity.user;
   }
 
   static fromEntity(entity: Profile) {
