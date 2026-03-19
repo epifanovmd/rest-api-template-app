@@ -6,6 +6,7 @@ import {
   Get,
   Patch,
   Post,
+  Query,
   Request,
   Route,
   Security,
@@ -40,10 +41,13 @@ export class WgServerController extends Controller {
    */
   @Security("jwt", ["role:admin"])
   @Get("/")
-  async getServers(): Promise<IWgServerListDto> {
-    const data = await this.service.getAll();
+  async getServers(
+    @Query("offset") offset?: number,
+    @Query("limit") limit?: number,
+  ): Promise<IWgServerListDto> {
+    const [data, totalCount] = await this.service.getAll(offset, limit);
 
-    return { count: data.length, data: data.map(WgServerDto.fromEntity) };
+    return { offset, limit, count: data.length, totalCount, data: data.map(WgServerDto.fromEntity) };
   }
 
   /**

@@ -27,7 +27,7 @@ export class ProfileService {
       queryBuilder.take(limit);
     }
 
-    return queryBuilder.getMany();
+    return queryBuilder.getManyAndCount();
   }
 
   async getProfileByAttr(where: FindOptionsWhere<Profile>) {

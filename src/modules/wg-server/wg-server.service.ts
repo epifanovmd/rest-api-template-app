@@ -32,8 +32,12 @@ export class WgServerService {
     private readonly eventBus: EventBus,
   ) {}
 
-  async getAll(): Promise<WgServer[]> {
-    return this.serverRepo.find({ order: { createdAt: "ASC" } });
+  async getAll(offset?: number, limit?: number): Promise<[WgServer[], number]> {
+    return this.serverRepo.findAndCount({
+      order: { createdAt: "ASC" },
+      skip: offset,
+      take: limit,
+    });
   }
 
   async getById(id: string): Promise<WgServer> {
@@ -160,7 +164,7 @@ export class WgServerService {
 
   async stop(id: string): Promise<WgServer> {
     const server = await this.getById(id);
-    const peers = await this.peerRepo.findByServer(id);
+    const [peers] = await this.peerRepo.findByServer(id);
 
     try {
       await this.cli.down(server.interface);

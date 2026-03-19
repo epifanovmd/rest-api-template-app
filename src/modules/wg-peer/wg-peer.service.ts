@@ -31,12 +31,20 @@ export class WgPeerService {
     @inject(EventBus) private readonly eventBus: EventBus,
   ) {}
 
-  async getByServer(serverId: string): Promise<WgPeer[]> {
-    return this.peerRepo.findByServer(serverId);
+  async getByServer(
+    serverId: string,
+    offset?: number,
+    limit?: number,
+  ): Promise<[WgPeer[], number]> {
+    return this.peerRepo.findByServer(serverId, offset, limit);
   }
 
-  async getByUser(userId: string): Promise<WgPeer[]> {
-    return this.peerRepo.findByUser(userId);
+  async getByUser(
+    userId: string,
+    offset?: number,
+    limit?: number,
+  ): Promise<[WgPeer[], number]> {
+    return this.peerRepo.findByUser(userId, offset, limit);
   }
 
   async getById(id: string): Promise<WgPeer> {

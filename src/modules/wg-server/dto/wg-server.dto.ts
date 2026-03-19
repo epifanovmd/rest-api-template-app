@@ -1,3 +1,4 @@
+import { IListResponseDto } from "../../../core/dto/ListResponse";
 import { WgServer } from "../wg-server.entity";
 import { EWgServerStatus } from "../wg-server.types";
 
@@ -91,7 +92,4 @@ export class WgServerDto {
   }
 }
 
-export interface IWgServerListDto {
-  count: number;
-  data: WgServerDto[];
-}
+export interface IWgServerListDto extends IListResponseDto<WgServerDto[]> {}

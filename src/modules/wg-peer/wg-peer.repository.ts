@@ -10,17 +10,29 @@ export class WgPeerRepository extends BaseRepository<WgPeer> {
     super(dataSource, WgPeer);
   }
 
-  findByServer(serverId: string): Promise<WgPeer[]> {
-    return this.find({
+  findByServer(
+    serverId: string,
+    skip?: number,
+    take?: number,
+  ): Promise<[WgPeer[], number]> {
+    return this.findAndCount({
       where: { serverId },
       order: { createdAt: "ASC" },
+      skip,
+      take,
     });
   }
 
-  findByUser(userId: string): Promise<WgPeer[]> {
-    return this.find({
+  findByUser(
+    userId: string,
+    skip?: number,
+    take?: number,
+  ): Promise<[WgPeer[], number]> {
+    return this.findAndCount({
       where: { userId },
       order: { createdAt: "ASC" },
+      skip,
+      take,
     });
   }
 

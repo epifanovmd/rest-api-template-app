@@ -31,7 +31,7 @@ export class WgIpAllocatorService {
     const serverHostInt = this.ipToInt(serverAddress.split("/")[0]);
     const usedInts = new Set<number>([serverHostInt]);
 
-    const peers = await this.peerRepo.findByServer(serverId);
+    const [peers] = await this.peerRepo.findByServer(serverId);
 
     for (const peer of peers) {
       const ip = peer.allowedIPs.split("/")[0];

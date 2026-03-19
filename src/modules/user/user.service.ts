@@ -29,7 +29,7 @@ export class UserService {
   ) {}
 
   async getUsers(offset?: number, limit?: number) {
-    return await this._userRepository.find({
+    return this._userRepository.findAndCount({
       skip: offset,
       take: limit,
       order: { createdAt: "DESC" },

@@ -112,10 +112,11 @@ export class UserController extends Controller {
     @Query("offset") offset?: number,
     @Query("limit") limit?: number,
   ): Promise<IUserListDto> {
-    return this._userService.getUsers(offset, limit).then(result => ({
+    return this._userService.getUsers(offset, limit).then(([result, totalCount]) => ({
       offset,
       limit,
       count: result.length,
+      totalCount,
       data: result.map(PublicUserDto.fromEntity),
     }));
   }

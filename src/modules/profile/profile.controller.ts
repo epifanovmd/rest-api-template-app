@@ -96,12 +96,13 @@ export class ProfileController extends Controller {
     @Query("offset") offset?: number,
     @Query("limit") limit?: number,
   ): Promise<IProfileListDto> {
-    const result = await this._profileService.getProfiles(offset, limit);
+    const [result, totalCount] = await this._profileService.getProfiles(offset, limit);
 
     return {
       offset,
       limit,
       count: result.length,
+      totalCount,
       data: result.map(PublicProfileDto.fromEntity),
     };
   }

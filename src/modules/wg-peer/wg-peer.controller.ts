@@ -42,10 +42,14 @@ export class WgPeerController extends Controller {
    */
   @Security("jwt", ["role:admin"])
   @Get("/servers/{serverId}/peers")
-  async getPeersByServer(serverId: string): Promise<IWgPeerListDto> {
-    const data = await this.service.getByServer(serverId);
+  async getPeersByServer(
+    serverId: string,
+    @Query("offset") offset?: number,
+    @Query("limit") limit?: number,
+  ): Promise<IWgPeerListDto> {
+    const [data, totalCount] = await this.service.getByServer(serverId, offset, limit);
 
-    return { count: data.length, data: data.map(WgPeerDto.fromEntity) };
+    return { offset, limit, count: data.length, totalCount, data: data.map(WgPeerDto.fromEntity) };
   }
 
   /**
@@ -54,11 +58,15 @@ export class WgPeerController extends Controller {
    */
   @Security("jwt")
   @Get("/peers/my")
-  async getMyPeers(@Request() req: KoaRequest): Promise<IWgPeerListDto> {
+  async getMyPeers(
+    @Request() req: KoaRequest,
+    @Query("offset") offset?: number,
+    @Query("limit") limit?: number,
+  ): Promise<IWgPeerListDto> {
     const user = getContextUser(req);
-    const data = await this.service.getByUser(user.userId);
+    const [data, totalCount] = await this.service.getByUser(user.userId, offset, limit);
 
-    return { count: data.length, data: data.map(WgPeerDto.fromEntity) };
+    return { offset, limit, count: data.length, totalCount, data: data.map(WgPeerDto.fromEntity) };
   }
 
   /**
@@ -67,10 +75,14 @@ export class WgPeerController extends Controller {
    */
   @Security("jwt", ["role:admin"])
   @Get("/peers/user/{userId}")
-  async getPeersByUser(userId: string): Promise<IWgPeerListDto> {
-    const data = await this.service.getByUser(userId);
+  async getPeersByUser(
+    userId: string,
+    @Query("offset") offset?: number,
+    @Query("limit") limit?: number,
+  ): Promise<IWgPeerListDto> {
+    const [data, totalCount] = await this.service.getByUser(userId, offset, limit);
 
-    return { count: data.length, data: data.map(WgPeerDto.fromEntity) };
+    return { offset, limit, count: data.length, totalCount, data: data.map(WgPeerDto.fromEntity) };
   }
 
   /**
