@@ -3,7 +3,11 @@ import { inject } from "inversify";
 import { config } from "../../config";
 import { EventBus, Injectable, logger } from "../../core";
 import { WgOverviewStatsPayload } from "../socket/socket.types";
-import { WgCliService, WgPeerStats, WgShowOutput } from "../wg-cli/wg-cli.service";
+import {
+  WgCliService,
+  WgPeerStats,
+  WgShowOutput,
+} from "../wg-cli/wg-cli.service";
 import { WgPeerActiveChangedEvent } from "../wg-peer/events";
 import { WG_PEER_ACTIVE_THRESHOLD_MS } from "../wg-peer/wg-peer.constants";
 import { WgPeerRepository } from "../wg-peer/wg-peer.repository";
@@ -162,7 +166,10 @@ export class WgStatisticsService {
       // Batch write buffers — filled per-peer, flushed after all servers
       const trafficInserts: Partial<WgTrafficStat>[] = [];
       const speedInserts: Partial<WgSpeedSample>[] = [];
-      const handshakeUpdates: Array<{ id: string; lastHandshake: Date | null }> = [];
+      const handshakeUpdates: Array<{
+        id: string;
+        lastHandshake: Date | null;
+      }> = [];
 
       // ── 1. Iterate UP servers ──────────────────────────────────────────────
 
@@ -255,7 +262,10 @@ export class WgStatisticsService {
           // ── 6. Collect DB writes ──────────────────────────────────────────
 
           if (saveToDb) {
-            handshakeUpdates.push({ id: dbPeer.id, lastHandshake: wgPeer.lastHandshake });
+            handshakeUpdates.push({
+              id: dbPeer.id,
+              lastHandshake: wgPeer.lastHandshake,
+            });
 
             trafficInserts.push({
               peerId: dbPeer.id,
@@ -440,7 +450,15 @@ export class WgStatisticsService {
       wgPeer.lastHandshake !== null &&
       nowMs - wgPeer.lastHandshake.getTime() < WG_PEER_ACTIVE_THRESHOLD_MS;
 
-    return { adjustedRx, adjustedTx, rxSpeed, txSpeed, rxOffset, txOffset, isActive };
+    return {
+      adjustedRx,
+      adjustedTx,
+      rxSpeed,
+      txSpeed,
+      rxOffset,
+      txOffset,
+      isActive,
+    };
   }
 
   // ─── Dead-band checks ─────────────────────────────────────────────────────────
@@ -469,7 +487,13 @@ export class WgStatisticsService {
     );
 
     if (should) {
-      this.lastSocketEmit.set(key, { rxSpeedBps, txSpeedBps, rxBytes, txBytes, timestamp: nowMs });
+      this.lastSocketEmit.set(key, {
+        rxSpeedBps,
+        txSpeedBps,
+        rxBytes,
+        txBytes,
+        timestamp: nowMs,
+      });
     }
 
     return should;
@@ -499,7 +523,13 @@ export class WgStatisticsService {
     );
 
     if (should) {
-      this.lastDbSave.set(key, { rxSpeedBps, txSpeedBps, rxBytes, txBytes, timestamp: nowMs });
+      this.lastDbSave.set(key, {
+        rxSpeedBps,
+        txSpeedBps,
+        rxBytes,
+        txBytes,
+        timestamp: nowMs,
+      });
     }
 
     return should;
@@ -520,7 +550,8 @@ export class WgStatisticsService {
     if (!last) return true;
     if (nowMs - last.timestamp >= maxSilenceMs) return true;
     if (rxBytes !== last.rxBytes || txBytes !== last.txBytes) return true;
-    if (activePeers !== undefined && activePeers !== last.activePeers) return true;
+    if (activePeers !== undefined && activePeers !== last.activePeers)
+      return true;
 
     return (
       Math.abs(rxSpeedBps - last.rxSpeedBps) > deadbandBps ||
@@ -591,16 +622,18 @@ export class WgStatisticsService {
     serverId: string,
     from: Date,
     to: Date,
+    peerId?: string,
   ): Promise<WgTrafficStat[]> {
-    return this.trafficRepo.getByServerInRange(serverId, from, to);
+    return this.trafficRepo.getByServerInRange(serverId, from, to, peerId);
   }
 
   async getServerSpeedHistory(
     serverId: string,
     from: Date,
     to: Date,
+    peerId?: string,
   ): Promise<WgSpeedSample[]> {
-    return this.speedRepo.getByServerInRange(serverId, from, to);
+    return this.speedRepo.getByServerInRange(serverId, from, to, peerId);
   }
 
   async getLatestPeerStats(peerId: string): Promise<WgTrafficStat[]> {
@@ -621,7 +654,9 @@ export class WgStatisticsService {
   async getOverviewSpeedHistory(
     from: Date,
     to: Date,
-  ): Promise<Array<{ timestamp: Date; rxSpeedBps: number; txSpeedBps: number }>> {
+  ): Promise<
+    Array<{ timestamp: Date; rxSpeedBps: number; txSpeedBps: number }>
+  > {
     return this.speedRepo.getOverviewInRange(from, to);
   }
 }

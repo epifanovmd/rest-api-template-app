@@ -176,6 +176,7 @@ export class WgStatisticsController extends Controller {
    * Get combined stats for a server.
    * @summary Server full stats
    * @param serverId Server ID
+   * @param peerId Peer ID
    * @param from ISO date string
    * @param to ISO date string
    */
@@ -185,11 +186,22 @@ export class WgStatisticsController extends Controller {
     serverId: string,
     @Query("from") from?: string,
     @Query("to") to?: string,
+    @Query("peerId") peerId?: string,
   ): Promise<IWgServerStatsResponse> {
     const range = parseRange(from, to);
     const [traffic, speed] = await Promise.all([
-      this.statsService.getServerTrafficHistory(serverId, range.from, range.to),
-      this.statsService.getServerSpeedHistory(serverId, range.from, range.to),
+      this.statsService.getServerTrafficHistory(
+        serverId,
+        range.from,
+        range.to,
+        peerId,
+      ),
+      this.statsService.getServerSpeedHistory(
+        serverId,
+        range.from,
+        range.to,
+        peerId,
+      ),
     ]);
 
     return {

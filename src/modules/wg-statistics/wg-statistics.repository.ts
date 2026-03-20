@@ -11,10 +11,7 @@ export class WgTrafficStatRepository extends BaseRepository<WgTrafficStat> {
     super(dataSource, WgTrafficStat);
   }
 
-  async getLatestByPeer(
-    peerId: string,
-    limit = 100,
-  ): Promise<WgTrafficStat[]> {
+  async getLatestByPeer(peerId: string, limit = 100): Promise<WgTrafficStat[]> {
     return this.find({
       where: { peerId },
       order: { timestamp: "DESC" },
@@ -55,13 +52,18 @@ export class WgTrafficStatRepository extends BaseRepository<WgTrafficStat> {
     serverId: string,
     from: Date,
     to: Date,
+    peerId?: string,
   ): Promise<WgTrafficStat[]> {
-    return this.createQueryBuilder("s")
+    const queryBuilder = this.createQueryBuilder("s")
       .where("s.server_id = :serverId", { serverId })
       .andWhere("s.timestamp >= :from", { from })
-      .andWhere("s.timestamp <= :to", { to })
-      .orderBy("s.timestamp", "ASC")
-      .getMany();
+      .andWhere("s.timestamp <= :to", { to });
+
+    if (peerId) {
+      queryBuilder.andWhere("s.peer_id = :peerId", { peerId });
+    }
+
+    return queryBuilder.orderBy("s.timestamp", "ASC").getMany();
   }
 
   async getOverviewInRange(
@@ -120,19 +122,27 @@ export class WgSpeedSampleRepository extends BaseRepository<WgSpeedSample> {
     serverId: string,
     from: Date,
     to: Date,
+    peerId?: string,
   ): Promise<WgSpeedSample[]> {
-    return this.createQueryBuilder("s")
+    const queryBuilder = this.createQueryBuilder("s")
       .where("s.server_id = :serverId", { serverId })
+      .where("s.peer_id = :peerId", { peerId })
       .andWhere("s.timestamp >= :from", { from })
-      .andWhere("s.timestamp <= :to", { to })
-      .orderBy("s.timestamp", "ASC")
-      .getMany();
+      .andWhere("s.timestamp <= :to", { to });
+
+    if (peerId) {
+      queryBuilder.andWhere("s.peer_id = :peerId", { peerId });
+    }
+
+    return queryBuilder.orderBy("s.timestamp", "ASC").getMany();
   }
 
   async getOverviewInRange(
     from: Date,
     to: Date,
-  ): Promise<Array<{ timestamp: Date; rxSpeedBps: number; txSpeedBps: number }>> {
+  ): Promise<
+    Array<{ timestamp: Date; rxSpeedBps: number; txSpeedBps: number }>
+  > {
     return this.createQueryBuilder("s")
       .select("date_trunc('minute', s.timestamp)", "timestamp")
       .addSelect("CAST(SUM(s.rx_speed_bps) AS float8)", "rxSpeedBps")
