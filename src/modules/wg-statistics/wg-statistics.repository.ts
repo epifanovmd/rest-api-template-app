@@ -64,6 +64,21 @@ export class WgTrafficStatRepository extends BaseRepository<WgTrafficStat> {
       .getMany();
   }
 
+  async getOverviewInRange(
+    from: Date,
+    to: Date,
+  ): Promise<Array<{ timestamp: Date; rxBytes: number; txBytes: number }>> {
+    return this.createQueryBuilder("s")
+      .select("date_trunc('minute', s.timestamp)", "timestamp")
+      .addSelect("CAST(SUM(s.rx_bytes) AS float8)", "rxBytes")
+      .addSelect("CAST(SUM(s.tx_bytes) AS float8)", "txBytes")
+      .where("s.timestamp >= :from", { from })
+      .andWhere("s.timestamp <= :to", { to })
+      .groupBy("date_trunc('minute', s.timestamp)")
+      .orderBy("date_trunc('minute', s.timestamp)", "ASC")
+      .getRawMany();
+  }
+
   async deleteOlderThan(date: Date): Promise<number> {
     const result = await this.createQueryBuilder()
       .delete()
@@ -112,6 +127,21 @@ export class WgSpeedSampleRepository extends BaseRepository<WgSpeedSample> {
       .andWhere("s.timestamp <= :to", { to })
       .orderBy("s.timestamp", "ASC")
       .getMany();
+  }
+
+  async getOverviewInRange(
+    from: Date,
+    to: Date,
+  ): Promise<Array<{ timestamp: Date; rxSpeedBps: number; txSpeedBps: number }>> {
+    return this.createQueryBuilder("s")
+      .select("date_trunc('minute', s.timestamp)", "timestamp")
+      .addSelect("CAST(SUM(s.rx_speed_bps) AS float8)", "rxSpeedBps")
+      .addSelect("CAST(SUM(s.tx_speed_bps) AS float8)", "txSpeedBps")
+      .where("s.timestamp >= :from", { from })
+      .andWhere("s.timestamp <= :to", { to })
+      .groupBy("date_trunc('minute', s.timestamp)")
+      .orderBy("date_trunc('minute', s.timestamp)", "ASC")
+      .getRawMany();
   }
 
   async deleteOlderThan(date: Date): Promise<number> {

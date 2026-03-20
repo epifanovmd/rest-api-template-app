@@ -3,6 +3,7 @@ import { Controller, Get, Query, Route, Security, Tags } from "tsoa";
 
 import { Injectable } from "../../core";
 import {
+  IWgOverviewStatsResponse,
   IWgPeerStatsResponse,
   IWgServerStatsResponse,
   WgSpeedSampleDto,
@@ -196,5 +197,26 @@ export class WgStatisticsController extends Controller {
       traffic: traffic.map(WgTrafficStatDto.fromEntity),
       speed: speed.map(WgSpeedSampleDto.fromEntity),
     };
+  }
+
+  /**
+   * Get aggregated overview stats across all servers.
+   * @summary Overview stats
+   * @param from ISO date string (default: 24h ago)
+   * @param to ISO date string (default: now)
+   */
+  @Security("jwt", ["role:admin"])
+  @Get("/overview")
+  async getOverviewStats(
+    @Query("from") from?: string,
+    @Query("to") to?: string,
+  ): Promise<IWgOverviewStatsResponse> {
+    const range = parseRange(from, to);
+    const [traffic, speed] = await Promise.all([
+      this.statsService.getOverviewTrafficHistory(range.from, range.to),
+      this.statsService.getOverviewSpeedHistory(range.from, range.to),
+    ]);
+
+    return { traffic, speed };
   }
 }

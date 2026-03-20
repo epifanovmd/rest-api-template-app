@@ -76,3 +76,22 @@ export interface IWgServerStatsResponse {
   traffic: WgTrafficStatDto[];
   speed: WgSpeedSampleDto[];
 }
+
+export interface WgOverviewTrafficPointDto {
+  /** @format date-time */
+  timestamp: Date;
+  rxBytes: number;
+  txBytes: number;
+}
+
+export interface WgOverviewSpeedPointDto {
+  /** @format date-time */
+  timestamp: Date;
+  rxSpeedBps: number;
+  txSpeedBps: number;
+}
+
+export interface IWgOverviewStatsResponse {
+  traffic: WgOverviewTrafficPointDto[];
+  speed: WgOverviewSpeedPointDto[];
+}

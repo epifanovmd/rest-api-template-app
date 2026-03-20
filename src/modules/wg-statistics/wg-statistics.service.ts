@@ -610,4 +610,18 @@ export class WgStatisticsService {
   async getLatestPeerSpeed(peerId: string): Promise<WgSpeedSample[]> {
     return this.speedRepo.getLatestByPeer(peerId, 1);
   }
+
+  async getOverviewTrafficHistory(
+    from: Date,
+    to: Date,
+  ): Promise<Array<{ timestamp: Date; rxBytes: number; txBytes: number }>> {
+    return this.trafficRepo.getOverviewInRange(from, to);
+  }
+
+  async getOverviewSpeedHistory(
+    from: Date,
+    to: Date,
+  ): Promise<Array<{ timestamp: Date; rxSpeedBps: number; txSpeedBps: number }>> {
+    return this.speedRepo.getOverviewInRange(from, to);
+  }
 }
