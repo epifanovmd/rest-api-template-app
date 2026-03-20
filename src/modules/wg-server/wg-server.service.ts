@@ -192,7 +192,9 @@ export class WgServerService {
   }
 
   async restart(id: string): Promise<WgServer> {
-    await this.stop(id).catch(() => {});
+    const server = await this.getById(id);
+
+    await this.cli.down(server.interface).catch(() => {});
 
     return this.start(id);
   }
