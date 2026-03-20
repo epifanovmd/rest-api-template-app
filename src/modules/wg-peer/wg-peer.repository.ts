@@ -40,6 +40,14 @@ export class WgPeerRepository extends BaseRepository<WgPeer> {
     return this.find({ where: { serverId, enabled: true } });
   }
 
+  async bulkUpdateLastHandshake(
+    updates: Array<{ id: string; lastHandshake: Date | null }>,
+  ): Promise<void> {
+    await Promise.all(
+      updates.map(({ id, lastHandshake }) => this.update({ id }, { lastHandshake })),
+    );
+  }
+
   findExpired(): Promise<WgPeer[]> {
     return this.createQueryBuilder("peer")
       .where("peer.expires_at IS NOT NULL")

@@ -4,6 +4,7 @@ import { config } from "../../config";
 import { EventBus, Injectable, logger } from "../../core";
 import { WgCliService, WgConfigService, WgKeyService } from "../wg-cli";
 import { WgPeerStatusChangedEvent } from "../wg-peer/events";
+import { WG_PEER_ACTIVE_THRESHOLD_MS } from "../wg-peer/wg-peer.constants";
 import { WgPeerRepository } from "../wg-peer/wg-peer.repository";
 import {
   IWgServerCreateRequestDto,
@@ -217,11 +218,10 @@ export class WgServerService {
 
     const [showData] = await this.cli.show(server.interface);
     const now = Date.now();
-    const HANDSHAKE_ACTIVE_THRESHOLD_MS = 3 * 60 * 1000; // 3 min
     const activePeers = (showData?.peers ?? []).filter(
       p =>
         p.lastHandshake &&
-        now - p.lastHandshake.getTime() < HANDSHAKE_ACTIVE_THRESHOLD_MS,
+        now - p.lastHandshake.getTime() < WG_PEER_ACTIVE_THRESHOLD_MS,
     );
 
     return {

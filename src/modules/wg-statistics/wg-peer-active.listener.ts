@@ -23,6 +23,7 @@ export class WgPeerActiveListener implements ISocketEventListener {
         this.emitter.toRoom(`wg:peer:${event.peerId}`, "wg:peer:active", {
           peerId: event.peerId,
           serverId: event.serverId,
+          isActive: event.isActive,
           lastHandshake: event.lastHandshake,
         });
       },

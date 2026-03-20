@@ -22,6 +22,22 @@ export class WgTrafficStatRepository extends BaseRepository<WgTrafficStat> {
     });
   }
 
+  /**
+   * Returns the single most-recent traffic record per peer in one query.
+   * Used at bootstrap to restore monotonic byte offsets after restarts.
+   */
+  async getLatestPerPeer(): Promise<
+    Array<{ peerId: string; rxBytes: number; txBytes: number }>
+  > {
+    return this.createQueryBuilder("s")
+      .select("DISTINCT ON (s.peer_id) s.peer_id", "peerId")
+      .addSelect("CAST(s.rx_bytes AS float8)", "rxBytes")
+      .addSelect("CAST(s.tx_bytes AS float8)", "txBytes")
+      .orderBy("s.peer_id", "ASC")
+      .addOrderBy("s.timestamp", "DESC")
+      .getRawMany();
+  }
+
   async getByPeerInRange(
     peerId: string,
     from: Date,
