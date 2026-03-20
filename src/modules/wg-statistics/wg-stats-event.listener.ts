@@ -3,11 +3,15 @@ import { inject } from "inversify";
 import { EventBus, Injectable } from "../../core";
 import { SocketEmitterService } from "../socket/socket-emitter.service";
 import { ISocketEventListener } from "../socket/socket-event-listener.interface";
-import { WgStatsUpdatedEvent } from "./events";
+import {
+  WgOverviewStatsUpdatedEvent,
+  WgPeerStatsUpdatedEvent,
+  WgServerStatsUpdatedEvent,
+} from "./events";
 
 /**
- * Listens for WgStatsUpdatedEvent from EventBus and broadcasts
- * real-time stats to subscribed Socket.IO rooms.
+ * Listens for stats events from EventBus and broadcasts
+ * real-time data to subscribed Socket.IO rooms.
  *
  * Rooms:
  *   wg:overview         — overview stats (all admins)
@@ -23,16 +27,16 @@ export class WgStatsEventListener implements ISocketEventListener {
   ) {}
 
   register(): void {
-    this.eventBus.on(WgStatsUpdatedEvent, (event: WgStatsUpdatedEvent) => {
-      this.emitter.toRoom("wg:overview", "wg:stats:overview", event.overview);
+    this.eventBus.on(WgOverviewStatsUpdatedEvent, ({ overview }) => {
+      this.emitter.toRoom("wg:overview", "wg:stats:overview", overview);
+    });
 
-      for (const srv of event.servers) {
-        this.emitter.toRoom(`wg:server:${srv.serverId}`, "wg:server:stats", srv);
-      }
+    this.eventBus.on(WgServerStatsUpdatedEvent, ({ server }) => {
+      this.emitter.toRoom(`wg:server:${server.serverId}`, "wg:server:stats", server);
+    });
 
-      for (const peer of event.peers) {
-        this.emitter.toRoom(`wg:peer:${peer.peerId}`, "wg:peer:stats", peer);
-      }
+    this.eventBus.on(WgPeerStatsUpdatedEvent, ({ peer }) => {
+      this.emitter.toRoom(`wg:peer:${peer.peerId}`, "wg:peer:stats", peer);
     });
   }
 }

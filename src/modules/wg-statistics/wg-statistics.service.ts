@@ -2,18 +2,18 @@ import { inject } from "inversify";
 
 import { config } from "../../config";
 import { EventBus, Injectable, logger } from "../../core";
-import {
-  WgOverviewStatsPayload,
-  WgPeerStatsPayload,
-  WgServerStatsPayload,
-} from "../socket/socket.types";
+import { WgOverviewStatsPayload } from "../socket/socket.types";
 import { WgCliService, WgPeerStats, WgShowOutput } from "../wg-cli/wg-cli.service";
 import { WgPeerActiveChangedEvent } from "../wg-peer/events";
 import { WG_PEER_ACTIVE_THRESHOLD_MS } from "../wg-peer/wg-peer.constants";
 import { WgPeerRepository } from "../wg-peer/wg-peer.repository";
 import { WgServerRepository } from "../wg-server/wg-server.repository";
 import { EWgServerStatus } from "../wg-server/wg-server.types";
-import { WgStatsUpdatedEvent } from "./events";
+import {
+  WgOverviewStatsUpdatedEvent,
+  WgPeerStatsUpdatedEvent,
+  WgServerStatsUpdatedEvent,
+} from "./events";
 import { WgSpeedSample } from "./wg-speed-sample.entity";
 import {
   WgSpeedSampleRepository,
@@ -164,10 +164,6 @@ export class WgStatisticsService {
       const speedInserts: Partial<WgSpeedSample>[] = [];
       const handshakeUpdates: Array<{ id: string; lastHandshake: Date | null }> = [];
 
-      // Socket payload buffers
-      const serverStats: WgServerStatsPayload[] = [];
-      const peerStats: WgPeerStatsPayload[] = [];
-
       // ── 1. Iterate UP servers ──────────────────────────────────────────────
 
       for (const server of upServers) {
@@ -238,20 +234,22 @@ export class WgStatisticsService {
             wgPeer.lastHandshake,
           );
 
-          // ── 5. Collect socket payload ─────────────────────────────────────
+          // ── 5. Emit peer stats event ──────────────────────────────────────
 
           if (emitToSocket) {
-            peerStats.push({
-              peerId: dbPeer.id,
-              serverId: server.id,
-              rxBytes: metrics.adjustedRx,
-              txBytes: metrics.adjustedTx,
-              rxSpeedBps: metrics.rxSpeed,
-              txSpeedBps: metrics.txSpeed,
-              lastHandshake: wgPeer.lastHandshake,
-              isActive: metrics.isActive,
-              timestamp: now,
-            });
+            this.eventBus.emit(
+              new WgPeerStatsUpdatedEvent({
+                peerId: dbPeer.id,
+                serverId: server.id,
+                rxBytes: metrics.adjustedRx,
+                txBytes: metrics.adjustedTx,
+                rxSpeedBps: metrics.rxSpeed,
+                txSpeedBps: metrics.txSpeed,
+                lastHandshake: wgPeer.lastHandshake,
+                isActive: metrics.isActive,
+                timestamp: now,
+              }),
+            );
           }
 
           // ── 6. Collect DB writes ──────────────────────────────────────────
@@ -310,17 +308,19 @@ export class WgStatisticsService {
             timestamp: nowMs,
           });
 
-          serverStats.push({
-            serverId: server.id,
-            interface: server.interface,
-            totalRxBytes: srvRx,
-            totalTxBytes: srvTx,
-            rxSpeedBps: srvRxSpeed,
-            txSpeedBps: srvTxSpeed,
-            peerCount: srvTrackedPeers,
-            activePeerCount: srvActivePeers,
-            timestamp: now,
-          });
+          this.eventBus.emit(
+            new WgServerStatsUpdatedEvent({
+              serverId: server.id,
+              interface: server.interface,
+              totalRxBytes: srvRx,
+              totalTxBytes: srvTx,
+              rxSpeedBps: srvRxSpeed,
+              txSpeedBps: srvTxSpeed,
+              peerCount: srvTrackedPeers,
+              activePeerCount: srvActivePeers,
+              timestamp: now,
+            }),
+          );
         }
 
         globalRx += srvRx;
@@ -345,7 +345,7 @@ export class WgStatisticsService {
           : Promise.resolve(),
       ]);
 
-      // ── 7. Emit WgStatsUpdatedEvent ────────────────────────────────────────
+      // ── 7. Emit WgOverviewStatsUpdatedEvent ───────────────────────────────────
 
       const overviewChanged = this.needsUpdate(
         this.lastOverviewSocketEmit,
@@ -359,34 +359,30 @@ export class WgStatisticsService {
         totalActivePeers,
       );
 
-      if (!overviewChanged && serverStats.length === 0 && peerStats.length === 0) {
-        return;
-      }
+      if (!overviewChanged) return;
 
-      if (overviewChanged) {
-        this.lastOverviewSocketEmit = {
-          rxSpeedBps: globalRxSpeed,
-          txSpeedBps: globalTxSpeed,
-          rxBytes: globalRx,
-          txBytes: globalTx,
-          timestamp: nowMs,
-          activePeers: totalActivePeers,
-        };
-      }
-
-      const overview: WgOverviewStatsPayload = {
-        totalServers: servers.length,
-        activeServers: upServers.length,
-        totalPeers: totalTrackedPeers,
-        activePeers: totalActivePeers,
-        totalRxBytes: globalRx,
-        totalTxBytes: globalTx,
+      this.lastOverviewSocketEmit = {
         rxSpeedBps: globalRxSpeed,
         txSpeedBps: globalTxSpeed,
-        timestamp: now,
+        rxBytes: globalRx,
+        txBytes: globalTx,
+        timestamp: nowMs,
+        activePeers: totalActivePeers,
       };
 
-      this.eventBus.emit(new WgStatsUpdatedEvent(overview, serverStats, peerStats));
+      this.eventBus.emit(
+        new WgOverviewStatsUpdatedEvent({
+          totalServers: servers.length,
+          activeServers: upServers.length,
+          totalPeers: totalTrackedPeers,
+          activePeers: totalActivePeers,
+          totalRxBytes: globalRx,
+          totalTxBytes: globalTx,
+          rxSpeedBps: globalRxSpeed,
+          txSpeedBps: globalTxSpeed,
+          timestamp: now,
+        }),
+      );
     } catch (err) {
       logger.error({ err }, "[WgStats] Poll error");
     }

@@ -1,5 +1,6 @@
 import { IListResponseDto } from "../../../core/dto/ListResponse";
 import { EWgServerStatus } from "../../wg-server/wg-server.types";
+import { WG_PEER_ACTIVE_THRESHOLD_MS } from "../wg-peer.constants";
 import { WgPeer } from "../wg-peer.entity";
 
 export interface IWgPeerCreateRequestDto {
@@ -46,6 +47,7 @@ export class WgPeerDto {
   expiresAt: Date | null;
   description: string | null;
   lastHandshake: Date | null;
+  isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
 
@@ -68,6 +70,9 @@ export class WgPeerDto {
     dto.expiresAt = e.expiresAt;
     dto.description = e.description;
     dto.lastHandshake = e.lastHandshake ?? null;
+    dto.isActive =
+      e.lastHandshake !== null &&
+      Date.now() - e.lastHandshake.getTime() < WG_PEER_ACTIVE_THRESHOLD_MS;
     dto.createdAt = e.createdAt;
     dto.updatedAt = e.updatedAt;
 
