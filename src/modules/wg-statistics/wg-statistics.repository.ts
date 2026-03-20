@@ -86,8 +86,10 @@ export class WgTrafficStatRepository extends BaseRepository<WgTrafficStat> {
   /**
    * Aggregated traffic by minute for chart rendering.
    *
-   * rx_bytes/tx_bytes are cumulative counters — takes the LATEST value per peer
-   * per minute bucket, then sums across peers. Supports optional server/peer filter.
+   * rx_bytes/tx_bytes are cumulative counters. Uses fill-forward: for each minute
+   * bucket, takes the latest known value per peer (even if recorded in a prior
+   * minute), then sums across peers. This prevents dips when a peer has no record
+   * in a particular minute due to dead-band filtering.
    */
   async getAggregatedInRange(
     from: Date,
@@ -95,30 +97,57 @@ export class WgTrafficStatRepository extends BaseRepository<WgTrafficStat> {
     filters?: AggregatedFilters,
   ): Promise<AggregatedTrafficPoint[]> {
     const params: (Date | string)[] = [from, to];
-    const conditions = ["timestamp >= $1", "timestamp <= $2"];
+    const rangeConditions = ["timestamp >= $1", "timestamp <= $2"];
+    const joinExtra: string[] = [];
 
     if (filters?.serverId) {
-      conditions.push(`server_id = $${params.push(filters.serverId)}`);
+      const idx = params.push(filters.serverId);
+
+      rangeConditions.push(`server_id = $${idx}`);
+      joinExtra.push(`s.server_id = $${idx}`);
     }
     if (filters?.peerId) {
-      conditions.push(`peer_id = $${params.push(filters.peerId)}`);
+      const idx = params.push(filters.peerId);
+
+      rangeConditions.push(`peer_id = $${idx}`);
+      joinExtra.push(`s.peer_id = $${idx}`);
     }
+
+    const whereRange = rangeConditions.join(" AND ");
+    const andJoin =
+      joinExtra.length > 0 ? ` AND ${joinExtra.join(" AND ")}` : "";
 
     return this.manager.query(
       `
+      WITH
+        minutes AS (
+          SELECT DISTINCT date_trunc('minute', timestamp) AS minute
+          FROM wg_traffic_stats
+          WHERE ${whereRange}
+        ),
+        peers AS (
+          SELECT DISTINCT peer_id
+          FROM wg_traffic_stats
+          WHERE ${whereRange}
+        ),
+        filled AS (
+          SELECT DISTINCT ON (p.peer_id, m.minute)
+            m.minute,
+            s.rx_bytes,
+            s.tx_bytes
+          FROM peers p
+          CROSS JOIN minutes m
+          JOIN wg_traffic_stats s
+            ON s.peer_id = p.peer_id
+            AND s.timestamp <= m.minute + INTERVAL '1 minute'
+            ${andJoin}
+          ORDER BY p.peer_id, m.minute, s.timestamp DESC
+        )
       SELECT
         minute AS timestamp,
         CAST(SUM(rx_bytes) AS float8) AS "rxBytes",
         CAST(SUM(tx_bytes) AS float8) AS "txBytes"
-      FROM (
-        SELECT DISTINCT ON (peer_id, date_trunc('minute', timestamp))
-          date_trunc('minute', timestamp) AS minute,
-          rx_bytes,
-          tx_bytes
-        FROM wg_traffic_stats
-        WHERE ${conditions.join(" AND ")}
-        ORDER BY peer_id, date_trunc('minute', timestamp), timestamp DESC
-      ) AS latest
+      FROM filled
       GROUP BY minute
       ORDER BY minute ASC
       `,
