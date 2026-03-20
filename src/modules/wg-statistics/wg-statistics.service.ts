@@ -2,7 +2,6 @@ import { inject } from "inversify";
 
 import { config } from "../../config";
 import { EventBus, Injectable, logger } from "../../core";
-import { WgOverviewStatsPayload } from "../socket/socket.types";
 import {
   WgCliService,
   WgPeerStats,
@@ -602,40 +601,6 @@ export class WgStatisticsService {
 
   // ─── Query methods for HTTP endpoints ────────────────────────────────────────
 
-  async getPeerTrafficHistory(
-    peerId: string,
-    from: Date,
-    to: Date,
-  ): Promise<WgTrafficStat[]> {
-    return this.trafficRepo.getByPeerInRange(peerId, from, to);
-  }
-
-  async getPeerSpeedHistory(
-    peerId: string,
-    from: Date,
-    to: Date,
-  ): Promise<WgSpeedSample[]> {
-    return this.speedRepo.getByPeerInRange(peerId, from, to);
-  }
-
-  async getServerTrafficHistory(
-    serverId: string,
-    from: Date,
-    to: Date,
-    peerId?: string,
-  ): Promise<WgTrafficStat[]> {
-    return this.trafficRepo.getByServerInRange(serverId, from, to, peerId);
-  }
-
-  async getServerSpeedHistory(
-    serverId: string,
-    from: Date,
-    to: Date,
-    peerId?: string,
-  ): Promise<WgSpeedSample[]> {
-    return this.speedRepo.getByServerInRange(serverId, from, to, peerId);
-  }
-
   async getLatestPeerStats(peerId: string): Promise<WgTrafficStat[]> {
     return this.trafficRepo.getLatestByPeer(peerId, 1);
   }
@@ -644,19 +609,26 @@ export class WgStatisticsService {
     return this.speedRepo.getLatestByPeer(peerId, 1);
   }
 
-  async getOverviewTrafficHistory(
+  /**
+   * Aggregated traffic + speed history for chart rendering.
+   *
+   * - overview: no filters
+   * - server:   { serverId } (+ optional peerId)
+   * - peer:     { peerId }
+   */
+  async getAggregatedHistory(
     from: Date,
     to: Date,
-  ): Promise<Array<{ timestamp: Date; rxBytes: number; txBytes: number }>> {
-    return this.trafficRepo.getOverviewInRange(from, to);
-  }
+    filters?: { serverId?: string; peerId?: string },
+  ): Promise<{
+    traffic: Array<{ timestamp: Date; rxBytes: number; txBytes: number }>;
+    speed: Array<{ timestamp: Date; rxSpeedBps: number; txSpeedBps: number }>;
+  }> {
+    const [traffic, speed] = await Promise.all([
+      this.trafficRepo.getAggregatedInRange(from, to, filters),
+      this.speedRepo.getAggregatedInRange(from, to, filters),
+    ]);
 
-  async getOverviewSpeedHistory(
-    from: Date,
-    to: Date,
-  ): Promise<
-    Array<{ timestamp: Date; rxSpeedBps: number; txSpeedBps: number }>
-  > {
-    return this.speedRepo.getOverviewInRange(from, to);
+    return { traffic, speed };
   }
 }
