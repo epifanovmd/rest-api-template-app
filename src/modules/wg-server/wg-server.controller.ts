@@ -17,13 +17,17 @@ import { getContextUser, Injectable, ValidateBody } from "../../core";
 import { KoaRequest } from "../../types/koa";
 import {
   IWgServerCreateRequestDto,
+  IWgServerFilters,
   IWgServerListDto,
+  IWgServerOptionDto,
+  IWgServerOptionsDto,
   IWgServerStatusDto,
   IWgServerUpdateRequestDto,
   WgServerDto,
 } from "./dto";
 import { WgServerCreateSchema, WgServerUpdateSchema } from "./validation";
 import { WgServerService } from "./wg-server.service";
+import { EWgServerStatus } from "./wg-server.types";
 
 @Injectable()
 @Tags("WireGuard Servers")
@@ -36,7 +40,7 @@ export class WgServerController extends Controller {
   }
 
   /**
-   * List all WireGuard servers.
+   * List all WireGuard servers with optional filters.
    * @summary Get all servers
    */
   @Security("jwt", ["role:admin"])
@@ -44,10 +48,28 @@ export class WgServerController extends Controller {
   async getServers(
     @Query("offset") offset?: number,
     @Query("limit") limit?: number,
+    @Query("query") query?: string,
+    @Query("status") status?: EWgServerStatus,
+    @Query("enabled") enabled?: boolean,
   ): Promise<IWgServerListDto> {
-    const [data, totalCount] = await this.service.getAll(offset, limit);
+    const filters: IWgServerFilters = { query, status, enabled };
+    const [data, totalCount] = await this.service.getAll(offset, limit, filters);
 
     return { offset, limit, count: data.length, totalCount, data: data.map(WgServerDto.fromEntity) };
+  }
+
+  /**
+   * Get server options for dropdowns (id + name only).
+   * @summary Get server options
+   */
+  @Security("jwt", ["role:admin"])
+  @Get("/options")
+  async getServerOptions(
+    @Query("query") query?: string,
+  ): Promise<IWgServerOptionsDto> {
+    const data = await this.service.getOptions(query);
+
+    return { data };
   }
 
   /**

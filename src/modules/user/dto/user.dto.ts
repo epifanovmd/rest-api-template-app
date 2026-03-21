@@ -51,3 +51,12 @@ export class PublicUserDto extends BaseDto {
 }
 
 export interface IUserListDto extends IListResponseDto<PublicUserDto[]> {}
+
+export interface IUserOptionDto {
+  id: string;
+  name: string;
+}
+
+export interface IUserOptionsDto {
+  data: IUserOptionDto[];
+}

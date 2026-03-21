@@ -2,6 +2,21 @@ import { IListResponseDto } from "../../../core/dto/ListResponse";
 import { WgServer } from "../wg-server.entity";
 import { EWgServerStatus } from "../wg-server.types";
 
+export interface IWgServerFilters {
+  query?: string;
+  status?: EWgServerStatus;
+  enabled?: boolean;
+}
+
+export interface IWgServerOptionDto {
+  id: string;
+  name: string;
+}
+
+export interface IWgServerOptionsDto {
+  data: IWgServerOptionDto[];
+}
+
 export interface IWgServerCreateRequestDto {
   userId?: string | null;
   name: string;
@@ -93,3 +108,4 @@ export class WgServerDto {
 }
 
 export interface IWgServerListDto extends IListResponseDto<WgServerDto[]> {}
+

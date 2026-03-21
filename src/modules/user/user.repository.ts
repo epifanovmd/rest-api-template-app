@@ -1,7 +1,8 @@
-import { FindOptionsRelations, FindOptionsWhere } from "typeorm";
+import { FindOptionsRelations, FindOptionsWhere, ILike } from "typeorm";
 import { QueryDeepPartialEntity } from "typeorm/query-builder/QueryPartialEntity";
 
 import { BaseRepository, InjectableRepository } from "../../core";
+import { IUserOptionDto } from "./dto";
 import { User } from "./user.entity";
 
 @InjectableRepository(User)
@@ -69,5 +70,31 @@ export class UserRepository extends BaseRepository<User> {
     return this.findOne({
       where: { id },
     });
+  }
+
+  async findOptions(query?: string): Promise<IUserOptionDto[]> {
+    const where: FindOptionsWhere<User>[] = query
+      ? [
+          { email: ILike(`%${query}%`) },
+          { profile: { firstName: ILike(`%${query}%`) } },
+          { profile: { lastName: ILike(`%${query}%`) } },
+        ]
+      : [];
+
+    const users = await this.find({
+      where: where.length ? where : undefined,
+      select: { id: true, email: true, profile: { firstName: true, lastName: true } },
+      relations: { profile: true },
+      order: { email: "ASC" },
+    });
+
+    return users.map(u => ({
+      id: u.id,
+      name:
+        [u.profile?.firstName, u.profile?.lastName]
+          .filter(Boolean)
+          .join(" ")
+          .trim() || u.email,
+    }));
   }
 }

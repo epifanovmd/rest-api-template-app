@@ -23,6 +23,8 @@ import { KoaRequest } from "../../types/koa";
 import {
   IUserChangePasswordDto,
   IUserListDto,
+  IUserOptionDto,
+  IUserOptionsDto,
   IUserPrivilegesRequestDto,
   IUserUpdateRequestDto,
   PublicUserDto,
@@ -98,27 +100,44 @@ export class UserController extends Controller {
 
   /**
    * Получить всех пользователей.
-   * Этот эндпоинт позволяет администраторам получить список всех пользователей системы.
-   * Он поддерживает пагинацию через параметры `offset` и `limit`.
+   * Поддерживает пагинацию и поиск по email.
    *
    * @summary Получение всех пользователей
    * @param offset Смещение для пагинации
    * @param limit Лимит количества возвращаемых пользователей
-   * @returns Список всех пользователей с информацией о них
+   * @param query Поиск по email
+   * @returns Список всех пользователей
    */
   @Security("jwt", ["role:admin"])
   @Get("all")
   getUsers(
     @Query("offset") offset?: number,
     @Query("limit") limit?: number,
+    @Query("query") query?: string,
   ): Promise<IUserListDto> {
-    return this._userService.getUsers(offset, limit).then(([result, totalCount]) => ({
+    return this._userService.getUsers(offset, limit, query).then(([result, totalCount]) => ({
       offset,
       limit,
       count: result.length,
       totalCount,
       data: result.map(PublicUserDto.fromEntity),
     }));
+  }
+
+  /**
+   * Получить опции пользователей для выпадающих списков (id + name).
+   * name — имя и фамилия или email если профиль не заполнен.
+   *
+   * @summary Опции пользователей
+   * @param query Поиск по email, имени или фамилии
+   * @returns Список опций
+   */
+  @Security("jwt", ["role:admin"])
+  @Get("options")
+  getUserOptions(
+    @Query("query") query?: string,
+  ): Promise<IUserOptionsDto> {
+    return this._userService.getOptions(query).then(data => ({ data }));
   }
 
   /**

@@ -7,7 +7,12 @@ import { WgKeyService } from "../wg-cli/wg-key.service";
 import { WgServerRepository } from "../wg-server/wg-server.repository";
 import { WgServerService } from "../wg-server/wg-server.service";
 import { EWgServerStatus } from "../wg-server/wg-server.types";
-import { IWgPeerCreateRequestDto, IWgPeerUpdateRequestDto } from "./dto";
+import {
+  IWgPeerCreateRequestDto,
+  IWgPeerFilters,
+  IWgPeerOptionDto,
+  IWgPeerUpdateRequestDto,
+} from "./dto";
 import {
   WgPeerCreatedEvent,
   WgPeerDeletedEvent,
@@ -35,16 +40,25 @@ export class WgPeerService {
     serverId: string,
     offset?: number,
     limit?: number,
+    filters?: IWgPeerFilters,
   ): Promise<[WgPeer[], number]> {
-    return this.peerRepo.findByServer(serverId, offset, limit);
+    return this.peerRepo.findByServer(serverId, offset, limit, filters);
   }
 
   async getByUser(
     userId: string,
     offset?: number,
     limit?: number,
+    filters?: IWgPeerFilters,
   ): Promise<[WgPeer[], number]> {
-    return this.peerRepo.findByUser(userId, offset, limit);
+    return this.peerRepo.findByUser(userId, offset, limit, filters);
+  }
+
+  async getOptions(
+    serverId?: string,
+    query?: string,
+  ): Promise<IWgPeerOptionDto[]> {
+    return this.peerRepo.findOptions(serverId, query);
   }
 
   async getById(id: string): Promise<WgPeer> {

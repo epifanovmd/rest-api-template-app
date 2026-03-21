@@ -1,7 +1,7 @@
 import { ConflictException, NotFoundException } from "@force-dev/utils";
 import bcrypt from "bcrypt";
 import { inject } from "inversify";
-import { FindOptionsRelations, FindOptionsWhere } from "typeorm";
+import { FindOptionsRelations, FindOptionsWhere, ILike } from "typeorm";
 
 import { ApiResponseDto, Injectable } from "../../core";
 import { MailerService } from "../mailer";
@@ -12,7 +12,11 @@ import { ProfileRepository } from "../profile";
 import { EProfileStatus } from "../profile/profile.types";
 import { RoleRepository } from "../role";
 import { ERole } from "../role/role.types";
-import { IUserPrivilegesRequestDto, IUserUpdateRequestDto } from "./dto";
+import {
+  IUserOptionDto,
+  IUserPrivilegesRequestDto,
+  IUserUpdateRequestDto,
+} from "./dto";
 import { User } from "./user.entity";
 import { UserRepository } from "./user.repository";
 
@@ -28,12 +32,17 @@ export class UserService {
     @inject(ProfileRepository) private _profileRepository: ProfileRepository,
   ) {}
 
-  async getUsers(offset?: number, limit?: number) {
+  async getUsers(offset?: number, limit?: number, query?: string) {
     return this._userRepository.findAndCount({
+      where: query ? [{ email: ILike(`%${query}%`) }] : undefined,
       skip: offset,
       take: limit,
       order: { createdAt: "DESC" },
     });
+  }
+
+  async getOptions(query?: string): Promise<IUserOptionDto[]> {
+    return this._userRepository.findOptions(query);
   }
 
   async getUserByAttr(where: FindOptionsWhere<User>) {

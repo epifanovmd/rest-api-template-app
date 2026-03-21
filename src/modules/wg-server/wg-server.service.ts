@@ -8,6 +8,8 @@ import { WG_PEER_ACTIVE_THRESHOLD_MS } from "../wg-peer/wg-peer.constants";
 import { WgPeerRepository } from "../wg-peer/wg-peer.repository";
 import {
   IWgServerCreateRequestDto,
+  IWgServerFilters,
+  IWgServerOptionDto,
   IWgServerStatusDto,
   IWgServerUpdateRequestDto,
 } from "./dto";
@@ -33,12 +35,24 @@ export class WgServerService {
     private readonly eventBus: EventBus,
   ) {}
 
-  async getAll(offset?: number, limit?: number): Promise<[WgServer[], number]> {
+  async getAll(
+    offset?: number,
+    limit?: number,
+    filters?: IWgServerFilters,
+  ): Promise<[WgServer[], number]> {
+    if (filters && Object.values(filters).some(v => v !== undefined)) {
+      return this.serverRepo.findFiltered(filters, offset, limit);
+    }
+
     return this.serverRepo.findAndCount({
       order: { createdAt: "ASC" },
       skip: offset,
       take: limit,
     });
+  }
+
+  async getOptions(query?: string): Promise<IWgServerOptionDto[]> {
+    return this.serverRepo.findOptions(query);
   }
 
   async getById(id: string): Promise<WgServer> {

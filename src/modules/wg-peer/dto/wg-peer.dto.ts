@@ -3,6 +3,22 @@ import { EWgServerStatus } from "../../wg-server/wg-server.types";
 import { WG_PEER_ACTIVE_THRESHOLD_MS } from "../wg-peer.constants";
 import { WgPeer } from "../wg-peer.entity";
 
+export interface IWgPeerFilters {
+  query?: string;
+  enabled?: boolean;
+  status?: EWgServerStatus;
+  serverId?: string;
+}
+
+export interface IWgPeerOptionDto {
+  id: string;
+  name: string;
+}
+
+export interface IWgPeerOptionsDto {
+  data: IWgPeerOptionDto[];
+}
+
 export interface IWgPeerCreateRequestDto {
   name: string;
   presharedKey?: boolean;

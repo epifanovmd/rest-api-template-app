@@ -1,7 +1,8 @@
-import { DataSource } from "typeorm";
+import { DataSource, FindOptionsWhere, ILike } from "typeorm";
 
 import { InjectableRepository } from "../../core";
 import { BaseRepository } from "../../core/repository";
+import { IWgPeerFilters } from "./dto";
 import { WgPeer } from "./wg-peer.entity";
 
 @InjectableRepository(WgPeer)
@@ -14,9 +15,22 @@ export class WgPeerRepository extends BaseRepository<WgPeer> {
     serverId: string,
     skip?: number,
     take?: number,
+    filters?: IWgPeerFilters,
   ): Promise<[WgPeer[], number]> {
+    const where: FindOptionsWhere<WgPeer> = { serverId };
+
+    if (filters?.enabled !== undefined) {
+      where.enabled = filters.enabled;
+    }
+    if (filters?.status !== undefined) {
+      where.status = filters.status;
+    }
+    if (filters?.query) {
+      where.name = ILike(`%${filters.query}%`);
+    }
+
     return this.findAndCount({
-      where: { serverId },
+      where,
       order: { createdAt: "ASC" },
       skip,
       take,
@@ -27,9 +41,25 @@ export class WgPeerRepository extends BaseRepository<WgPeer> {
     userId: string,
     skip?: number,
     take?: number,
+    filters?: IWgPeerFilters,
   ): Promise<[WgPeer[], number]> {
+    const where: FindOptionsWhere<WgPeer> = { userId };
+
+    if (filters?.enabled !== undefined) {
+      where.enabled = filters.enabled;
+    }
+    if (filters?.status !== undefined) {
+      where.status = filters.status;
+    }
+    if (filters?.serverId) {
+      where.serverId = filters.serverId;
+    }
+    if (filters?.query) {
+      where.name = ILike(`%${filters.query}%`);
+    }
+
     return this.findAndCount({
-      where: { userId },
+      where,
       order: { createdAt: "ASC" },
       skip,
       take,
@@ -54,5 +84,23 @@ export class WgPeerRepository extends BaseRepository<WgPeer> {
       .andWhere("peer.expires_at < NOW()")
       .andWhere("peer.enabled = TRUE")
       .getMany();
+  }
+
+  findOptions(
+    serverId?: string,
+    query?: string,
+  ): Promise<Pick<WgPeer, "id" | "name">[]> {
+    const qb = this.createQueryBuilder("p")
+      .select(["p.id", "p.name"])
+      .orderBy("p.name", "ASC");
+
+    if (serverId) {
+      qb.where("p.server_id = :serverId", { serverId });
+    }
+    if (query) {
+      qb.andWhere("p.name ILIKE :q", { q: `%${query}%` });
+    }
+
+    return qb.getMany();
   }
 }
