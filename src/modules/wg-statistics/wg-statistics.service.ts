@@ -552,6 +552,14 @@ export class WgStatisticsService {
     if (activePeers !== undefined && activePeers !== last.activePeers)
       return true;
 
+    // Always emit when speed drops to zero so the client doesn't keep
+    // displaying the last non-zero speed after activity stops.
+    if (
+      (last.rxSpeedBps > 0 && rxSpeedBps === 0) ||
+      (last.txSpeedBps > 0 && txSpeedBps === 0)
+    )
+      return true;
+
     return (
       Math.abs(rxSpeedBps - last.rxSpeedBps) > deadbandBps ||
       Math.abs(txSpeedBps - last.txSpeedBps) > deadbandBps
