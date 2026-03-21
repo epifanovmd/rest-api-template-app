@@ -5,7 +5,12 @@ import { ERole } from "../modules/role/role.types";
 
 export type AuthContext = {
   userId: string;
-  role: ERole | null;
+  /** All roles assigned to this user. */
+  roles: ERole[];
+  /**
+   * Effective permissions — pre-merged union of all role permissions
+   * plus directPermissions. Computed at token issue time, no DB hit needed.
+   */
   permissions: EPermissions[];
   emailVerified: boolean;
 };

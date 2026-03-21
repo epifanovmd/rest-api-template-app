@@ -35,7 +35,7 @@ export class WgStatisticsController extends Controller {
    * @param from ISO date string (default: 24h ago)
    * @param to ISO date string (default: now)
    */
-  @Security("jwt", ["role:admin"])
+  @Security("jwt", ["permission:wg:stats:view"])
   @Get("/overview")
   async getOverviewStats(
     @Query("from") from?: string,
@@ -55,7 +55,7 @@ export class WgStatisticsController extends Controller {
    * @param from ISO date string (default: 24h ago)
    * @param to ISO date string (default: now)
    */
-  @Security("jwt", ["role:admin"])
+  @Security("jwt", ["permission:wg:stats:view"])
   @Get("/servers/{serverId}")
   async getServerStats(
     serverId: string,
@@ -78,7 +78,7 @@ export class WgStatisticsController extends Controller {
    * @param from ISO date string (default: 24h ago)
    * @param to ISO date string (default: now)
    */
-  @Security("jwt", ["role:admin"])
+  @Security("jwt", ["permission:wg:stats:view"])
   @Get("/peers/{peerId}")
   async getPeerStats(
     peerId: string,

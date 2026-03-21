@@ -1,3 +1,4 @@
+import { ForbiddenException } from "@force-dev/utils";
 import { inject } from "inversify";
 import {
   Body,
@@ -15,6 +16,7 @@ import {
 
 import { getContextUser, Injectable, ValidateBody } from "../../core";
 import { KoaRequest } from "../../types/koa";
+import { ERole } from "../role/role.types";
 import { WgConfigService } from "../wg-cli/wg-config.service";
 import { EWgServerStatus } from "../wg-server/wg-server.types";
 import {
@@ -43,7 +45,7 @@ export class WgPeerController extends Controller {
    * List all peers for a given server with optional filters.
    * @summary Get peers by server
    */
-  @Security("jwt", ["role:admin"])
+  @Security("jwt", ["permission:wg:peer:view"])
   @Get("/servers/{serverId}/peers")
   async getPeersByServer(
     serverId: string,
@@ -85,7 +87,7 @@ export class WgPeerController extends Controller {
    * Get all peers for a user with optional filters (admin only).
    * @summary Get peers by user
    */
-  @Security("jwt", ["role:admin"])
+  @Security("jwt", ["permission:wg:peer:view"])
   @Get("/peers/user/{userId}")
   async getPeersByUser(
     userId: string,
@@ -106,7 +108,7 @@ export class WgPeerController extends Controller {
    * Get peer options for dropdowns (id + name only).
    * @summary Get peer options
    */
-  @Security("jwt", ["role:admin"])
+  @Security("jwt", ["permission:wg:peer:view"])
   @Get("/peers/options")
   async getPeersOptions(
     @Query("serverId") serverId?: string,
@@ -121,7 +123,7 @@ export class WgPeerController extends Controller {
    * Get a peer by ID.
    * @summary Get peer
    */
-  @Security("jwt", ["role:admin"])
+  @Security("jwt", ["permission:wg:peer:view"])
   @Get("/peers/{id}")
   async getPeer(id: string): Promise<WgPeerDto> {
     const peer = await this.service.getById(id);
@@ -134,7 +136,7 @@ export class WgPeerController extends Controller {
    * Keys are auto-generated. Peer is applied to live interface if server is up.
    * @summary Create peer
    */
-  @Security("jwt", ["role:admin"])
+  @Security("jwt", ["permission:wg:peer:manage"])
   @Post("/servers/{serverId}/peers")
   @ValidateBody(WgPeerCreateSchema)
   async createPeer(
@@ -152,7 +154,7 @@ export class WgPeerController extends Controller {
    * Update a peer.
    * @summary Update peer
    */
-  @Security("jwt", ["role:admin"])
+  @Security("jwt", ["permission:wg:peer:manage"])
   @Patch("/peers/{id}")
   @ValidateBody(WgPeerUpdateSchema)
   async updatePeer(
@@ -169,7 +171,7 @@ export class WgPeerController extends Controller {
    * Peer is removed from live interface if server is up.
    * @summary Delete peer
    */
-  @Security("jwt", ["role:admin"])
+  @Security("jwt", ["permission:wg:peer:manage"])
   @Delete("/peers/{id}")
   async deletePeer(id: string): Promise<boolean> {
     return this.service.delete(id);
@@ -180,7 +182,7 @@ export class WgPeerController extends Controller {
    * Requires peer to be enabled and server to be running.
    * @summary Start peer
    */
-  @Security("jwt", ["role:admin"])
+  @Security("jwt", ["permission:wg:server:control"])
   @Post("/peers/{id}/start")
   async startPeer(id: string): Promise<WgPeerDto> {
     const peer = await this.service.start(id);
@@ -192,7 +194,7 @@ export class WgPeerController extends Controller {
    * Stop a peer (remove from live WG interface, status → DOWN).
    * @summary Stop peer
    */
-  @Security("jwt", ["role:admin"])
+  @Security("jwt", ["permission:wg:server:control"])
   @Post("/peers/{id}/stop")
   async stopPeer(id: string): Promise<WgPeerDto> {
     const peer = await this.service.stop(id);
@@ -204,7 +206,7 @@ export class WgPeerController extends Controller {
    * Assign a peer to a user.
    * @summary Assign peer to user
    */
-  @Security("jwt", ["role:admin"])
+  @Security("jwt", ["permission:wg:peer:manage"])
   @Post("/peers/{id}/assign")
   async assignPeer(
     id: string,
@@ -219,7 +221,7 @@ export class WgPeerController extends Controller {
    * Revoke peer from its current user.
    * @summary Revoke peer from user
    */
-  @Security("jwt", ["role:admin"])
+  @Security("jwt", ["permission:wg:peer:manage"])
   @Post("/peers/{id}/revoke")
   async revokePeer(id: string): Promise<WgPeerDto> {
     const peer = await this.service.revokeFromUser(id);
@@ -231,7 +233,7 @@ export class WgPeerController extends Controller {
    * Rotate (regenerate) preshared key for a peer.
    * @summary Rotate preshared key
    */
-  @Security("jwt", ["role:admin"])
+  @Security("jwt", ["permission:wg:peer:manage"])
   @Post("/peers/{id}/rotate-psk")
   async rotatePresharedKey(id: string): Promise<WgPeerDto> {
     const peer = await this.service.update(id, { presharedKey: true });
@@ -243,7 +245,7 @@ export class WgPeerController extends Controller {
    * Remove preshared key from a peer.
    * @summary Remove preshared key
    */
-  @Security("jwt", ["role:admin"])
+  @Security("jwt", ["permission:wg:peer:manage"])
   @Delete("/peers/{id}/psk")
   async removePresharedKey(id: string): Promise<WgPeerDto> {
     const peer = await this.service.update(id, { presharedKey: null });
@@ -253,11 +255,19 @@ export class WgPeerController extends Controller {
 
   /**
    * Download the WireGuard client .conf file for this peer.
+   * Only accessible by the peer owner or admin.
    * @summary Get peer config file
    */
   @Security("jwt")
   @Get("/peers/{id}/config")
-  async getPeerConfig(id: string): Promise<string> {
+  async getPeerConfig(id: string, @Request() req: KoaRequest): Promise<string> {
+    const { userId, roles } = getContextUser(req);
+    const peer = await this.service.getById(id);
+
+    if (!roles.includes(ERole.ADMIN) && peer.userId !== userId) {
+      throw new ForbiddenException("Access denied: not your peer.");
+    }
+
     const config = await this.service.buildClientConfig(id);
 
     this.setHeader("Content-Type", "text/plain");
@@ -271,12 +281,23 @@ export class WgPeerController extends Controller {
 
   /**
    * Get QR code PNG image for the client config.
+   * Only accessible by the peer owner or admin.
    * Returns base64-encoded PNG data URL.
    * @summary Get peer QR code
    */
   @Security("jwt")
   @Get("/peers/{id}/qr")
-  async getPeerQrCode(id: string): Promise<{ dataUrl: string }> {
+  async getPeerQrCode(
+    id: string,
+    @Request() req: KoaRequest,
+  ): Promise<{ dataUrl: string }> {
+    const { userId, roles } = getContextUser(req);
+    const peer = await this.service.getById(id);
+
+    if (!roles.includes(ERole.ADMIN) && peer.userId !== userId) {
+      throw new ForbiddenException("Access denied: not your peer.");
+    }
+
     const configText = await this.service.buildClientConfig(id);
     const dataUrl = await this.configService.buildQrCodeDataUrl(configText);
 

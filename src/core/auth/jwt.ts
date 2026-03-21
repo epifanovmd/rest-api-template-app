@@ -9,7 +9,7 @@ export type { SecurityScopes } from "./token.service";
 
 export type TokenPayload = {
   userId: string;
-  role: ERole | null;
+  roles: ERole[];
   permissions: EPermissions[];
   emailVerified: boolean;
 };
@@ -35,9 +35,9 @@ export const verifyToken = (token: string): Promise<JWTDecoded> =>
     jwt.verify(
       token,
       config.auth.jwt.secretKey,
-      (err: VerifyErrors, decoded: JWTDecoded) => {
+      (err: VerifyErrors | null, decoded: JWTDecoded | undefined) => {
         if (err) reject(err);
-        else resolve(decoded);
+        else resolve(decoded!);
       },
     );
   });

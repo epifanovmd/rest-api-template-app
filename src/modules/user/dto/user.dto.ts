@@ -10,7 +10,7 @@ export class UserDto extends BaseDto {
   emailVerified?: boolean;
   phone?: string;
   profile?: ProfileDto;
-  role: IRoleDto;
+  roles: IRoleDto[];
   createdAt: Date;
   updatedAt: Date;
 
@@ -22,7 +22,7 @@ export class UserDto extends BaseDto {
     this.emailVerified = entity.emailVerified;
     this.phone = entity.phone;
     this.profile = entity.profile && ProfileDto.fromEntity(entity.profile);
-    this.role = entity.role?.toDTO();
+    this.roles = entity.roles?.map(r => r.toDTO()) ?? [];
     this.createdAt = entity.createdAt;
     this.updatedAt = entity.updatedAt;
   }

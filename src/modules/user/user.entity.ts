@@ -3,8 +3,8 @@ import {
   CreateDateColumn,
   Entity,
   Index,
-  JoinColumn,
-  ManyToOne,
+  JoinTable,
+  ManyToMany,
   OneToMany,
   OneToOne,
   PrimaryGeneratedColumn,
@@ -13,6 +13,7 @@ import {
 
 import { Otp } from "../otp/otp.entity";
 import { Passkey } from "../passkeys/passkey.entity";
+import { Permission } from "../permission/permission.entity";
 import { Profile } from "../profile/profile.entity";
 import { ResetPasswordTokens } from "../reset-password-tokens/reset-password-tokens.entity";
 import { Role } from "../role/role.entity";
@@ -35,9 +36,6 @@ export class User {
   @Column({ name: "password_hash", type: "varchar", length: 100 })
   passwordHash: string;
 
-  @Column({ name: "role_id", type: "uuid", nullable: true })
-  roleId: string;
-
   @Column({ type: "varchar", nullable: true })
   challenge?: string;
 
@@ -47,10 +45,31 @@ export class User {
   @UpdateDateColumn({ name: "updated_at" })
   updatedAt: Date;
 
-  // Relations
-  @ManyToOne(() => Role, { onDelete: "SET NULL", eager: true })
-  @JoinColumn({ name: "role_id" })
-  role: Role;
+  // ── Relations ──────────────────────────────────────────────────────────────
+
+  /**
+   * Roles assigned to this user.
+   * Effective permissions = union of all role permissions + directPermissions.
+   */
+  @ManyToMany(() => Role, { eager: true })
+  @JoinTable({
+    name: "user_roles",
+    joinColumn: { name: "user_id" },
+    inverseJoinColumn: { name: "role_id" },
+  })
+  roles: Role[];
+
+  /**
+   * Permissions granted directly to this user (additive on top of role permissions).
+   * Useful for fine-grained overrides without creating a new role.
+   */
+  @ManyToMany(() => Permission, { eager: true })
+  @JoinTable({
+    name: "user_permissions",
+    joinColumn: { name: "user_id" },
+    inverseJoinColumn: { name: "permission_id" },
+  })
+  directPermissions: Permission[];
 
   @OneToOne(() => Profile, profile => profile.user, {
     cascade: true,

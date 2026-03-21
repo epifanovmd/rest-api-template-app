@@ -90,7 +90,7 @@ export class ProfileController extends Controller {
    * @param limit Лимит количества возвращаемых профилей
    * @returns Список всех профилей с информацией о них
    */
-  @Security("jwt")
+  @Security("jwt", ["role:admin"])
   @Get("all")
   async getProfiles(
     @Query("offset") offset?: number,
@@ -117,8 +117,10 @@ export class ProfileController extends Controller {
    */
   @Security("jwt")
   @Get("/{userId}")
-  getProfileById(userId: string): Promise<ProfileDto> {
-    return this._profileService.getProfileByUserId(userId);
+  async getProfileById(userId: string): Promise<PublicProfileDto> {
+    const profile = await this._profileService.getProfileByUserId(userId);
+
+    return PublicProfileDto.fromEntity(profile);
   }
 
   /**

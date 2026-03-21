@@ -43,7 +43,7 @@ export class WgServerController extends Controller {
    * List all WireGuard servers with optional filters.
    * @summary Get all servers
    */
-  @Security("jwt", ["role:admin"])
+  @Security("jwt", ["permission:wg:server:view"])
   @Get("/")
   async getServers(
     @Query("offset") offset?: number,
@@ -62,7 +62,7 @@ export class WgServerController extends Controller {
    * Get server options for dropdowns (id + name only).
    * @summary Get server options
    */
-  @Security("jwt", ["role:admin"])
+  @Security("jwt", ["permission:wg:server:view"])
   @Get("/options")
   async getServerOptions(
     @Query("query") query?: string,
@@ -76,7 +76,7 @@ export class WgServerController extends Controller {
    * Get a WireGuard server by ID.
    * @summary Get server by ID
    */
-  @Security("jwt", ["role:admin"])
+  @Security("jwt", ["permission:wg:server:view"])
   @Get("/{id}")
   async getServer(id: string): Promise<WgServerDto> {
     const server = await this.service.getById(id);
@@ -90,7 +90,7 @@ export class WgServerController extends Controller {
    * The config file is written to the WG config directory.
    * @summary Create server
    */
-  @Security("jwt", ["role:admin"])
+  @Security("jwt", ["permission:wg:server:manage"])
   @Post("/")
   @ValidateBody(WgServerCreateSchema)
   async createServer(
@@ -108,7 +108,7 @@ export class WgServerController extends Controller {
    * Config file is rewritten automatically.
    * @summary Update server
    */
-  @Security("jwt", ["role:admin"])
+  @Security("jwt", ["permission:wg:server:manage"])
   @Patch("/{id}")
   @ValidateBody(WgServerUpdateSchema)
   async updateServer(
@@ -125,7 +125,7 @@ export class WgServerController extends Controller {
    * Stops the interface and removes the config file.
    * @summary Delete server
    */
-  @Security("jwt", ["role:admin"])
+  @Security("jwt", ["permission:wg:server:manage"])
   @Delete("/{id}")
   async deleteServer(id: string): Promise<boolean> {
     return this.service.delete(id);
@@ -135,7 +135,7 @@ export class WgServerController extends Controller {
    * Start a WireGuard interface (wg-quick up).
    * @summary Start server
    */
-  @Security("jwt", ["role:admin"])
+  @Security("jwt", ["permission:wg:server:control"])
   @Post("/{id}/start")
   async startServer(id: string): Promise<WgServerDto> {
     const server = await this.service.start(id);
@@ -147,7 +147,7 @@ export class WgServerController extends Controller {
    * Stop a WireGuard interface (wg-quick down).
    * @summary Stop server
    */
-  @Security("jwt", ["role:admin"])
+  @Security("jwt", ["permission:wg:server:control"])
   @Post("/{id}/stop")
   async stopServer(id: string): Promise<WgServerDto> {
     const server = await this.service.stop(id);
@@ -159,7 +159,7 @@ export class WgServerController extends Controller {
    * Restart a WireGuard interface.
    * @summary Restart server
    */
-  @Security("jwt", ["role:admin"])
+  @Security("jwt", ["permission:wg:server:control"])
   @Post("/{id}/restart")
   async restartServer(id: string): Promise<WgServerDto> {
     const server = await this.service.restart(id);
@@ -172,7 +172,7 @@ export class WgServerController extends Controller {
    * Queries the actual wg interface, not cached DB status.
    * @summary Get live server status
    */
-  @Security("jwt", ["role:admin"])
+  @Security("jwt", ["permission:wg:server:view"])
   @Get("/{id}/status")
   async getServerStatus(id: string): Promise<IWgServerStatusDto> {
     return this.service.getLiveStatus(id);

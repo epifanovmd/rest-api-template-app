@@ -80,11 +80,13 @@ export class UserService {
       status: EProfileStatus.Offline,
     });
 
-    return this.setPrivileges(user.id, ERole.USER, [EPermissions.READ]);
+    return this.setPrivileges(user.id, {
+      roles: [ERole.USER],
+      permissions: [],
+    });
   }
 
   async createAdmin(body: Partial<User>) {
-    // Проверяем, существует ли пользователь
     const existingUser = await this._userRepository.findByEmailOrPhone(
       body.email,
       body.phone,
@@ -97,7 +99,10 @@ export class UserService {
     const user = await this.createUser(body);
 
     if (user) {
-      return this.setPrivileges(user.id, ERole.ADMIN, []);
+      return this.setPrivileges(user.id, {
+        roles: [ERole.ADMIN],
+        permissions: [],
+      });
     }
 
     throw new NotFoundException("Пользователь не найден");
@@ -118,22 +123,76 @@ export class UserService {
     await this._userRepository.update(id, { challenge: challenge as any });
   }
 
-  async setPermissions(
+  /**
+   * Assigns roles and direct permissions to a user.
+   *
+   * - Replaces all current roles with the provided list.
+   * - Replaces all current direct permissions with the provided list.
+   * - Role-level permissions are managed separately via setRolePermissions().
+   *
+   * Effective permissions in the JWT = union(role.permissions) ∪ permissions.
+   */
+  async setPrivileges(
+    userId: string,
+    body: IUserPrivilegesRequestDto,
+  ): Promise<User> {
+    const user = await this._userRepository.findById(userId);
+
+    if (!user) {
+      throw new NotFoundException("Пользователь не найден");
+    }
+
+    // Assign roles (find or create each)
+    user.roles = await Promise.all(
+      body.roles.map(async roleName => {
+        let role = await this._roleRepository.findByName(roleName);
+
+        if (!role) {
+          role = await this._roleRepository.createAndSave({ name: roleName });
+        }
+
+        return role;
+      }),
+    );
+
+    // Assign direct permissions (find or create each)
+    user.directPermissions = await Promise.all(
+      body.permissions.map(async permName => {
+        let perm = await this.permissionRepository.findByName(permName);
+
+        if (!perm) {
+          perm = await this.permissionRepository.createAndSave({
+            name: permName,
+          });
+        }
+
+        return perm;
+      }),
+    );
+
+    await this._userRepository.save(user);
+
+    return this.getUser(userId);
+  }
+
+  /**
+   * Sets the permissions for a role (shared across all users with that role).
+   * Use this to configure the permission template for a role.
+   */
+  async setRolePermissions(
     roleId: string,
     permissions: EPermissions[],
   ): Promise<void> {
     const role = await this._roleRepository.findById(roleId);
 
     if (!role) {
-      throw new Error("Role not found");
+      throw new NotFoundException("Роль не найдена");
     }
 
-    // Находим или создаем разрешения
     role.permissions = await Promise.all(
       permissions.map(async permissionName => {
-        let permission = await this.permissionRepository.findByName(
-          permissionName,
-        );
+        let permission =
+          await this.permissionRepository.findByName(permissionName);
 
         if (!permission) {
           permission = await this.permissionRepository.createAndSave({
@@ -144,35 +203,8 @@ export class UserService {
         return permission;
       }),
     );
+
     await this._roleRepository.save(role);
-  }
-
-  async setPrivileges(
-    userId: string,
-    roleName: IUserPrivilegesRequestDto["roleName"],
-    permissions: IUserPrivilegesRequestDto["permissions"] = [],
-  ) {
-    const user = await this._userRepository.findById(userId);
-
-    if (!user) {
-      throw new NotFoundException("Пользователь не найден");
-    }
-
-    let role = await this._roleRepository.findByName(roleName);
-
-    if (!role) {
-      role = await this._roleRepository.createAndSave({ name: roleName });
-    }
-
-    user.role = role;
-    user.roleId = role.id;
-    await this._userRepository.save(user);
-
-    if (permissions.length > 0) {
-      await this.setPermissions(role.id, permissions);
-    }
-
-    return this.getUser(userId);
   }
 
   async requestVerifyEmail(userId: string) {
@@ -227,9 +259,10 @@ export class UserService {
   static get relations(): FindOptionsRelations<User> {
     return {
       profile: true,
-      role: {
+      roles: {
         permissions: true,
       },
+      directPermissions: true,
     };
   }
 }

@@ -1,7 +1,13 @@
 import { inject, injectable } from "inversify";
 import { Body, Controller, Post, Route, Tags } from "tsoa";
 
-import { ApiResponseDto, ITokensDto, ValidateBody } from "../../core";
+import {
+  ApiResponseDto,
+  ITokensDto,
+  ThrottleGuard,
+  UseGuards,
+  ValidateBody,
+} from "../../core";
 import {
   ISignInRequestDto,
   IUserLoginRequestDto,
@@ -40,6 +46,7 @@ export class AuthController extends Controller {
    * @response 201 - Успешная регистрация
    * @response 400 - Некорректные данные
    */
+  @UseGuards(ThrottleGuard(5, 60_000))
   @Post("/sign-up")
   @ValidateBody(SignUpSchema)
   signUp(@Body() body: TSignUpRequestDto): Promise<IUserWithTokensDto> {
@@ -58,6 +65,7 @@ export class AuthController extends Controller {
    * @response 200 - Успешный вход
    * @response 401 - Неверные учетные данные
    */
+  @UseGuards(ThrottleGuard(10, 60_000))
   @Post("/sign-in")
   @ValidateBody(SignInSchema)
   signIn(@Body() body: ISignInRequestDto): Promise<IUserWithTokensDto> {
@@ -75,6 +83,7 @@ export class AuthController extends Controller {
    * @response 200 - Запрос принят
    * @response 404 - Пользователь не найден
    */
+  @UseGuards(ThrottleGuard(3, 300_000))
   @Post("/request-reset-password")
   @ValidateBody(RequestResetPasswordSchema)
   requestResetPassword(

@@ -170,9 +170,7 @@ export class UserController extends Controller {
     id: string,
     @Body() body: IUserPrivilegesRequestDto,
   ): Promise<UserDto> {
-    return this._userService
-      .setPrivileges(id, body.roleName, body.permissions)
-      .then(UserDto.fromEntity);
+    return this._userService.setPrivileges(id, body).then(UserDto.fromEntity);
   }
 
   /**
