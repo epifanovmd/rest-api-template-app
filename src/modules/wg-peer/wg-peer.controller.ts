@@ -56,16 +56,27 @@ export class WgPeerController extends Controller {
     @Query("status") status?: EWgServerStatus,
   ): Promise<IWgPeerListDto> {
     const filters: IWgPeerFilters = { query, enabled, status };
-    const [data, totalCount] = await this.service.getByServer(serverId, offset, limit, filters);
+    const [data, totalCount] = await this.service.getByServer(
+      serverId,
+      offset,
+      limit,
+      filters,
+    );
 
-    return { offset, limit, count: data.length, totalCount, data: data.map(WgPeerDto.fromEntity) };
+    return {
+      offset,
+      limit,
+      count: data.length,
+      totalCount,
+      data: data.map(WgPeerDto.fromEntity),
+    };
   }
 
   /**
    * Get all peers owned by the current user with optional filters.
    * @summary Get my peers
    */
-  @Security("jwt")
+  @Security("jwt", ["permission:wg:peer:view"])
   @Get("/peers/my")
   async getMyPeers(
     @Request() req: KoaRequest,
@@ -78,9 +89,20 @@ export class WgPeerController extends Controller {
   ): Promise<IWgPeerListDto> {
     const user = getContextUser(req);
     const filters: IWgPeerFilters = { query, enabled, status, serverId };
-    const [data, totalCount] = await this.service.getByUser(user.userId, offset, limit, filters);
+    const [data, totalCount] = await this.service.getByUser(
+      user.userId,
+      offset,
+      limit,
+      filters,
+    );
 
-    return { offset, limit, count: data.length, totalCount, data: data.map(WgPeerDto.fromEntity) };
+    return {
+      offset,
+      limit,
+      count: data.length,
+      totalCount,
+      data: data.map(WgPeerDto.fromEntity),
+    };
   }
 
   /**
@@ -99,9 +121,20 @@ export class WgPeerController extends Controller {
     @Query("serverId") serverId?: string,
   ): Promise<IWgPeerListDto> {
     const filters: IWgPeerFilters = { query, enabled, status, serverId };
-    const [data, totalCount] = await this.service.getByUser(userId, offset, limit, filters);
+    const [data, totalCount] = await this.service.getByUser(
+      userId,
+      offset,
+      limit,
+      filters,
+    );
 
-    return { offset, limit, count: data.length, totalCount, data: data.map(WgPeerDto.fromEntity) };
+    return {
+      offset,
+      limit,
+      count: data.length,
+      totalCount,
+      data: data.map(WgPeerDto.fromEntity),
+    };
   }
 
   /**
