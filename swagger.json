@@ -170,6 +170,12 @@
 						},
 						"type": "array"
 					},
+					"directPermissions": {
+						"items": {
+							"$ref": "#/components/schemas/IPermissionDto"
+						},
+						"type": "array"
+					},
 					"createdAt": {
 						"type": "string",
 						"format": "date-time"
@@ -182,6 +188,7 @@
 				"required": [
 					"id",
 					"roles",
+					"directPermissions",
 					"createdAt",
 					"updatedAt"
 				],
@@ -459,6 +466,12 @@
 						},
 						"type": "array"
 					},
+					"directPermissions": {
+						"items": {
+							"$ref": "#/components/schemas/IPermissionDto"
+						},
+						"type": "array"
+					},
 					"createdAt": {
 						"type": "string",
 						"format": "date-time"
@@ -474,6 +487,7 @@
 				"required": [
 					"id",
 					"roles",
+					"directPermissions",
 					"createdAt",
 					"updatedAt",
 					"tokens"
