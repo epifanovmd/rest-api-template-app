@@ -52,7 +52,7 @@ const models: TsoaRoute.Models = {
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "EPermissions": {
         "dataType": "refEnum",
-        "enums": ["read","write","delete","wg:server:view","wg:server:manage","wg:server:control","wg:peer:view","wg:peer:manage","wg:peer:own","wg:stats:view","wg:stats:export"],
+        "enums": ["*","wg:*","wg:server:*","wg:peer:*","wg:stats:*","wg:server:view","wg:server:manage","wg:server:control","wg:peer:view","wg:peer:manage","wg:peer:own","wg:stats:view","wg:stats:export","user:view","user:manage","read","write","delete"],
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "IPermissionDto": {
@@ -86,7 +86,7 @@ const models: TsoaRoute.Models = {
             "emailVerified": {"dataType":"boolean"},
             "phone": {"dataType":"string"},
             "profile": {"ref":"ProfileDto"},
-            "role": {"ref":"IRoleDto","required":true},
+            "roles": {"dataType":"array","array":{"dataType":"refObject","ref":"IRoleDto"},"required":true},
             "createdAt": {"dataType":"datetime","required":true},
             "updatedAt": {"dataType":"datetime","required":true},
         },
@@ -127,6 +127,7 @@ const models: TsoaRoute.Models = {
         "dataType": "refObject",
         "properties": {
             "count": {"dataType":"double"},
+            "totalCount": {"dataType":"double"},
             "offset": {"dataType":"double"},
             "limit": {"dataType":"double"},
             "data": {"dataType":"array","array":{"dataType":"refObject","ref":"PublicProfileDto"},"required":true},
@@ -158,6 +159,7 @@ const models: TsoaRoute.Models = {
         "dataType": "refObject",
         "properties": {
             "count": {"dataType":"double"},
+            "totalCount": {"dataType":"double"},
             "offset": {"dataType":"double"},
             "limit": {"dataType":"double"},
             "data": {"dataType":"array","array":{"dataType":"refObject","ref":"PublicUserDto"},"required":true},
@@ -165,10 +167,27 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "IUserOptionDto": {
+        "dataType": "refObject",
+        "properties": {
+            "id": {"dataType":"string","required":true},
+            "name": {"dataType":"string","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "IUserOptionsDto": {
+        "dataType": "refObject",
+        "properties": {
+            "data": {"dataType":"array","array":{"dataType":"refObject","ref":"IUserOptionDto"},"required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "IUserPrivilegesRequestDto": {
         "dataType": "refObject",
         "properties": {
-            "roleName": {"ref":"ERole","required":true},
+            "roles": {"dataType":"array","array":{"dataType":"refEnum","ref":"ERole"},"required":true},
             "permissions": {"dataType":"array","array":{"dataType":"refEnum","ref":"EPermissions"},"required":true},
         },
         "additionalProperties": false,
@@ -208,7 +227,7 @@ const models: TsoaRoute.Models = {
             "emailVerified": {"dataType":"boolean"},
             "phone": {"dataType":"string"},
             "profile": {"ref":"ProfileDto"},
-            "role": {"ref":"IRoleDto","required":true},
+            "roles": {"dataType":"array","array":{"dataType":"refObject","ref":"IRoleDto"},"required":true},
             "createdAt": {"dataType":"datetime","required":true},
             "updatedAt": {"dataType":"datetime","required":true},
             "tokens": {"ref":"ITokensDto","required":true},
@@ -509,6 +528,7 @@ const models: TsoaRoute.Models = {
             "expiresAt": {"dataType":"union","subSchemas":[{"dataType":"datetime"},{"dataType":"enum","enums":[null]}],"required":true},
             "description": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
             "lastHandshake": {"dataType":"union","subSchemas":[{"dataType":"datetime"},{"dataType":"enum","enums":[null]}],"required":true},
+            "isActive": {"dataType":"boolean","required":true},
             "createdAt": {"dataType":"datetime","required":true},
             "updatedAt": {"dataType":"datetime","required":true},
         },
@@ -518,8 +538,28 @@ const models: TsoaRoute.Models = {
     "IWgPeerListDto": {
         "dataType": "refObject",
         "properties": {
-            "count": {"dataType":"double","required":true},
+            "count": {"dataType":"double"},
+            "totalCount": {"dataType":"double"},
+            "offset": {"dataType":"double"},
+            "limit": {"dataType":"double"},
             "data": {"dataType":"array","array":{"dataType":"refObject","ref":"WgPeerDto"},"required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "IWgPeerOptionDto": {
+        "dataType": "refObject",
+        "properties": {
+            "id": {"dataType":"string","required":true},
+            "name": {"dataType":"string","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "IWgPeerOptionsDto": {
+        "dataType": "refObject",
+        "properties": {
+            "data": {"dataType":"array","array":{"dataType":"refObject","ref":"IWgPeerOptionDto"},"required":true},
         },
         "additionalProperties": false,
     },
@@ -587,8 +627,28 @@ const models: TsoaRoute.Models = {
     "IWgServerListDto": {
         "dataType": "refObject",
         "properties": {
-            "count": {"dataType":"double","required":true},
+            "count": {"dataType":"double"},
+            "totalCount": {"dataType":"double"},
+            "offset": {"dataType":"double"},
+            "limit": {"dataType":"double"},
             "data": {"dataType":"array","array":{"dataType":"refObject","ref":"WgServerDto"},"required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "IWgServerOptionDto": {
+        "dataType": "refObject",
+        "properties": {
+            "id": {"dataType":"string","required":true},
+            "name": {"dataType":"string","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "IWgServerOptionsDto": {
+        "dataType": "refObject",
+        "properties": {
+            "data": {"dataType":"array","array":{"dataType":"refObject","ref":"IWgServerOptionDto"},"required":true},
         },
         "additionalProperties": false,
     },
@@ -647,52 +707,31 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "WgTrafficStatDto": {
+    "WgOverviewTrafficPointDto": {
         "dataType": "refObject",
         "properties": {
-            "id": {"dataType":"string","required":true},
-            "peerId": {"dataType":"string","required":true},
-            "serverId": {"dataType":"string","required":true},
+            "timestamp": {"dataType":"datetime","required":true},
             "rxBytes": {"dataType":"double","required":true},
             "txBytes": {"dataType":"double","required":true},
-            "lastHandshake": {"dataType":"union","subSchemas":[{"dataType":"datetime"},{"dataType":"enum","enums":[null]}],"required":true},
-            "endpoint": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
-            "timestamp": {"dataType":"datetime","required":true},
         },
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "WgSpeedSampleDto": {
+    "WgOverviewSpeedPointDto": {
         "dataType": "refObject",
         "properties": {
-            "id": {"dataType":"string","required":true},
-            "peerId": {"dataType":"string","required":true},
-            "serverId": {"dataType":"string","required":true},
+            "timestamp": {"dataType":"datetime","required":true},
             "rxSpeedBps": {"dataType":"double","required":true},
             "txSpeedBps": {"dataType":"double","required":true},
-            "isActive": {"dataType":"boolean","required":true},
-            "timestamp": {"dataType":"datetime","required":true},
         },
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "IWgPeerStatsResponse": {
+    "IWgOverviewStatsResponse": {
         "dataType": "refObject",
         "properties": {
-            "peerId": {"dataType":"string","required":true},
-            "traffic": {"dataType":"array","array":{"dataType":"refObject","ref":"WgTrafficStatDto"},"required":true},
-            "speed": {"dataType":"array","array":{"dataType":"refObject","ref":"WgSpeedSampleDto"},"required":true},
-            "latest": {"dataType":"union","subSchemas":[{"dataType":"nestedObjectLiteral","nestedProperties":{"lastHandshake":{"dataType":"union","subSchemas":[{"dataType":"datetime"},{"dataType":"enum","enums":[null]}],"required":true},"isActive":{"dataType":"boolean","required":true},"txSpeedBps":{"dataType":"double","required":true},"rxSpeedBps":{"dataType":"double","required":true},"txBytes":{"dataType":"double","required":true},"rxBytes":{"dataType":"double","required":true}}},{"dataType":"enum","enums":[null]}],"required":true},
-        },
-        "additionalProperties": false,
-    },
-    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "IWgServerStatsResponse": {
-        "dataType": "refObject",
-        "properties": {
-            "serverId": {"dataType":"string","required":true},
-            "traffic": {"dataType":"array","array":{"dataType":"refObject","ref":"WgTrafficStatDto"},"required":true},
-            "speed": {"dataType":"array","array":{"dataType":"refObject","ref":"WgSpeedSampleDto"},"required":true},
+            "traffic": {"dataType":"array","array":{"dataType":"refObject","ref":"WgOverviewTrafficPointDto"},"required":true},
+            "speed": {"dataType":"array","array":{"dataType":"refObject","ref":"WgOverviewSpeedPointDto"},"required":true},
         },
         "additionalProperties": false,
     },
@@ -799,7 +838,7 @@ export function RegisterRoutes(router: KoaRouter) {
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         router.get('/api/profile/all',
-            authenticateMiddleware([{"jwt":[]}]),
+            authenticateMiddleware([{"jwt":["role:admin"]}]),
             ...(fetchMiddlewares<Middleware>(ProfileController)),
             ...(fetchMiddlewares<Middleware>(ProfileController.prototype.getProfiles)),
 
@@ -1020,6 +1059,7 @@ export function RegisterRoutes(router: KoaRouter) {
             const args = {
                     offset: {"in":"query","name":"offset","dataType":"double"},
                     limit: {"in":"query","name":"limit","dataType":"double"},
+                    query: {"in":"query","name":"query","dataType":"string"},
             };
 
             let validatedArgs: any[] = [];
@@ -1039,6 +1079,36 @@ export function RegisterRoutes(router: KoaRouter) {
             }
 
             const promise = controller.getUsers.apply(controller, validatedArgs as any);
+            return promiseHandler(controller, promise, context, undefined, undefined);
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        router.get('/api/user/options',
+            authenticateMiddleware([{"jwt":["role:admin"]}]),
+            ...(fetchMiddlewares<Middleware>(UserController)),
+            ...(fetchMiddlewares<Middleware>(UserController.prototype.getUserOptions)),
+
+            async function UserController_getUserOptions(context: any, next: any) {
+            const args = {
+                    query: {"in":"query","name":"query","dataType":"string"},
+            };
+
+            let validatedArgs: any[] = [];
+            try {
+              validatedArgs = getValidatedArgs(args, context, next);
+            } catch (err) {
+              const error = err as any;
+              context.status = error.status;
+              context.throw(error.status, JSON.stringify({ fields: error.fields }));
+            }
+
+            const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(context.request) : iocContainer;
+
+            const controller: any = await container.get<UserController>(UserController);
+            if (typeof controller['setStatus'] === 'function') {
+                controller.setStatus(undefined);
+            }
+
+            const promise = controller.getUserOptions.apply(controller, validatedArgs as any);
             return promiseHandler(controller, promise, context, undefined, undefined);
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
@@ -1521,13 +1591,18 @@ export function RegisterRoutes(router: KoaRouter) {
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         router.get('/api/wg/servers/:serverId/peers',
-            authenticateMiddleware([{"jwt":["role:admin"]}]),
+            authenticateMiddleware([{"jwt":["permission:wg:peer:view"]}]),
             ...(fetchMiddlewares<Middleware>(WgPeerController)),
             ...(fetchMiddlewares<Middleware>(WgPeerController.prototype.getPeersByServer)),
 
             async function WgPeerController_getPeersByServer(context: any, next: any) {
             const args = {
                     serverId: {"in":"path","name":"serverId","required":true,"dataType":"string"},
+                    offset: {"in":"query","name":"offset","dataType":"double"},
+                    limit: {"in":"query","name":"limit","dataType":"double"},
+                    query: {"in":"query","name":"query","dataType":"string"},
+                    enabled: {"in":"query","name":"enabled","dataType":"boolean"},
+                    status: {"in":"query","name":"status","ref":"EWgServerStatus"},
             };
 
             let validatedArgs: any[] = [];
@@ -1558,6 +1633,12 @@ export function RegisterRoutes(router: KoaRouter) {
             async function WgPeerController_getMyPeers(context: any, next: any) {
             const args = {
                     req: {"in":"request","name":"req","required":true,"dataType":"object"},
+                    offset: {"in":"query","name":"offset","dataType":"double"},
+                    limit: {"in":"query","name":"limit","dataType":"double"},
+                    query: {"in":"query","name":"query","dataType":"string"},
+                    enabled: {"in":"query","name":"enabled","dataType":"boolean"},
+                    status: {"in":"query","name":"status","ref":"EWgServerStatus"},
+                    serverId: {"in":"query","name":"serverId","dataType":"string"},
             };
 
             let validatedArgs: any[] = [];
@@ -1581,13 +1662,19 @@ export function RegisterRoutes(router: KoaRouter) {
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         router.get('/api/wg/peers/user/:userId',
-            authenticateMiddleware([{"jwt":["role:admin"]}]),
+            authenticateMiddleware([{"jwt":["permission:wg:peer:view"]}]),
             ...(fetchMiddlewares<Middleware>(WgPeerController)),
             ...(fetchMiddlewares<Middleware>(WgPeerController.prototype.getPeersByUser)),
 
             async function WgPeerController_getPeersByUser(context: any, next: any) {
             const args = {
                     userId: {"in":"path","name":"userId","required":true,"dataType":"string"},
+                    offset: {"in":"query","name":"offset","dataType":"double"},
+                    limit: {"in":"query","name":"limit","dataType":"double"},
+                    query: {"in":"query","name":"query","dataType":"string"},
+                    enabled: {"in":"query","name":"enabled","dataType":"boolean"},
+                    status: {"in":"query","name":"status","ref":"EWgServerStatus"},
+                    serverId: {"in":"query","name":"serverId","dataType":"string"},
             };
 
             let validatedArgs: any[] = [];
@@ -1610,8 +1697,39 @@ export function RegisterRoutes(router: KoaRouter) {
             return promiseHandler(controller, promise, context, undefined, undefined);
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        router.get('/api/wg/peers/options',
+            authenticateMiddleware([{"jwt":["permission:wg:peer:view"]}]),
+            ...(fetchMiddlewares<Middleware>(WgPeerController)),
+            ...(fetchMiddlewares<Middleware>(WgPeerController.prototype.getPeersOptions)),
+
+            async function WgPeerController_getPeersOptions(context: any, next: any) {
+            const args = {
+                    serverId: {"in":"query","name":"serverId","dataType":"string"},
+                    query: {"in":"query","name":"query","dataType":"string"},
+            };
+
+            let validatedArgs: any[] = [];
+            try {
+              validatedArgs = getValidatedArgs(args, context, next);
+            } catch (err) {
+              const error = err as any;
+              context.status = error.status;
+              context.throw(error.status, JSON.stringify({ fields: error.fields }));
+            }
+
+            const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(context.request) : iocContainer;
+
+            const controller: any = await container.get<WgPeerController>(WgPeerController);
+            if (typeof controller['setStatus'] === 'function') {
+                controller.setStatus(undefined);
+            }
+
+            const promise = controller.getPeersOptions.apply(controller, validatedArgs as any);
+            return promiseHandler(controller, promise, context, undefined, undefined);
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         router.get('/api/wg/peers/:id',
-            authenticateMiddleware([{"jwt":["role:admin"]}]),
+            authenticateMiddleware([{"jwt":["permission:wg:peer:view"]}]),
             ...(fetchMiddlewares<Middleware>(WgPeerController)),
             ...(fetchMiddlewares<Middleware>(WgPeerController.prototype.getPeer)),
 
@@ -1641,7 +1759,7 @@ export function RegisterRoutes(router: KoaRouter) {
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         router.post('/api/wg/servers/:serverId/peers',
-            authenticateMiddleware([{"jwt":["role:admin"]}]),
+            authenticateMiddleware([{"jwt":["permission:wg:peer:manage"]}]),
             ...(fetchMiddlewares<Middleware>(WgPeerController)),
             ...(fetchMiddlewares<Middleware>(WgPeerController.prototype.createPeer)),
 
@@ -1673,7 +1791,7 @@ export function RegisterRoutes(router: KoaRouter) {
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         router.patch('/api/wg/peers/:id',
-            authenticateMiddleware([{"jwt":["role:admin"]}]),
+            authenticateMiddleware([{"jwt":["permission:wg:peer:manage"]}]),
             ...(fetchMiddlewares<Middleware>(WgPeerController)),
             ...(fetchMiddlewares<Middleware>(WgPeerController.prototype.updatePeer)),
 
@@ -1704,7 +1822,7 @@ export function RegisterRoutes(router: KoaRouter) {
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         router.delete('/api/wg/peers/:id',
-            authenticateMiddleware([{"jwt":["role:admin"]}]),
+            authenticateMiddleware([{"jwt":["permission:wg:peer:manage"]}]),
             ...(fetchMiddlewares<Middleware>(WgPeerController)),
             ...(fetchMiddlewares<Middleware>(WgPeerController.prototype.deletePeer)),
 
@@ -1734,7 +1852,7 @@ export function RegisterRoutes(router: KoaRouter) {
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         router.post('/api/wg/peers/:id/start',
-            authenticateMiddleware([{"jwt":["role:admin"]}]),
+            authenticateMiddleware([{"jwt":["permission:wg:server:control"]}]),
             ...(fetchMiddlewares<Middleware>(WgPeerController)),
             ...(fetchMiddlewares<Middleware>(WgPeerController.prototype.startPeer)),
 
@@ -1764,7 +1882,7 @@ export function RegisterRoutes(router: KoaRouter) {
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         router.post('/api/wg/peers/:id/stop',
-            authenticateMiddleware([{"jwt":["role:admin"]}]),
+            authenticateMiddleware([{"jwt":["permission:wg:server:control"]}]),
             ...(fetchMiddlewares<Middleware>(WgPeerController)),
             ...(fetchMiddlewares<Middleware>(WgPeerController.prototype.stopPeer)),
 
@@ -1794,7 +1912,7 @@ export function RegisterRoutes(router: KoaRouter) {
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         router.post('/api/wg/peers/:id/assign',
-            authenticateMiddleware([{"jwt":["role:admin"]}]),
+            authenticateMiddleware([{"jwt":["permission:wg:peer:manage"]}]),
             ...(fetchMiddlewares<Middleware>(WgPeerController)),
             ...(fetchMiddlewares<Middleware>(WgPeerController.prototype.assignPeer)),
 
@@ -1825,7 +1943,7 @@ export function RegisterRoutes(router: KoaRouter) {
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         router.post('/api/wg/peers/:id/revoke',
-            authenticateMiddleware([{"jwt":["role:admin"]}]),
+            authenticateMiddleware([{"jwt":["permission:wg:peer:manage"]}]),
             ...(fetchMiddlewares<Middleware>(WgPeerController)),
             ...(fetchMiddlewares<Middleware>(WgPeerController.prototype.revokePeer)),
 
@@ -1855,7 +1973,7 @@ export function RegisterRoutes(router: KoaRouter) {
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         router.post('/api/wg/peers/:id/rotate-psk',
-            authenticateMiddleware([{"jwt":["role:admin"]}]),
+            authenticateMiddleware([{"jwt":["permission:wg:peer:manage"]}]),
             ...(fetchMiddlewares<Middleware>(WgPeerController)),
             ...(fetchMiddlewares<Middleware>(WgPeerController.prototype.rotatePresharedKey)),
 
@@ -1885,7 +2003,7 @@ export function RegisterRoutes(router: KoaRouter) {
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         router.delete('/api/wg/peers/:id/psk',
-            authenticateMiddleware([{"jwt":["role:admin"]}]),
+            authenticateMiddleware([{"jwt":["permission:wg:peer:manage"]}]),
             ...(fetchMiddlewares<Middleware>(WgPeerController)),
             ...(fetchMiddlewares<Middleware>(WgPeerController.prototype.removePresharedKey)),
 
@@ -1922,6 +2040,7 @@ export function RegisterRoutes(router: KoaRouter) {
             async function WgPeerController_getPeerConfig(context: any, next: any) {
             const args = {
                     id: {"in":"path","name":"id","required":true,"dataType":"string"},
+                    req: {"in":"request","name":"req","required":true,"dataType":"object"},
             };
 
             let validatedArgs: any[] = [];
@@ -1952,6 +2071,7 @@ export function RegisterRoutes(router: KoaRouter) {
             async function WgPeerController_getPeerQrCode(context: any, next: any) {
             const args = {
                     id: {"in":"path","name":"id","required":true,"dataType":"string"},
+                    req: {"in":"request","name":"req","required":true,"dataType":"object"},
             };
 
             let validatedArgs: any[] = [];
@@ -1975,12 +2095,17 @@ export function RegisterRoutes(router: KoaRouter) {
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         router.get('/api/wg/servers',
-            authenticateMiddleware([{"jwt":["role:admin"]}]),
+            authenticateMiddleware([{"jwt":["permission:wg:server:view"]}]),
             ...(fetchMiddlewares<Middleware>(WgServerController)),
             ...(fetchMiddlewares<Middleware>(WgServerController.prototype.getServers)),
 
             async function WgServerController_getServers(context: any, next: any) {
             const args = {
+                    offset: {"in":"query","name":"offset","dataType":"double"},
+                    limit: {"in":"query","name":"limit","dataType":"double"},
+                    query: {"in":"query","name":"query","dataType":"string"},
+                    status: {"in":"query","name":"status","ref":"EWgServerStatus"},
+                    enabled: {"in":"query","name":"enabled","dataType":"boolean"},
             };
 
             let validatedArgs: any[] = [];
@@ -2003,8 +2128,38 @@ export function RegisterRoutes(router: KoaRouter) {
             return promiseHandler(controller, promise, context, undefined, undefined);
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        router.get('/api/wg/servers/options',
+            authenticateMiddleware([{"jwt":["permission:wg:server:view"]}]),
+            ...(fetchMiddlewares<Middleware>(WgServerController)),
+            ...(fetchMiddlewares<Middleware>(WgServerController.prototype.getServerOptions)),
+
+            async function WgServerController_getServerOptions(context: any, next: any) {
+            const args = {
+                    query: {"in":"query","name":"query","dataType":"string"},
+            };
+
+            let validatedArgs: any[] = [];
+            try {
+              validatedArgs = getValidatedArgs(args, context, next);
+            } catch (err) {
+              const error = err as any;
+              context.status = error.status;
+              context.throw(error.status, JSON.stringify({ fields: error.fields }));
+            }
+
+            const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(context.request) : iocContainer;
+
+            const controller: any = await container.get<WgServerController>(WgServerController);
+            if (typeof controller['setStatus'] === 'function') {
+                controller.setStatus(undefined);
+            }
+
+            const promise = controller.getServerOptions.apply(controller, validatedArgs as any);
+            return promiseHandler(controller, promise, context, undefined, undefined);
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         router.get('/api/wg/servers/:id',
-            authenticateMiddleware([{"jwt":["role:admin"]}]),
+            authenticateMiddleware([{"jwt":["permission:wg:server:view"]}]),
             ...(fetchMiddlewares<Middleware>(WgServerController)),
             ...(fetchMiddlewares<Middleware>(WgServerController.prototype.getServer)),
 
@@ -2034,7 +2189,7 @@ export function RegisterRoutes(router: KoaRouter) {
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         router.post('/api/wg/servers',
-            authenticateMiddleware([{"jwt":["role:admin"]}]),
+            authenticateMiddleware([{"jwt":["permission:wg:server:manage"]}]),
             ...(fetchMiddlewares<Middleware>(WgServerController)),
             ...(fetchMiddlewares<Middleware>(WgServerController.prototype.createServer)),
 
@@ -2065,7 +2220,7 @@ export function RegisterRoutes(router: KoaRouter) {
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         router.patch('/api/wg/servers/:id',
-            authenticateMiddleware([{"jwt":["role:admin"]}]),
+            authenticateMiddleware([{"jwt":["permission:wg:server:manage"]}]),
             ...(fetchMiddlewares<Middleware>(WgServerController)),
             ...(fetchMiddlewares<Middleware>(WgServerController.prototype.updateServer)),
 
@@ -2096,7 +2251,7 @@ export function RegisterRoutes(router: KoaRouter) {
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         router.delete('/api/wg/servers/:id',
-            authenticateMiddleware([{"jwt":["role:admin"]}]),
+            authenticateMiddleware([{"jwt":["permission:wg:server:manage"]}]),
             ...(fetchMiddlewares<Middleware>(WgServerController)),
             ...(fetchMiddlewares<Middleware>(WgServerController.prototype.deleteServer)),
 
@@ -2126,7 +2281,7 @@ export function RegisterRoutes(router: KoaRouter) {
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         router.post('/api/wg/servers/:id/start',
-            authenticateMiddleware([{"jwt":["role:admin"]}]),
+            authenticateMiddleware([{"jwt":["permission:wg:server:control"]}]),
             ...(fetchMiddlewares<Middleware>(WgServerController)),
             ...(fetchMiddlewares<Middleware>(WgServerController.prototype.startServer)),
 
@@ -2156,7 +2311,7 @@ export function RegisterRoutes(router: KoaRouter) {
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         router.post('/api/wg/servers/:id/stop',
-            authenticateMiddleware([{"jwt":["role:admin"]}]),
+            authenticateMiddleware([{"jwt":["permission:wg:server:control"]}]),
             ...(fetchMiddlewares<Middleware>(WgServerController)),
             ...(fetchMiddlewares<Middleware>(WgServerController.prototype.stopServer)),
 
@@ -2186,7 +2341,7 @@ export function RegisterRoutes(router: KoaRouter) {
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         router.post('/api/wg/servers/:id/restart',
-            authenticateMiddleware([{"jwt":["role:admin"]}]),
+            authenticateMiddleware([{"jwt":["permission:wg:server:control"]}]),
             ...(fetchMiddlewares<Middleware>(WgServerController)),
             ...(fetchMiddlewares<Middleware>(WgServerController.prototype.restartServer)),
 
@@ -2216,7 +2371,7 @@ export function RegisterRoutes(router: KoaRouter) {
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         router.get('/api/wg/servers/:id/status',
-            authenticateMiddleware([{"jwt":["role:admin"]}]),
+            authenticateMiddleware([{"jwt":["permission:wg:server:view"]}]),
             ...(fetchMiddlewares<Middleware>(WgServerController)),
             ...(fetchMiddlewares<Middleware>(WgServerController.prototype.getServerStatus)),
 
@@ -2245,14 +2400,13 @@ export function RegisterRoutes(router: KoaRouter) {
             return promiseHandler(controller, promise, context, undefined, undefined);
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-        router.get('/api/wg/statistics/peers/:peerId/traffic',
-            authenticateMiddleware([{"jwt":["role:admin"]}]),
+        router.get('/api/wg/statistics/overview',
+            authenticateMiddleware([{"jwt":["permission:wg:stats:view"]}]),
             ...(fetchMiddlewares<Middleware>(WgStatisticsController)),
-            ...(fetchMiddlewares<Middleware>(WgStatisticsController.prototype.getPeerTraffic)),
+            ...(fetchMiddlewares<Middleware>(WgStatisticsController.prototype.getOverviewStats)),
 
-            async function WgStatisticsController_getPeerTraffic(context: any, next: any) {
+            async function WgStatisticsController_getOverviewStats(context: any, next: any) {
             const args = {
-                    peerId: {"in":"path","name":"peerId","required":true,"dataType":"string"},
                     from: {"in":"query","name":"from","dataType":"string"},
                     to: {"in":"query","name":"to","dataType":"string"},
             };
@@ -2273,20 +2427,21 @@ export function RegisterRoutes(router: KoaRouter) {
                 controller.setStatus(undefined);
             }
 
-            const promise = controller.getPeerTraffic.apply(controller, validatedArgs as any);
+            const promise = controller.getOverviewStats.apply(controller, validatedArgs as any);
             return promiseHandler(controller, promise, context, undefined, undefined);
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-        router.get('/api/wg/statistics/peers/:peerId/speed',
-            authenticateMiddleware([{"jwt":["role:admin"]}]),
+        router.get('/api/wg/statistics/servers/:serverId',
+            authenticateMiddleware([{"jwt":["permission:wg:stats:view"]}]),
             ...(fetchMiddlewares<Middleware>(WgStatisticsController)),
-            ...(fetchMiddlewares<Middleware>(WgStatisticsController.prototype.getPeerSpeed)),
+            ...(fetchMiddlewares<Middleware>(WgStatisticsController.prototype.getServerStats)),
 
-            async function WgStatisticsController_getPeerSpeed(context: any, next: any) {
+            async function WgStatisticsController_getServerStats(context: any, next: any) {
             const args = {
-                    peerId: {"in":"path","name":"peerId","required":true,"dataType":"string"},
+                    serverId: {"in":"path","name":"serverId","required":true,"dataType":"string"},
                     from: {"in":"query","name":"from","dataType":"string"},
                     to: {"in":"query","name":"to","dataType":"string"},
+                    peerId: {"in":"query","name":"peerId","dataType":"string"},
             };
 
             let validatedArgs: any[] = [];
@@ -2305,12 +2460,12 @@ export function RegisterRoutes(router: KoaRouter) {
                 controller.setStatus(undefined);
             }
 
-            const promise = controller.getPeerSpeed.apply(controller, validatedArgs as any);
+            const promise = controller.getServerStats.apply(controller, validatedArgs as any);
             return promiseHandler(controller, promise, context, undefined, undefined);
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         router.get('/api/wg/statistics/peers/:peerId',
-            authenticateMiddleware([{"jwt":["role:admin"]}]),
+            authenticateMiddleware([{"jwt":["permission:wg:stats:view"]}]),
             ...(fetchMiddlewares<Middleware>(WgStatisticsController)),
             ...(fetchMiddlewares<Middleware>(WgStatisticsController.prototype.getPeerStats)),
 
@@ -2338,102 +2493,6 @@ export function RegisterRoutes(router: KoaRouter) {
             }
 
             const promise = controller.getPeerStats.apply(controller, validatedArgs as any);
-            return promiseHandler(controller, promise, context, undefined, undefined);
-        });
-        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-        router.get('/api/wg/statistics/servers/:serverId/traffic',
-            authenticateMiddleware([{"jwt":["role:admin"]}]),
-            ...(fetchMiddlewares<Middleware>(WgStatisticsController)),
-            ...(fetchMiddlewares<Middleware>(WgStatisticsController.prototype.getServerTraffic)),
-
-            async function WgStatisticsController_getServerTraffic(context: any, next: any) {
-            const args = {
-                    serverId: {"in":"path","name":"serverId","required":true,"dataType":"string"},
-                    from: {"in":"query","name":"from","dataType":"string"},
-                    to: {"in":"query","name":"to","dataType":"string"},
-            };
-
-            let validatedArgs: any[] = [];
-            try {
-              validatedArgs = getValidatedArgs(args, context, next);
-            } catch (err) {
-              const error = err as any;
-              context.status = error.status;
-              context.throw(error.status, JSON.stringify({ fields: error.fields }));
-            }
-
-            const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(context.request) : iocContainer;
-
-            const controller: any = await container.get<WgStatisticsController>(WgStatisticsController);
-            if (typeof controller['setStatus'] === 'function') {
-                controller.setStatus(undefined);
-            }
-
-            const promise = controller.getServerTraffic.apply(controller, validatedArgs as any);
-            return promiseHandler(controller, promise, context, undefined, undefined);
-        });
-        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-        router.get('/api/wg/statistics/servers/:serverId/speed',
-            authenticateMiddleware([{"jwt":["role:admin"]}]),
-            ...(fetchMiddlewares<Middleware>(WgStatisticsController)),
-            ...(fetchMiddlewares<Middleware>(WgStatisticsController.prototype.getServerSpeed)),
-
-            async function WgStatisticsController_getServerSpeed(context: any, next: any) {
-            const args = {
-                    serverId: {"in":"path","name":"serverId","required":true,"dataType":"string"},
-                    from: {"in":"query","name":"from","dataType":"string"},
-                    to: {"in":"query","name":"to","dataType":"string"},
-            };
-
-            let validatedArgs: any[] = [];
-            try {
-              validatedArgs = getValidatedArgs(args, context, next);
-            } catch (err) {
-              const error = err as any;
-              context.status = error.status;
-              context.throw(error.status, JSON.stringify({ fields: error.fields }));
-            }
-
-            const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(context.request) : iocContainer;
-
-            const controller: any = await container.get<WgStatisticsController>(WgStatisticsController);
-            if (typeof controller['setStatus'] === 'function') {
-                controller.setStatus(undefined);
-            }
-
-            const promise = controller.getServerSpeed.apply(controller, validatedArgs as any);
-            return promiseHandler(controller, promise, context, undefined, undefined);
-        });
-        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-        router.get('/api/wg/statistics/servers/:serverId',
-            authenticateMiddleware([{"jwt":["role:admin"]}]),
-            ...(fetchMiddlewares<Middleware>(WgStatisticsController)),
-            ...(fetchMiddlewares<Middleware>(WgStatisticsController.prototype.getServerStats)),
-
-            async function WgStatisticsController_getServerStats(context: any, next: any) {
-            const args = {
-                    serverId: {"in":"path","name":"serverId","required":true,"dataType":"string"},
-                    from: {"in":"query","name":"from","dataType":"string"},
-                    to: {"in":"query","name":"to","dataType":"string"},
-            };
-
-            let validatedArgs: any[] = [];
-            try {
-              validatedArgs = getValidatedArgs(args, context, next);
-            } catch (err) {
-              const error = err as any;
-              context.status = error.status;
-              context.throw(error.status, JSON.stringify({ fields: error.fields }));
-            }
-
-            const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(context.request) : iocContainer;
-
-            const controller: any = await container.get<WgStatisticsController>(WgStatisticsController);
-            if (typeof controller['setStatus'] === 'function') {
-                controller.setStatus(undefined);
-            }
-
-            const promise = controller.getServerStats.apply(controller, validatedArgs as any);
             return promiseHandler(controller, promise, context, undefined, undefined);
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa

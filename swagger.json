@@ -67,9 +67,11 @@
 			},
 			"EPermissions": {
 				"enum": [
-					"read",
-					"write",
-					"delete",
+					"*",
+					"wg:*",
+					"wg:server:*",
+					"wg:peer:*",
+					"wg:stats:*",
 					"wg:server:view",
 					"wg:server:manage",
 					"wg:server:control",
@@ -77,7 +79,12 @@
 					"wg:peer:manage",
 					"wg:peer:own",
 					"wg:stats:view",
-					"wg:stats:export"
+					"wg:stats:export",
+					"user:view",
+					"user:manage",
+					"read",
+					"write",
+					"delete"
 				],
 				"type": "string"
 			},
@@ -157,8 +164,11 @@
 					"profile": {
 						"$ref": "#/components/schemas/ProfileDto"
 					},
-					"role": {
-						"$ref": "#/components/schemas/IRoleDto"
+					"roles": {
+						"items": {
+							"$ref": "#/components/schemas/IRoleDto"
+						},
+						"type": "array"
 					},
 					"createdAt": {
 						"type": "string",
@@ -171,7 +181,7 @@
 				},
 				"required": [
 					"id",
-					"role",
+					"roles",
 					"createdAt",
 					"updatedAt"
 				],
@@ -242,6 +252,10 @@
 						"type": "number",
 						"format": "double"
 					},
+					"totalCount": {
+						"type": "number",
+						"format": "double"
+					},
 					"offset": {
 						"type": "number",
 						"format": "double"
@@ -304,6 +318,10 @@
 						"type": "number",
 						"format": "double"
 					},
+					"totalCount": {
+						"type": "number",
+						"format": "double"
+					},
 					"offset": {
 						"type": "number",
 						"format": "double"
@@ -325,20 +343,56 @@
 				"type": "object",
 				"additionalProperties": false
 			},
-			"IUserPrivilegesRequestDto": {
+			"IUserOptionDto": {
 				"properties": {
-					"roleName": {
-						"$ref": "#/components/schemas/ERole"
+					"id": {
+						"type": "string"
 					},
-					"permissions": {
+					"name": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"id",
+					"name"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IUserOptionsDto": {
+				"properties": {
+					"data": {
 						"items": {
-							"$ref": "#/components/schemas/EPermissions"
+							"$ref": "#/components/schemas/IUserOptionDto"
 						},
 						"type": "array"
 					}
 				},
 				"required": [
-					"roleName",
+					"data"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IUserPrivilegesRequestDto": {
+				"properties": {
+					"roles": {
+						"items": {
+							"$ref": "#/components/schemas/ERole"
+						},
+						"type": "array",
+						"description": "Roles to assign to the user (replaces current roles)."
+					},
+					"permissions": {
+						"items": {
+							"$ref": "#/components/schemas/EPermissions"
+						},
+						"type": "array",
+						"description": "Direct permissions granted to this user on top of role permissions.\nReplaces current direct permissions."
+					}
+				},
+				"required": [
+					"roles",
 					"permissions"
 				],
 				"type": "object",
@@ -399,8 +453,11 @@
 					"profile": {
 						"$ref": "#/components/schemas/ProfileDto"
 					},
-					"role": {
-						"$ref": "#/components/schemas/IRoleDto"
+					"roles": {
+						"items": {
+							"$ref": "#/components/schemas/IRoleDto"
+						},
+						"type": "array"
 					},
 					"createdAt": {
 						"type": "string",
@@ -416,7 +473,7 @@
 				},
 				"required": [
 					"id",
-					"role",
+					"roles",
 					"createdAt",
 					"updatedAt",
 					"tokens"
@@ -1051,6 +1108,9 @@
 						"format": "date-time",
 						"nullable": true
 					},
+					"isActive": {
+						"type": "boolean"
+					},
 					"createdAt": {
 						"type": "string",
 						"format": "date-time"
@@ -1077,6 +1137,7 @@
 					"expiresAt",
 					"description",
 					"lastHandshake",
+					"isActive",
 					"createdAt",
 					"updatedAt"
 				],
@@ -1089,6 +1150,18 @@
 						"type": "number",
 						"format": "double"
 					},
+					"totalCount": {
+						"type": "number",
+						"format": "double"
+					},
+					"offset": {
+						"type": "number",
+						"format": "double"
+					},
+					"limit": {
+						"type": "number",
+						"format": "double"
+					},
 					"data": {
 						"items": {
 							"$ref": "#/components/schemas/WgPeerDto"
@@ -1097,7 +1170,37 @@
 					}
 				},
 				"required": [
-					"count",
+					"data"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IWgPeerOptionDto": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"name": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"id",
+					"name"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IWgPeerOptionsDto": {
+				"properties": {
+					"data": {
+						"items": {
+							"$ref": "#/components/schemas/IWgPeerOptionDto"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
 					"data"
 				],
 				"type": "object",
@@ -1293,6 +1396,18 @@
 						"type": "number",
 						"format": "double"
 					},
+					"totalCount": {
+						"type": "number",
+						"format": "double"
+					},
+					"offset": {
+						"type": "number",
+						"format": "double"
+					},
+					"limit": {
+						"type": "number",
+						"format": "double"
+					},
 					"data": {
 						"items": {
 							"$ref": "#/components/schemas/WgServerDto"
@@ -1301,7 +1416,37 @@
 					}
 				},
 				"required": [
-					"count",
+					"data"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IWgServerOptionDto": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"name": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"id",
+					"name"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IWgServerOptionsDto": {
+				"properties": {
+					"data": {
+						"items": {
+							"$ref": "#/components/schemas/IWgServerOptionDto"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
 					"data"
 				],
 				"type": "object",
@@ -1451,16 +1596,11 @@
 				"type": "object",
 				"additionalProperties": false
 			},
-			"WgTrafficStatDto": {
+			"WgOverviewTrafficPointDto": {
 				"properties": {
-					"id": {
-						"type": "string"
-					},
-					"peerId": {
-						"type": "string"
-					},
-					"serverId": {
-						"type": "string"
+					"timestamp": {
+						"type": "string",
+						"format": "date-time"
 					},
 					"rxBytes": {
 						"type": "number",
@@ -1469,44 +1609,21 @@
 					"txBytes": {
 						"type": "number",
 						"format": "double"
-					},
-					"lastHandshake": {
-						"type": "string",
-						"format": "date-time",
-						"nullable": true
-					},
-					"endpoint": {
-						"type": "string",
-						"nullable": true
-					},
-					"timestamp": {
-						"type": "string",
-						"format": "date-time"
 					}
 				},
 				"required": [
-					"id",
-					"peerId",
-					"serverId",
+					"timestamp",
 					"rxBytes",
-					"txBytes",
-					"lastHandshake",
-					"endpoint",
-					"timestamp"
+					"txBytes"
 				],
 				"type": "object",
 				"additionalProperties": false
 			},
-			"WgSpeedSampleDto": {
+			"WgOverviewSpeedPointDto": {
 				"properties": {
-					"id": {
-						"type": "string"
-					},
-					"peerId": {
-						"type": "string"
-					},
-					"serverId": {
-						"type": "string"
+					"timestamp": {
+						"type": "string",
+						"format": "date-time"
 					},
 					"rxSpeedBps": {
 						"type": "number",
@@ -1515,112 +1632,32 @@
 					"txSpeedBps": {
 						"type": "number",
 						"format": "double"
-					},
-					"isActive": {
-						"type": "boolean"
-					},
-					"timestamp": {
-						"type": "string",
-						"format": "date-time"
 					}
 				},
 				"required": [
-					"id",
-					"peerId",
-					"serverId",
+					"timestamp",
 					"rxSpeedBps",
-					"txSpeedBps",
-					"isActive",
-					"timestamp"
+					"txSpeedBps"
 				],
 				"type": "object",
 				"additionalProperties": false
 			},
-			"IWgPeerStatsResponse": {
+			"IWgOverviewStatsResponse": {
 				"properties": {
-					"peerId": {
-						"type": "string"
-					},
 					"traffic": {
 						"items": {
-							"$ref": "#/components/schemas/WgTrafficStatDto"
+							"$ref": "#/components/schemas/WgOverviewTrafficPointDto"
 						},
 						"type": "array"
 					},
 					"speed": {
 						"items": {
-							"$ref": "#/components/schemas/WgSpeedSampleDto"
-						},
-						"type": "array"
-					},
-					"latest": {
-						"properties": {
-							"lastHandshake": {
-								"type": "string",
-								"format": "date-time",
-								"nullable": true
-							},
-							"isActive": {
-								"type": "boolean"
-							},
-							"txSpeedBps": {
-								"type": "number",
-								"format": "double"
-							},
-							"rxSpeedBps": {
-								"type": "number",
-								"format": "double"
-							},
-							"txBytes": {
-								"type": "number",
-								"format": "double"
-							},
-							"rxBytes": {
-								"type": "number",
-								"format": "double"
-							}
-						},
-						"required": [
-							"lastHandshake",
-							"isActive",
-							"txSpeedBps",
-							"rxSpeedBps",
-							"txBytes",
-							"rxBytes"
-						],
-						"type": "object",
-						"nullable": true
-					}
-				},
-				"required": [
-					"peerId",
-					"traffic",
-					"speed",
-					"latest"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"IWgServerStatsResponse": {
-				"properties": {
-					"serverId": {
-						"type": "string"
-					},
-					"traffic": {
-						"items": {
-							"$ref": "#/components/schemas/WgTrafficStatDto"
-						},
-						"type": "array"
-					},
-					"speed": {
-						"items": {
-							"$ref": "#/components/schemas/WgSpeedSampleDto"
+							"$ref": "#/components/schemas/WgOverviewSpeedPointDto"
 						},
 						"type": "array"
 					}
 				},
 				"required": [
-					"serverId",
 					"traffic",
 					"speed"
 				],
@@ -1768,7 +1805,9 @@
 				],
 				"security": [
 					{
-						"jwt": []
+						"jwt": [
+							"role:admin"
+						]
 					}
 				],
 				"parameters": [
@@ -1804,7 +1843,7 @@
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/ProfileDto"
+									"$ref": "#/components/schemas/PublicProfileDto"
 								}
 							}
 						}
@@ -2026,7 +2065,7 @@
 				"operationId": "GetUsers",
 				"responses": {
 					"200": {
-						"description": "Список всех пользователей с информацией о них",
+						"description": "Список всех пользователей",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -2036,7 +2075,7 @@
 						}
 					}
 				},
-				"description": "Получить всех пользователей.\nЭтот эндпоинт позволяет администраторам получить список всех пользователей системы.\nОн поддерживает пагинацию через параметры `offset` и `limit`.",
+				"description": "Получить всех пользователей.\nПоддерживает пагинацию и поиск по email.",
 				"summary": "Получение всех пользователей",
 				"tags": [
 					"User"
@@ -2067,6 +2106,55 @@
 						"schema": {
 							"format": "double",
 							"type": "number"
+						}
+					},
+					{
+						"description": "Поиск по email",
+						"in": "query",
+						"name": "query",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/user/options": {
+			"get": {
+				"operationId": "GetUserOptions",
+				"responses": {
+					"200": {
+						"description": "Список опций",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IUserOptionsDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Получить опции пользователей для выпадающих списков (id + name).\nname — имя и фамилия или email если профиль не заполнен.",
+				"summary": "Опции пользователей",
+				"tags": [
+					"User"
+				],
+				"security": [
+					{
+						"jwt": [
+							"role:admin"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"description": "Поиск по email, имени или фамилии",
+						"in": "query",
+						"name": "query",
+						"required": false,
+						"schema": {
+							"type": "string"
 						}
 					}
 				]
@@ -2714,7 +2802,7 @@
 						}
 					}
 				},
-				"description": "List all peers for a given server.",
+				"description": "List all peers for a given server with optional filters.",
 				"summary": "Get peers by server",
 				"tags": [
 					"WireGuard Peers"
@@ -2722,7 +2810,7 @@
 				"security": [
 					{
 						"jwt": [
-							"role:admin"
+							"permission:wg:peer:view"
 						]
 					}
 				],
@@ -2733,6 +2821,48 @@
 						"required": true,
 						"schema": {
 							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "offset",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					},
+					{
+						"in": "query",
+						"name": "limit",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					},
+					{
+						"in": "query",
+						"name": "query",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "enabled",
+						"required": false,
+						"schema": {
+							"type": "boolean"
+						}
+					},
+					{
+						"in": "query",
+						"name": "status",
+						"required": false,
+						"schema": {
+							"$ref": "#/components/schemas/EWgServerStatus"
 						}
 					}
 				]
@@ -2759,7 +2889,7 @@
 				"security": [
 					{
 						"jwt": [
-							"role:admin"
+							"permission:wg:peer:manage"
 						]
 					}
 				],
@@ -2800,7 +2930,7 @@
 						}
 					}
 				},
-				"description": "Get all peers owned by the current user.",
+				"description": "Get all peers owned by the current user with optional filters.",
 				"summary": "Get my peers",
 				"tags": [
 					"WireGuard Peers"
@@ -2810,7 +2940,58 @@
 						"jwt": []
 					}
 				],
-				"parameters": []
+				"parameters": [
+					{
+						"in": "query",
+						"name": "offset",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					},
+					{
+						"in": "query",
+						"name": "limit",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					},
+					{
+						"in": "query",
+						"name": "query",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "enabled",
+						"required": false,
+						"schema": {
+							"type": "boolean"
+						}
+					},
+					{
+						"in": "query",
+						"name": "status",
+						"required": false,
+						"schema": {
+							"$ref": "#/components/schemas/EWgServerStatus"
+						}
+					},
+					{
+						"in": "query",
+						"name": "serverId",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
 			}
 		},
 		"/api/wg/peers/user/{userId}": {
@@ -2828,7 +3009,7 @@
 						}
 					}
 				},
-				"description": "Get all peers for a user (admin only).",
+				"description": "Get all peers for a user with optional filters (admin only).",
 				"summary": "Get peers by user",
 				"tags": [
 					"WireGuard Peers"
@@ -2836,7 +3017,7 @@
 				"security": [
 					{
 						"jwt": [
-							"role:admin"
+							"permission:wg:peer:view"
 						]
 					}
 				],
@@ -2845,6 +3026,103 @@
 						"in": "path",
 						"name": "userId",
 						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "offset",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					},
+					{
+						"in": "query",
+						"name": "limit",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					},
+					{
+						"in": "query",
+						"name": "query",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "enabled",
+						"required": false,
+						"schema": {
+							"type": "boolean"
+						}
+					},
+					{
+						"in": "query",
+						"name": "status",
+						"required": false,
+						"schema": {
+							"$ref": "#/components/schemas/EWgServerStatus"
+						}
+					},
+					{
+						"in": "query",
+						"name": "serverId",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/wg/peers/options": {
+			"get": {
+				"operationId": "GetPeersOptions",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IWgPeerOptionsDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Get peer options for dropdowns (id + name only).",
+				"summary": "Get peer options",
+				"tags": [
+					"WireGuard Peers"
+				],
+				"security": [
+					{
+						"jwt": [
+							"permission:wg:peer:view"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"in": "query",
+						"name": "serverId",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "query",
+						"required": false,
 						"schema": {
 							"type": "string"
 						}
@@ -2875,7 +3153,7 @@
 				"security": [
 					{
 						"jwt": [
-							"role:admin"
+							"permission:wg:peer:view"
 						]
 					}
 				],
@@ -2912,7 +3190,7 @@
 				"security": [
 					{
 						"jwt": [
-							"role:admin"
+							"permission:wg:peer:manage"
 						]
 					}
 				],
@@ -2959,7 +3237,7 @@
 				"security": [
 					{
 						"jwt": [
-							"role:admin"
+							"permission:wg:peer:manage"
 						]
 					}
 				],
@@ -2998,7 +3276,7 @@
 				"security": [
 					{
 						"jwt": [
-							"role:admin"
+							"permission:wg:server:control"
 						]
 					}
 				],
@@ -3037,7 +3315,7 @@
 				"security": [
 					{
 						"jwt": [
-							"role:admin"
+							"permission:wg:server:control"
 						]
 					}
 				],
@@ -3076,7 +3354,7 @@
 				"security": [
 					{
 						"jwt": [
-							"role:admin"
+							"permission:wg:peer:manage"
 						]
 					}
 				],
@@ -3123,7 +3401,7 @@
 				"security": [
 					{
 						"jwt": [
-							"role:admin"
+							"permission:wg:peer:manage"
 						]
 					}
 				],
@@ -3162,7 +3440,7 @@
 				"security": [
 					{
 						"jwt": [
-							"role:admin"
+							"permission:wg:peer:manage"
 						]
 					}
 				],
@@ -3201,7 +3479,7 @@
 				"security": [
 					{
 						"jwt": [
-							"role:admin"
+							"permission:wg:peer:manage"
 						]
 					}
 				],
@@ -3232,7 +3510,7 @@
 						}
 					}
 				},
-				"description": "Download the WireGuard client .conf file for this peer.",
+				"description": "Download the WireGuard client .conf file for this peer.\nOnly accessible by the peer owner or admin.",
 				"summary": "Get peer config file",
 				"tags": [
 					"WireGuard Peers"
@@ -3277,7 +3555,7 @@
 						}
 					}
 				},
-				"description": "Get QR code PNG image for the client config.\nReturns base64-encoded PNG data URL.",
+				"description": "Get QR code PNG image for the client config.\nOnly accessible by the peer owner or admin.\nReturns base64-encoded PNG data URL.",
 				"summary": "Get peer QR code",
 				"tags": [
 					"WireGuard Peers"
@@ -3314,7 +3592,7 @@
 						}
 					}
 				},
-				"description": "List all WireGuard servers.",
+				"description": "List all WireGuard servers with optional filters.",
 				"summary": "Get all servers",
 				"tags": [
 					"WireGuard Servers"
@@ -3322,11 +3600,54 @@
 				"security": [
 					{
 						"jwt": [
-							"role:admin"
+							"permission:wg:server:view"
 						]
 					}
 				],
-				"parameters": []
+				"parameters": [
+					{
+						"in": "query",
+						"name": "offset",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					},
+					{
+						"in": "query",
+						"name": "limit",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					},
+					{
+						"in": "query",
+						"name": "query",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "status",
+						"required": false,
+						"schema": {
+							"$ref": "#/components/schemas/EWgServerStatus"
+						}
+					},
+					{
+						"in": "query",
+						"name": "enabled",
+						"required": false,
+						"schema": {
+							"type": "boolean"
+						}
+					}
+				]
 			},
 			"post": {
 				"operationId": "CreateServer",
@@ -3350,7 +3671,7 @@
 				"security": [
 					{
 						"jwt": [
-							"role:admin"
+							"permission:wg:server:manage"
 						]
 					}
 				],
@@ -3365,6 +3686,45 @@
 						}
 					}
 				}
+			}
+		},
+		"/api/wg/servers/options": {
+			"get": {
+				"operationId": "GetServerOptions",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IWgServerOptionsDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Get server options for dropdowns (id + name only).",
+				"summary": "Get server options",
+				"tags": [
+					"WireGuard Servers"
+				],
+				"security": [
+					{
+						"jwt": [
+							"permission:wg:server:view"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"in": "query",
+						"name": "query",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
 			}
 		},
 		"/api/wg/servers/{id}": {
@@ -3390,7 +3750,7 @@
 				"security": [
 					{
 						"jwt": [
-							"role:admin"
+							"permission:wg:server:view"
 						]
 					}
 				],
@@ -3427,7 +3787,7 @@
 				"security": [
 					{
 						"jwt": [
-							"role:admin"
+							"permission:wg:server:manage"
 						]
 					}
 				],
@@ -3474,7 +3834,7 @@
 				"security": [
 					{
 						"jwt": [
-							"role:admin"
+							"permission:wg:server:manage"
 						]
 					}
 				],
@@ -3513,7 +3873,7 @@
 				"security": [
 					{
 						"jwt": [
-							"role:admin"
+							"permission:wg:server:control"
 						]
 					}
 				],
@@ -3552,7 +3912,7 @@
 				"security": [
 					{
 						"jwt": [
-							"role:admin"
+							"permission:wg:server:control"
 						]
 					}
 				],
@@ -3591,7 +3951,7 @@
 				"security": [
 					{
 						"jwt": [
-							"role:admin"
+							"permission:wg:server:control"
 						]
 					}
 				],
@@ -3630,7 +3990,7 @@
 				"security": [
 					{
 						"jwt": [
-							"role:admin"
+							"permission:wg:server:view"
 						]
 					}
 				],
@@ -3646,46 +4006,34 @@
 				]
 			}
 		},
-		"/api/wg/statistics/peers/{peerId}/traffic": {
+		"/api/wg/statistics/overview": {
 			"get": {
-				"operationId": "GetPeerTraffic",
+				"operationId": "GetOverviewStats",
 				"responses": {
 					"200": {
 						"description": "Ok",
 						"content": {
 							"application/json": {
 								"schema": {
-									"items": {
-										"$ref": "#/components/schemas/WgTrafficStatDto"
-									},
-									"type": "array"
+									"$ref": "#/components/schemas/IWgOverviewStatsResponse"
 								}
 							}
 						}
 					}
 				},
-				"description": "Get traffic history for a specific peer.",
-				"summary": "Peer traffic history",
+				"description": "Aggregated traffic + speed across all servers and all peers.\nTraffic: cumulative total (monotonically increasing).\nSpeed: sum of peer speeds at each minute bucket.",
+				"summary": "Overview stats",
 				"tags": [
 					"WireGuard Statistics"
 				],
 				"security": [
 					{
 						"jwt": [
-							"role:admin"
+							"permission:wg:stats:view"
 						]
 					}
 				],
 				"parameters": [
-					{
-						"description": "Peer ID",
-						"in": "path",
-						"name": "peerId",
-						"required": true,
-						"schema": {
-							"type": "string"
-						}
-					},
 					{
 						"description": "ISO date string (default: 24h ago)",
 						"in": "query",
@@ -3697,247 +4045,6 @@
 					},
 					{
 						"description": "ISO date string (default: now)",
-						"in": "query",
-						"name": "to",
-						"required": false,
-						"schema": {
-							"type": "string"
-						}
-					}
-				]
-			}
-		},
-		"/api/wg/statistics/peers/{peerId}/speed": {
-			"get": {
-				"operationId": "GetPeerSpeed",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"items": {
-										"$ref": "#/components/schemas/WgSpeedSampleDto"
-									},
-									"type": "array"
-								}
-							}
-						}
-					}
-				},
-				"description": "Get speed samples for a specific peer.",
-				"summary": "Peer speed history",
-				"tags": [
-					"WireGuard Statistics"
-				],
-				"security": [
-					{
-						"jwt": [
-							"role:admin"
-						]
-					}
-				],
-				"parameters": [
-					{
-						"description": "Peer ID",
-						"in": "path",
-						"name": "peerId",
-						"required": true,
-						"schema": {
-							"type": "string"
-						}
-					},
-					{
-						"description": "ISO date string (default: 1h ago)",
-						"in": "query",
-						"name": "from",
-						"required": false,
-						"schema": {
-							"type": "string"
-						}
-					},
-					{
-						"description": "ISO date string (default: now)",
-						"in": "query",
-						"name": "to",
-						"required": false,
-						"schema": {
-							"type": "string"
-						}
-					}
-				]
-			}
-		},
-		"/api/wg/statistics/peers/{peerId}": {
-			"get": {
-				"operationId": "GetPeerStats",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/IWgPeerStatsResponse"
-								}
-							}
-						}
-					}
-				},
-				"description": "Get combined latest stats + history for a peer.",
-				"summary": "Peer full stats",
-				"tags": [
-					"WireGuard Statistics"
-				],
-				"security": [
-					{
-						"jwt": [
-							"role:admin"
-						]
-					}
-				],
-				"parameters": [
-					{
-						"description": "Peer ID",
-						"in": "path",
-						"name": "peerId",
-						"required": true,
-						"schema": {
-							"type": "string"
-						}
-					},
-					{
-						"description": "ISO date string (default: 24h ago)",
-						"in": "query",
-						"name": "from",
-						"required": false,
-						"schema": {
-							"type": "string"
-						}
-					},
-					{
-						"description": "ISO date string (default: now)",
-						"in": "query",
-						"name": "to",
-						"required": false,
-						"schema": {
-							"type": "string"
-						}
-					}
-				]
-			}
-		},
-		"/api/wg/statistics/servers/{serverId}/traffic": {
-			"get": {
-				"operationId": "GetServerTraffic",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"items": {
-										"$ref": "#/components/schemas/WgTrafficStatDto"
-									},
-									"type": "array"
-								}
-							}
-						}
-					}
-				},
-				"description": "Get traffic history for a server (all peers aggregated).",
-				"summary": "Server traffic history",
-				"tags": [
-					"WireGuard Statistics"
-				],
-				"security": [
-					{
-						"jwt": [
-							"role:admin"
-						]
-					}
-				],
-				"parameters": [
-					{
-						"description": "Server ID",
-						"in": "path",
-						"name": "serverId",
-						"required": true,
-						"schema": {
-							"type": "string"
-						}
-					},
-					{
-						"description": "ISO date string",
-						"in": "query",
-						"name": "from",
-						"required": false,
-						"schema": {
-							"type": "string"
-						}
-					},
-					{
-						"description": "ISO date string",
-						"in": "query",
-						"name": "to",
-						"required": false,
-						"schema": {
-							"type": "string"
-						}
-					}
-				]
-			}
-		},
-		"/api/wg/statistics/servers/{serverId}/speed": {
-			"get": {
-				"operationId": "GetServerSpeed",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"items": {
-										"$ref": "#/components/schemas/WgSpeedSampleDto"
-									},
-									"type": "array"
-								}
-							}
-						}
-					}
-				},
-				"description": "Get speed history for a server.",
-				"summary": "Server speed history",
-				"tags": [
-					"WireGuard Statistics"
-				],
-				"security": [
-					{
-						"jwt": [
-							"role:admin"
-						]
-					}
-				],
-				"parameters": [
-					{
-						"description": "Server ID",
-						"in": "path",
-						"name": "serverId",
-						"required": true,
-						"schema": {
-							"type": "string"
-						}
-					},
-					{
-						"description": "ISO date string",
-						"in": "query",
-						"name": "from",
-						"required": false,
-						"schema": {
-							"type": "string"
-						}
-					},
-					{
-						"description": "ISO date string",
 						"in": "query",
 						"name": "to",
 						"required": false,
@@ -3957,21 +4064,21 @@
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/IWgServerStatsResponse"
+									"$ref": "#/components/schemas/IWgOverviewStatsResponse"
 								}
 							}
 						}
 					}
 				},
-				"description": "Get combined stats for a server.",
-				"summary": "Server full stats",
+				"description": "Aggregated traffic + speed for a specific server (all its peers).\nOptionally filter by a single peer via peerId query param.",
+				"summary": "Server stats",
 				"tags": [
 					"WireGuard Statistics"
 				],
 				"security": [
 					{
 						"jwt": [
-							"role:admin"
+							"permission:wg:stats:view"
 						]
 					}
 				],
@@ -3986,7 +4093,7 @@
 						}
 					},
 					{
-						"description": "ISO date string",
+						"description": "ISO date string (default: 24h ago)",
 						"in": "query",
 						"name": "from",
 						"required": false,
@@ -3995,7 +4102,74 @@
 						}
 					},
 					{
-						"description": "ISO date string",
+						"description": "ISO date string (default: now)",
+						"in": "query",
+						"name": "to",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"description": "Optional peer ID to filter",
+						"in": "query",
+						"name": "peerId",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/wg/statistics/peers/{peerId}": {
+			"get": {
+				"operationId": "GetPeerStats",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IWgOverviewStatsResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Aggregated traffic + speed for a specific peer.",
+				"summary": "Peer stats",
+				"tags": [
+					"WireGuard Statistics"
+				],
+				"security": [
+					{
+						"jwt": [
+							"permission:wg:stats:view"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"description": "Peer ID",
+						"in": "path",
+						"name": "peerId",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"description": "ISO date string (default: 24h ago)",
+						"in": "query",
+						"name": "from",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"description": "ISO date string (default: now)",
 						"in": "query",
 						"name": "to",
 						"required": false,
