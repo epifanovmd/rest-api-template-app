@@ -5,6 +5,8 @@
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 import { ProfileController } from './../modules/profile/profile.controller';
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+import { RoleController } from './../modules/role/role.controller';
+// WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 import { UserController } from './../modules/user/user.controller';
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 import { AuthController } from './../modules/auth/auth.controller';
@@ -52,7 +54,7 @@ const models: TsoaRoute.Models = {
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "EPermissions": {
         "dataType": "refEnum",
-        "enums": ["*","wg:*","wg:server:*","wg:peer:*","wg:stats:*","wg:server:view","wg:server:manage","wg:server:control","wg:peer:view","wg:peer:manage","wg:peer:own","wg:stats:view","wg:stats:export","user:view","user:manage","read","write","delete"],
+        "enums": ["*","wg:*","wg:server:*","wg:peer:*","wg:stats:*","wg:server:view","wg:server:manage","wg:server:control","wg:peer:view","wg:peer:manage","wg:peer:own","wg:stats:view","wg:stats:export","user:view","user:manage"],
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "IPermissionDto": {
@@ -132,6 +134,14 @@ const models: TsoaRoute.Models = {
             "offset": {"dataType":"double"},
             "limit": {"dataType":"double"},
             "data": {"dataType":"array","array":{"dataType":"refObject","ref":"PublicProfileDto"},"required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "IRolePermissionsRequestDto": {
+        "dataType": "refObject",
+        "properties": {
+            "permissions": {"dataType":"array","array":{"dataType":"refEnum","ref":"EPermissions"},"required":true},
         },
         "additionalProperties": false,
     },
@@ -958,6 +968,66 @@ export function RegisterRoutes(router: KoaRouter) {
             }
 
             const promise = controller.deleteProfile.apply(controller, validatedArgs as any);
+            return promiseHandler(controller, promise, context, undefined, undefined);
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        router.get('/api/roles',
+            authenticateMiddleware([{"jwt":["role:admin"]}]),
+            ...(fetchMiddlewares<Middleware>(RoleController)),
+            ...(fetchMiddlewares<Middleware>(RoleController.prototype.getRoles)),
+
+            async function RoleController_getRoles(context: any, next: any) {
+            const args = {
+            };
+
+            let validatedArgs: any[] = [];
+            try {
+              validatedArgs = getValidatedArgs(args, context, next);
+            } catch (err) {
+              const error = err as any;
+              context.status = error.status;
+              context.throw(error.status, JSON.stringify({ fields: error.fields }));
+            }
+
+            const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(context.request) : iocContainer;
+
+            const controller: any = await container.get<RoleController>(RoleController);
+            if (typeof controller['setStatus'] === 'function') {
+                controller.setStatus(undefined);
+            }
+
+            const promise = controller.getRoles.apply(controller, validatedArgs as any);
+            return promiseHandler(controller, promise, context, undefined, undefined);
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        router.patch('/api/roles/:id/permissions',
+            authenticateMiddleware([{"jwt":["role:admin"]}]),
+            ...(fetchMiddlewares<Middleware>(RoleController)),
+            ...(fetchMiddlewares<Middleware>(RoleController.prototype.setRolePermissions)),
+
+            async function RoleController_setRolePermissions(context: any, next: any) {
+            const args = {
+                    id: {"in":"path","name":"id","required":true,"dataType":"string"},
+                    body: {"in":"body","name":"body","required":true,"ref":"IRolePermissionsRequestDto"},
+            };
+
+            let validatedArgs: any[] = [];
+            try {
+              validatedArgs = getValidatedArgs(args, context, next);
+            } catch (err) {
+              const error = err as any;
+              context.status = error.status;
+              context.throw(error.status, JSON.stringify({ fields: error.fields }));
+            }
+
+            const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(context.request) : iocContainer;
+
+            const controller: any = await container.get<RoleController>(RoleController);
+            if (typeof controller['setStatus'] === 'function') {
+                controller.setStatus(undefined);
+            }
+
+            const promise = controller.setRolePermissions.apply(controller, validatedArgs as any);
             return promiseHandler(controller, promise, context, undefined, undefined);
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa

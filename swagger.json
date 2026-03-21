@@ -81,10 +81,7 @@
 					"wg:stats:view",
 					"wg:stats:export",
 					"user:view",
-					"user:manage",
-					"read",
-					"write",
-					"delete"
+					"user:manage"
 				],
 				"type": "string"
 			},
@@ -280,6 +277,21 @@
 				},
 				"required": [
 					"data"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IRolePermissionsRequestDto": {
+				"properties": {
+					"permissions": {
+						"items": {
+							"$ref": "#/components/schemas/EPermissions"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"permissions"
 				],
 				"type": "object",
 				"additionalProperties": false
@@ -1976,6 +1988,91 @@
 						}
 					}
 				]
+			}
+		},
+		"/api/roles": {
+			"get": {
+				"operationId": "GetRoles",
+				"responses": {
+					"200": {
+						"description": "Список ролей",
+						"content": {
+							"application/json": {
+								"schema": {
+									"items": {
+										"$ref": "#/components/schemas/IRoleDto"
+									},
+									"type": "array"
+								}
+							}
+						}
+					}
+				},
+				"description": "Получить все роли с их правами.",
+				"summary": "Список ролей",
+				"tags": [
+					"Role"
+				],
+				"security": [
+					{
+						"jwt": [
+							"role:admin"
+						]
+					}
+				],
+				"parameters": []
+			}
+		},
+		"/api/roles/{id}/permissions": {
+			"patch": {
+				"operationId": "SetRolePermissions",
+				"responses": {
+					"200": {
+						"description": "Обновлённая роль",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IRoleDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Установить права для роли.\nЗаменяет текущий набор прав роли указанным.",
+				"summary": "Установка прав роли",
+				"tags": [
+					"Role"
+				],
+				"security": [
+					{
+						"jwt": [
+							"role:admin"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"description": "ID роли",
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"description": "Список прав",
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IRolePermissionsRequestDto",
+								"description": "Список прав"
+							}
+						}
+					}
+				}
 			}
 		},
 		"/api/user/my": {

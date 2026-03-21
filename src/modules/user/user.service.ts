@@ -7,7 +7,6 @@ import { ApiResponseDto, Injectable } from "../../core";
 import { MailerService } from "../mailer";
 import { OtpService } from "../otp";
 import { PermissionRepository } from "../permission";
-import { EPermissions } from "../permission/permission.types";
 import { ProfileRepository } from "../profile";
 import { EProfileStatus } from "../profile/profile.types";
 import { RoleRepository } from "../role";
@@ -173,38 +172,6 @@ export class UserService {
     await this._userRepository.save(user);
 
     return this.getUser(userId);
-  }
-
-  /**
-   * Sets the permissions for a role (shared across all users with that role).
-   * Use this to configure the permission template for a role.
-   */
-  async setRolePermissions(
-    roleId: string,
-    permissions: EPermissions[],
-  ): Promise<void> {
-    const role = await this._roleRepository.findById(roleId);
-
-    if (!role) {
-      throw new NotFoundException("Роль не найдена");
-    }
-
-    role.permissions = await Promise.all(
-      permissions.map(async permissionName => {
-        let permission =
-          await this.permissionRepository.findByName(permissionName);
-
-        if (!permission) {
-          permission = await this.permissionRepository.createAndSave({
-            name: permissionName,
-          });
-        }
-
-        return permission;
-      }),
-    );
-
-    await this._roleRepository.save(role);
   }
 
   async requestVerifyEmail(userId: string) {

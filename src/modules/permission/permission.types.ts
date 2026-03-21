@@ -32,8 +32,4 @@ export enum EPermissions {
   USER_VIEW = "user:view",
   USER_MANAGE = "user:manage",
 
-  // ── Generic (kept for backwards-compat / simple projects) ─────────────────
-  READ = "read",
-  WRITE = "write",
-  DELETE = "delete",
 }
