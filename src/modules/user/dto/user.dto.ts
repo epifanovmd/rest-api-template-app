@@ -1,5 +1,6 @@
 import { IListResponseDto } from "../../../core";
 import { BaseDto } from "../../../core/dto/BaseDto";
+import { IPermissionDto } from "../../permission/permission.dto";
 import { ProfileDto, PublicProfileDto } from "../../profile/dto";
 import { IRoleDto } from "../../role/role.dto";
 import { User } from "../user.entity";
@@ -11,6 +12,7 @@ export class UserDto extends BaseDto {
   phone?: string;
   profile?: ProfileDto;
   roles: IRoleDto[];
+  directPermissions: IPermissionDto[];
   createdAt: Date;
   updatedAt: Date;
 
@@ -23,6 +25,7 @@ export class UserDto extends BaseDto {
     this.phone = entity.phone;
     this.profile = entity.profile && ProfileDto.fromEntity(entity.profile);
     this.roles = entity.roles?.map(r => r.toDTO()) ?? [];
+    this.directPermissions = entity.directPermissions?.map(p => p.toDTO()) ?? [];
     this.createdAt = entity.createdAt;
     this.updatedAt = entity.updatedAt;
   }
