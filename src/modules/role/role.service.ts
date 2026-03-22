@@ -76,7 +76,7 @@ export class RoleService {
         });
       }
 
-      if (role.permissions.length === 0) {
+      if (!role.permissions?.length) {
         await this.setRolePermissions(role.id, permissions);
       }
     }
