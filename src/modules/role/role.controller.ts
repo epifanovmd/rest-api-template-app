@@ -33,7 +33,7 @@ export class RoleController extends Controller {
    * @summary Список ролей
    * @returns Список ролей
    */
-  @Security("jwt", ["role:admin"])
+  @Security("jwt", ["permission:user:manage"])
   @Get()
   getRoles(): Promise<IRoleDto[]> {
     return this._roleService
