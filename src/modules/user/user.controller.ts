@@ -108,7 +108,7 @@ export class UserController extends Controller {
    * @param query Поиск по email
    * @returns Список всех пользователей
    */
-  @Security("jwt", ["role:admin"])
+  @Security("jwt", ["permission:user:view"])
   @Get("all")
   getUsers(
     @Query("offset") offset?: number,
@@ -132,7 +132,7 @@ export class UserController extends Controller {
    * @param query Поиск по email, имени или фамилии
    * @returns Список опций
    */
-  @Security("jwt", ["role:admin"])
+  @Security("jwt", ["permission:user:view"])
   @Get("options")
   getUserOptions(
     @Query("query") query?: string,
@@ -148,7 +148,7 @@ export class UserController extends Controller {
    * @param id ID пользователя, которого нужно получить
    * @returns Пользователь по ID
    */
-  @Security("jwt", ["role:admin"])
+  @Security("jwt", ["permission:user:view"])
   @Get("/{id}")
   getUserById(id: string): Promise<UserDto> {
     return this._userService.getUser(id).then(UserDto.fromEntity);
@@ -163,7 +163,7 @@ export class UserController extends Controller {
    * @param body Запрос, содержащий роль и разрешения
    * @returns Обновленный пользователь с привилегиями
    */
-  @Security("jwt", ["role:admin"])
+  @Security("jwt", ["permission:user:manage"])
   @Patch("setPrivileges/{id}")
   @ValidateBody(SetPrivilegesSchema)
   setPrivileges(
@@ -217,7 +217,7 @@ export class UserController extends Controller {
    * @param body Данные для обновления пользователя
    * @returns Обновленный пользователь
    */
-  @Security("jwt", ["role:admin"])
+  @Security("jwt", ["permission:user:manage"])
   @Patch("update/{id}")
   @ValidateBody(UserUpdateSchema)
   updateUser(
@@ -256,7 +256,7 @@ export class UserController extends Controller {
    * @param id ID пользователя, которого необходимо удалить
    * @returns Сообщение об успешном удалении
    */
-  @Security("jwt", ["role:admin"])
+  @Security("jwt", ["permission:user:manage"])
   @Delete("delete/{id}")
   deleteUser(id: string): Promise<boolean> {
     return this._userService.deleteUser(id);

@@ -19,6 +19,7 @@ import {
 } from "./events";
 import { WgSpeedSample } from "./wg-speed-sample.entity";
 import {
+  AggregatedFilters,
   WgSpeedSampleRepository,
   WgTrafficStatRepository,
 } from "./wg-statistics.repository";
@@ -627,7 +628,7 @@ export class WgStatisticsService {
   async getAggregatedHistory(
     from: Date,
     to: Date,
-    filters?: { serverId?: string; peerId?: string },
+    filters?: AggregatedFilters,
   ): Promise<{
     traffic: Array<{ timestamp: Date; rxBytes: number; txBytes: number }>;
     speed: Array<{ timestamp: Date; rxSpeedBps: number; txSpeedBps: number }>;

@@ -2202,7 +2202,7 @@
 				"security": [
 					{
 						"jwt": [
-							"role:admin"
+							"permission:user:view"
 						]
 					}
 				],
@@ -2262,7 +2262,7 @@
 				"security": [
 					{
 						"jwt": [
-							"role:admin"
+							"permission:user:view"
 						]
 					}
 				],
@@ -2302,7 +2302,7 @@
 				"security": [
 					{
 						"jwt": [
-							"role:admin"
+							"permission:user:view"
 						]
 					}
 				],
@@ -2342,7 +2342,7 @@
 				"security": [
 					{
 						"jwt": [
-							"role:admin"
+							"permission:user:manage"
 						]
 					}
 				],
@@ -2460,7 +2460,7 @@
 				"security": [
 					{
 						"jwt": [
-							"role:admin"
+							"permission:user:manage"
 						]
 					}
 				],
@@ -2552,7 +2552,7 @@
 				"security": [
 					{
 						"jwt": [
-							"role:admin"
+							"permission:user:manage"
 						]
 					}
 				],
@@ -4031,7 +4031,7 @@
 						}
 					}
 				},
-				"description": "Aggregated traffic + speed across all servers and all peers.\nTraffic: cumulative total (monotonically increasing).\nSpeed: sum of peer speeds at each minute bucket.",
+				"description": "Aggregated traffic + speed across all servers and all peers.\nwg:stats:view — full overview; wg:server:own — own servers only;\nwg:peer:own — own peers only.",
 				"summary": "Overview stats",
 				"tags": [
 					"WireGuard Statistics"
@@ -4040,6 +4040,16 @@
 					{
 						"jwt": [
 							"permission:wg:stats:view"
+						]
+					},
+					{
+						"jwt": [
+							"permission:wg:server:own"
+						]
+					},
+					{
+						"jwt": [
+							"permission:wg:peer:own"
 						]
 					}
 				],
@@ -4089,6 +4099,11 @@
 					{
 						"jwt": [
 							"permission:wg:stats:view"
+						]
+					},
+					{
+						"jwt": [
+							"permission:wg:server:own"
 						]
 					}
 				],
@@ -4147,7 +4162,7 @@
 						}
 					}
 				},
-				"description": "Aggregated traffic + speed for a specific peer.",
+				"description": "Aggregated traffic + speed for a specific peer.\nwg:stats:view can view any peer; wg:peer:own only their own.",
 				"summary": "Peer stats",
 				"tags": [
 					"WireGuard Statistics"
@@ -4156,6 +4171,11 @@
 					{
 						"jwt": [
 							"permission:wg:stats:view"
+						]
+					},
+					{
+						"jwt": [
+							"permission:wg:peer:own"
 						]
 					}
 				],

@@ -1124,7 +1124,7 @@ export function RegisterRoutes(router: KoaRouter) {
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         router.get('/api/user/all',
-            authenticateMiddleware([{"jwt":["role:admin"]}]),
+            authenticateMiddleware([{"jwt":["permission:user:view"]}]),
             ...(fetchMiddlewares<Middleware>(UserController)),
             ...(fetchMiddlewares<Middleware>(UserController.prototype.getUsers)),
 
@@ -1156,7 +1156,7 @@ export function RegisterRoutes(router: KoaRouter) {
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         router.get('/api/user/options',
-            authenticateMiddleware([{"jwt":["role:admin"]}]),
+            authenticateMiddleware([{"jwt":["permission:user:view"]}]),
             ...(fetchMiddlewares<Middleware>(UserController)),
             ...(fetchMiddlewares<Middleware>(UserController.prototype.getUserOptions)),
 
@@ -1186,7 +1186,7 @@ export function RegisterRoutes(router: KoaRouter) {
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         router.get('/api/user/:id',
-            authenticateMiddleware([{"jwt":["role:admin"]}]),
+            authenticateMiddleware([{"jwt":["permission:user:view"]}]),
             ...(fetchMiddlewares<Middleware>(UserController)),
             ...(fetchMiddlewares<Middleware>(UserController.prototype.getUserById)),
 
@@ -1216,7 +1216,7 @@ export function RegisterRoutes(router: KoaRouter) {
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         router.patch('/api/user/setPrivileges/:id',
-            authenticateMiddleware([{"jwt":["role:admin"]}]),
+            authenticateMiddleware([{"jwt":["permission:user:manage"]}]),
             ...(fetchMiddlewares<Middleware>(UserController)),
             ...(fetchMiddlewares<Middleware>(UserController.prototype.setPrivileges)),
 
@@ -1308,7 +1308,7 @@ export function RegisterRoutes(router: KoaRouter) {
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         router.patch('/api/user/update/:id',
-            authenticateMiddleware([{"jwt":["role:admin"]}]),
+            authenticateMiddleware([{"jwt":["permission:user:manage"]}]),
             ...(fetchMiddlewares<Middleware>(UserController)),
             ...(fetchMiddlewares<Middleware>(UserController.prototype.updateUser)),
 
@@ -1370,7 +1370,7 @@ export function RegisterRoutes(router: KoaRouter) {
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         router.delete('/api/user/delete/:id',
-            authenticateMiddleware([{"jwt":["role:admin"]}]),
+            authenticateMiddleware([{"jwt":["permission:user:manage"]}]),
             ...(fetchMiddlewares<Middleware>(UserController)),
             ...(fetchMiddlewares<Middleware>(UserController.prototype.deleteUser)),
 
@@ -2410,12 +2410,13 @@ export function RegisterRoutes(router: KoaRouter) {
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         router.get('/api/wg/statistics/overview',
-            authenticateMiddleware([{"jwt":["permission:wg:stats:view"]}]),
+            authenticateMiddleware([{"jwt":["permission:wg:stats:view"]},{"jwt":["permission:wg:server:own"]},{"jwt":["permission:wg:peer:own"]}]),
             ...(fetchMiddlewares<Middleware>(WgStatisticsController)),
             ...(fetchMiddlewares<Middleware>(WgStatisticsController.prototype.getOverviewStats)),
 
             async function WgStatisticsController_getOverviewStats(context: any, next: any) {
             const args = {
+                    req: {"in":"request","name":"req","required":true,"dataType":"object"},
                     from: {"in":"query","name":"from","dataType":"string"},
                     to: {"in":"query","name":"to","dataType":"string"},
             };
@@ -2441,13 +2442,14 @@ export function RegisterRoutes(router: KoaRouter) {
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         router.get('/api/wg/statistics/servers/:serverId',
-            authenticateMiddleware([{"jwt":["permission:wg:stats:view"]}]),
+            authenticateMiddleware([{"jwt":["permission:wg:stats:view"]},{"jwt":["permission:wg:server:own"]}]),
             ...(fetchMiddlewares<Middleware>(WgStatisticsController)),
             ...(fetchMiddlewares<Middleware>(WgStatisticsController.prototype.getServerStats)),
 
             async function WgStatisticsController_getServerStats(context: any, next: any) {
             const args = {
                     serverId: {"in":"path","name":"serverId","required":true,"dataType":"string"},
+                    req: {"in":"request","name":"req","required":true,"dataType":"object"},
                     from: {"in":"query","name":"from","dataType":"string"},
                     to: {"in":"query","name":"to","dataType":"string"},
                     peerId: {"in":"query","name":"peerId","dataType":"string"},
@@ -2474,13 +2476,14 @@ export function RegisterRoutes(router: KoaRouter) {
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         router.get('/api/wg/statistics/peers/:peerId',
-            authenticateMiddleware([{"jwt":["permission:wg:stats:view"]}]),
+            authenticateMiddleware([{"jwt":["permission:wg:stats:view"]},{"jwt":["permission:wg:peer:own"]}]),
             ...(fetchMiddlewares<Middleware>(WgStatisticsController)),
             ...(fetchMiddlewares<Middleware>(WgStatisticsController.prototype.getPeerStats)),
 
             async function WgStatisticsController_getPeerStats(context: any, next: any) {
             const args = {
                     peerId: {"in":"path","name":"peerId","required":true,"dataType":"string"},
+                    req: {"in":"request","name":"req","required":true,"dataType":"object"},
                     from: {"in":"query","name":"from","dataType":"string"},
                     to: {"in":"query","name":"to","dataType":"string"},
             };

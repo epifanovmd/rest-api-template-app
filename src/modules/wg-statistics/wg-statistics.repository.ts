@@ -20,6 +20,10 @@ export interface AggregatedSpeedPoint {
 export interface AggregatedFilters {
   serverId?: string;
   peerId?: string;
+  /** Filter by multiple server IDs (OR logic). Ignored if serverId is set. */
+  serverIds?: string[];
+  /** Filter by multiple peer IDs (OR logic). Ignored if peerId is set. */
+  peerIds?: string[];
 }
 
 @InjectableRepository(WgTrafficStat)
@@ -96,7 +100,7 @@ export class WgTrafficStatRepository extends BaseRepository<WgTrafficStat> {
     to: Date,
     filters?: AggregatedFilters,
   ): Promise<AggregatedTrafficPoint[]> {
-    const params: (Date | string)[] = [from, to];
+    const params: (Date | string | string[])[] = [from, to];
     const rangeConditions = ["timestamp >= $1", "timestamp <= $2"];
     const joinExtra: string[] = [];
 
@@ -105,12 +109,23 @@ export class WgTrafficStatRepository extends BaseRepository<WgTrafficStat> {
 
       rangeConditions.push(`server_id = $${idx}`);
       joinExtra.push(`s.server_id = $${idx}`);
+    } else if (filters?.serverIds?.length) {
+      const idx = params.push(filters.serverIds);
+
+      rangeConditions.push(`server_id = ANY($${idx})`);
+      joinExtra.push(`s.server_id = ANY($${idx})`);
     }
+
     if (filters?.peerId) {
       const idx = params.push(filters.peerId);
 
       rangeConditions.push(`peer_id = $${idx}`);
       joinExtra.push(`s.peer_id = $${idx}`);
+    } else if (filters?.peerIds?.length) {
+      const idx = params.push(filters.peerIds);
+
+      rangeConditions.push(`peer_id = ANY($${idx})`);
+      joinExtra.push(`s.peer_id = ANY($${idx})`);
     }
 
     const whereRange = rangeConditions.join(" AND ");
@@ -221,14 +236,19 @@ export class WgSpeedSampleRepository extends BaseRepository<WgSpeedSample> {
     to: Date,
     filters?: AggregatedFilters,
   ): Promise<AggregatedSpeedPoint[]> {
-    const params: (Date | string)[] = [from, to];
+    const params: (Date | string | string[])[] = [from, to];
     const conditions = ["timestamp >= $1", "timestamp <= $2"];
 
     if (filters?.serverId) {
       conditions.push(`server_id = $${params.push(filters.serverId)}`);
+    } else if (filters?.serverIds?.length) {
+      conditions.push(`server_id = ANY($${params.push(filters.serverIds)})`);
     }
+
     if (filters?.peerId) {
       conditions.push(`peer_id = $${params.push(filters.peerId)}`);
+    } else if (filters?.peerIds?.length) {
+      conditions.push(`peer_id = ANY($${params.push(filters.peerIds)})`);
     }
 
     return this.manager.query(
