@@ -8,6 +8,7 @@ export interface IWgPeerFilters {
   enabled?: boolean;
   status?: EWgServerStatus;
   serverId?: string;
+  userId?: string;
 }
 
 export interface IWgPeerOptionDto {

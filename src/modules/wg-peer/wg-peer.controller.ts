@@ -15,7 +15,9 @@ import {
 } from "tsoa";
 
 import { getContextUser, Injectable, ValidateBody } from "../../core";
+import { hasPermission } from "../../core/auth/has-permission";
 import { KoaRequest } from "../../types/koa";
+import { EPermissions } from "../permission/permission.types";
 import { ERole } from "../role/role.types";
 import { WgConfigService } from "../wg-cli/wg-config.service";
 import { EWgServerStatus } from "../wg-server/wg-server.types";
@@ -42,43 +44,14 @@ export class WgPeerController extends Controller {
   }
 
   /**
-   * List all peers for a given server with optional filters.
-   * @summary Get peers by server
+   * List all peers.
+   * Returns all peers for wg:peer:view (with optional userId filter), own peers for wg:peer:own.
+   * @summary Get peers
    */
   @Security("jwt", ["permission:wg:peer:view"])
-  @Get("/servers/{serverId}/peers")
-  async getPeersByServer(
-    serverId: string,
-    @Query("offset") offset?: number,
-    @Query("limit") limit?: number,
-    @Query("query") query?: string,
-    @Query("enabled") enabled?: boolean,
-    @Query("status") status?: EWgServerStatus,
-  ): Promise<IWgPeerListDto> {
-    const filters: IWgPeerFilters = { query, enabled, status };
-    const [data, totalCount] = await this.service.getByServer(
-      serverId,
-      offset,
-      limit,
-      filters,
-    );
-
-    return {
-      offset,
-      limit,
-      count: data.length,
-      totalCount,
-      data: data.map(WgPeerDto.fromEntity),
-    };
-  }
-
-  /**
-   * Get all peers owned by the current user with optional filters.
-   * @summary Get my peers
-   */
-  @Security("jwt", ["permission:wg:peer:view"])
-  @Get("/peers/my")
-  async getMyPeers(
+  @Security("jwt", ["permission:wg:peer:own"])
+  @Get("/peers")
+  async getPeers(
     @Request() req: KoaRequest,
     @Query("offset") offset?: number,
     @Query("limit") limit?: number,
@@ -86,80 +59,55 @@ export class WgPeerController extends Controller {
     @Query("enabled") enabled?: boolean,
     @Query("status") status?: EWgServerStatus,
     @Query("serverId") serverId?: string,
+    @Query("userId") filterUserId?: string,
   ): Promise<IWgPeerListDto> {
-    const user = getContextUser(req);
+    const { userId, permissions } = getContextUser(req);
     const filters: IWgPeerFilters = { query, enabled, status, serverId };
-    const [data, totalCount] = await this.service.getByUser(
-      user.userId,
-      offset,
-      limit,
-      filters,
-    );
 
-    return {
-      offset,
-      limit,
-      count: data.length,
-      totalCount,
-      data: data.map(WgPeerDto.fromEntity),
-    };
+    const [data, totalCount] = hasPermission(permissions, EPermissions.WG_PEER_VIEW)
+      ? await this.service.getAll(offset, limit, { ...filters, userId: filterUserId })
+      : await this.service.getByUser(userId, offset, limit, filters);
+
+    return { offset, limit, count: data.length, totalCount, data: data.map(WgPeerDto.fromEntity) };
   }
 
   /**
-   * Get all peers for a user with optional filters (admin only).
-   * @summary Get peers by user
-   */
-  @Security("jwt", ["permission:wg:peer:view"])
-  @Get("/peers/user/{userId}")
-  async getPeersByUser(
-    userId: string,
-    @Query("offset") offset?: number,
-    @Query("limit") limit?: number,
-    @Query("query") query?: string,
-    @Query("enabled") enabled?: boolean,
-    @Query("status") status?: EWgServerStatus,
-    @Query("serverId") serverId?: string,
-  ): Promise<IWgPeerListDto> {
-    const filters: IWgPeerFilters = { query, enabled, status, serverId };
-    const [data, totalCount] = await this.service.getByUser(
-      userId,
-      offset,
-      limit,
-      filters,
-    );
-
-    return {
-      offset,
-      limit,
-      count: data.length,
-      totalCount,
-      data: data.map(WgPeerDto.fromEntity),
-    };
-  }
-
-  /**
-   * Get peer options for dropdowns (id + name only).
+   * Get peer options for dropdowns.
+   * Returns all options for wg:peer:view, own options for wg:peer:own.
    * @summary Get peer options
    */
   @Security("jwt", ["permission:wg:peer:view"])
+  @Security("jwt", ["permission:wg:peer:own"])
   @Get("/peers/options")
   async getPeersOptions(
+    @Request() req: KoaRequest,
     @Query("serverId") serverId?: string,
     @Query("query") query?: string,
   ): Promise<IWgPeerOptionsDto> {
-    const data = await this.service.getOptions(serverId, query);
+    const { userId, permissions } = getContextUser(req);
+
+    const data = hasPermission(permissions, EPermissions.WG_PEER_VIEW)
+      ? await this.service.getOptions(serverId, query)
+      : await this.service.getOptionsByUser(userId, serverId, query);
 
     return { data };
   }
 
   /**
    * Get a peer by ID.
+   * Ownership check for wg:peer:own users.
    * @summary Get peer
    */
   @Security("jwt", ["permission:wg:peer:view"])
+  @Security("jwt", ["permission:wg:peer:own"])
   @Get("/peers/{id}")
-  async getPeer(id: string): Promise<WgPeerDto> {
+  async getPeer(id: string, @Request() req: KoaRequest): Promise<WgPeerDto> {
+    const { userId, permissions } = getContextUser(req);
     const peer = await this.service.getById(id);
+
+    if (!hasPermission(permissions, EPermissions.WG_PEER_VIEW) && peer.userId !== userId) {
+      throw new ForbiddenException("Access denied: not your peer.");
+    }
 
     return WgPeerDto.fromEntity(peer);
   }
@@ -215,7 +163,7 @@ export class WgPeerController extends Controller {
    * Requires peer to be enabled and server to be running.
    * @summary Start peer
    */
-  @Security("jwt", ["permission:wg:server:control"])
+  @Security("jwt", ["permission:wg:peer:manage"])
   @Post("/peers/{id}/start")
   async startPeer(id: string): Promise<WgPeerDto> {
     const peer = await this.service.start(id);
@@ -227,7 +175,7 @@ export class WgPeerController extends Controller {
    * Stop a peer (remove from live WG interface, status → DOWN).
    * @summary Stop peer
    */
-  @Security("jwt", ["permission:wg:server:control"])
+  @Security("jwt", ["permission:wg:peer:manage"])
   @Post("/peers/{id}/stop")
   async stopPeer(id: string): Promise<WgPeerDto> {
     const peer = await this.service.stop(id);

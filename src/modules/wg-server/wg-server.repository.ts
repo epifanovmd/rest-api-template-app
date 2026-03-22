@@ -44,6 +44,48 @@ export class WgServerRepository extends BaseRepository<WgServer> {
     });
   }
 
+  findByUser(
+    userId: string,
+    filters: IWgServerFilters,
+    skip?: number,
+    take?: number,
+  ): Promise<[WgServer[], number]> {
+    const where: FindOptionsWhere<WgServer> = { userId };
+
+    if (filters.enabled !== undefined) {
+      where.enabled = filters.enabled;
+    }
+    if (filters.status !== undefined) {
+      where.status = filters.status;
+    }
+    if (filters.query) {
+      where.name = ILike(`%${filters.query}%`);
+    }
+
+    return this.findAndCount({
+      where,
+      order: { createdAt: "ASC" },
+      skip,
+      take,
+    });
+  }
+
+  findOptionsByUser(
+    userId: string,
+    query?: string,
+  ): Promise<Pick<WgServer, "id" | "name">[]> {
+    const qb = this.createQueryBuilder("s")
+      .select(["s.id", "s.name"])
+      .where("s.user_id = :userId", { userId })
+      .orderBy("s.name", "ASC");
+
+    if (query) {
+      qb.andWhere("s.name ILIKE :q", { q: `%${query}%` });
+    }
+
+    return qb.getMany();
+  }
+
   findOptions(query?: string): Promise<Pick<WgServer, "id" | "name">[]> {
     const qb = this.createQueryBuilder("s")
       .select(["s.id", "s.name"])

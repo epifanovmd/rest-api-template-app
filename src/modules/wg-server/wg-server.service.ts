@@ -51,8 +51,24 @@ export class WgServerService {
     });
   }
 
+  async getByUser(
+    userId: string,
+    offset?: number,
+    limit?: number,
+    filters?: IWgServerFilters,
+  ): Promise<[WgServer[], number]> {
+    return this.serverRepo.findByUser(userId, filters ?? {}, offset, limit);
+  }
+
   async getOptions(query?: string): Promise<IWgServerOptionDto[]> {
     return this.serverRepo.findOptions(query);
+  }
+
+  async getOptionsByUser(
+    userId: string,
+    query?: string,
+  ): Promise<IWgServerOptionDto[]> {
+    return this.serverRepo.findOptionsByUser(userId, query);
   }
 
   async getById(id: string): Promise<WgServer> {

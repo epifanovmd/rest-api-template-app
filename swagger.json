@@ -74,12 +74,11 @@
 					"wg:stats:*",
 					"wg:server:view",
 					"wg:server:manage",
-					"wg:server:control",
+					"wg:server:own",
 					"wg:peer:view",
 					"wg:peer:manage",
 					"wg:peer:own",
 					"wg:stats:view",
-					"wg:stats:export",
 					"user:view",
 					"user:manage"
 				],
@@ -2898,9 +2897,9 @@
 				}
 			}
 		},
-		"/api/wg/servers/{serverId}/peers": {
+		"/api/wg/peers": {
 			"get": {
-				"operationId": "GetPeersByServer",
+				"operationId": "GetPeers",
 				"responses": {
 					"200": {
 						"description": "Ok",
@@ -2913,8 +2912,8 @@
 						}
 					}
 				},
-				"description": "List all peers for a given server with optional filters.",
-				"summary": "Get peers by server",
+				"description": "List all peers.\nReturns all peers for wg:peer:view (with optional userId filter), own peers for wg:peer:own.",
+				"summary": "Get peers",
 				"tags": [
 					"WireGuard Peers"
 				],
@@ -2923,132 +2922,11 @@
 						"jwt": [
 							"permission:wg:peer:view"
 						]
-					}
-				],
-				"parameters": [
-					{
-						"in": "path",
-						"name": "serverId",
-						"required": true,
-						"schema": {
-							"type": "string"
-						}
 					},
-					{
-						"in": "query",
-						"name": "offset",
-						"required": false,
-						"schema": {
-							"format": "double",
-							"type": "number"
-						}
-					},
-					{
-						"in": "query",
-						"name": "limit",
-						"required": false,
-						"schema": {
-							"format": "double",
-							"type": "number"
-						}
-					},
-					{
-						"in": "query",
-						"name": "query",
-						"required": false,
-						"schema": {
-							"type": "string"
-						}
-					},
-					{
-						"in": "query",
-						"name": "enabled",
-						"required": false,
-						"schema": {
-							"type": "boolean"
-						}
-					},
-					{
-						"in": "query",
-						"name": "status",
-						"required": false,
-						"schema": {
-							"$ref": "#/components/schemas/EWgServerStatus"
-						}
-					}
-				]
-			},
-			"post": {
-				"operationId": "CreatePeer",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/WgPeerDto"
-								}
-							}
-						}
-					}
-				},
-				"description": "Create a new peer on a server.\nKeys are auto-generated. Peer is applied to live interface if server is up.",
-				"summary": "Create peer",
-				"tags": [
-					"WireGuard Peers"
-				],
-				"security": [
 					{
 						"jwt": [
-							"permission:wg:peer:manage"
+							"permission:wg:peer:own"
 						]
-					}
-				],
-				"parameters": [
-					{
-						"in": "path",
-						"name": "serverId",
-						"required": true,
-						"schema": {
-							"type": "string"
-						}
-					}
-				],
-				"requestBody": {
-					"required": true,
-					"content": {
-						"application/json": {
-							"schema": {
-								"$ref": "#/components/schemas/IWgPeerCreateRequestDto"
-							}
-						}
-					}
-				}
-			}
-		},
-		"/api/wg/peers/my": {
-			"get": {
-				"operationId": "GetMyPeers",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/IWgPeerListDto"
-								}
-							}
-						}
-					}
-				},
-				"description": "Get all peers owned by the current user with optional filters.",
-				"summary": "Get my peers",
-				"tags": [
-					"WireGuard Peers"
-				],
-				"security": [
-					{
-						"jwt": []
 					}
 				],
 				"parameters": [
@@ -3101,91 +2979,10 @@
 						"schema": {
 							"type": "string"
 						}
-					}
-				]
-			}
-		},
-		"/api/wg/peers/user/{userId}": {
-			"get": {
-				"operationId": "GetPeersByUser",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/IWgPeerListDto"
-								}
-							}
-						}
-					}
-				},
-				"description": "Get all peers for a user with optional filters (admin only).",
-				"summary": "Get peers by user",
-				"tags": [
-					"WireGuard Peers"
-				],
-				"security": [
+					},
 					{
-						"jwt": [
-							"permission:wg:peer:view"
-						]
-					}
-				],
-				"parameters": [
-					{
-						"in": "path",
+						"in": "query",
 						"name": "userId",
-						"required": true,
-						"schema": {
-							"type": "string"
-						}
-					},
-					{
-						"in": "query",
-						"name": "offset",
-						"required": false,
-						"schema": {
-							"format": "double",
-							"type": "number"
-						}
-					},
-					{
-						"in": "query",
-						"name": "limit",
-						"required": false,
-						"schema": {
-							"format": "double",
-							"type": "number"
-						}
-					},
-					{
-						"in": "query",
-						"name": "query",
-						"required": false,
-						"schema": {
-							"type": "string"
-						}
-					},
-					{
-						"in": "query",
-						"name": "enabled",
-						"required": false,
-						"schema": {
-							"type": "boolean"
-						}
-					},
-					{
-						"in": "query",
-						"name": "status",
-						"required": false,
-						"schema": {
-							"$ref": "#/components/schemas/EWgServerStatus"
-						}
-					},
-					{
-						"in": "query",
-						"name": "serverId",
 						"required": false,
 						"schema": {
 							"type": "string"
@@ -3209,7 +3006,7 @@
 						}
 					}
 				},
-				"description": "Get peer options for dropdowns (id + name only).",
+				"description": "Get peer options for dropdowns.\nReturns all options for wg:peer:view, own options for wg:peer:own.",
 				"summary": "Get peer options",
 				"tags": [
 					"WireGuard Peers"
@@ -3218,6 +3015,11 @@
 					{
 						"jwt": [
 							"permission:wg:peer:view"
+						]
+					},
+					{
+						"jwt": [
+							"permission:wg:peer:own"
 						]
 					}
 				],
@@ -3256,7 +3058,7 @@
 						}
 					}
 				},
-				"description": "Get a peer by ID.",
+				"description": "Get a peer by ID.\nOwnership check for wg:peer:own users.",
 				"summary": "Get peer",
 				"tags": [
 					"WireGuard Peers"
@@ -3265,6 +3067,11 @@
 					{
 						"jwt": [
 							"permission:wg:peer:view"
+						]
+					},
+					{
+						"jwt": [
+							"permission:wg:peer:own"
 						]
 					}
 				],
@@ -3364,6 +3171,55 @@
 				]
 			}
 		},
+		"/api/wg/servers/{serverId}/peers": {
+			"post": {
+				"operationId": "CreatePeer",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/WgPeerDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Create a new peer on a server.\nKeys are auto-generated. Peer is applied to live interface if server is up.",
+				"summary": "Create peer",
+				"tags": [
+					"WireGuard Peers"
+				],
+				"security": [
+					{
+						"jwt": [
+							"permission:wg:peer:manage"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "serverId",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IWgPeerCreateRequestDto"
+							}
+						}
+					}
+				}
+			}
+		},
 		"/api/wg/peers/{id}/start": {
 			"post": {
 				"operationId": "StartPeer",
@@ -3387,7 +3243,7 @@
 				"security": [
 					{
 						"jwt": [
-							"permission:wg:server:control"
+							"permission:wg:peer:manage"
 						]
 					}
 				],
@@ -3426,7 +3282,7 @@
 				"security": [
 					{
 						"jwt": [
-							"permission:wg:server:control"
+							"permission:wg:peer:manage"
 						]
 					}
 				],
@@ -3703,7 +3559,7 @@
 						}
 					}
 				},
-				"description": "List all WireGuard servers with optional filters.",
+				"description": "List all WireGuard servers with optional filters.\nReturns all servers for wg:server:view, own servers for wg:server:own.",
 				"summary": "Get all servers",
 				"tags": [
 					"WireGuard Servers"
@@ -3712,6 +3568,11 @@
 					{
 						"jwt": [
 							"permission:wg:server:view"
+						]
+					},
+					{
+						"jwt": [
+							"permission:wg:server:own"
 						]
 					}
 				],
@@ -3814,7 +3675,7 @@
 						}
 					}
 				},
-				"description": "Get server options for dropdowns (id + name only).",
+				"description": "Get server options for dropdowns (id + name only).\nReturns all options for wg:server:view, own options for wg:server:own.",
 				"summary": "Get server options",
 				"tags": [
 					"WireGuard Servers"
@@ -3823,6 +3684,11 @@
 					{
 						"jwt": [
 							"permission:wg:server:view"
+						]
+					},
+					{
+						"jwt": [
+							"permission:wg:server:own"
 						]
 					}
 				],
@@ -3853,7 +3719,7 @@
 						}
 					}
 				},
-				"description": "Get a WireGuard server by ID.",
+				"description": "Get a WireGuard server by ID.\nOwnership check for wg:server:own users.",
 				"summary": "Get server by ID",
 				"tags": [
 					"WireGuard Servers"
@@ -3862,6 +3728,11 @@
 					{
 						"jwt": [
 							"permission:wg:server:view"
+						]
+					},
+					{
+						"jwt": [
+							"permission:wg:server:own"
 						]
 					}
 				],
@@ -3984,7 +3855,7 @@
 				"security": [
 					{
 						"jwt": [
-							"permission:wg:server:control"
+							"permission:wg:server:manage"
 						]
 					}
 				],
@@ -4023,7 +3894,7 @@
 				"security": [
 					{
 						"jwt": [
-							"permission:wg:server:control"
+							"permission:wg:server:manage"
 						]
 					}
 				],
@@ -4062,7 +3933,7 @@
 				"security": [
 					{
 						"jwt": [
-							"permission:wg:server:control"
+							"permission:wg:server:manage"
 						]
 					}
 				],
@@ -4102,6 +3973,11 @@
 					{
 						"jwt": [
 							"permission:wg:server:view"
+						]
+					},
+					{
+						"jwt": [
+							"permission:wg:server:own"
 						]
 					}
 				],

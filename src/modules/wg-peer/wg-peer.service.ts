@@ -36,6 +36,14 @@ export class WgPeerService {
     @inject(EventBus) private readonly eventBus: EventBus,
   ) {}
 
+  async getAll(
+    offset?: number,
+    limit?: number,
+    filters?: IWgPeerFilters,
+  ): Promise<[WgPeer[], number]> {
+    return this.peerRepo.findAll(offset, limit, filters);
+  }
+
   async getByServer(
     serverId: string,
     offset?: number,
@@ -59,6 +67,14 @@ export class WgPeerService {
     query?: string,
   ): Promise<IWgPeerOptionDto[]> {
     return this.peerRepo.findOptions(serverId, query);
+  }
+
+  async getOptionsByUser(
+    userId: string,
+    serverId?: string,
+    query?: string,
+  ): Promise<IWgPeerOptionDto[]> {
+    return this.peerRepo.findOptionsByUser(userId, serverId, query);
   }
 
   async getById(id: string): Promise<WgPeer> {

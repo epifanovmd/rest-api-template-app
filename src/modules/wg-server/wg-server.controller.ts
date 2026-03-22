@@ -1,3 +1,4 @@
+import { ForbiddenException } from "@force-dev/utils";
 import { inject } from "inversify";
 import {
   Body,
@@ -14,12 +15,13 @@ import {
 } from "tsoa";
 
 import { getContextUser, Injectable, ValidateBody } from "../../core";
+import { hasPermission } from "../../core/auth/has-permission";
 import { KoaRequest } from "../../types/koa";
+import { EPermissions } from "../permission/permission.types";
 import {
   IWgServerCreateRequestDto,
   IWgServerFilters,
   IWgServerListDto,
-  IWgServerOptionDto,
   IWgServerOptionsDto,
   IWgServerStatusDto,
   IWgServerUpdateRequestDto,
@@ -41,45 +43,66 @@ export class WgServerController extends Controller {
 
   /**
    * List all WireGuard servers with optional filters.
+   * Returns all servers for wg:server:view, own servers for wg:server:own.
    * @summary Get all servers
    */
   @Security("jwt", ["permission:wg:server:view"])
+  @Security("jwt", ["permission:wg:server:own"])
   @Get("/")
   async getServers(
+    @Request() req: KoaRequest,
     @Query("offset") offset?: number,
     @Query("limit") limit?: number,
     @Query("query") query?: string,
     @Query("status") status?: EWgServerStatus,
     @Query("enabled") enabled?: boolean,
   ): Promise<IWgServerListDto> {
+    const { userId, permissions } = getContextUser(req);
     const filters: IWgServerFilters = { query, status, enabled };
-    const [data, totalCount] = await this.service.getAll(offset, limit, filters);
+
+    const [data, totalCount] = hasPermission(permissions, EPermissions.WG_SERVER_VIEW)
+      ? await this.service.getAll(offset, limit, filters)
+      : await this.service.getByUser(userId, offset, limit, filters);
 
     return { offset, limit, count: data.length, totalCount, data: data.map(WgServerDto.fromEntity) };
   }
 
   /**
    * Get server options for dropdowns (id + name only).
+   * Returns all options for wg:server:view, own options for wg:server:own.
    * @summary Get server options
    */
   @Security("jwt", ["permission:wg:server:view"])
+  @Security("jwt", ["permission:wg:server:own"])
   @Get("/options")
   async getServerOptions(
+    @Request() req: KoaRequest,
     @Query("query") query?: string,
   ): Promise<IWgServerOptionsDto> {
-    const data = await this.service.getOptions(query);
+    const { userId, permissions } = getContextUser(req);
+
+    const data = hasPermission(permissions, EPermissions.WG_SERVER_VIEW)
+      ? await this.service.getOptions(query)
+      : await this.service.getOptionsByUser(userId, query);
 
     return { data };
   }
 
   /**
    * Get a WireGuard server by ID.
+   * Ownership check for wg:server:own users.
    * @summary Get server by ID
    */
   @Security("jwt", ["permission:wg:server:view"])
+  @Security("jwt", ["permission:wg:server:own"])
   @Get("/{id}")
-  async getServer(id: string): Promise<WgServerDto> {
+  async getServer(id: string, @Request() req: KoaRequest): Promise<WgServerDto> {
+    const { userId, permissions } = getContextUser(req);
     const server = await this.service.getById(id);
+
+    if (!hasPermission(permissions, EPermissions.WG_SERVER_VIEW) && server.userId !== userId) {
+      throw new ForbiddenException("Access denied: not your server.");
+    }
 
     return WgServerDto.fromEntity(server);
   }
@@ -135,7 +158,7 @@ export class WgServerController extends Controller {
    * Start a WireGuard interface (wg-quick up).
    * @summary Start server
    */
-  @Security("jwt", ["permission:wg:server:control"])
+  @Security("jwt", ["permission:wg:server:manage"])
   @Post("/{id}/start")
   async startServer(id: string): Promise<WgServerDto> {
     const server = await this.service.start(id);
@@ -147,7 +170,7 @@ export class WgServerController extends Controller {
    * Stop a WireGuard interface (wg-quick down).
    * @summary Stop server
    */
-  @Security("jwt", ["permission:wg:server:control"])
+  @Security("jwt", ["permission:wg:server:manage"])
   @Post("/{id}/stop")
   async stopServer(id: string): Promise<WgServerDto> {
     const server = await this.service.stop(id);
@@ -159,7 +182,7 @@ export class WgServerController extends Controller {
    * Restart a WireGuard interface.
    * @summary Restart server
    */
-  @Security("jwt", ["permission:wg:server:control"])
+  @Security("jwt", ["permission:wg:server:manage"])
   @Post("/{id}/restart")
   async restartServer(id: string): Promise<WgServerDto> {
     const server = await this.service.restart(id);
@@ -173,8 +196,16 @@ export class WgServerController extends Controller {
    * @summary Get live server status
    */
   @Security("jwt", ["permission:wg:server:view"])
+  @Security("jwt", ["permission:wg:server:own"])
   @Get("/{id}/status")
-  async getServerStatus(id: string): Promise<IWgServerStatusDto> {
+  async getServerStatus(id: string, @Request() req: KoaRequest): Promise<IWgServerStatusDto> {
+    const { userId, permissions } = getContextUser(req);
+    const server = await this.service.getById(id);
+
+    if (!hasPermission(permissions, EPermissions.WG_SERVER_VIEW) && server.userId !== userId) {
+      throw new ForbiddenException("Access denied: not your server.");
+    }
+
     return this.service.getLiveStatus(id);
   }
 }

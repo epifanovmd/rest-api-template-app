@@ -54,7 +54,7 @@ const models: TsoaRoute.Models = {
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "EPermissions": {
         "dataType": "refEnum",
-        "enums": ["*","wg:*","wg:server:*","wg:peer:*","wg:stats:*","wg:server:view","wg:server:manage","wg:server:control","wg:peer:view","wg:peer:manage","wg:peer:own","wg:stats:view","wg:stats:export","user:view","user:manage"],
+        "enums": ["*","wg:*","wg:server:*","wg:peer:*","wg:stats:*","wg:server:view","wg:server:manage","wg:server:own","wg:peer:view","wg:peer:manage","wg:peer:own","wg:stats:view","user:view","user:manage"],
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "IPermissionDto": {
@@ -1662,47 +1662,12 @@ export function RegisterRoutes(router: KoaRouter) {
             return promiseHandler(controller, promise, context, undefined, undefined);
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-        router.get('/api/wg/servers/:serverId/peers',
-            authenticateMiddleware([{"jwt":["permission:wg:peer:view"]}]),
+        router.get('/api/wg/peers',
+            authenticateMiddleware([{"jwt":["permission:wg:peer:view"]},{"jwt":["permission:wg:peer:own"]}]),
             ...(fetchMiddlewares<Middleware>(WgPeerController)),
-            ...(fetchMiddlewares<Middleware>(WgPeerController.prototype.getPeersByServer)),
+            ...(fetchMiddlewares<Middleware>(WgPeerController.prototype.getPeers)),
 
-            async function WgPeerController_getPeersByServer(context: any, next: any) {
-            const args = {
-                    serverId: {"in":"path","name":"serverId","required":true,"dataType":"string"},
-                    offset: {"in":"query","name":"offset","dataType":"double"},
-                    limit: {"in":"query","name":"limit","dataType":"double"},
-                    query: {"in":"query","name":"query","dataType":"string"},
-                    enabled: {"in":"query","name":"enabled","dataType":"boolean"},
-                    status: {"in":"query","name":"status","ref":"EWgServerStatus"},
-            };
-
-            let validatedArgs: any[] = [];
-            try {
-              validatedArgs = getValidatedArgs(args, context, next);
-            } catch (err) {
-              const error = err as any;
-              context.status = error.status;
-              context.throw(error.status, JSON.stringify({ fields: error.fields }));
-            }
-
-            const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(context.request) : iocContainer;
-
-            const controller: any = await container.get<WgPeerController>(WgPeerController);
-            if (typeof controller['setStatus'] === 'function') {
-                controller.setStatus(undefined);
-            }
-
-            const promise = controller.getPeersByServer.apply(controller, validatedArgs as any);
-            return promiseHandler(controller, promise, context, undefined, undefined);
-        });
-        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-        router.get('/api/wg/peers/my',
-            authenticateMiddleware([{"jwt":[]}]),
-            ...(fetchMiddlewares<Middleware>(WgPeerController)),
-            ...(fetchMiddlewares<Middleware>(WgPeerController.prototype.getMyPeers)),
-
-            async function WgPeerController_getMyPeers(context: any, next: any) {
+            async function WgPeerController_getPeers(context: any, next: any) {
             const args = {
                     req: {"in":"request","name":"req","required":true,"dataType":"object"},
                     offset: {"in":"query","name":"offset","dataType":"double"},
@@ -1711,6 +1676,7 @@ export function RegisterRoutes(router: KoaRouter) {
                     enabled: {"in":"query","name":"enabled","dataType":"boolean"},
                     status: {"in":"query","name":"status","ref":"EWgServerStatus"},
                     serverId: {"in":"query","name":"serverId","dataType":"string"},
+                    filterUserId: {"in":"query","name":"userId","dataType":"string"},
             };
 
             let validatedArgs: any[] = [];
@@ -1729,53 +1695,18 @@ export function RegisterRoutes(router: KoaRouter) {
                 controller.setStatus(undefined);
             }
 
-            const promise = controller.getMyPeers.apply(controller, validatedArgs as any);
-            return promiseHandler(controller, promise, context, undefined, undefined);
-        });
-        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-        router.get('/api/wg/peers/user/:userId',
-            authenticateMiddleware([{"jwt":["permission:wg:peer:view"]}]),
-            ...(fetchMiddlewares<Middleware>(WgPeerController)),
-            ...(fetchMiddlewares<Middleware>(WgPeerController.prototype.getPeersByUser)),
-
-            async function WgPeerController_getPeersByUser(context: any, next: any) {
-            const args = {
-                    userId: {"in":"path","name":"userId","required":true,"dataType":"string"},
-                    offset: {"in":"query","name":"offset","dataType":"double"},
-                    limit: {"in":"query","name":"limit","dataType":"double"},
-                    query: {"in":"query","name":"query","dataType":"string"},
-                    enabled: {"in":"query","name":"enabled","dataType":"boolean"},
-                    status: {"in":"query","name":"status","ref":"EWgServerStatus"},
-                    serverId: {"in":"query","name":"serverId","dataType":"string"},
-            };
-
-            let validatedArgs: any[] = [];
-            try {
-              validatedArgs = getValidatedArgs(args, context, next);
-            } catch (err) {
-              const error = err as any;
-              context.status = error.status;
-              context.throw(error.status, JSON.stringify({ fields: error.fields }));
-            }
-
-            const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(context.request) : iocContainer;
-
-            const controller: any = await container.get<WgPeerController>(WgPeerController);
-            if (typeof controller['setStatus'] === 'function') {
-                controller.setStatus(undefined);
-            }
-
-            const promise = controller.getPeersByUser.apply(controller, validatedArgs as any);
+            const promise = controller.getPeers.apply(controller, validatedArgs as any);
             return promiseHandler(controller, promise, context, undefined, undefined);
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         router.get('/api/wg/peers/options',
-            authenticateMiddleware([{"jwt":["permission:wg:peer:view"]}]),
+            authenticateMiddleware([{"jwt":["permission:wg:peer:view"]},{"jwt":["permission:wg:peer:own"]}]),
             ...(fetchMiddlewares<Middleware>(WgPeerController)),
             ...(fetchMiddlewares<Middleware>(WgPeerController.prototype.getPeersOptions)),
 
             async function WgPeerController_getPeersOptions(context: any, next: any) {
             const args = {
+                    req: {"in":"request","name":"req","required":true,"dataType":"object"},
                     serverId: {"in":"query","name":"serverId","dataType":"string"},
                     query: {"in":"query","name":"query","dataType":"string"},
             };
@@ -1801,13 +1732,14 @@ export function RegisterRoutes(router: KoaRouter) {
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         router.get('/api/wg/peers/:id',
-            authenticateMiddleware([{"jwt":["permission:wg:peer:view"]}]),
+            authenticateMiddleware([{"jwt":["permission:wg:peer:view"]},{"jwt":["permission:wg:peer:own"]}]),
             ...(fetchMiddlewares<Middleware>(WgPeerController)),
             ...(fetchMiddlewares<Middleware>(WgPeerController.prototype.getPeer)),
 
             async function WgPeerController_getPeer(context: any, next: any) {
             const args = {
                     id: {"in":"path","name":"id","required":true,"dataType":"string"},
+                    req: {"in":"request","name":"req","required":true,"dataType":"object"},
             };
 
             let validatedArgs: any[] = [];
@@ -1924,7 +1856,7 @@ export function RegisterRoutes(router: KoaRouter) {
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         router.post('/api/wg/peers/:id/start',
-            authenticateMiddleware([{"jwt":["permission:wg:server:control"]}]),
+            authenticateMiddleware([{"jwt":["permission:wg:peer:manage"]}]),
             ...(fetchMiddlewares<Middleware>(WgPeerController)),
             ...(fetchMiddlewares<Middleware>(WgPeerController.prototype.startPeer)),
 
@@ -1954,7 +1886,7 @@ export function RegisterRoutes(router: KoaRouter) {
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         router.post('/api/wg/peers/:id/stop',
-            authenticateMiddleware([{"jwt":["permission:wg:server:control"]}]),
+            authenticateMiddleware([{"jwt":["permission:wg:peer:manage"]}]),
             ...(fetchMiddlewares<Middleware>(WgPeerController)),
             ...(fetchMiddlewares<Middleware>(WgPeerController.prototype.stopPeer)),
 
@@ -2167,12 +2099,13 @@ export function RegisterRoutes(router: KoaRouter) {
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         router.get('/api/wg/servers',
-            authenticateMiddleware([{"jwt":["permission:wg:server:view"]}]),
+            authenticateMiddleware([{"jwt":["permission:wg:server:view"]},{"jwt":["permission:wg:server:own"]}]),
             ...(fetchMiddlewares<Middleware>(WgServerController)),
             ...(fetchMiddlewares<Middleware>(WgServerController.prototype.getServers)),
 
             async function WgServerController_getServers(context: any, next: any) {
             const args = {
+                    req: {"in":"request","name":"req","required":true,"dataType":"object"},
                     offset: {"in":"query","name":"offset","dataType":"double"},
                     limit: {"in":"query","name":"limit","dataType":"double"},
                     query: {"in":"query","name":"query","dataType":"string"},
@@ -2201,12 +2134,13 @@ export function RegisterRoutes(router: KoaRouter) {
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         router.get('/api/wg/servers/options',
-            authenticateMiddleware([{"jwt":["permission:wg:server:view"]}]),
+            authenticateMiddleware([{"jwt":["permission:wg:server:view"]},{"jwt":["permission:wg:server:own"]}]),
             ...(fetchMiddlewares<Middleware>(WgServerController)),
             ...(fetchMiddlewares<Middleware>(WgServerController.prototype.getServerOptions)),
 
             async function WgServerController_getServerOptions(context: any, next: any) {
             const args = {
+                    req: {"in":"request","name":"req","required":true,"dataType":"object"},
                     query: {"in":"query","name":"query","dataType":"string"},
             };
 
@@ -2231,13 +2165,14 @@ export function RegisterRoutes(router: KoaRouter) {
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         router.get('/api/wg/servers/:id',
-            authenticateMiddleware([{"jwt":["permission:wg:server:view"]}]),
+            authenticateMiddleware([{"jwt":["permission:wg:server:view"]},{"jwt":["permission:wg:server:own"]}]),
             ...(fetchMiddlewares<Middleware>(WgServerController)),
             ...(fetchMiddlewares<Middleware>(WgServerController.prototype.getServer)),
 
             async function WgServerController_getServer(context: any, next: any) {
             const args = {
                     id: {"in":"path","name":"id","required":true,"dataType":"string"},
+                    req: {"in":"request","name":"req","required":true,"dataType":"object"},
             };
 
             let validatedArgs: any[] = [];
@@ -2353,7 +2288,7 @@ export function RegisterRoutes(router: KoaRouter) {
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         router.post('/api/wg/servers/:id/start',
-            authenticateMiddleware([{"jwt":["permission:wg:server:control"]}]),
+            authenticateMiddleware([{"jwt":["permission:wg:server:manage"]}]),
             ...(fetchMiddlewares<Middleware>(WgServerController)),
             ...(fetchMiddlewares<Middleware>(WgServerController.prototype.startServer)),
 
@@ -2383,7 +2318,7 @@ export function RegisterRoutes(router: KoaRouter) {
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         router.post('/api/wg/servers/:id/stop',
-            authenticateMiddleware([{"jwt":["permission:wg:server:control"]}]),
+            authenticateMiddleware([{"jwt":["permission:wg:server:manage"]}]),
             ...(fetchMiddlewares<Middleware>(WgServerController)),
             ...(fetchMiddlewares<Middleware>(WgServerController.prototype.stopServer)),
 
@@ -2413,7 +2348,7 @@ export function RegisterRoutes(router: KoaRouter) {
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         router.post('/api/wg/servers/:id/restart',
-            authenticateMiddleware([{"jwt":["permission:wg:server:control"]}]),
+            authenticateMiddleware([{"jwt":["permission:wg:server:manage"]}]),
             ...(fetchMiddlewares<Middleware>(WgServerController)),
             ...(fetchMiddlewares<Middleware>(WgServerController.prototype.restartServer)),
 
@@ -2443,13 +2378,14 @@ export function RegisterRoutes(router: KoaRouter) {
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         router.get('/api/wg/servers/:id/status',
-            authenticateMiddleware([{"jwt":["permission:wg:server:view"]}]),
+            authenticateMiddleware([{"jwt":["permission:wg:server:view"]},{"jwt":["permission:wg:server:own"]}]),
             ...(fetchMiddlewares<Middleware>(WgServerController)),
             ...(fetchMiddlewares<Middleware>(WgServerController.prototype.getServerStatus)),
 
             async function WgServerController_getServerStatus(context: any, next: any) {
             const args = {
                     id: {"in":"path","name":"id","required":true,"dataType":"string"},
+                    req: {"in":"request","name":"req","required":true,"dataType":"object"},
             };
 
             let validatedArgs: any[] = [];

@@ -11,6 +11,37 @@ export class WgPeerRepository extends BaseRepository<WgPeer> {
     super(dataSource, WgPeer);
   }
 
+  findAll(
+    skip?: number,
+    take?: number,
+    filters?: IWgPeerFilters,
+  ): Promise<[WgPeer[], number]> {
+    const where: FindOptionsWhere<WgPeer> = {};
+
+    if (filters?.enabled !== undefined) {
+      where.enabled = filters.enabled;
+    }
+    if (filters?.status !== undefined) {
+      where.status = filters.status;
+    }
+    if (filters?.serverId) {
+      where.serverId = filters.serverId;
+    }
+    if (filters?.userId) {
+      where.userId = filters.userId;
+    }
+    if (filters?.query) {
+      where.name = ILike(`%${filters.query}%`);
+    }
+
+    return this.findAndCount({
+      where,
+      order: { createdAt: "ASC" },
+      skip,
+      take,
+    });
+  }
+
   findByServer(
     serverId: string,
     skip?: number,
@@ -96,6 +127,26 @@ export class WgPeerRepository extends BaseRepository<WgPeer> {
 
     if (serverId) {
       qb.where("p.server_id = :serverId", { serverId });
+    }
+    if (query) {
+      qb.andWhere("p.name ILIKE :q", { q: `%${query}%` });
+    }
+
+    return qb.getMany();
+  }
+
+  findOptionsByUser(
+    userId: string,
+    serverId?: string,
+    query?: string,
+  ): Promise<Pick<WgPeer, "id" | "name">[]> {
+    const qb = this.createQueryBuilder("p")
+      .select(["p.id", "p.name"])
+      .where("p.user_id = :userId", { userId })
+      .orderBy("p.name", "ASC");
+
+    if (serverId) {
+      qb.andWhere("p.server_id = :serverId", { serverId });
     }
     if (query) {
       qb.andWhere("p.name ILIKE :q", { q: `%${query}%` });

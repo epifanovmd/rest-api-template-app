@@ -16,7 +16,8 @@ export enum EPermissions {
   // ── WireGuard servers ─────────────────────────────────────────────────────
   WG_SERVER_VIEW = "wg:server:view",
   WG_SERVER_MANAGE = "wg:server:manage",
-  WG_SERVER_CONTROL = "wg:server:control",
+  /** User can only access servers assigned to them */
+  WG_SERVER_OWN = "wg:server:own",
 
   // ── WireGuard peers ───────────────────────────────────────────────────────
   WG_PEER_VIEW = "wg:peer:view",
@@ -26,7 +27,6 @@ export enum EPermissions {
 
   // ── WireGuard statistics ──────────────────────────────────────────────────
   WG_STATS_VIEW = "wg:stats:view",
-  WG_STATS_EXPORT = "wg:stats:export",
 
   // ── User management ───────────────────────────────────────────────────────
   USER_VIEW = "user:view",

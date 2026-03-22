@@ -7,6 +7,7 @@ import { ERole } from "../../modules/role/role.types";
 import { User } from "../../modules/user/user.entity";
 import { AuthContext, JWTDecoded } from "../../types/koa";
 import { Injectable } from "../decorators";
+import { hasPermission } from "./has-permission";
 import { createTokenAsync } from "./jwt";
 
 export interface ITokensDto {
@@ -149,22 +150,6 @@ export class TokenService {
    *   hasPermission(["*"], "anything")  → true
    */
   private hasPermission(userPerms: string[], required: string): boolean {
-    // Global wildcard
-    if (userPerms.includes(EPermissions.ALL)) return true;
-
-    // Exact match
-    if (userPerms.includes(required)) return true;
-
-    // Wildcard expansion: "wg:server:view" → check "wg:server:*", then "wg:*"
-    const parts = required.split(":");
-
-    // eslint-disable-next-line no-plusplus
-    for (let i = parts.length - 1; i >= 1; i--) {
-      const wildcard = `${parts.slice(0, i).join(":")}:*`;
-
-      if (userPerms.includes(wildcard)) return true;
-    }
-
-    return false;
+    return hasPermission(userPerms, required);
   }
 }
