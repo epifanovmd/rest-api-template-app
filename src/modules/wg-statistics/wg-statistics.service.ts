@@ -13,6 +13,11 @@ import { WgPeerRepository } from "../wg-peer/wg-peer.repository";
 import { WgServerRepository } from "../wg-server/wg-server.repository";
 import { EWgServerStatus } from "../wg-server/wg-server.types";
 import {
+  WgOverviewStatsPayload,
+  WgPeerStatsPayload,
+  WgServerStatsPayload,
+} from "../socket/socket.types";
+import {
   WgOverviewStatsUpdatedEvent,
   WgPeerStatsUpdatedEvent,
   WgServerStatsUpdatedEvent,
@@ -89,6 +94,12 @@ export class WgStatisticsService {
   private lastDbSave = new Map<string, DeadbandSnapshot>();
   private lastServerSocketEmit = new Map<string, DeadbandSnapshot>();
   private lastOverviewSocketEmit: DeadbandSnapshot | undefined;
+
+  // ─── Last-known payload cache (for HTTP snapshot endpoints) ──────────────────
+
+  private lastOverviewSnapshot: WgOverviewStatsPayload | null = null;
+  private lastServerSnapshots = new Map<string, WgServerStatsPayload>();
+  private lastPeerSnapshots = new Map<string, WgPeerStatsPayload>();
 
   constructor(
     @inject(WgTrafficStatRepository)
@@ -244,19 +255,20 @@ export class WgStatisticsService {
           // ── 5. Emit peer stats event ──────────────────────────────────────
 
           if (emitToSocket) {
-            this.eventBus.emit(
-              new WgPeerStatsUpdatedEvent({
-                peerId: dbPeer.id,
-                serverId: server.id,
-                rxBytes: metrics.adjustedRx,
-                txBytes: metrics.adjustedTx,
-                rxSpeedBps: metrics.rxSpeed,
-                txSpeedBps: metrics.txSpeed,
-                lastHandshake: wgPeer.lastHandshake,
-                isActive: metrics.isActive,
-                timestamp: now,
-              }),
-            );
+            const peerPayload = {
+              peerId: dbPeer.id,
+              serverId: server.id,
+              rxBytes: metrics.adjustedRx,
+              txBytes: metrics.adjustedTx,
+              rxSpeedBps: metrics.rxSpeed,
+              txSpeedBps: metrics.txSpeed,
+              lastHandshake: wgPeer.lastHandshake,
+              isActive: metrics.isActive,
+              timestamp: now,
+            };
+
+            this.lastPeerSnapshots.set(dbPeer.id, peerPayload);
+            this.eventBus.emit(new WgPeerStatsUpdatedEvent(peerPayload));
           }
 
           // ── 6. Collect DB writes ──────────────────────────────────────────
@@ -318,19 +330,20 @@ export class WgStatisticsService {
             timestamp: nowMs,
           });
 
-          this.eventBus.emit(
-            new WgServerStatsUpdatedEvent({
-              serverId: server.id,
-              interface: server.interface,
-              totalRxBytes: srvRx,
-              totalTxBytes: srvTx,
-              rxSpeedBps: srvRxSpeed,
-              txSpeedBps: srvTxSpeed,
-              peerCount: srvTrackedPeers,
-              activePeerCount: srvActivePeers,
-              timestamp: now,
-            }),
-          );
+          const serverPayload = {
+            serverId: server.id,
+            interface: server.interface,
+            totalRxBytes: srvRx,
+            totalTxBytes: srvTx,
+            rxSpeedBps: srvRxSpeed,
+            txSpeedBps: srvTxSpeed,
+            peerCount: srvTrackedPeers,
+            activePeerCount: srvActivePeers,
+            timestamp: now,
+          };
+
+          this.lastServerSnapshots.set(server.id, serverPayload);
+          this.eventBus.emit(new WgServerStatsUpdatedEvent(serverPayload));
         }
 
         globalRx += srvRx;
@@ -380,19 +393,20 @@ export class WgStatisticsService {
         activePeers: totalActivePeers,
       };
 
-      this.eventBus.emit(
-        new WgOverviewStatsUpdatedEvent({
-          totalServers: servers.length,
-          activeServers: upServers.length,
-          totalPeers: totalTrackedPeers,
-          activePeers: totalActivePeers,
-          totalRxBytes: globalRx,
-          totalTxBytes: globalTx,
-          rxSpeedBps: globalRxSpeed,
-          txSpeedBps: globalTxSpeed,
-          timestamp: now,
-        }),
-      );
+      const overviewPayload = {
+        totalServers: servers.length,
+        activeServers: upServers.length,
+        totalPeers: totalTrackedPeers,
+        activePeers: totalActivePeers,
+        totalRxBytes: globalRx,
+        totalTxBytes: globalTx,
+        rxSpeedBps: globalRxSpeed,
+        txSpeedBps: globalTxSpeed,
+        timestamp: now,
+      };
+
+      this.lastOverviewSnapshot = overviewPayload;
+      this.eventBus.emit(new WgOverviewStatsUpdatedEvent(overviewPayload));
     } catch (err) {
       logger.error({ err }, "[WgStats] Poll error");
     }
@@ -606,6 +620,20 @@ export class WgStatisticsService {
       { deletedTraffic, deletedSpeed },
       "[WgStats] Purged old statistics",
     );
+  }
+
+  // ─── Snapshot getters for initial page load ───────────────────────────────────
+
+  getCurrentOverview(): WgOverviewStatsPayload | null {
+    return this.lastOverviewSnapshot;
+  }
+
+  getCurrentServer(serverId: string): WgServerStatsPayload | null {
+    return this.lastServerSnapshots.get(serverId) ?? null;
+  }
+
+  getCurrentPeer(peerId: string): WgPeerStatsPayload | null {
+    return this.lastPeerSnapshots.get(peerId) ?? null;
   }
 
   // ─── Query methods for HTTP endpoints ────────────────────────────────────────

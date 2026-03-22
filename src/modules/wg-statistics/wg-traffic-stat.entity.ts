@@ -22,11 +22,11 @@ export class WgTrafficStat {
   @PrimaryGeneratedColumn("uuid")
   id: string;
 
-  @Column({ name: "peer_id", type: "uuid" })
-  peerId: string;
+  @Column({ name: "peer_id", type: "uuid", nullable: true })
+  peerId: string | null;
 
-  @Column({ name: "server_id", type: "uuid" })
-  serverId: string;
+  @Column({ name: "server_id", type: "uuid", nullable: true })
+  serverId: string | null;
 
   /** Cumulative bytes received by the peer (wg show rx_bytes) */
   @Column({ name: "rx_bytes", type: "bigint", transformer: { to: v => v, from: v => Number(v) } })
@@ -47,11 +47,11 @@ export class WgTrafficStat {
   @CreateDateColumn({ name: "timestamp" })
   timestamp: Date;
 
-  @ManyToOne(() => WgPeer, { onDelete: "CASCADE" })
+  @ManyToOne(() => WgPeer, { onDelete: "SET NULL", nullable: true })
   @JoinColumn({ name: "peer_id" })
-  peer: WgPeer;
+  peer: WgPeer | null;
 
-  @ManyToOne(() => WgServer, { onDelete: "CASCADE" })
+  @ManyToOne(() => WgServer, { onDelete: "SET NULL", nullable: true })
   @JoinColumn({ name: "server_id" })
-  server: WgServer;
+  server: WgServer | null;
 }

@@ -1697,6 +1697,161 @@
 				],
 				"type": "object",
 				"additionalProperties": false
+			},
+			"WgOverviewStatsPayload": {
+				"properties": {
+					"totalServers": {
+						"type": "number",
+						"format": "double"
+					},
+					"activeServers": {
+						"type": "number",
+						"format": "double"
+					},
+					"totalPeers": {
+						"type": "number",
+						"format": "double"
+					},
+					"activePeers": {
+						"type": "number",
+						"format": "double"
+					},
+					"totalRxBytes": {
+						"type": "number",
+						"format": "double"
+					},
+					"totalTxBytes": {
+						"type": "number",
+						"format": "double"
+					},
+					"rxSpeedBps": {
+						"type": "number",
+						"format": "double"
+					},
+					"txSpeedBps": {
+						"type": "number",
+						"format": "double"
+					},
+					"timestamp": {
+						"type": "string",
+						"format": "date-time"
+					}
+				},
+				"required": [
+					"totalServers",
+					"activeServers",
+					"totalPeers",
+					"activePeers",
+					"totalRxBytes",
+					"totalTxBytes",
+					"rxSpeedBps",
+					"txSpeedBps",
+					"timestamp"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"WgServerStatsPayload": {
+				"properties": {
+					"serverId": {
+						"type": "string"
+					},
+					"interface": {
+						"type": "string"
+					},
+					"totalRxBytes": {
+						"type": "number",
+						"format": "double"
+					},
+					"totalTxBytes": {
+						"type": "number",
+						"format": "double"
+					},
+					"rxSpeedBps": {
+						"type": "number",
+						"format": "double"
+					},
+					"txSpeedBps": {
+						"type": "number",
+						"format": "double"
+					},
+					"peerCount": {
+						"type": "number",
+						"format": "double"
+					},
+					"activePeerCount": {
+						"type": "number",
+						"format": "double"
+					},
+					"timestamp": {
+						"type": "string",
+						"format": "date-time"
+					}
+				},
+				"required": [
+					"serverId",
+					"interface",
+					"totalRxBytes",
+					"totalTxBytes",
+					"rxSpeedBps",
+					"txSpeedBps",
+					"peerCount",
+					"activePeerCount",
+					"timestamp"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"WgPeerStatsPayload": {
+				"properties": {
+					"peerId": {
+						"type": "string"
+					},
+					"serverId": {
+						"type": "string"
+					},
+					"rxBytes": {
+						"type": "number",
+						"format": "double"
+					},
+					"txBytes": {
+						"type": "number",
+						"format": "double"
+					},
+					"rxSpeedBps": {
+						"type": "number",
+						"format": "double"
+					},
+					"txSpeedBps": {
+						"type": "number",
+						"format": "double"
+					},
+					"lastHandshake": {
+						"type": "string",
+						"format": "date-time",
+						"nullable": true
+					},
+					"isActive": {
+						"type": "boolean"
+					},
+					"timestamp": {
+						"type": "string",
+						"format": "date-time"
+					}
+				},
+				"required": [
+					"peerId",
+					"serverId",
+					"rxBytes",
+					"txBytes",
+					"rxSpeedBps",
+					"txSpeedBps",
+					"lastHandshake",
+					"isActive",
+					"timestamp"
+				],
+				"type": "object",
+				"additionalProperties": false
 			}
 		},
 		"securitySchemes": {
@@ -4203,6 +4358,151 @@
 						"in": "query",
 						"name": "to",
 						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/wg/statistics/overview/current": {
+			"get": {
+				"operationId": "GetOverviewCurrent",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"allOf": [
+										{
+											"$ref": "#/components/schemas/WgOverviewStatsPayload"
+										}
+									],
+									"nullable": true
+								}
+							}
+						}
+					}
+				},
+				"description": "Current real-time stats across all servers — use for initial page load\nbefore WebSocket delivers the first wg:stats:overview event.",
+				"summary": "Current overview stats",
+				"tags": [
+					"WireGuard Statistics"
+				],
+				"security": [
+					{
+						"jwt": [
+							"permission:wg:stats:view"
+						]
+					},
+					{
+						"jwt": [
+							"permission:wg:server:own"
+						]
+					},
+					{
+						"jwt": [
+							"permission:wg:peer:own"
+						]
+					}
+				],
+				"parameters": []
+			}
+		},
+		"/api/wg/statistics/servers/{serverId}/current": {
+			"get": {
+				"operationId": "GetServerCurrent",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"allOf": [
+										{
+											"$ref": "#/components/schemas/WgServerStatsPayload"
+										}
+									],
+									"nullable": true
+								}
+							}
+						}
+					}
+				},
+				"description": "Current real-time stats for a specific server — use for initial page load\nbefore WebSocket delivers the first wg:server:stats event.",
+				"summary": "Current server stats",
+				"tags": [
+					"WireGuard Statistics"
+				],
+				"security": [
+					{
+						"jwt": [
+							"permission:wg:stats:view"
+						]
+					},
+					{
+						"jwt": [
+							"permission:wg:server:own"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"description": "Server ID",
+						"in": "path",
+						"name": "serverId",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/wg/statistics/peers/{peerId}/current": {
+			"get": {
+				"operationId": "GetPeerCurrent",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"allOf": [
+										{
+											"$ref": "#/components/schemas/WgPeerStatsPayload"
+										}
+									],
+									"nullable": true
+								}
+							}
+						}
+					}
+				},
+				"description": "Current real-time stats for a specific peer — use for initial page load\nbefore WebSocket delivers the first wg:peer:stats event.",
+				"summary": "Current peer stats",
+				"tags": [
+					"WireGuard Statistics"
+				],
+				"security": [
+					{
+						"jwt": [
+							"permission:wg:stats:view"
+						]
+					},
+					{
+						"jwt": [
+							"permission:wg:peer:own"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"description": "Peer ID",
+						"in": "path",
+						"name": "peerId",
+						"required": true,
 						"schema": {
 							"type": "string"
 						}

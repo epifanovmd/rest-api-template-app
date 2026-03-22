@@ -6,6 +6,11 @@ import { getContextUser, Injectable } from "../../core";
 import { hasPermission } from "../../core/auth/has-permission";
 import { KoaRequest } from "../../types/koa";
 import { EPermissions } from "../permission/permission.types";
+import {
+  WgOverviewStatsPayload,
+  WgPeerStatsPayload,
+  WgServerStatsPayload,
+} from "../socket/socket.types";
 import { WgPeerService } from "../wg-peer/wg-peer.service";
 import { WgServerService } from "../wg-server/wg-server.service";
 import { IWgOverviewStatsResponse } from "./dto";
@@ -145,5 +150,70 @@ export class WgStatisticsController extends Controller {
     return this.statsService.getAggregatedHistory(range.from, range.to, {
       peerId,
     });
+  }
+
+  /**
+   * Current real-time stats across all servers — use for initial page load
+   * before WebSocket delivers the first wg:stats:overview event.
+   * @summary Current overview stats
+   */
+  @Security("jwt", ["permission:wg:stats:view"])
+  @Security("jwt", ["permission:wg:server:own"])
+  @Security("jwt", ["permission:wg:peer:own"])
+  @Get("/overview/current")
+  async getOverviewCurrent(): Promise<WgOverviewStatsPayload | null> {
+    return this.statsService.getCurrentOverview();
+  }
+
+  /**
+   * Current real-time stats for a specific server — use for initial page load
+   * before WebSocket delivers the first wg:server:stats event.
+   * @summary Current server stats
+   * @param serverId Server ID
+   */
+  @Security("jwt", ["permission:wg:stats:view"])
+  @Security("jwt", ["permission:wg:server:own"])
+  @Get("/servers/{serverId}/current")
+  async getServerCurrent(
+    serverId: string,
+    @Request() req: KoaRequest,
+  ): Promise<WgServerStatsPayload | null> {
+    const { userId, permissions } = getContextUser(req);
+
+    if (!hasPermission(permissions, EPermissions.WG_STATS_VIEW)) {
+      const server = await this.serverService.getById(serverId);
+
+      if (server.userId !== userId) {
+        throw new ForbiddenException("Access denied: not your server.");
+      }
+    }
+
+    return this.statsService.getCurrentServer(serverId);
+  }
+
+  /**
+   * Current real-time stats for a specific peer — use for initial page load
+   * before WebSocket delivers the first wg:peer:stats event.
+   * @summary Current peer stats
+   * @param peerId Peer ID
+   */
+  @Security("jwt", ["permission:wg:stats:view"])
+  @Security("jwt", ["permission:wg:peer:own"])
+  @Get("/peers/{peerId}/current")
+  async getPeerCurrent(
+    peerId: string,
+    @Request() req: KoaRequest,
+  ): Promise<WgPeerStatsPayload | null> {
+    const { userId, permissions } = getContextUser(req);
+
+    if (!hasPermission(permissions, EPermissions.WG_STATS_VIEW)) {
+      const peer = await this.peerService.getById(peerId);
+
+      if (peer.userId !== userId) {
+        throw new ForbiddenException("Access denied: not your peer.");
+      }
+    }
+
+    return this.statsService.getCurrentPeer(peerId);
   }
 }

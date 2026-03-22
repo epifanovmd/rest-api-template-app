@@ -749,6 +749,54 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "WgOverviewStatsPayload": {
+        "dataType": "refObject",
+        "properties": {
+            "totalServers": {"dataType":"double","required":true},
+            "activeServers": {"dataType":"double","required":true},
+            "totalPeers": {"dataType":"double","required":true},
+            "activePeers": {"dataType":"double","required":true},
+            "totalRxBytes": {"dataType":"double","required":true},
+            "totalTxBytes": {"dataType":"double","required":true},
+            "rxSpeedBps": {"dataType":"double","required":true},
+            "txSpeedBps": {"dataType":"double","required":true},
+            "timestamp": {"dataType":"datetime","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "WgServerStatsPayload": {
+        "dataType": "refObject",
+        "properties": {
+            "serverId": {"dataType":"string","required":true},
+            "interface": {"dataType":"string","required":true},
+            "totalRxBytes": {"dataType":"double","required":true},
+            "totalTxBytes": {"dataType":"double","required":true},
+            "rxSpeedBps": {"dataType":"double","required":true},
+            "txSpeedBps": {"dataType":"double","required":true},
+            "peerCount": {"dataType":"double","required":true},
+            "activePeerCount": {"dataType":"double","required":true},
+            "timestamp": {"dataType":"datetime","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "WgPeerStatsPayload": {
+        "dataType": "refObject",
+        "properties": {
+            "peerId": {"dataType":"string","required":true},
+            "serverId": {"dataType":"string","required":true},
+            "rxBytes": {"dataType":"double","required":true},
+            "txBytes": {"dataType":"double","required":true},
+            "rxSpeedBps": {"dataType":"double","required":true},
+            "txSpeedBps": {"dataType":"double","required":true},
+            "lastHandshake": {"dataType":"union","subSchemas":[{"dataType":"datetime"},{"dataType":"enum","enums":[null]}],"required":true},
+            "isActive": {"dataType":"boolean","required":true},
+            "timestamp": {"dataType":"datetime","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 };
 const validationService = new ValidationService(models);
 
@@ -2505,6 +2553,97 @@ export function RegisterRoutes(router: KoaRouter) {
             }
 
             const promise = controller.getPeerStats.apply(controller, validatedArgs as any);
+            return promiseHandler(controller, promise, context, undefined, undefined);
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        router.get('/api/wg/statistics/overview/current',
+            authenticateMiddleware([{"jwt":["permission:wg:stats:view"]},{"jwt":["permission:wg:server:own"]},{"jwt":["permission:wg:peer:own"]}]),
+            ...(fetchMiddlewares<Middleware>(WgStatisticsController)),
+            ...(fetchMiddlewares<Middleware>(WgStatisticsController.prototype.getOverviewCurrent)),
+
+            async function WgStatisticsController_getOverviewCurrent(context: any, next: any) {
+            const args = {
+            };
+
+            let validatedArgs: any[] = [];
+            try {
+              validatedArgs = getValidatedArgs(args, context, next);
+            } catch (err) {
+              const error = err as any;
+              context.status = error.status;
+              context.throw(error.status, JSON.stringify({ fields: error.fields }));
+            }
+
+            const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(context.request) : iocContainer;
+
+            const controller: any = await container.get<WgStatisticsController>(WgStatisticsController);
+            if (typeof controller['setStatus'] === 'function') {
+                controller.setStatus(undefined);
+            }
+
+            const promise = controller.getOverviewCurrent.apply(controller, validatedArgs as any);
+            return promiseHandler(controller, promise, context, undefined, undefined);
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        router.get('/api/wg/statistics/servers/:serverId/current',
+            authenticateMiddleware([{"jwt":["permission:wg:stats:view"]},{"jwt":["permission:wg:server:own"]}]),
+            ...(fetchMiddlewares<Middleware>(WgStatisticsController)),
+            ...(fetchMiddlewares<Middleware>(WgStatisticsController.prototype.getServerCurrent)),
+
+            async function WgStatisticsController_getServerCurrent(context: any, next: any) {
+            const args = {
+                    serverId: {"in":"path","name":"serverId","required":true,"dataType":"string"},
+                    req: {"in":"request","name":"req","required":true,"dataType":"object"},
+            };
+
+            let validatedArgs: any[] = [];
+            try {
+              validatedArgs = getValidatedArgs(args, context, next);
+            } catch (err) {
+              const error = err as any;
+              context.status = error.status;
+              context.throw(error.status, JSON.stringify({ fields: error.fields }));
+            }
+
+            const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(context.request) : iocContainer;
+
+            const controller: any = await container.get<WgStatisticsController>(WgStatisticsController);
+            if (typeof controller['setStatus'] === 'function') {
+                controller.setStatus(undefined);
+            }
+
+            const promise = controller.getServerCurrent.apply(controller, validatedArgs as any);
+            return promiseHandler(controller, promise, context, undefined, undefined);
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        router.get('/api/wg/statistics/peers/:peerId/current',
+            authenticateMiddleware([{"jwt":["permission:wg:stats:view"]},{"jwt":["permission:wg:peer:own"]}]),
+            ...(fetchMiddlewares<Middleware>(WgStatisticsController)),
+            ...(fetchMiddlewares<Middleware>(WgStatisticsController.prototype.getPeerCurrent)),
+
+            async function WgStatisticsController_getPeerCurrent(context: any, next: any) {
+            const args = {
+                    peerId: {"in":"path","name":"peerId","required":true,"dataType":"string"},
+                    req: {"in":"request","name":"req","required":true,"dataType":"object"},
+            };
+
+            let validatedArgs: any[] = [];
+            try {
+              validatedArgs = getValidatedArgs(args, context, next);
+            } catch (err) {
+              const error = err as any;
+              context.status = error.status;
+              context.throw(error.status, JSON.stringify({ fields: error.fields }));
+            }
+
+            const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(context.request) : iocContainer;
+
+            const controller: any = await container.get<WgStatisticsController>(WgStatisticsController);
+            if (typeof controller['setStatus'] === 'function') {
+                controller.setStatus(undefined);
+            }
+
+            const promise = controller.getPeerCurrent.apply(controller, validatedArgs as any);
             return promiseHandler(controller, promise, context, undefined, undefined);
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa

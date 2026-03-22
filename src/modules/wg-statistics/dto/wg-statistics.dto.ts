@@ -3,8 +3,8 @@ import { WgTrafficStat } from "../wg-traffic-stat.entity";
 
 export class WgTrafficStatDto {
   id: string;
-  peerId: string;
-  serverId: string;
+  peerId: string | null;
+  serverId: string | null;
   rxBytes: number;
   txBytes: number;
   lastHandshake: Date | null;
@@ -29,8 +29,8 @@ export class WgTrafficStatDto {
 
 export class WgSpeedSampleDto {
   id: string;
-  peerId: string;
-  serverId: string;
+  peerId: string | null;
+  serverId: string | null;
   rxSpeedBps: number;
   txSpeedBps: number;
   isActive: boolean;
@@ -95,3 +95,4 @@ export interface IWgOverviewStatsResponse {
   traffic: WgOverviewTrafficPointDto[];
   speed: WgOverviewSpeedPointDto[];
 }
+

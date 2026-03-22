@@ -141,22 +141,22 @@ export class WgTrafficStatRepository extends BaseRepository<WgTrafficStat> {
           WHERE ${whereRange}
         ),
         peers AS (
-          SELECT DISTINCT peer_id
+          SELECT DISTINCT COALESCE(peer_id::text, id::text) AS peer_key
           FROM wg_traffic_stats
           WHERE ${whereRange}
         ),
         filled AS (
-          SELECT DISTINCT ON (p.peer_id, m.minute)
+          SELECT DISTINCT ON (p.peer_key, m.minute)
             m.minute,
             s.rx_bytes,
             s.tx_bytes
           FROM peers p
           CROSS JOIN minutes m
           JOIN wg_traffic_stats s
-            ON s.peer_id = p.peer_id
+            ON COALESCE(s.peer_id::text, s.id::text) = p.peer_key
             AND s.timestamp <= m.minute + INTERVAL '1 minute'
             ${andJoin}
-          ORDER BY p.peer_id, m.minute, s.timestamp DESC
+          ORDER BY p.peer_key, m.minute, s.timestamp DESC
         )
       SELECT
         minute AS timestamp,
@@ -258,13 +258,13 @@ export class WgSpeedSampleRepository extends BaseRepository<WgSpeedSample> {
         CAST(SUM(rx_speed_bps) AS float8) AS "rxSpeedBps",
         CAST(SUM(tx_speed_bps) AS float8) AS "txSpeedBps"
       FROM (
-        SELECT DISTINCT ON (peer_id, date_trunc('minute', timestamp))
+        SELECT DISTINCT ON (COALESCE(peer_id::text, id::text), date_trunc('minute', timestamp))
           date_trunc('minute', timestamp) AS minute,
           rx_speed_bps,
           tx_speed_bps
         FROM wg_speed_samples
         WHERE ${conditions.join(" AND ")}
-        ORDER BY peer_id, date_trunc('minute', timestamp), timestamp DESC
+        ORDER BY COALESCE(peer_id::text, id::text), date_trunc('minute', timestamp), timestamp DESC
       ) AS latest
       GROUP BY minute
       ORDER BY minute ASC
