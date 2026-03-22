@@ -18,7 +18,6 @@ import { getContextUser, Injectable, ValidateBody } from "../../core";
 import { hasPermission } from "../../core/auth/has-permission";
 import { KoaRequest } from "../../types/koa";
 import { EPermissions } from "../permission/permission.types";
-import { ERole } from "../role/role.types";
 import { WgConfigService } from "../wg-cli/wg-config.service";
 import { EWgServerStatus } from "../wg-server/wg-server.types";
 import {
@@ -236,16 +235,17 @@ export class WgPeerController extends Controller {
 
   /**
    * Download the WireGuard client .conf file for this peer.
-   * Only accessible by the peer owner or admin.
+   * wg:peer:view can access any peer; wg:peer:own only their own.
    * @summary Get peer config file
    */
-  @Security("jwt")
+  @Security("jwt", ["permission:wg:peer:view"])
+  @Security("jwt", ["permission:wg:peer:own"])
   @Get("/peers/{id}/config")
   async getPeerConfig(id: string, @Request() req: KoaRequest): Promise<string> {
-    const { userId, roles } = getContextUser(req);
+    const { userId, permissions } = getContextUser(req);
     const peer = await this.service.getById(id);
 
-    if (!roles.includes(ERole.ADMIN) && peer.userId !== userId) {
+    if (!hasPermission(permissions, EPermissions.WG_PEER_VIEW) && peer.userId !== userId) {
       throw new ForbiddenException("Access denied: not your peer.");
     }
 
@@ -262,20 +262,21 @@ export class WgPeerController extends Controller {
 
   /**
    * Get QR code PNG image for the client config.
-   * Only accessible by the peer owner or admin.
+   * wg:peer:view can access any peer; wg:peer:own only their own.
    * Returns base64-encoded PNG data URL.
    * @summary Get peer QR code
    */
-  @Security("jwt")
+  @Security("jwt", ["permission:wg:peer:view"])
+  @Security("jwt", ["permission:wg:peer:own"])
   @Get("/peers/{id}/qr")
   async getPeerQrCode(
     id: string,
     @Request() req: KoaRequest,
   ): Promise<{ dataUrl: string }> {
-    const { userId, roles } = getContextUser(req);
+    const { userId, permissions } = getContextUser(req);
     const peer = await this.service.getById(id);
 
-    if (!roles.includes(ERole.ADMIN) && peer.userId !== userId) {
+    if (!hasPermission(permissions, EPermissions.WG_PEER_VIEW) && peer.userId !== userId) {
       throw new ForbiddenException("Access denied: not your peer.");
     }
 

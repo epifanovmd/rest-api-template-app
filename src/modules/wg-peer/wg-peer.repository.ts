@@ -1,4 +1,4 @@
-import { DataSource, FindOptionsWhere, ILike } from "typeorm";
+import { DataSource } from "typeorm";
 
 import { InjectableRepository } from "../../core";
 import { BaseRepository } from "../../core/repository";
@@ -11,35 +11,44 @@ export class WgPeerRepository extends BaseRepository<WgPeer> {
     super(dataSource, WgPeer);
   }
 
+  private withUserJoin(alias: string) {
+    return this.createQueryBuilder(alias)
+      .leftJoinAndSelect(`${alias}.user`, "u")
+      .leftJoinAndSelect("u.profile", "p");
+  }
+
+  findOneWithUser(id: string): Promise<WgPeer | null> {
+    return this.withUserJoin("peer")
+      .where("peer.id = :id", { id })
+      .getOne();
+  }
+
   findAll(
     skip?: number,
     take?: number,
     filters?: IWgPeerFilters,
   ): Promise<[WgPeer[], number]> {
-    const where: FindOptionsWhere<WgPeer> = {};
+    const qb = this.withUserJoin("peer").orderBy("peer.createdAt", "ASC");
 
     if (filters?.enabled !== undefined) {
-      where.enabled = filters.enabled;
+      qb.andWhere("peer.enabled = :enabled", { enabled: filters.enabled });
     }
     if (filters?.status !== undefined) {
-      where.status = filters.status;
+      qb.andWhere("peer.status = :status", { status: filters.status });
     }
     if (filters?.serverId) {
-      where.serverId = filters.serverId;
+      qb.andWhere("peer.server_id = :serverId", { serverId: filters.serverId });
     }
     if (filters?.userId) {
-      where.userId = filters.userId;
+      qb.andWhere("peer.user_id = :userId", { userId: filters.userId });
     }
     if (filters?.query) {
-      where.name = ILike(`%${filters.query}%`);
+      qb.andWhere("peer.name ILIKE :query", { query: `%${filters.query}%` });
     }
+    if (skip !== undefined) qb.skip(skip);
+    if (take !== undefined) qb.take(take);
 
-    return this.findAndCount({
-      where,
-      order: { createdAt: "ASC" },
-      skip,
-      take,
-    });
+    return qb.getManyAndCount();
   }
 
   findByServer(
@@ -48,24 +57,23 @@ export class WgPeerRepository extends BaseRepository<WgPeer> {
     take?: number,
     filters?: IWgPeerFilters,
   ): Promise<[WgPeer[], number]> {
-    const where: FindOptionsWhere<WgPeer> = { serverId };
+    const qb = this.withUserJoin("peer")
+      .where("peer.server_id = :serverId", { serverId })
+      .orderBy("peer.createdAt", "ASC");
 
     if (filters?.enabled !== undefined) {
-      where.enabled = filters.enabled;
+      qb.andWhere("peer.enabled = :enabled", { enabled: filters.enabled });
     }
     if (filters?.status !== undefined) {
-      where.status = filters.status;
+      qb.andWhere("peer.status = :status", { status: filters.status });
     }
     if (filters?.query) {
-      where.name = ILike(`%${filters.query}%`);
+      qb.andWhere("peer.name ILIKE :query", { query: `%${filters.query}%` });
     }
+    if (skip !== undefined) qb.skip(skip);
+    if (take !== undefined) qb.take(take);
 
-    return this.findAndCount({
-      where,
-      order: { createdAt: "ASC" },
-      skip,
-      take,
-    });
+    return qb.getManyAndCount();
   }
 
   findByUser(
@@ -74,27 +82,26 @@ export class WgPeerRepository extends BaseRepository<WgPeer> {
     take?: number,
     filters?: IWgPeerFilters,
   ): Promise<[WgPeer[], number]> {
-    const where: FindOptionsWhere<WgPeer> = { userId };
+    const qb = this.withUserJoin("peer")
+      .where("peer.user_id = :userId", { userId })
+      .orderBy("peer.createdAt", "ASC");
 
     if (filters?.enabled !== undefined) {
-      where.enabled = filters.enabled;
+      qb.andWhere("peer.enabled = :enabled", { enabled: filters.enabled });
     }
     if (filters?.status !== undefined) {
-      where.status = filters.status;
+      qb.andWhere("peer.status = :status", { status: filters.status });
     }
     if (filters?.serverId) {
-      where.serverId = filters.serverId;
+      qb.andWhere("peer.server_id = :serverId", { serverId: filters.serverId });
     }
     if (filters?.query) {
-      where.name = ILike(`%${filters.query}%`);
+      qb.andWhere("peer.name ILIKE :query", { query: `%${filters.query}%` });
     }
+    if (skip !== undefined) qb.skip(skip);
+    if (take !== undefined) qb.take(take);
 
-    return this.findAndCount({
-      where,
-      order: { createdAt: "ASC" },
-      skip,
-      take,
-    });
+    return qb.getManyAndCount();
   }
 
   findEnabledByServer(serverId: string): Promise<WgPeer[]> {

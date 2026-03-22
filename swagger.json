@@ -1084,6 +1084,14 @@
 						"type": "string",
 						"nullable": true
 					},
+					"user": {
+						"allOf": [
+							{
+								"$ref": "#/components/schemas/PublicUserDto"
+							}
+						],
+						"nullable": true
+					},
 					"name": {
 						"type": "string"
 					},
@@ -1149,6 +1157,7 @@
 					"id",
 					"serverId",
 					"userId",
+					"user",
 					"name",
 					"publicKey",
 					"hasPresharedKey",
@@ -3477,14 +3486,21 @@
 						}
 					}
 				},
-				"description": "Download the WireGuard client .conf file for this peer.\nOnly accessible by the peer owner or admin.",
+				"description": "Download the WireGuard client .conf file for this peer.\nwg:peer:view can access any peer; wg:peer:own only their own.",
 				"summary": "Get peer config file",
 				"tags": [
 					"WireGuard Peers"
 				],
 				"security": [
 					{
-						"jwt": []
+						"jwt": [
+							"permission:wg:peer:view"
+						]
+					},
+					{
+						"jwt": [
+							"permission:wg:peer:own"
+						]
 					}
 				],
 				"parameters": [
@@ -3522,14 +3538,21 @@
 						}
 					}
 				},
-				"description": "Get QR code PNG image for the client config.\nOnly accessible by the peer owner or admin.\nReturns base64-encoded PNG data URL.",
+				"description": "Get QR code PNG image for the client config.\nwg:peer:view can access any peer; wg:peer:own only their own.\nReturns base64-encoded PNG data URL.",
 				"summary": "Get peer QR code",
 				"tags": [
 					"WireGuard Peers"
 				],
 				"security": [
 					{
-						"jwt": []
+						"jwt": [
+							"permission:wg:peer:view"
+						]
+					},
+					{
+						"jwt": [
+							"permission:wg:peer:own"
+						]
 					}
 				],
 				"parameters": [

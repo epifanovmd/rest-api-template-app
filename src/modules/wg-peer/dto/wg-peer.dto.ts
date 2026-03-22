@@ -1,4 +1,5 @@
 import { IListResponseDto } from "../../../core/dto/ListResponse";
+import { PublicUserDto } from "../../user/dto";
 import { EWgServerStatus } from "../../wg-server/wg-server.types";
 import { WG_PEER_ACTIVE_THRESHOLD_MS } from "../wg-peer.constants";
 import { WgPeer } from "../wg-peer.entity";
@@ -51,6 +52,7 @@ export class WgPeerDto {
   id: string;
   serverId: string;
   userId: string | null;
+  user: PublicUserDto | null;
   name: string;
   publicKey: string;
   hasPresharedKey: boolean;
@@ -74,6 +76,12 @@ export class WgPeerDto {
     dto.id = e.id;
     dto.serverId = e.serverId;
     dto.userId = e.userId;
+
+    dto.user =
+      e.user !== undefined && e.user?.id === e.userId
+        ? PublicUserDto.fromEntity(e.user)
+        : null;
+
     dto.name = e.name;
     dto.publicKey = e.publicKey;
     dto.hasPresharedKey = e.presharedKey !== null;

@@ -78,7 +78,7 @@ export class WgPeerService {
   }
 
   async getById(id: string): Promise<WgPeer> {
-    const peer = await this.peerRepo.findOne({ where: { id } });
+    const peer = await this.peerRepo.findOneWithUser(id);
 
     if (!peer)
       throw Object.assign(new Error("Peer not found"), { status: 404 });
@@ -339,11 +339,15 @@ export class WgPeerService {
   }
 
   async assignToUser(id: string, userId: string): Promise<WgPeer> {
-    return this.update(id, { userId });
+    await this.update(id, { userId });
+
+    return this.getById(id);
   }
 
   async revokeFromUser(id: string): Promise<WgPeer> {
-    return this.update(id, { userId: null });
+    await this.update(id, { userId: null });
+
+    return this.getById(id);
   }
 
   /**

@@ -527,6 +527,7 @@ const models: TsoaRoute.Models = {
             "id": {"dataType":"string","required":true},
             "serverId": {"dataType":"string","required":true},
             "userId": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
+            "user": {"dataType":"union","subSchemas":[{"ref":"PublicUserDto"},{"dataType":"enum","enums":[null]}],"required":true},
             "name": {"dataType":"string","required":true},
             "publicKey": {"dataType":"string","required":true},
             "hasPresharedKey": {"dataType":"boolean","required":true},
@@ -2037,7 +2038,7 @@ export function RegisterRoutes(router: KoaRouter) {
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         router.get('/api/wg/peers/:id/config',
-            authenticateMiddleware([{"jwt":[]}]),
+            authenticateMiddleware([{"jwt":["permission:wg:peer:view"]},{"jwt":["permission:wg:peer:own"]}]),
             ...(fetchMiddlewares<Middleware>(WgPeerController)),
             ...(fetchMiddlewares<Middleware>(WgPeerController.prototype.getPeerConfig)),
 
@@ -2068,7 +2069,7 @@ export function RegisterRoutes(router: KoaRouter) {
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         router.get('/api/wg/peers/:id/qr',
-            authenticateMiddleware([{"jwt":[]}]),
+            authenticateMiddleware([{"jwt":["permission:wg:peer:view"]},{"jwt":["permission:wg:peer:own"]}]),
             ...(fetchMiddlewares<Middleware>(WgPeerController)),
             ...(fetchMiddlewares<Middleware>(WgPeerController.prototype.getPeerQrCode)),
 
