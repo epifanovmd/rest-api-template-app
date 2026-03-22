@@ -3,6 +3,11 @@ import { inject } from "inversify";
 import { config } from "../../config";
 import { EventBus, Injectable, logger } from "../../core";
 import {
+  WgOverviewStatsPayload,
+  WgPeerStatsPayload,
+  WgServerStatsPayload,
+} from "../socket/socket.types";
+import {
   WgCliService,
   WgPeerStats,
   WgShowOutput,
@@ -12,11 +17,6 @@ import { WG_PEER_ACTIVE_THRESHOLD_MS } from "../wg-peer/wg-peer.constants";
 import { WgPeerRepository } from "../wg-peer/wg-peer.repository";
 import { WgServerRepository } from "../wg-server/wg-server.repository";
 import { EWgServerStatus } from "../wg-server/wg-server.types";
-import {
-  WgOverviewStatsPayload,
-  WgPeerStatsPayload,
-  WgServerStatsPayload,
-} from "../socket/socket.types";
 import {
   WgOverviewStatsUpdatedEvent,
   WgPeerStatsUpdatedEvent,
