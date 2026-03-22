@@ -11,12 +11,11 @@ import { ERole } from "./role.types";
 const ROLE_DEFAULT_PERMISSIONS: Record<ERole, EPermissions[]> = {
   [ERole.ADMIN]: [EPermissions.ALL],
   [ERole.USER]: [
-    EPermissions.WG_SERVER_VIEW,
-    EPermissions.WG_PEER_VIEW,
+    EPermissions.WG_SERVER_OWN,
     EPermissions.WG_PEER_OWN,
     EPermissions.WG_STATS_VIEW,
   ],
-  [ERole.GUEST]: [EPermissions.WG_SERVER_VIEW],
+  [ERole.GUEST]: [EPermissions.WG_PEER_OWN],
 };
 
 @Injectable()
