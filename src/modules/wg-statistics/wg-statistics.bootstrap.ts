@@ -20,17 +20,17 @@ export class WgStatisticsBootstrap implements IBootstrap {
   async initialize(): Promise<void> {
     await this.statsService.loadLastKnownFromDb();
 
-    const { statsIntervalSec, speedSampleIntervalSec } = config.wireguard;
+    const { dbWriteIntervalSec, socketPollIntervalSec } = config.wireguard;
 
-    // Speed poll every speedSampleIntervalSec — always emits to socket,
-    // writes to DB every (statsIntervalSec / speedSampleIntervalSec) ticks
+    // Poll every socketPollIntervalSec — always emits to socket,
+    // writes to DB every (dbWriteIntervalSec / socketPollIntervalSec) ticks
     const dbWriteEvery = Math.max(
       1,
-      Math.round(statsIntervalSec / speedSampleIntervalSec),
+      Math.round(dbWriteIntervalSec / socketPollIntervalSec),
     );
     let tick = 0;
 
-    const pollCron = `*/${speedSampleIntervalSec} * * * * *`;
+    const pollCron = `*/${socketPollIntervalSec} * * * * *`;
 
     this.statsTasks.push(
       cron.schedule(pollCron, () => {

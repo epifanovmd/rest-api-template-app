@@ -111,8 +111,20 @@ export class WgPeerRepository extends BaseRepository<WgPeer> {
   async bulkUpdateLastHandshake(
     updates: Array<{ id: string; lastHandshake: Date | null }>,
   ): Promise<void> {
-    await Promise.all(
-      updates.map(({ id, lastHandshake }) => this.update({ id }, { lastHandshake })),
+    if (updates.length === 0) return;
+
+    const ids = updates.map(u => u.id);
+    const handshakes = updates.map(u => u.lastHandshake);
+
+    await this.manager.query(
+      `UPDATE wg_peers
+       SET last_handshake = v.last_handshake
+       FROM (
+         SELECT unnest($1::uuid[]) AS id,
+                unnest($2::timestamptz[]) AS last_handshake
+       ) v
+       WHERE wg_peers.id = v.id`,
+      [ids, handshakes],
     );
   }
 

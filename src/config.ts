@@ -80,8 +80,8 @@ const configSchema = z.object({
     binaryPath: z.string().default("wg"),
     quickBinaryPath: z.string().default("wg-quick"),
     configDir: z.string().default("/etc/wireguard"),
-    statsIntervalSec: z.coerce.number().int().positive().default(5),
-    speedSampleIntervalSec: z.coerce.number().int().positive().default(5),
+    dbWriteIntervalSec: z.coerce.number().int().positive().default(60),
+    socketPollIntervalSec: z.coerce.number().int().positive().default(1),
     statsRetentionDays: z.coerce.number().int().positive().default(30),
     /** Default iptables hook rules applied to every new server unless overridden */
     defaults: z.object({
@@ -151,8 +151,8 @@ export const config = configSchema.parse({
     binaryPath: env.WG_BINARY_PATH,
     quickBinaryPath: env.WG_QUICK_BINARY_PATH,
     configDir: env.WG_CONFIG_DIR,
-    statsIntervalSec: env.WG_STATS_INTERVAL_SEC,
-    speedSampleIntervalSec: env.WG_SPEED_SAMPLE_INTERVAL_SEC,
+    dbWriteIntervalSec: env.WG_DB_WRITE_INTERVAL_SEC,
+    socketPollIntervalSec: env.WG_SOCKET_POLL_INTERVAL_SEC,
     statsRetentionDays: env.WG_STATS_RETENTION_DAYS,
     defaults: {
       preUp: env.WG_DEFAULT_PRE_UP,
