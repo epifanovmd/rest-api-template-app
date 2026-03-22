@@ -5,8 +5,8 @@ services:
     env_file: .env.production
     ports:
       - "8181:8181"
-      - "51821:51820/udp"
-    # - "51820-51920:51820-51920/udp"
+    # - "51821:51820/udp"
+      - "51820-51920:51820-51920/udp"
     restart: unless-stopped
     # WireGuard needs NET_ADMIN + SYS_MODULE to manage kernel interfaces
     cap_add:
