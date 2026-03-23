@@ -339,13 +339,13 @@ export class WgPeerService {
   }
 
   async assignToUser(id: string, userId: string): Promise<WgPeer> {
-    await this.update(id, { userId });
+    await this.peerRepo.update(id, { userId });
 
     return this.getById(id);
   }
 
   async revokeFromUser(id: string): Promise<WgPeer> {
-    await this.update(id, { userId: null });
+    await this.peerRepo.update(id, { userId: null });
 
     return this.getById(id);
   }
