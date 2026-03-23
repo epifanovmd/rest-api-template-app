@@ -90,10 +90,13 @@ export class WgTrafficStatRepository extends BaseRepository<WgTrafficStat> {
   /**
    * Aggregated traffic by minute for chart rendering.
    *
-   * rx_bytes/tx_bytes are cumulative counters. Uses fill-forward: for each minute
-   * bucket, takes the latest known value per peer (even if recorded in a prior
-   * minute), then sums across peers. This prevents dips when a peer has no record
-   * in a particular minute due to dead-band filtering.
+   * rx_bytes/tx_bytes are cumulative counters. For each minute bucket takes the
+   * latest known value per peer and sums across peers. Missing minutes are filled
+   * forward from the last recorded value to prevent dips caused by dead-band
+   * filtering.
+   *
+   * Single table scan → generate_series time slots → LEFT JOIN → window
+   * fill-forward (COUNT + FIRST_VALUE). No range-join CROSS JOIN.
    */
   async getAggregatedInRange(
     from: Date,
@@ -101,68 +104,77 @@ export class WgTrafficStatRepository extends BaseRepository<WgTrafficStat> {
     filters?: AggregatedFilters,
   ): Promise<AggregatedTrafficPoint[]> {
     const params: (Date | string | string[])[] = [from, to];
-    const rangeConditions = ["timestamp >= $1", "timestamp <= $2"];
-    const joinExtra: string[] = [];
+    const conditions = ["timestamp >= $1", "timestamp <= $2"];
 
     if (filters?.serverId) {
-      const idx = params.push(filters.serverId);
-
-      rangeConditions.push(`server_id = $${idx}`);
-      joinExtra.push(`s.server_id = $${idx}`);
+      conditions.push(`server_id = $${params.push(filters.serverId)}`);
     } else if (filters?.serverIds?.length) {
-      const idx = params.push(filters.serverIds);
-
-      rangeConditions.push(`server_id = ANY($${idx})`);
-      joinExtra.push(`s.server_id = ANY($${idx})`);
+      conditions.push(`server_id = ANY($${params.push(filters.serverIds)})`);
     }
 
     if (filters?.peerId) {
-      const idx = params.push(filters.peerId);
-
-      rangeConditions.push(`peer_id = $${idx}`);
-      joinExtra.push(`s.peer_id = $${idx}`);
+      conditions.push(`peer_id = $${params.push(filters.peerId)}`);
     } else if (filters?.peerIds?.length) {
-      const idx = params.push(filters.peerIds);
-
-      rangeConditions.push(`peer_id = ANY($${idx})`);
-      joinExtra.push(`s.peer_id = ANY($${idx})`);
+      conditions.push(`peer_id = ANY($${params.push(filters.peerIds)})`);
     }
 
-    const whereRange = rangeConditions.join(" AND ");
-    const andJoin =
-      joinExtra.length > 0 ? ` AND ${joinExtra.join(" AND ")}` : "";
+    const where = conditions.join(" AND ");
 
     return this.manager.query(
       `
       WITH
-        minutes AS (
-          SELECT DISTINCT date_trunc('minute', timestamp) AS minute
+        raw AS (
+          SELECT DISTINCT ON (COALESCE(peer_id::text, id::text), date_trunc('minute', timestamp))
+            COALESCE(peer_id::text, id::text) AS peer_key,
+            date_trunc('minute', timestamp)   AS minute,
+            rx_bytes,
+            tx_bytes
           FROM wg_traffic_stats
-          WHERE ${whereRange}
+          WHERE ${where}
+          ORDER BY
+            COALESCE(peer_id::text, id::text),
+            date_trunc('minute', timestamp),
+            timestamp DESC
         ),
-        peers AS (
-          SELECT DISTINCT COALESCE(peer_id::text, id::text) AS peer_key
-          FROM wg_traffic_stats
-          WHERE ${whereRange}
+        slots AS (
+          SELECT generate_series(
+            date_trunc('minute', $1::timestamptz),
+            date_trunc('minute', $2::timestamptz),
+            '1 minute'::interval
+          ) AS minute
+        ),
+        expanded AS (
+          SELECT
+            p.peer_key,
+            s.minute,
+            r.rx_bytes,
+            r.tx_bytes
+          FROM (SELECT DISTINCT peer_key FROM raw) p
+          CROSS JOIN slots s
+          LEFT JOIN raw r ON r.peer_key = p.peer_key AND r.minute = s.minute
+        ),
+        grouped AS (
+          SELECT
+            peer_key,
+            minute,
+            rx_bytes,
+            tx_bytes,
+            COUNT(rx_bytes) OVER (PARTITION BY peer_key ORDER BY minute) AS grp
+          FROM expanded
         ),
         filled AS (
-          SELECT DISTINCT ON (p.peer_key, m.minute)
-            m.minute,
-            s.rx_bytes,
-            s.tx_bytes
-          FROM peers p
-          CROSS JOIN minutes m
-          JOIN wg_traffic_stats s
-            ON COALESCE(s.peer_id::text, s.id::text) = p.peer_key
-            AND s.timestamp <= m.minute + INTERVAL '1 minute'
-            ${andJoin}
-          ORDER BY p.peer_key, m.minute, s.timestamp DESC
+          SELECT
+            minute,
+            FIRST_VALUE(rx_bytes) OVER (PARTITION BY peer_key, grp ORDER BY minute) AS rx_bytes,
+            FIRST_VALUE(tx_bytes) OVER (PARTITION BY peer_key, grp ORDER BY minute) AS tx_bytes
+          FROM grouped
         )
       SELECT
-        minute AS timestamp,
-        CAST(SUM(rx_bytes) AS float8) AS "rxBytes",
-        CAST(SUM(tx_bytes) AS float8) AS "txBytes"
+        minute                         AS timestamp,
+        CAST(SUM(rx_bytes) AS float8)  AS "rxBytes",
+        CAST(SUM(tx_bytes) AS float8)  AS "txBytes"
       FROM filled
+      WHERE rx_bytes IS NOT NULL
       GROUP BY minute
       ORDER BY minute ASC
       `,
