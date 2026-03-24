@@ -14,11 +14,6 @@ import { UserModule } from "./modules/user";
 
 /**
  * Корневой модуль приложения.
- *
- * Порядок модулей важен для bootstrapper-ов:
- *   - WgStatisticsModule должен идти перед SocketModule, чтобы
- *     привязки SOCKET_EVENT_LISTENER и SOCKET_HANDLER были зарегистрированы первыми.
- *   - SocketModule всегда последний — SocketBootstrap запускает сервер.
  */
 @Module({
   imports: [
