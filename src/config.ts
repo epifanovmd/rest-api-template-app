@@ -105,7 +105,7 @@ export type Config = z.infer<typeof configSchema>;
 
 const { env } = process;
 
-export const config = configSchema.parse({
+export const config: Config = configSchema.parse({
   server: {
     publicHost: env.PUBLIC_HOST,
     host: env.SERVER_HOST,
