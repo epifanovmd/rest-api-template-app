@@ -23,12 +23,10 @@ import {
   WgServerStatsUpdatedEvent,
 } from "./events";
 import { WgSpeedSample } from "./wg-speed-sample.entity";
-import {
-  AggregatedFilters,
-  WgSpeedSampleRepository,
-  WgTrafficStatRepository,
-} from "./wg-statistics.repository";
+import { WgSpeedSampleRepository } from "./wg-speed-sample.repository";
+import { AggregatedFilters } from "./wg-statistics.types";
 import { WgTrafficStat } from "./wg-traffic-stat.entity";
+import { WgTrafficStatRepository } from "./wg-traffic-stat.repository";
 
 // ─── Internal state types ─────────────────────────────────────────────────────
 
