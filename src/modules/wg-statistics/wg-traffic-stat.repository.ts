@@ -8,12 +8,14 @@ import {
 } from "./wg-statistics.types";
 import { WgTrafficStat } from "./wg-traffic-stat.entity";
 
+/** Репозиторий для работы со снимками трафика WireGuard-пиров. */
 @InjectableRepository(WgTrafficStat)
 export class WgTrafficStatRepository extends BaseRepository<WgTrafficStat> {
   constructor(dataSource: DataSource) {
     super(dataSource, WgTrafficStat);
   }
 
+  /** Получить последние записи трафика для пира в порядке убывания времени. */
   async getLatestByPeer(peerId: string, limit = 100): Promise<WgTrafficStat[]> {
     return this.find({
       where: { peerId },
@@ -23,8 +25,8 @@ export class WgTrafficStatRepository extends BaseRepository<WgTrafficStat> {
   }
 
   /**
-   * Returns the single most-recent traffic record per peer in one query.
-   * Used at bootstrap to restore monotonic byte offsets after restarts.
+   * Последняя запись трафика по каждому пиру одним запросом.
+   * Используется при старте для восстановления монотонных счётчиков байт после перезапуска.
    */
   async getLatestPerPeer(): Promise<
     Array<{ peerId: string; rxBytes: number; txBytes: number }>
@@ -38,6 +40,7 @@ export class WgTrafficStatRepository extends BaseRepository<WgTrafficStat> {
       .getRawMany();
   }
 
+  /** Получить все записи трафика пира в указанном временном диапазоне. */
   async getByPeerInRange(
     peerId: string,
     from: Date,
@@ -51,6 +54,7 @@ export class WgTrafficStatRepository extends BaseRepository<WgTrafficStat> {
       .getMany();
   }
 
+  /** Получить все записи трафика сервера в указанном диапазоне, опционально фильтруя по пиру. */
   async getByServerInRange(
     serverId: string,
     from: Date,
@@ -70,19 +74,18 @@ export class WgTrafficStatRepository extends BaseRepository<WgTrafficStat> {
   }
 
   /**
-   * Aggregated traffic by minute for chart rendering.
+   * Агрегированный трафик по минутам для графиков.
    *
-   * rx_bytes/tx_bytes are cumulative counters. For each minute bucket takes the
-   * latest known value per peer and sums across peers. Missing minutes are filled
-   * forward from the last recorded value to prevent dips caused by dead-band
-   * filtering.
+   * rx_bytes/tx_bytes — кумулятивные счётчики. Для каждой минуты берётся последнее
+   * известное значение по каждому пиру и суммируется. Пропущенные минуты заполняются
+   * вперёд последним известным значением (fill-forward), чтобы не было провалов
+   * из-за фильтрации мёртвой зоны.
    *
-   * Seeds each peer with its last known value before the range start so the
-   * first point is not artificially low when a peer has no record exactly at
-   * the range boundary.
+   * Перед началом диапазона подтягивается последнее известное значение каждого пира
+   * (seeds) — это предотвращает искусственный провал первой точки, когда у пира нет
+   * записи точно на границе диапазона.
    *
-   * Single table scan → seeds → generate_series time slots → LEFT JOIN → window
-   * fill-forward (COUNT + FIRST_VALUE). No range-join CROSS JOIN.
+   * raw → seeds → raw_seeded → generate_series → CROSS JOIN → fill-forward (COUNT + FIRST_VALUE) → SUM
    */
   async getAggregatedInRange(
     from: Date,
@@ -193,6 +196,7 @@ export class WgTrafficStatRepository extends BaseRepository<WgTrafficStat> {
     );
   }
 
+  /** Удалить записи трафика старше указанной даты и вернуть количество удалённых строк. */
   async deleteOlderThan(date: Date): Promise<number> {
     const result = await this.createQueryBuilder()
       .delete()

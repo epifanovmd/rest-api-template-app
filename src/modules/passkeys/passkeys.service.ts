@@ -22,6 +22,7 @@ const rpID = webAuthn.rpHost;
 const port = webAuthn.rpPort ? `:${webAuthn.rpPort}` : "";
 const origin = `${webAuthn.rpSchema}://${rpID}${port}`;
 
+/** Сервис для регистрации и аутентификации через WebAuthn passkeys. */
 @Injectable()
 export class PasskeysService {
   constructor(

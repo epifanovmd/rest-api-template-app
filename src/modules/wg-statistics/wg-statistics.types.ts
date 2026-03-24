@@ -13,8 +13,8 @@ export interface AggregatedSpeedPoint {
 export interface AggregatedFilters {
   serverId?: string;
   peerId?: string;
-  /** Filter by multiple server IDs (OR logic). Ignored if serverId is set. */
+  /** Фильтр по нескольким ID серверов (логика ИЛИ). Игнорируется, если задан serverId. */
   serverIds?: string[];
-  /** Filter by multiple peer IDs (OR logic). Ignored if peerId is set. */
+  /** Фильтр по нескольким ID пиров (логика ИЛИ). Игнорируется, если задан peerId. */
   peerIds?: string[];
 }

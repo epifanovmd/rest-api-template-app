@@ -6,7 +6,7 @@ import { ISocketEventListener } from "../socket/socket-event-listener.interface"
 import { WgPeerStatusChangedEvent } from "./events";
 
 /**
- * Broadcasts peer DB status changes to Socket.IO room wg:peer:{id}
+ * Рассылает изменения статуса пира в БД в Socket.IO комнату wg:peer:{id}
  */
 @Injectable()
 export class WgPeerStatusListener implements ISocketEventListener {

@@ -14,12 +14,14 @@ import { User } from "../user/user.entity";
 
 export type CredentialDeviceType = "singleDevice" | "multiDevice";
 
+/** Сущность WebAuthn passkey (учётные данные аутентификатора). */
 @Entity("passkeys")
 @Index("IDX_PASSKEYS_USER_ID", ["userId"])
 export class Passkey {
   @PrimaryColumn({ type: "varchar" })
   id: string;
 
+  // Публичный ключ аутентификатора в формате COSE
   @Column({
     name: "public_key",
     type: "bytea",
@@ -33,9 +35,11 @@ export class Passkey {
   @Column({ name: "user_id", type: "uuid" })
   userId: string;
 
+  // Счётчик использования для защиты от replay-атак
   @Column({ type: "int" })
   counter: number;
 
+  // Тип устройства: singleDevice (привязан к одному) или multiDevice (синхронизированный)
   @Column({
     name: "device_type",
     type: "varchar",
@@ -54,6 +58,7 @@ export class Passkey {
   })
   transports?: AuthenticatorTransportFuture[];
 
+  // Дата последнего использования passkey для входа
   @Column({ name: "last_used", type: "timestamp", nullable: true })
   lastUsed?: Date;
 
@@ -63,7 +68,7 @@ export class Passkey {
   @UpdateDateColumn({ name: "updated_at" })
   updatedAt: Date;
 
-  // Relations
+  // Связи
   @ManyToOne(() => User, user => user.passkeys, { onDelete: "CASCADE" })
   @JoinColumn({ name: "user_id" })
   user: User;

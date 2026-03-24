@@ -18,6 +18,7 @@ const ROLE_DEFAULT_PERMISSIONS: Record<ERole, EPermissions[]> = {
   [ERole.GUEST]: [EPermissions.WG_PEER_OWN],
 };
 
+/** Сервис для управления ролями и их разрешениями. */
 @Injectable()
 export class RoleService {
   constructor(
@@ -26,10 +27,12 @@ export class RoleService {
     private _permissionRepository: PermissionRepository,
   ) {}
 
+  /** Получить все роли с их разрешениями. */
   async getRoles(): Promise<Role[]> {
     return this._roleRepository.findAll();
   }
 
+  /** Заменить набор разрешений роли на переданный список (upsert по имени). */
   async setRolePermissions(
     roleId: string,
     permissions: EPermissions[],
@@ -60,8 +63,8 @@ export class RoleService {
   }
 
   /**
-   * Seeds default permissions for each role.
-   * Only sets permissions if the role currently has none (preserves manual changes).
+   * Засеивает разрешения по умолчанию для каждой роли.
+   * Устанавливает разрешения только если у роли их ещё нет (сохраняет ручные изменения).
    */
   async seedDefaultPermissions(): Promise<void> {
     for (const [roleName, permissions] of Object.entries(

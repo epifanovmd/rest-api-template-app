@@ -28,12 +28,12 @@ import { AggregatedFilters } from "./wg-statistics.types";
 import { WgTrafficStat } from "./wg-traffic-stat.entity";
 import { WgTrafficStatRepository } from "./wg-traffic-stat.repository";
 
-// ─── Internal state types ─────────────────────────────────────────────────────
+// ─── Внутренние типы состояния ────────────────────────────────────────────────
 
 interface PeerPrevSnapshot {
   rxBytes: number;
   txBytes: number;
-  /** Cumulative offset accumulated from WireGuard counter resets */
+  /** Накопленное смещение при сбросах счётчиков WireGuard */
   rxOffset: number;
   txOffset: number;
   timestamp: number;
@@ -58,42 +58,43 @@ interface PeerMetrics {
   isActive: boolean;
 }
 
-// ─── Service ──────────────────────────────────────────────────────────────────
+// ─── Сервис ───────────────────────────────────────────────────────────────────
 
+/** Сервис сбора и публикации статистики WireGuard: скорость, трафик, активность пиров. */
 @Injectable()
 export class WgStatisticsService {
-  // ─── In-memory state ────────────────────────────────────────────────────────
+  // ─── Состояние в памяти ─────────────────────────────────────────────────────
 
-  /** Previous WireGuard counters per peer — used for speed calculation */
+  /** Предыдущие счётчики WireGuard по каждому пиру — используются для расчёта скорости */
   private prevSnapshots = new Map<string, PeerPrevSnapshot>();
 
   /**
-   * Last adjusted bytes loaded from DB at startup.
-   * Restores monotonic byte counters after app/WG restart.
+   * Последние скорректированные байты, загруженные из БД при запуске.
+   * Восстанавливает монотонные счётчики байт после перезапуска приложения/WG.
    */
   private lastKnownDb = new Map<string, { rxBytes: number; txBytes: number }>();
 
-  /** Previous isActive per peer — used to detect activity transitions */
+  /** Предыдущее isActive по каждому пиру — используется для определения переходов активности */
   private prevActiveState = new Map<string, boolean>();
 
-  // ─── Dead-band configuration ─────────────────────────────────────────────────
+  // ─── Конфигурация мёртвой зоны ───────────────────────────────────────────────
   //
-  // Socket: emit if speed changed > 256 bps  OR max 30 s silence.
-  // DB:     save  if speed changed > 1024 bps OR bytes changed OR max 60 s silence.
+  // Socket: отправлять если скорость изменилась > 256 bps ИЛИ тишина > 30 с.
+  // DB:     сохранять если скорость изменилась > 1024 bps ИЛИ байты изменились ИЛИ тишина > 60 с.
 
   private readonly SOCKET_DEADBAND_BPS = 256;
   private readonly SOCKET_MAX_SILENCE_MS = 30_000;
   private readonly DB_DEADBAND_BPS = 1024;
   private readonly DB_MAX_SILENCE_MS = 60_000;
 
-  // ─── Dead-band state ─────────────────────────────────────────────────────────
+  // ─── Состояние мёртвой зоны ──────────────────────────────────────────────────
 
   private lastSocketEmit = new Map<string, DeadbandSnapshot>();
   private lastDbSave = new Map<string, DeadbandSnapshot>();
   private lastServerSocketEmit = new Map<string, DeadbandSnapshot>();
   private lastOverviewSocketEmit: DeadbandSnapshot | undefined;
 
-  // ─── Last-known payload cache (for HTTP snapshot endpoints) ──────────────────
+  // ─── Кэш последних известных данных (для HTTP-эндпоинтов снимков) ────────────
 
   private lastOverviewSnapshot: WgOverviewStatsPayload | null = null;
   private lastServerSnapshots = new Map<string, WgServerStatsPayload>();
@@ -114,11 +115,11 @@ export class WgStatisticsService {
     private readonly eventBus: EventBus,
   ) {}
 
-  // ─── Bootstrap ───────────────────────────────────────────────────────────────
+  // ─── Инициализация ───────────────────────────────────────────────────────────
 
   /**
-   * Load last known adjusted bytes from DB for all peers in a single query.
-   * Called once at bootstrap so offsets are correctly restored after any restart.
+   * Загружает последние известные скорректированные байты из БД для всех пиров одним запросом.
+   * Вызывается один раз при инициализации, чтобы правильно восстановить смещения после перезапуска.
    */
   async loadLastKnownFromDb(): Promise<void> {
     const rows = await this.trafficRepo.getLatestPerPeer();
@@ -136,19 +137,19 @@ export class WgStatisticsService {
     );
   }
 
-  // ─── Main polling tick ───────────────────────────────────────────────────────
+  // ─── Основной тик опроса ─────────────────────────────────────────────────────
 
   /**
-   * Main polling tick — called by WgStatisticsBootstrap on interval.
+   * Основной тик опроса — вызывается WgStatisticsBootstrap по интервалу.
    *
-   * Steps:
-   *  1. Fetch live WireGuard data for all UP servers
-   *  2. Per-peer: compute speed and adjusted bytes (monotonic, reset-safe)
-   *  3. Per-peer: check dead-band → decide what to emit / save
-   *  4. Per-peer: detect isActive transition → emit WgPeerActiveChangedEvent
-   *  5. Per-server: accumulate totals, check server dead-band
-   *  6. Batch persist traffic snapshots, speed samples, lastHandshake to DB
-   *  7. Emit WgStatsUpdatedEvent for socket broadcast
+   * Шаги:
+   *  1. Получить актуальные данные WireGuard для всех запущенных серверов
+   *  2. По каждому пиру: вычислить скорость и скорректированные байты (монотонно, без сбросов)
+   *  3. По каждому пиру: проверить мёртвую зону → решить что отправить / сохранить
+   *  4. По каждому пиру: определить переход isActive → вызвать WgPeerActiveChangedEvent
+   *  5. По каждому серверу: накопить итоги, проверить мёртвую зону сервера
+   *  6. Пакетно сохранить снимки трафика, сэмплы скорости, lastHandshake в БД
+   *  7. Вызвать WgStatsUpdatedEvent для рассылки через сокет
    */
   async poll(persistToDb = true): Promise<void> {
     try {
@@ -160,11 +161,11 @@ export class WgStatisticsService {
       const now = new Date();
       const nowMs = now.getTime();
 
-      // Build public_key → DB peer map once for the whole tick
+      // Строим карту public_key → пир из БД один раз для всего тика
       const allPeers = await this.peerRepo.find();
       const peerByPublicKey = new Map(allPeers.map(p => [p.publicKey, p]));
 
-      // Global overview accumulators
+      // Глобальные аккумуляторы для сводки
       let globalRx = 0;
       let globalTx = 0;
       let globalRxSpeed = 0;
@@ -172,7 +173,7 @@ export class WgStatisticsService {
       let totalTrackedPeers = 0;
       let totalActivePeers = 0;
 
-      // Batch write buffers — filled per-peer, flushed after all servers
+      // Буферы пакетной записи — заполняются по каждому пиру, сбрасываются после всех серверов
       const trafficInserts: Partial<WgTrafficStat>[] = [];
       const speedInserts: Partial<WgSpeedSample>[] = [];
       const handshakeUpdates: Array<{
@@ -180,7 +181,7 @@ export class WgStatisticsService {
         lastHandshake: Date | null;
       }> = [];
 
-      // ── 1. Iterate UP servers ──────────────────────────────────────────────
+      // ── 1. Перебираем запущенные серверы ──────────────────────────────────────
 
       for (const server of upServers) {
         let showData: WgShowOutput;
@@ -207,7 +208,7 @@ export class WgStatisticsService {
 
           srvTrackedPeers += 1;
 
-          // ── 2. Compute speed + adjusted bytes ────────────────────────────
+          // ── 2. Вычисляем скорость + скорректированные байты ──────────────
 
           const metrics = this.computePeerMetrics(wgPeer, dbPeer.id, nowMs);
 
@@ -219,7 +220,7 @@ export class WgStatisticsService {
             timestamp: nowMs,
           });
 
-          // ── 3. Check dead-band → decide what to update ───────────────────
+          // ── 3. Проверяем мёртвую зону → решаем что обновить ──────────────
 
           const emitToSocket = this.checkSocketDeadband(
             dbPeer.id,
@@ -241,7 +242,7 @@ export class WgStatisticsService {
               nowMs,
             );
 
-          // ── 4. Detect isActive transition → emit domain event ────────────
+          // ── 4. Определяем переход isActive → вызываем доменное событие ────
 
           this.emitActiveChangedIfNeeded(
             dbPeer.id,
@@ -250,7 +251,7 @@ export class WgStatisticsService {
             wgPeer.lastHandshake,
           );
 
-          // ── 5. Emit peer stats event ──────────────────────────────────────
+          // ── 5. Вызываем событие статистики пира ────────────────────────────
 
           if (emitToSocket) {
             const peerPayload = {
@@ -269,7 +270,7 @@ export class WgStatisticsService {
             this.eventBus.emit(new WgPeerStatsUpdatedEvent(peerPayload));
           }
 
-          // ── 6. Collect DB writes ──────────────────────────────────────────
+          // ── 6. Собираем записи для БД ─────────────────────────────────────
 
           if (saveToDb) {
             handshakeUpdates.push({
@@ -297,7 +298,7 @@ export class WgStatisticsService {
             });
           }
 
-          // ── Accumulate server totals ──────────────────────────────────────
+          // ── Накапливаем итоги по серверу ────────────────────────────────────
 
           srvRx += metrics.adjustedRx;
           srvTx += metrics.adjustedTx;
@@ -306,7 +307,7 @@ export class WgStatisticsService {
           if (metrics.isActive) srvActivePeers += 1;
         }
 
-        // ── 5. Server-level dead-band check ───────────────────────────────
+        // ── 5. Проверка мёртвой зоны на уровне сервера ──────────────────
 
         const emitServer = this.needsUpdate(
           this.lastServerSocketEmit.get(server.id),
@@ -352,7 +353,7 @@ export class WgStatisticsService {
         totalActivePeers += srvActivePeers;
       }
 
-      // ── 6. Batch persist to DB ─────────────────────────────────────────────
+      // ── 6. Пакетное сохранение в БД ────────────────────────────────────────
 
       await Promise.all([
         trafficInserts.length > 0
@@ -366,7 +367,7 @@ export class WgStatisticsService {
           : Promise.resolve(),
       ]);
 
-      // ── 7. Emit WgOverviewStatsUpdatedEvent ───────────────────────────────────
+      // ── 7. Вызываем WgOverviewStatsUpdatedEvent ──────────────────────────────
 
       const overviewChanged = this.needsUpdate(
         this.lastOverviewSocketEmit,
@@ -410,15 +411,15 @@ export class WgStatisticsService {
     }
   }
 
-  // ─── Metric computation ───────────────────────────────────────────────────────
+  // ─── Вычисление метрик ───────────────────────────────────────────────────────
 
   /**
-   * Computes speed and reset-safe adjusted byte counters for a single peer.
+   * Вычисляет скорость и скорректированные счётчики байт для одного пира, устойчивые к сбросам.
    *
-   * WireGuard resets rx/tx counters to 0 when the interface is restarted.
-   * To keep values monotonically increasing, a cumulative offset is maintained:
-   *   - Counter drop detected (raw < prev): offset += previous raw value
-   *   - No prev snapshot (first tick after app restart): restore from last DB value
+   * WireGuard сбрасывает счётчики rx/tx в 0 при перезапуске интерфейса.
+   * Для сохранения монотонного роста поддерживается накопленное смещение:
+   *   - Обнаружен сброс счётчика (raw < prev): offset += предыдущее raw значение
+   *   - Нет предыдущего снимка (первый тик после перезапуска): восстанавливаем из последнего значения БД
    */
   private computePeerMetrics(
     wgPeer: WgPeerStats,
@@ -430,9 +431,9 @@ export class WgStatisticsService {
 
     const rxOffset = prev
       ? wgPeer.rxBytes < prev.rxBytes
-        ? prev.rxOffset + prev.rxBytes // WG counter reset
+        ? prev.rxOffset + prev.rxBytes // сброс счётчика WG
         : prev.rxOffset
-      : Math.max(0, (lastKnown?.rxBytes ?? 0) - wgPeer.rxBytes); // app restart
+      : Math.max(0, (lastKnown?.rxBytes ?? 0) - wgPeer.rxBytes); // перезапуск приложения
 
     const txOffset = prev
       ? wgPeer.txBytes < prev.txBytes
@@ -473,11 +474,11 @@ export class WgStatisticsService {
     };
   }
 
-  // ─── Dead-band checks ─────────────────────────────────────────────────────────
+  // ─── Проверки мёртвой зоны ───────────────────────────────────────────────────
 
   /**
-   * Returns true if a socket emission should be sent for this peer.
-   * Updates the cached snapshot on positive result.
+   * Возвращает true, если нужно отправить событие через сокет для данного пира.
+   * Обновляет кэшированный снимок при положительном результате.
    */
   private checkSocketDeadband(
     key: string,
@@ -512,8 +513,8 @@ export class WgStatisticsService {
   }
 
   /**
-   * Returns true if a DB write should be performed for this peer.
-   * Updates the cached snapshot on positive result.
+   * Возвращает true, если нужно выполнить запись в БД для данного пира.
+   * Обновляет кэшированный снимок при положительном результате.
    */
   private checkDbDeadband(
     key: string,
@@ -547,7 +548,7 @@ export class WgStatisticsService {
     return should;
   }
 
-  /** Core dead-band test: true when value has changed enough or silence expired. */
+  /** Основная проверка мёртвой зоны: true если значение изменилось достаточно или истекло молчание. */
   private needsUpdate(
     last: DeadbandSnapshot | undefined,
     rxSpeedBps: number,
@@ -565,8 +566,8 @@ export class WgStatisticsService {
     if (activePeers !== undefined && activePeers !== last.activePeers)
       return true;
 
-    // Always emit when speed drops to zero so the client doesn't keep
-    // displaying the last non-zero speed after activity stops.
+    // Всегда отправлять при падении скорости до нуля, чтобы клиент не продолжал
+    // отображать последнюю ненулевую скорость после остановки активности.
     if (
       (last.rxSpeedBps > 0 && rxSpeedBps === 0) ||
       (last.txSpeedBps > 0 && txSpeedBps === 0)
@@ -579,11 +580,11 @@ export class WgStatisticsService {
     );
   }
 
-  // ─── Active state change detection ───────────────────────────────────────────
+  // ─── Определение изменения состояния активности ──────────────────────────────
 
   /**
-   * Emits WgPeerActiveChangedEvent only when isActive transitions.
-   * Always emits on first observation (after restart) to sync client state.
+   * Вызывает WgPeerActiveChangedEvent только при переходе isActive.
+   * Всегда вызывается при первом наблюдении (после перезапуска) для синхронизации состояния клиента.
    */
   private emitActiveChangedIfNeeded(
     peerId: string,
@@ -601,9 +602,9 @@ export class WgStatisticsService {
     }
   }
 
-  // ─── Purge ────────────────────────────────────────────────────────────────────
+  // ─── Очистка ──────────────────────────────────────────────────────────────────
 
-  /** Purge stats older than retentionDays */
+  /** Удаляет статистику старше retentionDays */
   async purgeOldStats(): Promise<void> {
     const cutoff = new Date(
       Date.now() - config.wireguard.statsRetentionDays * 24 * 60 * 60 * 1000,
@@ -620,35 +621,40 @@ export class WgStatisticsService {
     );
   }
 
-  // ─── Snapshot getters for initial page load ───────────────────────────────────
+  // ─── Геттеры снимков для начальной загрузки страницы ─────────────────────────
 
+  /** Вернуть последний снимок сводной статистики (для HTTP-эндпоинта начальной загрузки). */
   getCurrentOverview(): WgOverviewStatsPayload | null {
     return this.lastOverviewSnapshot;
   }
 
+  /** Вернуть последний снимок статистики конкретного сервера. */
   getCurrentServer(serverId: string): WgServerStatsPayload | null {
     return this.lastServerSnapshots.get(serverId) ?? null;
   }
 
+  /** Вернуть последний снимок статистики конкретного пира. */
   getCurrentPeer(peerId: string): WgPeerStatsPayload | null {
     return this.lastPeerSnapshots.get(peerId) ?? null;
   }
 
-  // ─── Query methods for HTTP endpoints ────────────────────────────────────────
+  // ─── Методы запросов для HTTP-эндпоинтов ─────────────────────────────────────
 
+  /** Получить последнюю запись трафика пира из БД. */
   async getLatestPeerStats(peerId: string): Promise<WgTrafficStat[]> {
     return this.trafficRepo.getLatestByPeer(peerId, 1);
   }
 
+  /** Получить последний сэмпл скорости пира из БД. */
   async getLatestPeerSpeed(peerId: string): Promise<WgSpeedSample[]> {
     return this.speedRepo.getLatestByPeer(peerId, 1);
   }
 
   /**
-   * Aggregated traffic + speed history for chart rendering.
+   * Агрегированная история трафика + скорости для отрисовки графиков.
    *
-   * - overview: no filters
-   * - server:   { serverId } (+ optional peerId)
+   * - overview: без фильтров
+   * - server:   { serverId } (+ опциональный peerId)
    * - peer:     { peerId }
    */
   async getAggregatedHistory(

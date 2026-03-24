@@ -12,8 +12,8 @@ import { WgPeer } from "../wg-peer/wg-peer.entity";
 import { WgServer } from "../wg-server/wg-server.entity";
 
 /**
- * Periodic snapshot of cumulative traffic counters for a peer.
- * Used for charts, total usage calculations and alerting.
+ * Периодический снимок накопленных счётчиков трафика для пира.
+ * Используется для графиков, расчёта общего использования и оповещений.
  */
 @Entity("wg_traffic_stats")
 @Index("IDX_WG_TRAFFIC_STAT_PEER_TS", ["peerId", "timestamp"])
@@ -28,19 +28,19 @@ export class WgTrafficStat {
   @Column({ name: "server_id", type: "uuid", nullable: true })
   serverId: string | null;
 
-  /** Cumulative bytes received by the peer (wg show rx_bytes) */
+  /** Накопленные байты, полученные пиром (wg show rx_bytes) */
   @Column({ name: "rx_bytes", type: "bigint", transformer: { to: v => v, from: v => Number(v) } })
   rxBytes: number;
 
-  /** Cumulative bytes sent to the peer (wg show tx_bytes) */
+  /** Накопленные байты, отправленные пиру (wg show tx_bytes) */
   @Column({ name: "tx_bytes", type: "bigint", transformer: { to: v => v, from: v => Number(v) } })
   txBytes: number;
 
-  /** Last handshake time from wg show */
+  /** Время последнего рукопожатия из wg show */
   @Column({ name: "last_handshake", type: "timestamptz", nullable: true })
   lastHandshake: Date | null;
 
-  /** Peer's current endpoint IP:port if known */
+  /** Текущий эндпоинт пира IP:port, если известен */
   @Column({ name: "endpoint", type: "varchar", length: 100, nullable: true })
   endpoint: string | null;
 

@@ -10,13 +10,13 @@ import {
 } from "./events";
 
 /**
- * Listens for stats events from EventBus and broadcasts
- * real-time data to subscribed Socket.IO rooms.
+ * Слушает события статистики из EventBus и рассылает
+ * данные в реальном времени в подписанные Socket.IO комнаты.
  *
- * Rooms:
- *   wg:overview         — overview stats (all admins)
- *   wg:server:{id}      — per-server stats
- *   wg:peer:{id}        — per-peer stats
+ * Комнаты:
+ *   wg:overview         — общая статистика (для всех администраторов)
+ *   wg:server:{id}      — статистика по серверу
+ *   wg:peer:{id}        — статистика по пиру
  */
 @Injectable()
 export class WgStatsEventListener implements ISocketEventListener {

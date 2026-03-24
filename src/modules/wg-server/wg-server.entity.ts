@@ -14,63 +14,63 @@ export class WgServer {
   @PrimaryGeneratedColumn("uuid")
   id: string;
 
-  /** User who created this server */
+  /** Пользователь, создавший этот сервер */
   @Column({ name: "user_id", type: "uuid", nullable: true })
   userId: string | null;
 
-  /** Human-readable name, e.g. "Main Server" */
+  /** Понятное для человека название, например "Main Server" */
   @Column({ type: "varchar", length: 100 })
   name: string;
 
-  /** WireGuard interface name, e.g. wg0 */
+  /** Имя интерфейса WireGuard, например wg0 */
   @Column({ type: "varchar", length: 20, unique: true })
   interface: string;
 
-  /** UDP port WireGuard listens on */
+  /** UDP-порт, который слушает WireGuard */
   @Column({ name: "listen_port", type: "int" })
   listenPort: number;
 
-  /** Server's WireGuard private key */
+  /** Приватный ключ WireGuard сервера */
   @Column({ name: "private_key", type: "varchar" })
   privateKey: string;
 
-  /** Server's WireGuard public key (derived from private) */
+  /** Публичный ключ WireGuard сервера (производный от приватного) */
   @Column({ name: "public_key", type: "varchar" })
   publicKey: string;
 
-  /** Server VPN subnet address, e.g. 10.0.0.1/24 */
+  /** VPN-адрес подсети сервера, например 10.0.0.1/24 */
   @Column({ type: "varchar", length: 50 })
   address: string;
 
-  /** DNS server for peers, e.g. 1.1.1.1,8.8.8.8 */
+  /** DNS-сервер для пиров, например 1.1.1.1,8.8.8.8 */
   @Column({ type: "varchar", length: 100, nullable: true })
   dns: string | null;
 
-  /** Public endpoint for clients to connect, e.g. vpn.example.com:51820 */
+  /** Публичный endpoint для подключения клиентов, например vpn.example.com:51820 */
   @Column({ type: "varchar", length: 255, nullable: true })
   endpoint: string | null;
 
-  /** MTU (default 1420) */
+  /** MTU (по умолчанию 1420) */
   @Column({ type: "int", nullable: true })
   mtu: number | null;
 
-  /** Shell command executed before the interface is brought up */
+  /** Shell-команда, выполняемая перед поднятием интерфейса */
   @Column({ name: "pre_up", type: "text", nullable: true })
   preUp: string | null;
 
-  /** Shell command executed before the interface is brought down */
+  /** Shell-команда, выполняемая перед остановкой интерфейса */
   @Column({ name: "pre_down", type: "text", nullable: true })
   preDown: string | null;
 
-  /** iptables PostUp rule */
+  /** Правило iptables PostUp */
   @Column({ name: "post_up", type: "text", nullable: true })
   postUp: string | null;
 
-  /** iptables PostDown rule */
+  /** Правило iptables PostDown */
   @Column({ name: "post_down", type: "text", nullable: true })
   postDown: string | null;
 
-  /** Current interface status */
+  /** Текущий статус интерфейса */
   @Column({
     type: "enum",
     enum: EWgServerStatus,
@@ -78,11 +78,11 @@ export class WgServer {
   })
   status: EWgServerStatus;
 
-  /** Whether this server is enabled/should be started */
+  /** Включён ли данный сервер / должен ли быть запущен */
   @Column({ type: "boolean", default: true })
   enabled: boolean;
 
-  /** Description / notes */
+  /** Описание / заметки */
   @Column({ type: "text", nullable: true })
   description: string | null;
 

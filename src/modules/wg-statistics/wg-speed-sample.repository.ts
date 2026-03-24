@@ -5,12 +5,14 @@ import { BaseRepository } from "../../core/repository";
 import { WgSpeedSample } from "./wg-speed-sample.entity";
 import { AggregatedFilters, AggregatedSpeedPoint } from "./wg-statistics.types";
 
+/** Репозиторий для работы с сэмплами скорости WireGuard-пиров. */
 @InjectableRepository(WgSpeedSample)
 export class WgSpeedSampleRepository extends BaseRepository<WgSpeedSample> {
   constructor(dataSource: DataSource) {
     super(dataSource, WgSpeedSample);
   }
 
+  /** Получить последние сэмплы скорости для пира в порядке убывания времени. */
   async getLatestByPeer(peerId: string, limit = 100): Promise<WgSpeedSample[]> {
     return this.find({
       where: { peerId },
@@ -19,6 +21,7 @@ export class WgSpeedSampleRepository extends BaseRepository<WgSpeedSample> {
     });
   }
 
+  /** Получить сэмплы скорости пира в указанном временном диапазоне. */
   async getByPeerInRange(
     peerId: string,
     from: Date,
@@ -32,6 +35,7 @@ export class WgSpeedSampleRepository extends BaseRepository<WgSpeedSample> {
       .getMany();
   }
 
+  /** Получить сэмплы скорости сервера в указанном диапазоне, опционально фильтруя по пиру. */
   async getByServerInRange(
     serverId: string,
     from: Date,
@@ -51,10 +55,10 @@ export class WgSpeedSampleRepository extends BaseRepository<WgSpeedSample> {
   }
 
   /**
-   * Aggregated speed by minute for chart rendering.
+   * Агрегированная скорость по минутам для отрисовки графиков.
    *
-   * Takes the LATEST sample per peer per minute bucket, then sums across peers.
-   * Supports optional server/peer filter.
+   * Берёт ПОСЛЕДНИЙ сэмпл по каждому пиру в каждом минутном интервале, затем суммирует по пирам.
+   * Поддерживает опциональный фильтр по серверу/пиру.
    */
   async getAggregatedInRange(
     from: Date,
@@ -98,6 +102,7 @@ export class WgSpeedSampleRepository extends BaseRepository<WgSpeedSample> {
     );
   }
 
+  /** Удалить сэмплы скорости старше указанной даты и вернуть количество удалённых строк. */
   async deleteOlderThan(date: Date): Promise<number> {
     const result = await this.createQueryBuilder()
       .delete()

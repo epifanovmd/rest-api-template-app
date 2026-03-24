@@ -21,7 +21,7 @@ export interface PeerConfigSection {
   allowedIPs: string;
   persistentKeepalive?: number;
   endpoint?: string;
-  /** Meta info written as comments above the [Peer] block */
+  /** Мета-информация, записываемая как комментарии перед блоком [Peer] */
   meta?: {
     id: string;
     name: string;
@@ -30,26 +30,27 @@ export interface PeerConfigSection {
 }
 
 export interface ClientConfigOptions {
-  /** Peer private key */
+  /** Приватный ключ пира */
   privateKey: string;
-  /** Peer VPN address (e.g. 10.0.0.2/32) */
+  /** VPN-адрес пира (например, 10.0.0.2/32) */
   address: string;
   dns?: string;
   mtu?: number;
-  /** Server public key */
+  /** Публичный ключ сервера */
   serverPublicKey: string;
   presharedKey?: string;
-  /** Server endpoint (host:port) */
+  /** Эндпоинт сервера (host:port) */
   serverEndpoint: string;
-  /** Traffic routed through VPN (default 0.0.0.0/0) */
+  /** Трафик, маршрутизируемый через VPN (по умолчанию 0.0.0.0/0) */
   allowedIPs?: string;
   persistentKeepalive?: number;
 }
 
+/** Сервис для генерации конфигурационных файлов WireGuard и QR-кодов к ним. */
 @Injectable()
 export class WgConfigService {
   /**
-   * Generate the [Interface] + [Peer] config for the WireGuard server
+   * Сгенерировать конфигурацию [Interface] + [Peer] для WireGuard-сервера
    */
   buildServerConfig(opts: ServerConfigOptions): string {
     const lines: string[] = [
@@ -86,7 +87,7 @@ export class WgConfigService {
   }
 
   /**
-   * Generate the client .conf file content
+   * Сгенерировать содержимое клиентского .conf файла
    */
   buildClientConfig(opts: ClientConfigOptions): string {
     const allowedIPs = opts.allowedIPs ?? "0.0.0.0/0, ::/0";
@@ -113,7 +114,7 @@ export class WgConfigService {
   }
 
   /**
-   * Generate QR code as PNG Buffer from config text
+   * Сгенерировать QR-код как PNG Buffer из текста конфигурации
    */
   async buildQrCode(configText: string): Promise<Buffer> {
     return QRCode.toBuffer(configText, {
@@ -125,7 +126,7 @@ export class WgConfigService {
   }
 
   /**
-   * Generate QR code as base64 data URL
+   * Сгенерировать QR-код как base64 data URL
    */
   async buildQrCodeDataUrl(configText: string): Promise<string> {
     return QRCode.toDataURL(configText, {

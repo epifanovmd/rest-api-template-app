@@ -1,10 +1,10 @@
 import { EPermissions } from "../../modules/permission/permission.types";
 
 /**
- * Checks if a user's permission set satisfies a required permission,
- * including wildcard resolution.
+ * Проверяет, удовлетворяет ли набор разрешений пользователя требуемому разрешению,
+ * включая разрешение wildcards.
  *
- * Examples:
+ * Примеры:
  *   hasPermission(["wg:*"], "wg:server:view")   → true
  *   hasPermission(["wg:server:*"], "wg:server:view") → true
  *   hasPermission(["wg:peer:*"], "wg:server:view")   → false

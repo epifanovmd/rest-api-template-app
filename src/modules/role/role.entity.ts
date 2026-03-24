@@ -11,11 +11,13 @@ import {
 import { Permission } from "../permission/permission.entity";
 import { ERole } from "./role.types";
 
+/** Сущность роли пользователя. Содержит набор разрешений, выданных всем пользователям этой роли. */
 @Entity("roles")
 export class Role {
   @PrimaryGeneratedColumn("uuid")
   id: string;
 
+  // Уникальное название роли из перечисления ERole
   @Column({ type: "enum", enum: ERole })
   name: ERole;
 
@@ -25,7 +27,7 @@ export class Role {
   @UpdateDateColumn({ name: "updated_at" })
   updatedAt: Date;
 
-  // Relations
+  // Связи
   @ManyToMany(() => Permission, permission => permission.roles, { eager: true })
   @JoinTable({
     name: "role_permissions",
@@ -34,6 +36,7 @@ export class Role {
   })
   permissions: Permission[];
 
+  /** Преобразовать сущность роли в DTO для передачи клиенту. */
   toDTO() {
     return {
       id: this.id,

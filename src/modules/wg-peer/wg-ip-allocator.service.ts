@@ -4,6 +4,7 @@ import { inject } from "inversify";
 import { Injectable } from "../../core";
 import { WgPeerRepository } from "./wg-peer.repository";
 
+/** Сервис для автоматического выделения IP-адресов WireGuard-пирам в пределах подсети сервера. */
 @Injectable()
 export class WgIpAllocatorService {
   constructor(
@@ -11,23 +12,23 @@ export class WgIpAllocatorService {
   ) {}
 
   /**
-   * Allocate the next free /32 host address within the server's subnet.
+   * Выделяет следующий свободный /32 хост-адрес в подсети сервера.
    *
-   * The server itself occupies the first host (e.g. 10.0.0.1/24 → .1 is taken).
-   * We scan existing peers for the server and return the lowest unused host.
+   * Сам сервер занимает первый хост (например 10.0.0.1/24 → .1 занят).
+   * Сканируем существующие пиры сервера и возвращаем наименьший незанятый хост.
    *
-   * @param serverAddress  Server VPN address with prefix, e.g. "10.0.0.1/24"
-   * @param serverId       Used to query existing peer allocations
-   * @returns              e.g. "10.0.0.2/32"
-   * @throws               If the subnet is exhausted
+   * @param serverAddress  VPN-адрес сервера с маской, например "10.0.0.1/24"
+   * @param serverId       Используется для получения существующих выделений пиров
+   * @returns              например "10.0.0.2/32"
+   * @throws               Если подсеть исчерпана
    */
   async allocate(serverAddress: string, serverId: string): Promise<string> {
     const { networkBase, prefix } = this.parseAddress(serverAddress);
 
-    const totalHosts = (1 << (32 - prefix)) - 2; // subtract network + broadcast
+    const totalHosts = (1 << (32 - prefix)) - 2; // вычитаем адрес сети + broadcast
     const baseInt = this.ipToInt(networkBase);
 
-    // Collect already-used host integers (server + peers)
+    // Собираем уже занятые хост-целые числа (сервер + пиры)
     const serverHostInt = this.ipToInt(serverAddress.split("/")[0]);
     const usedInts = new Set<number>([serverHostInt]);
 
@@ -39,7 +40,7 @@ export class WgIpAllocatorService {
       usedInts.add(this.ipToInt(ip));
     }
 
-    // Find first free host in the subnet (skip .0 network address)
+    // Ищем первый свободный хост в подсети (пропускаем .0 — адрес сети)
     for (let offset = 1; offset <= totalHosts + 1; offset += 1) {
       const candidate = baseInt + offset;
 
@@ -54,7 +55,7 @@ export class WgIpAllocatorService {
     );
   }
 
-  // ─── Helpers ───────────────────────────────────────────────────────────────
+  // ─── Вспомогательные методы ────────────────────────────────────────────────
 
   private parseAddress(cidr: string): { networkBase: string; prefix: number } {
     const [ip, prefixStr] = cidr.split("/");

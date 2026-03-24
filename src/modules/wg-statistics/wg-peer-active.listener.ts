@@ -6,7 +6,7 @@ import { ISocketEventListener } from "../socket/socket-event-listener.interface"
 import { WgPeerActiveChangedEvent } from "../wg-peer/events";
 
 /**
- * Broadcasts peer connection activity changes to Socket.IO room wg:peer:{id}
+ * Рассылает изменения активности соединения пира в Socket.IO комнату wg:peer:{id}
  */
 @Injectable()
 export class WgPeerActiveListener implements ISocketEventListener {

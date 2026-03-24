@@ -7,7 +7,7 @@ type Handler<T> = (event: T) => void | Promise<void>;
 
 @Injectable()
 export class EventBus {
-  // Используем Constructor как ключ — безопасно при минификации, не нужны строковые имена
+  // Используем Constructor как ключ — безопасно при минификации, строковые имена не нужны
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private readonly handlers = new Map<Constructor<any>, Set<Handler<any>>>();
 

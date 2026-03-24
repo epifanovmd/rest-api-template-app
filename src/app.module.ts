@@ -15,40 +15,40 @@ import { WgServerModule } from "./modules/wg-server";
 import { WgStatisticsModule } from "./modules/wg-statistics";
 
 /**
- * Root application module — WireGuard VPN Management API.
+ * Корневой модуль приложения — WireGuard VPN Management API.
  *
- * Module order matters for bootstrappers:
- *   - WgStatisticsModule must come before SocketModule so that
- *     SOCKET_EVENT_LISTENER and SOCKET_HANDLER bindings are registered first.
- *   - SocketModule always last — SocketBootstrap starts the server.
+ * Порядок модулей важен для bootstrapper-ов:
+ *   - WgStatisticsModule должен идти перед SocketModule, чтобы
+ *     привязки SOCKET_EVENT_LISTENER и SOCKET_HANDLER были зарегистрированы первыми.
+ *   - SocketModule всегда последний — SocketBootstrap запускает сервер.
  */
 @Module({
   imports: [
-    // Infrastructure
+    // Инфраструктура
     CoreModule,
 
-    // Utility modules
+    // Вспомогательные модули
     MailerModule,
     OtpModule,
     ResetPasswordTokensModule,
 
-    // User / Auth modules
+    // Модули пользователей / аутентификации
     UserModule,
     ProfileModule,
     AuthModule,
     PasskeysModule,
 
-    // WireGuard shared CLI services (no HTTP)
+    // Общие CLI-сервисы WireGuard (без HTTP)
     WgCliModule,
 
-    // WireGuard domain modules
+    // Доменные модули WireGuard
     WgServerModule,
     WgPeerModule,
 
-    // WireGuard statistics + socket events (must register before SocketModule)
+    // Статистика WireGuard + socket-события (должен регистрироваться перед SocketModule)
     WgStatisticsModule,
 
-    // Socket — last, so all ISocketHandler / ISocketEventListener are bound
+    // Socket — последним, чтобы все ISocketHandler / ISocketEventListener были привязаны
     SocketModule,
   ],
 })

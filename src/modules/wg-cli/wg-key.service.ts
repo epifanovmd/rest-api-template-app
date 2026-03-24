@@ -11,12 +11,13 @@ export interface WgKeyPair {
   publicKey: string;
 }
 
+/** Сервис для генерации криптографических ключей WireGuard через CLI. */
 @Injectable()
 export class WgKeyService {
   private readonly wg = config.wireguard.binaryPath;
 
   /**
-   * Generate a WireGuard private key
+   * Сгенерировать приватный ключ WireGuard
    */
   async generatePrivateKey(): Promise<string> {
     const { stdout } = await execAsync(`${this.wg} genkey`);
@@ -25,7 +26,7 @@ export class WgKeyService {
   }
 
   /**
-   * Derive public key from private key
+   * Получить публичный ключ из приватного ключа
    */
   async derivePublicKey(privateKey: string): Promise<string> {
     const { stdout } = await execAsync(
@@ -36,7 +37,7 @@ export class WgKeyService {
   }
 
   /**
-   * Generate preshared key
+   * Сгенерировать предварительно общий ключ (preshared key)
    */
   async generatePresharedKey(): Promise<string> {
     const { stdout } = await execAsync(`${this.wg} genpsk`);
@@ -45,7 +46,7 @@ export class WgKeyService {
   }
 
   /**
-   * Generate a complete private/public key pair
+   * Сгенерировать полную пару приватного/публичного ключей
    */
   async generateKeyPair(): Promise<WgKeyPair> {
     const privateKey = await this.generatePrivateKey();

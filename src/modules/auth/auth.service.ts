@@ -25,6 +25,7 @@ import {
   TSignUpRequestDto,
 } from "./auth.dto";
 
+/** Сервис аутентификации: регистрация, вход, сброс пароля и обновление токенов. */
 @Injectable()
 export class AuthService {
   constructor(
@@ -35,6 +36,7 @@ export class AuthService {
     @inject(TokenService) private _tokenService: TokenService,
   ) {}
 
+  /** Зарегистрировать нового пользователя и сразу выдать токены. */
   async signUp({
     email,
     phone,
@@ -73,6 +75,7 @@ export class AuthService {
     return this.signIn({ login, password });
   }
 
+  /** Аутентифицировать пользователя по логину (email/телефон) и паролю. */
   async signIn(body: ISignInRequestDto): Promise<IUserWithTokensDto> {
     const { login, password } = body;
 
@@ -121,6 +124,7 @@ export class AuthService {
     throw new UnauthorizedException("Не верный логин или пароль");
   }
 
+  /** Инициировать сброс пароля — отправить письмо со ссылкой на сброс. */
   async requestResetPassword(login: string) {
     try {
       let user;
@@ -167,6 +171,7 @@ export class AuthService {
     }
   }
 
+  /** Установить новый пароль пользователю по действующему токену сброса. */
   async resetPassword(token: string, password: string) {
     const { userId } = await this._resetPasswordTokensService.check(token);
 
@@ -175,6 +180,7 @@ export class AuthService {
     return new ApiResponseDto({ message: "Пароль успешно сброшен." });
   }
 
+  /** Обновить access + refresh токены по переданному refresh-токену. */
   async updateTokens(token?: string): Promise<ITokensDto> {
     if (!token) {
       throw new UnauthorizedException("Токен отсутствует");

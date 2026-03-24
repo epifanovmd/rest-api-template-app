@@ -43,12 +43,12 @@ export class WgStatisticsController extends Controller {
   }
 
   /**
-   * Aggregated traffic + speed across all servers and all peers.
-   * wg:stats:view — full overview; wg:server:own — own servers only;
-   * wg:peer:own — own peers only.
-   * @summary Overview stats
-   * @param from ISO date string (default: 24h ago)
-   * @param to ISO date string (default: now)
+   * Агрегированный трафик + скорость по всем серверам и всем пирам.
+   * wg:stats:view — полная сводка; wg:server:own — только свои серверы;
+   * wg:peer:own — только свои пиры.
+   * @summary Сводная статистика
+   * @param from Строка ISO даты (по умолчанию: 24ч назад)
+   * @param to Строка ISO даты (по умолчанию: сейчас)
    */
   @Security("jwt", ["permission:wg:stats:view"])
   @Security("jwt", ["permission:wg:server:own"])
@@ -82,13 +82,13 @@ export class WgStatisticsController extends Controller {
   }
 
   /**
-   * Aggregated traffic + speed for a specific server (all its peers).
-   * Optionally filter by a single peer via peerId query param.
-   * @summary Server stats
-   * @param serverId Server ID
-   * @param peerId Optional peer ID to filter
-   * @param from ISO date string (default: 24h ago)
-   * @param to ISO date string (default: now)
+   * Агрегированный трафик + скорость для конкретного сервера (все его пиры).
+   * Опционально фильтровать по одному пиру через параметр peerId.
+   * @summary Статистика сервера
+   * @param serverId ID сервера
+   * @param peerId Опциональный ID пира для фильтрации
+   * @param from Строка ISO даты (по умолчанию: 24ч назад)
+   * @param to Строка ISO даты (по умолчанию: сейчас)
    */
   @Security("jwt", ["permission:wg:stats:view"])
   @Security("jwt", ["permission:wg:server:own"])
@@ -119,12 +119,12 @@ export class WgStatisticsController extends Controller {
   }
 
   /**
-   * Aggregated traffic + speed for a specific peer.
-   * wg:stats:view can view any peer; wg:peer:own only their own.
-   * @summary Peer stats
-   * @param peerId Peer ID
-   * @param from ISO date string (default: 24h ago)
-   * @param to ISO date string (default: now)
+   * Агрегированный трафик + скорость для конкретного пира.
+   * wg:stats:view может просматривать любой пир; wg:peer:own только свои.
+   * @summary Статистика пира
+   * @param peerId ID пира
+   * @param from Строка ISO даты (по умолчанию: 24ч назад)
+   * @param to Строка ISO даты (по умолчанию: сейчас)
    */
   @Security("jwt", ["permission:wg:stats:view"])
   @Security("jwt", ["permission:wg:peer:own"])
@@ -153,9 +153,9 @@ export class WgStatisticsController extends Controller {
   }
 
   /**
-   * Current real-time stats across all servers — use for initial page load
-   * before WebSocket delivers the first wg:stats:overview event.
-   * @summary Current overview stats
+   * Текущая статистика в реальном времени по всем серверам — используется при начальной загрузке страницы
+   * до получения первого события wg:stats:overview через WebSocket.
+   * @summary Текущая сводная статистика
    */
   @Security("jwt", ["permission:wg:stats:view"])
   @Security("jwt", ["permission:wg:server:own"])
@@ -166,10 +166,10 @@ export class WgStatisticsController extends Controller {
   }
 
   /**
-   * Current real-time stats for a specific server — use for initial page load
-   * before WebSocket delivers the first wg:server:stats event.
-   * @summary Current server stats
-   * @param serverId Server ID
+   * Текущая статистика в реальном времени для конкретного сервера — используется при начальной загрузке страницы
+   * до получения первого события wg:server:stats через WebSocket.
+   * @summary Текущая статистика сервера
+   * @param serverId ID сервера
    */
   @Security("jwt", ["permission:wg:stats:view"])
   @Security("jwt", ["permission:wg:server:own"])
@@ -192,10 +192,10 @@ export class WgStatisticsController extends Controller {
   }
 
   /**
-   * Current real-time stats for a specific peer — use for initial page load
-   * before WebSocket delivers the first wg:peer:stats event.
-   * @summary Current peer stats
-   * @param peerId Peer ID
+   * Текущая статистика в реальном времени для конкретного пира — используется при начальной загрузке страницы
+   * до получения первого события wg:peer:stats через WebSocket.
+   * @summary Текущая статистика пира
+   * @param peerId ID пира
    */
   @Security("jwt", ["permission:wg:stats:view"])
   @Security("jwt", ["permission:wg:peer:own"])

@@ -5,8 +5,10 @@ import { BaseRepository, InjectableRepository } from "../../core";
 import { IUserOptionDto } from "./dto";
 import { User } from "./user.entity";
 
+/** Репозиторий для работы с пользователями. */
 @InjectableRepository(User)
 export class UserRepository extends BaseRepository<User> {
+  /** Найти пользователя по ID с опциональными связями. */
   async findById(
     id: string,
     relations?: FindOptionsRelations<User>,
@@ -17,6 +19,7 @@ export class UserRepository extends BaseRepository<User> {
     });
   }
 
+  /** Найти пользователя по email с опциональными связями. */
   async findByEmail(
     email: string,
     relations?: FindOptionsRelations<User>,
@@ -27,6 +30,7 @@ export class UserRepository extends BaseRepository<User> {
     });
   }
 
+  /** Найти пользователя по номеру телефона с опциональными связями. */
   async findByPhone(
     phone: string,
     relations?: FindOptionsRelations<User>,
@@ -37,6 +41,7 @@ export class UserRepository extends BaseRepository<User> {
     });
   }
 
+  /** Найти пользователя по email или телефону; возвращает null, если ни один параметр не передан. */
   async findByEmailOrPhone(
     email?: string,
     phone?: string,
@@ -61,6 +66,7 @@ export class UserRepository extends BaseRepository<User> {
     });
   }
 
+  /** Обновить данные пользователя и вернуть обновлённую запись. */
   async updateWithResponse(
     id: string,
     updateData: QueryDeepPartialEntity<User>,
@@ -72,6 +78,7 @@ export class UserRepository extends BaseRepository<User> {
     });
   }
 
+  /** Получить список пользователей для выпадающего списка с опциональной фильтрацией по строке запроса. */
   async findOptions(query?: string): Promise<IUserOptionDto[]> {
     const where: FindOptionsWhere<User>[] = query
       ? [

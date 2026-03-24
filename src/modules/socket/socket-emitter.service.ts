@@ -4,6 +4,7 @@ import { Injectable } from "../../core";
 import { ISocketEmitEvents } from "./socket.types";
 import { SocketServerService } from "./socket-server.service";
 
+/** Сервис для отправки Socket.IO событий пользователям, комнатам и широковещательно. */
 @Injectable()
 export class SocketEmitterService {
   constructor(
@@ -23,6 +24,7 @@ export class SocketEmitterService {
     this.server.io.to(`user_${userId}`).emit<any>(event, ...args);
   }
 
+  /** Отправляет событие всем клиентам в указанной комнате. */
   toRoom<K extends keyof ISocketEmitEvents>(
     room: string,
     event: K,
@@ -31,6 +33,7 @@ export class SocketEmitterService {
     this.server.io.to(room).emit<any>(event, ...args);
   }
 
+  /** Отправляет событие всем подключённым клиентам (broadcast). */
   broadcast<K extends keyof ISocketEmitEvents>(
     event: K,
     ...args: Parameters<ISocketEmitEvents[K]>

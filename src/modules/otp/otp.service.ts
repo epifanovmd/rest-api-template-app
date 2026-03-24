@@ -11,10 +11,12 @@ const {
   auth: { otp },
 } = config;
 
+/** Сервис для генерации и проверки одноразовых паролей (OTP). */
 @Injectable()
 export class OtpService {
   constructor(@inject(OtpRepository) private _otpRepository: OtpRepository) {}
 
+  /** Создать или обновить OTP-код для пользователя. */
   async create(userId: string) {
     const code = generateOtp();
     const findOtp = await this._otpRepository.findByUserId(userId);
@@ -35,6 +37,7 @@ export class OtpService {
     }
   }
 
+  /** Проверить OTP-код пользователя; удаляет запись после успешной проверки. */
   async check(userId: string, code: string) {
     const otp = await this._otpRepository.findByUserIdAndCode(userId, code);
 

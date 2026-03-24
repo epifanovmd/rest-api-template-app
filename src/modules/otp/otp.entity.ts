@@ -10,14 +10,17 @@ import {
 
 import { User } from "../user/user.entity";
 
+/** Сущность одноразового пароля (OTP) для верификации email. */
 @Entity("otp")
 export class Otp {
   @PrimaryColumn({ name: "user_id", type: "uuid" })
   userId: string;
 
+  // Числовой код подтверждения (6 цифр)
   @Column({ type: "varchar", length: 6 })
   code: string;
 
+  // Время истечения кода
   @Column({ name: "expire_at", type: "timestamp" })
   expireAt: Date;
 
@@ -27,17 +30,17 @@ export class Otp {
   @UpdateDateColumn({ name: "updated_at" })
   updatedAt: Date;
 
-  // Relations
+  // Связи
   @ManyToOne(() => User, user => user.otps, { onDelete: "CASCADE" })
   @JoinColumn({ name: "user_id" })
   user: User;
 
-  // Helper methods
+  /** Проверить, истёк ли срок действия кода. */
   isExpired(): boolean {
     return this.expireAt < new Date();
   }
 
-  // DTO transformation
+  /** Преобразовать сущность OTP в DTO для передачи клиенту. */
   toDTO() {
     return {
       userId: this.userId,
@@ -48,7 +51,7 @@ export class Otp {
     };
   }
 
-  // Static method for creating OTP
+  /** Создать объект OTP с вычисленным временем истечения. */
   static createOtp(
     userId: string,
     code: string,

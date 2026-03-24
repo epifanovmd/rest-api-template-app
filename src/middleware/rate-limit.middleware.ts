@@ -4,7 +4,7 @@ import { config } from "../config";
 
 const { rateLimit } = config;
 
-// apply rate limit
+// Применяем ограничение частоты запросов
 const db = new Map();
 
 export const rateLimitMiddleware = RateLimit({

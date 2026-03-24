@@ -6,7 +6,7 @@ import { ISocketEventListener } from "../socket/socket-event-listener.interface"
 import { WgServerStatusChangedEvent } from "./events";
 
 /**
- * Broadcasts server status changes to Socket.IO room wg:server:{id}
+ * Рассылает изменения статуса сервера в Socket.IO комнату wg:server:{id}
  */
 @Injectable()
 export class WgServerStatusListener implements ISocketEventListener {

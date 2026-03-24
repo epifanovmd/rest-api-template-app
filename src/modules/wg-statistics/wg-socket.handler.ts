@@ -9,15 +9,15 @@ import {
 import { WgStatisticsService } from "./wg-statistics.service";
 
 /**
- * Handles Socket.IO subscription events for WireGuard stats.
+ * Обрабатывает Socket.IO события подписки на статистику WireGuard.
  *
- * Clients join named rooms to receive targeted updates:
- *   wg:overview         — overall VPN stats
- *   wg:server:{id}      — specific server stats + status
- *   wg:peer:{id}        — specific peer stats + status
+ * Клиенты вступают в именованные комнаты для получения целевых обновлений:
+ *   wg:overview         — общая статистика VPN
+ *   wg:server:{id}      — статистика + статус конкретного сервера
+ *   wg:peer:{id}        — статистика + статус конкретного пира
  *
- * On subscribe, the current cached snapshot is immediately emitted
- * to the socket so the client has data before the next poll tick.
+ * При подписке текущий закэшированный снимок немедленно отправляется
+ * в сокет, чтобы клиент имел данные до следующего тика опроса.
  */
 @Injectable()
 export class WgSocketHandler implements ISocketHandler {

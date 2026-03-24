@@ -43,9 +43,9 @@ export class WgPeerController extends Controller {
   }
 
   /**
-   * List all peers.
-   * Returns all peers for wg:peer:view (with optional userId filter), own peers for wg:peer:own.
-   * @summary Get peers
+   * Список всех пиров.
+   * Возвращает все пиры для wg:peer:view (с опциональным фильтром userId), собственные пиры для wg:peer:own.
+   * @summary Получить пиры
    */
   @Security("jwt", ["permission:wg:peer:view"])
   @Security("jwt", ["permission:wg:peer:own"])
@@ -71,9 +71,9 @@ export class WgPeerController extends Controller {
   }
 
   /**
-   * Get peer options for dropdowns.
-   * Returns all options for wg:peer:view, own options for wg:peer:own.
-   * @summary Get peer options
+   * Получить варианты пиров для выпадающих списков.
+   * Возвращает все варианты для wg:peer:view, собственные для wg:peer:own.
+   * @summary Получить варианты пиров
    */
   @Security("jwt", ["permission:wg:peer:view"])
   @Security("jwt", ["permission:wg:peer:own"])
@@ -93,9 +93,9 @@ export class WgPeerController extends Controller {
   }
 
   /**
-   * Get a peer by ID.
-   * Ownership check for wg:peer:own users.
-   * @summary Get peer
+   * Получить пир по ID.
+   * Проверка владельца для пользователей с wg:peer:own.
+   * @summary Получить пир
    */
   @Security("jwt", ["permission:wg:peer:view"])
   @Security("jwt", ["permission:wg:peer:own"])
@@ -112,9 +112,9 @@ export class WgPeerController extends Controller {
   }
 
   /**
-   * Create a new peer on a server.
-   * Keys are auto-generated. Peer is applied to live interface if server is up.
-   * @summary Create peer
+   * Создать новый пир на сервере.
+   * Ключи генерируются автоматически. Пир применяется к активному интерфейсу если сервер запущен.
+   * @summary Создать пир
    */
   @Security("jwt", ["permission:wg:peer:manage"])
   @Post("/servers/{serverId}/peers")
@@ -131,8 +131,8 @@ export class WgPeerController extends Controller {
   }
 
   /**
-   * Update a peer.
-   * @summary Update peer
+   * Обновить пир.
+   * @summary Обновить пир
    */
   @Security("jwt", ["permission:wg:peer:manage"])
   @Patch("/peers/{id}")
@@ -147,9 +147,9 @@ export class WgPeerController extends Controller {
   }
 
   /**
-   * Delete a peer.
-   * Peer is removed from live interface if server is up.
-   * @summary Delete peer
+   * Удалить пир.
+   * Пир удаляется из активного интерфейса если сервер запущен.
+   * @summary Удалить пир
    */
   @Security("jwt", ["permission:wg:peer:manage"])
   @Delete("/peers/{id}")
@@ -158,9 +158,9 @@ export class WgPeerController extends Controller {
   }
 
   /**
-   * Start a peer (add to live WG interface, status → UP).
-   * Requires peer to be enabled and server to be running.
-   * @summary Start peer
+   * Запустить пир (добавить в активный интерфейс WG, статус → UP).
+   * Требует чтобы пир был включён и сервер запущен.
+   * @summary Запустить пир
    */
   @Security("jwt", ["permission:wg:peer:manage"])
   @Post("/peers/{id}/start")
@@ -171,8 +171,8 @@ export class WgPeerController extends Controller {
   }
 
   /**
-   * Stop a peer (remove from live WG interface, status → DOWN).
-   * @summary Stop peer
+   * Остановить пир (удалить из активного интерфейса WG, статус → DOWN).
+   * @summary Остановить пир
    */
   @Security("jwt", ["permission:wg:peer:manage"])
   @Post("/peers/{id}/stop")
@@ -183,8 +183,8 @@ export class WgPeerController extends Controller {
   }
 
   /**
-   * Assign a peer to a user.
-   * @summary Assign peer to user
+   * Назначить пир пользователю.
+   * @summary Назначить пир пользователю
    */
   @Security("jwt", ["permission:wg:peer:manage"])
   @Post("/peers/{id}/assign")
@@ -198,8 +198,8 @@ export class WgPeerController extends Controller {
   }
 
   /**
-   * Revoke peer from its current user.
-   * @summary Revoke peer from user
+   * Отозвать пир у текущего пользователя.
+   * @summary Отозвать пир у пользователя
    */
   @Security("jwt", ["permission:wg:peer:manage"])
   @Post("/peers/{id}/revoke")
@@ -210,8 +210,8 @@ export class WgPeerController extends Controller {
   }
 
   /**
-   * Rotate (regenerate) preshared key for a peer.
-   * @summary Rotate preshared key
+   * Ротировать (перегенерировать) предварительно общий ключ для пира.
+   * @summary Ротировать предварительно общий ключ
    */
   @Security("jwt", ["permission:wg:peer:manage"])
   @Post("/peers/{id}/rotate-psk")
@@ -222,8 +222,8 @@ export class WgPeerController extends Controller {
   }
 
   /**
-   * Remove preshared key from a peer.
-   * @summary Remove preshared key
+   * Удалить предварительно общий ключ у пира.
+   * @summary Удалить предварительно общий ключ
    */
   @Security("jwt", ["permission:wg:peer:manage"])
   @Delete("/peers/{id}/psk")
@@ -234,9 +234,9 @@ export class WgPeerController extends Controller {
   }
 
   /**
-   * Download the WireGuard client .conf file for this peer.
-   * wg:peer:view can access any peer; wg:peer:own only their own.
-   * @summary Get peer config file
+   * Скачать файл конфигурации WireGuard .conf для данного пира.
+   * wg:peer:view может обращаться к любому пиру; wg:peer:own только к своим.
+   * @summary Получить файл конфигурации пира
    */
   @Security("jwt", ["permission:wg:peer:view"])
   @Security("jwt", ["permission:wg:peer:own"])
@@ -261,10 +261,10 @@ export class WgPeerController extends Controller {
   }
 
   /**
-   * Get QR code PNG image for the client config.
-   * wg:peer:view can access any peer; wg:peer:own only their own.
-   * Returns base64-encoded PNG data URL.
-   * @summary Get peer QR code
+   * Получить PNG изображение QR-кода для клиентской конфигурации.
+   * wg:peer:view может обращаться к любому пиру; wg:peer:own только к своим.
+   * Возвращает base64-кодированный PNG data URL.
+   * @summary Получить QR-код пира
    */
   @Security("jwt", ["permission:wg:peer:view"])
   @Security("jwt", ["permission:wg:peer:own"])

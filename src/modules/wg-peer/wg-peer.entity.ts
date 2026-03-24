@@ -25,43 +25,43 @@ export class WgPeer {
   @Column({ name: "server_id", type: "uuid" })
   serverId: string;
 
-  /** Optional user who owns this peer */
+  /** Опциональный пользователь, которому принадлежит этот пир */
   @Column({ name: "user_id", type: "uuid", nullable: true })
   userId: string | null;
 
-  /** Human-readable label */
+  /** Понятное для человека название */
   @Column({ type: "varchar", length: 100 })
   name: string;
 
-  /** Peer's WireGuard public key */
+  /** Публичный ключ WireGuard пира */
   @Column({ name: "public_key", type: "varchar" })
   publicKey: string;
 
-  /** Peer's WireGuard private key (stored for client config generation) */
+  /** Приватный ключ WireGuard пира (хранится для генерации клиентской конфигурации) */
   @Column({ name: "private_key", type: "varchar" })
   privateKey: string;
 
-  /** Optional preshared key for enhanced security */
+  /** Опциональный предварительно общий ключ для повышенной безопасности */
   @Column({ name: "preshared_key", type: "varchar", nullable: true })
   presharedKey: string | null;
 
-  /** VPN IP assigned to this peer, e.g. 10.0.0.2/32 */
+  /** VPN IP, назначенный этому пиру, например 10.0.0.2/32 */
   @Column({ name: "allowed_ips", type: "varchar", length: 100 })
   allowedIPs: string;
 
-  /** PersistentKeepalive in seconds (optional) */
+  /** PersistentKeepalive в секундах (опционально) */
   @Column({ name: "persistent_keepalive", type: "int", nullable: true })
   persistentKeepalive: number | null;
 
-  /** Override DNS for client config */
+  /** Переопределение DNS для клиентской конфигурации */
   @Column({ type: "varchar", length: 100, nullable: true })
   dns: string | null;
 
-  /** Override MTU for client config */
+  /** Переопределение MTU для клиентской конфигурации */
   @Column({ type: "int", nullable: true })
   mtu: number | null;
 
-  /** Traffic routed through the VPN in client config (default 0.0.0.0/0) */
+  /** Трафик, маршрутизируемый через VPN в клиентской конфигурации (по умолчанию 0.0.0.0/0) */
   @Column({
     name: "client_allowed_ips",
     type: "varchar",
@@ -70,11 +70,11 @@ export class WgPeer {
   })
   clientAllowedIPs: string;
 
-  /** Whether this peer is active on the WG interface */
+  /** Активен ли данный пир на интерфейсе WG */
   @Column({ type: "boolean", default: true })
   enabled: boolean;
 
-  /** Current runtime status on the WG interface */
+  /** Текущий статус времени выполнения на интерфейсе WG */
   @Column({
     type: "enum",
     enum: EWgServerStatus,
@@ -82,15 +82,15 @@ export class WgPeer {
   })
   status: EWgServerStatus;
 
-  /** Optional expiry; peer is auto-disabled after this date */
+  /** Опциональный срок истечения; пир автоматически отключается после этой даты */
   @Column({ name: "expires_at", type: "timestamptz", nullable: true })
   expiresAt: Date | null;
 
-  /** Notes / description */
+  /** Заметки / описание */
   @Column({ type: "text", nullable: true })
   description: string | null;
 
-  /** Last WireGuard handshake time (updated by statistics service) */
+  /** Время последнего рукопожатия WireGuard (обновляется сервисом статистики) */
   @Column({ name: "last_handshake", type: "timestamptz", nullable: true })
   lastHandshake: Date | null;
 
@@ -100,7 +100,7 @@ export class WgPeer {
   @UpdateDateColumn({ name: "updated_at" })
   updatedAt: Date;
 
-  // Relations
+  // Связи
   @ManyToOne(() => WgServer, { onDelete: "CASCADE", eager: false })
   @JoinColumn({ name: "server_id" })
   server: WgServer;

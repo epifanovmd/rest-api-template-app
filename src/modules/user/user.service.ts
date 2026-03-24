@@ -19,6 +19,7 @@ import {
 import { User } from "./user.entity";
 import { UserRepository } from "./user.repository";
 
+/** Сервис для управления пользователями: CRUD, права доступа, верификация email, смена пароля. */
 @Injectable()
 export class UserService {
   constructor(
@@ -31,6 +32,7 @@ export class UserService {
     @inject(ProfileRepository) private _profileRepository: ProfileRepository,
   ) {}
 
+  /** Получить список пользователей с пагинацией и опциональной фильтрацией по email. */
   async getUsers(offset?: number, limit?: number, query?: string) {
     return this._userRepository.findAndCount({
       where: query ? [{ email: ILike(`%${query}%`) }] : undefined,
@@ -40,10 +42,12 @@ export class UserService {
     });
   }
 
+  /** Получить список пользователей в формате для выпадающего списка. */
   async getOptions(query?: string): Promise<IUserOptionDto[]> {
     return this._userRepository.findOptions(query);
   }
 
+  /** Найти пользователя по email или телефону; выбрасывает NotFoundException если не найден. */
   async getUserByAttr(where: FindOptionsWhere<User>) {
     const user = await this._userRepository.findByEmailOrPhone(
       where.email as string,
@@ -58,6 +62,7 @@ export class UserService {
     return user;
   }
 
+  /** Получить пользователя по ID со всеми связями; выбрасывает NotFoundException если не найден. */
   async getUser(id: string) {
     const user = await this._userRepository.findOne({
       where: { id },
@@ -71,6 +76,7 @@ export class UserService {
     return user;
   }
 
+  /** Создать нового пользователя, его профиль и назначить роль USER по умолчанию. */
   async createUser(body: Partial<User>) {
     const user = await this._userRepository.createAndSave({ ...body });
 
@@ -85,6 +91,7 @@ export class UserService {
     });
   }
 
+  /** Создать нового пользователя с ролью ADMIN; выбрасывает ConflictException если уже существует. */
   async createAdmin(body: Partial<User>) {
     const existingUser = await this._userRepository.findByEmailOrPhone(
       body.email,
@@ -107,6 +114,7 @@ export class UserService {
     throw new NotFoundException("Пользователь не найден");
   }
 
+  /** Обновить данные пользователя и вернуть обновлённую запись. */
   async updateUser(id: string, body: IUserUpdateRequestDto) {
     const user = await this._userRepository.updateWithResponse(id, body);
 
@@ -117,19 +125,20 @@ export class UserService {
     return user;
   }
 
+  /** Установить или сбросить WebAuthn challenge для пользователя. */
   async setChallenge(id: string, challenge: string | null) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await this._userRepository.update(id, { challenge: challenge as any });
   }
 
   /**
-   * Assigns roles and direct permissions to a user.
+   * Назначает роли и прямые разрешения пользователю.
    *
-   * - Replaces all current roles with the provided list.
-   * - Replaces all current direct permissions with the provided list.
-   * - Role-level permissions are managed separately via setRolePermissions().
+   * - Заменяет все текущие роли переданным списком.
+   * - Заменяет все текущие прямые разрешения переданным списком.
+   * - Разрешения на уровне ролей управляются отдельно через setRolePermissions().
    *
-   * Effective permissions in the JWT = union(role.permissions) ∪ permissions.
+   * Эффективные разрешения в JWT = объединение(role.permissions) ∪ permissions.
    */
   async setPrivileges(
     userId: string,
@@ -141,7 +150,7 @@ export class UserService {
       throw new NotFoundException("Пользователь не найден");
     }
 
-    // Assign roles (find or create each)
+    // Назначаем роли (ищем или создаём каждую)
     user.roles = await Promise.all(
       body.roles.map(async roleName => {
         let role = await this._roleRepository.findByName(roleName);
@@ -154,7 +163,7 @@ export class UserService {
       }),
     );
 
-    // Assign direct permissions (find or create each)
+    // Назначаем прямые разрешения (ищем или создаём каждое)
     user.directPermissions = await Promise.all(
       body.permissions.map(async permName => {
         let perm = await this.permissionRepository.findByName(permName);
@@ -174,6 +183,7 @@ export class UserService {
     return this.getUser(userId);
   }
 
+  /** Инициировать верификацию email — отправить OTP-код на почту пользователя. */
   async requestVerifyEmail(userId: string) {
     const user = await this.getUser(userId);
     const email = user.email;
@@ -193,6 +203,7 @@ export class UserService {
     return !!otp.code;
   }
 
+  /** Подтвердить email пользователя с помощью OTP-кода. */
   async verifyEmail(userId: string, code: string) {
     const user = await this.getUser(userId);
 
@@ -209,6 +220,7 @@ export class UserService {
     });
   }
 
+  /** Установить новый пароль пользователю (bcrypt-хеш). */
   async changePassword(userId: string, password: string) {
     await this._userRepository.update(userId, {
       passwordHash: await bcrypt.hash(password, 12),
@@ -217,12 +229,14 @@ export class UserService {
     return new ApiResponseDto({ message: "Пароль успешно изменен." });
   }
 
+  /** Удалить пользователя по ID; возвращает true если запись была удалена. */
   async deleteUser(userId: string) {
     const deleted = await this._userRepository.delete(userId);
 
     return !!deleted.affected;
   }
 
+  /** Стандартный набор связей, загружаемых при запросах пользователя. */
   static get relations(): FindOptionsRelations<User> {
     return {
       profile: true,

@@ -5,24 +5,28 @@ import { BaseRepository } from "../../core/repository";
 import { IWgPeerFilters } from "./dto";
 import { WgPeer } from "./wg-peer.entity";
 
+/** Репозиторий для работы с WireGuard-пирами. */
 @InjectableRepository(WgPeer)
 export class WgPeerRepository extends BaseRepository<WgPeer> {
   constructor(dataSource: DataSource) {
     super(dataSource, WgPeer);
   }
 
+  /** Создать QueryBuilder с джойном пользователя и его профиля. */
   private withUserJoin(alias: string) {
     return this.createQueryBuilder(alias)
       .leftJoinAndSelect(`${alias}.user`, "u")
       .leftJoinAndSelect("u.profile", "p");
   }
 
+  /** Найти пир по ID, включая связанного пользователя и его профиль. */
   findOneWithUser(id: string): Promise<WgPeer | null> {
     return this.withUserJoin("peer")
       .where("peer.id = :id", { id })
       .getOne();
   }
 
+  /** Получить все пиры с опциональными фильтрами и пагинацией. */
   findAll(
     skip?: number,
     take?: number,
@@ -51,6 +55,7 @@ export class WgPeerRepository extends BaseRepository<WgPeer> {
     return qb.getManyAndCount();
   }
 
+  /** Получить пиры конкретного сервера с опциональными фильтрами и пагинацией. */
   findByServer(
     serverId: string,
     skip?: number,
@@ -76,6 +81,7 @@ export class WgPeerRepository extends BaseRepository<WgPeer> {
     return qb.getManyAndCount();
   }
 
+  /** Получить пиры конкретного пользователя с опциональными фильтрами и пагинацией. */
   findByUser(
     userId: string,
     skip?: number,
@@ -104,6 +110,7 @@ export class WgPeerRepository extends BaseRepository<WgPeer> {
     return qb.getManyAndCount();
   }
 
+  /** Получить все включённые пиры указанного сервера. */
   findEnabledByServer(serverId: string): Promise<WgPeer[]> {
     return this.find({ where: { serverId, enabled: true } });
   }
@@ -128,6 +135,7 @@ export class WgPeerRepository extends BaseRepository<WgPeer> {
     );
   }
 
+  /** Найти все включённые пиры, у которых истёк срок expiresAt. */
   findExpired(): Promise<WgPeer[]> {
     return this.createQueryBuilder("peer")
       .where("peer.expires_at IS NOT NULL")
@@ -136,6 +144,7 @@ export class WgPeerRepository extends BaseRepository<WgPeer> {
       .getMany();
   }
 
+  /** Получить список пиров в формате id+name для выпадающего списка, опционально фильтруя по серверу. */
   findOptions(
     serverId?: string,
     query?: string,
@@ -154,6 +163,7 @@ export class WgPeerRepository extends BaseRepository<WgPeer> {
     return qb.getMany();
   }
 
+  /** Получить список пиров пользователя в формате id+name для выпадающего списка. */
   findOptionsByUser(
     userId: string,
     serverId?: string,

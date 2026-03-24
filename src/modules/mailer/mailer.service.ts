@@ -5,8 +5,10 @@ import { createTransport, SendMailOptions } from "nodemailer";
 import { config } from "../../config";
 import { Injectable } from "../../core";
 
+/** Сервис для отправки email через SMTP (Gmail). */
 @Injectable()
 export class MailerService {
+  // Nodemailer transport, инициализируется в конструкторе
   transport: ReturnType<typeof createTransport>;
 
   constructor() {
@@ -19,6 +21,7 @@ export class MailerService {
     });
   }
 
+  /** Отправить письмо с одноразовым кодом подтверждения. */
   public sendCodeMail = async (email: string, code: string) => {
     const path = `${__dirname}/html-code-template.ejs`;
     const codeTemplate = fs.readFileSync(path, "utf-8");
@@ -30,6 +33,7 @@ export class MailerService {
     });
   };
 
+  /** Отправить письмо со ссылкой для сброса пароля. */
   public sendResetPasswordMail = async (email: string, token: string) => {
     const path = `${__dirname}/html-reset-password-template.ejs`;
     const codeTemplate = fs.readFileSync(path, "utf-8");
@@ -43,6 +47,7 @@ export class MailerService {
     });
   };
 
+  /** Отправить произвольное письмо; поле from подставляется автоматически из конфига. */
   public sendMail = (options: Omit<SendMailOptions, "from">) => {
     return new Promise((resolve, reject) => {
       this.transport.sendMail(

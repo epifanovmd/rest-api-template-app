@@ -9,6 +9,7 @@ const {
   auth: { resetPassword },
 } = config;
 
+/** Сервис для создания и проверки JWT-токенов сброса пароля. */
 @Injectable()
 export class ResetPasswordTokensService {
   constructor(
@@ -16,6 +17,7 @@ export class ResetPasswordTokensService {
     private _resetPasswordTokensRepository: ResetPasswordTokensRepository,
   ) {}
 
+  /** Создать или обновить JWT-токен сброса пароля для пользователя. */
   async create(userId: string) {
     const token = await createToken(
       { userId, roles: [], permissions: [], emailVerified: false },
@@ -39,6 +41,7 @@ export class ResetPasswordTokensService {
     }
   }
 
+  /** Проверить токен сброса пароля и удалить его после успешной валидации. */
   async check(token: string) {
     const { userId } = await verifyToken(token);
 

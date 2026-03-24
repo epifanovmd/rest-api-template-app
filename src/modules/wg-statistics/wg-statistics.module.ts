@@ -17,11 +17,11 @@ import { WgTrafficStatRepository } from "./wg-traffic-stat.repository";
     WgStatisticsService,
     WgStatisticsController,
 
-    // Socket event listeners
+    // Слушатели событий socket
     { provide: SOCKET_EVENT_LISTENER, useClass: WgStatsEventListener },
     { provide: SOCKET_EVENT_LISTENER, useClass: WgPeerActiveListener },
 
-    // Socket handlers (client subscriptions)
+    // Socket-обработчики (подписки клиентов)
     { provide: SOCKET_HANDLER, useClass: WgSocketHandler },
   ],
   bootstrappers: [WgStatisticsBootstrap],

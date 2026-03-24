@@ -22,8 +22,8 @@ export class WgStatisticsBootstrap implements IBootstrap {
 
     const { dbWriteIntervalSec, socketPollIntervalSec } = config.wireguard;
 
-    // Poll every socketPollIntervalSec — always emits to socket,
-    // writes to DB every (dbWriteIntervalSec / socketPollIntervalSec) ticks
+    // Опрос каждые socketPollIntervalSec — всегда отправляет в сокет,
+    // пишет в БД каждые (dbWriteIntervalSec / socketPollIntervalSec) тиков
     const dbWriteEvery = Math.max(
       1,
       Math.round(dbWriteIntervalSec / socketPollIntervalSec),
@@ -43,7 +43,7 @@ export class WgStatisticsBootstrap implements IBootstrap {
       }),
     );
 
-    // Expired peer cleanup — every minute
+    // Очистка просроченных пиров — каждую минуту
     this.statsTasks.push(
       cron.schedule("* * * * *", () => {
         this.peerService
@@ -52,7 +52,7 @@ export class WgStatisticsBootstrap implements IBootstrap {
       }),
     );
 
-    // Stats retention cleanup — daily at 03:00
+    // Очистка устаревшей статистики — ежедневно в 03:00
     this.statsTasks.push(
       cron.schedule("0 3 * * *", () => {
         this.statsService

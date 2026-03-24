@@ -3,7 +3,7 @@ import { DefaultEventsMap } from "socket.io/dist/typed-events";
 
 import { AuthContext } from "../../types/koa";
 
-// ─── WireGuard data shapes ────────────────────────────────────────────────────
+// ─── Типы данных WireGuard ──────────────────────────────────────────────
 
 export interface WgServerStatusPayload {
   serverId: string;
@@ -61,48 +61,53 @@ export interface WgOverviewStatsPayload {
   timestamp: Date;
 }
 
-// ─── Client → Server events ───────────────────────────────────────────────────
+// ─── События Клиент → Сервер ─────────────────────────────────────────────
 
 export interface ISocketEvents {
-  /** Subscribe to a specific server's real-time stats */
+  /** Подписаться на статистику конкретного сервера в реальном времени */
   "wg:subscribe:server": (serverId: string) => void;
+  /** Отписаться от статистики конкретного сервера */
   "wg:unsubscribe:server": (serverId: string) => void;
 
-  /** Subscribe to a specific peer's real-time stats */
+  /** Подписаться на статистику конкретного пира в реальном времени */
   "wg:subscribe:peer": (peerId: string) => void;
+  /** Отписаться от статистики конкретного пира */
   "wg:unsubscribe:peer": (peerId: string) => void;
 
-  /** Subscribe to overview stats (admins) */
+  /** Подписаться на общую статистику (для администраторов) */
   "wg:subscribe:overview": () => void;
+  /** Отписаться от общей статистики */
   "wg:unsubscribe:overview": () => void;
 }
 
-// ─── Server → Client events ───────────────────────────────────────────────────
+// ─── События Сервер → Клиент ─────────────────────────────────────────────
 
 export interface ISocketEmitEvents {
+  /** Успешная аутентификация по JWT токену */
   authenticated: (...args: [{ userId: string }]) => void;
+  /** Ошибка аутентификации */
   auth_error: (...args: [{ message: string }]) => void;
 
-  /** Per-server status change */
+  /** Изменение статуса конкретного сервера */
   "wg:server:status": (...args: [WgServerStatusPayload]) => void;
 
-  /** Per-server aggregated traffic + speed stats */
+  /** Агрегированная статистика трафика + скорости конкретного сервера */
   "wg:server:stats": (...args: [WgServerStatsPayload]) => void;
 
-  /** Per-peer DB status change */
+  /** Изменение статуса пира в БД */
   "wg:peer:status": (...args: [WgPeerStatusPayload]) => void;
 
-  /** Per-peer connection activity change */
+  /** Изменение активности соединения пира */
   "wg:peer:active": (...args: [WgPeerActivePayload]) => void;
 
-  /** Per-peer traffic + speed stats */
+  /** Статистика трафика + скорости конкретного пира */
   "wg:peer:stats": (...args: [WgPeerStatsPayload]) => void;
 
-  /** Global VPN overview */
+  /** Общий обзор VPN */
   "wg:stats:overview": (...args: [WgOverviewStatsPayload]) => void;
 }
 
-// ─── Socket types ─────────────────────────────────────────────────────────────
+// ─── Типы Socket ─────────────────────────────────────────────────────────────
 
 export type TSocket = SocketIO<
   ISocketEvents,

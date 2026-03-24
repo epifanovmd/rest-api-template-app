@@ -9,7 +9,7 @@ export const requestLoggerMiddleware = async (ctx: Context, next: Next) => {
   const { method, url } = ctx.request;
   const requestId = ctx.state.requestId as string;
 
-  // Child logger propagates requestId to every nested log call automatically
+  // Дочерний логгер автоматически передаёт requestId во все вложенные вызовы
   const reqLogger = logger.child({ requestId });
 
   ctx.state.logger = reqLogger;

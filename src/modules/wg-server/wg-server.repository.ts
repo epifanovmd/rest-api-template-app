@@ -5,20 +5,24 @@ import { BaseRepository } from "../../core/repository";
 import { IWgServerFilters } from "./dto";
 import { WgServer } from "./wg-server.entity";
 
+/** Репозиторий для работы с WireGuard-серверами. */
 @InjectableRepository(WgServer)
 export class WgServerRepository extends BaseRepository<WgServer> {
   constructor(dataSource: DataSource) {
     super(dataSource, WgServer);
   }
 
+  /** Найти сервер по имени интерфейса WireGuard. */
   findByInterface(interfaceName: string): Promise<WgServer | null> {
     return this.findOne({ where: { interface: interfaceName } });
   }
 
+  /** Получить все серверы с флагом enabled = true. */
   findAllEnabled(): Promise<WgServer[]> {
     return this.find({ where: { enabled: true } });
   }
 
+  /** Получить список серверов с фильтрацией, пагинацией и подсчётом общего числа записей. */
   findFiltered(
     filters: IWgServerFilters,
     skip?: number,
@@ -44,6 +48,7 @@ export class WgServerRepository extends BaseRepository<WgServer> {
     });
   }
 
+  /** Получить список серверов конкретного пользователя с фильтрацией и пагинацией. */
   findByUser(
     userId: string,
     filters: IWgServerFilters,
@@ -70,6 +75,7 @@ export class WgServerRepository extends BaseRepository<WgServer> {
     });
   }
 
+  /** Получить список серверов пользователя в формате id+name для выпадающего списка. */
   findOptionsByUser(
     userId: string,
     query?: string,
@@ -86,6 +92,7 @@ export class WgServerRepository extends BaseRepository<WgServer> {
     return qb.getMany();
   }
 
+  /** Получить все серверы в формате id+name для выпадающего списка. */
   findOptions(query?: string): Promise<Pick<WgServer, "id" | "name">[]> {
     const qb = this.createQueryBuilder("s")
       .select(["s.id", "s.name"])

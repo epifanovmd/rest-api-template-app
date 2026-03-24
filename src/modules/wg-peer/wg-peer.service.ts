@@ -22,6 +22,7 @@ import { WgIpAllocatorService } from "./wg-ip-allocator.service";
 import { WgPeer } from "./wg-peer.entity";
 import { WgPeerRepository } from "./wg-peer.repository";
 
+/** Сервис для управления WireGuard-пирами: создание, обновление, запуск/остановка, конфигурация. */
 @Injectable()
 export class WgPeerService {
   constructor(
@@ -36,6 +37,7 @@ export class WgPeerService {
     @inject(EventBus) private readonly eventBus: EventBus,
   ) {}
 
+  /** Получить все пиры с пагинацией и опциональными фильтрами. */
   async getAll(
     offset?: number,
     limit?: number,
@@ -44,6 +46,7 @@ export class WgPeerService {
     return this.peerRepo.findAll(offset, limit, filters);
   }
 
+  /** Получить пиры конкретного сервера с пагинацией и фильтрами. */
   async getByServer(
     serverId: string,
     offset?: number,
@@ -53,6 +56,7 @@ export class WgPeerService {
     return this.peerRepo.findByServer(serverId, offset, limit, filters);
   }
 
+  /** Получить пиры конкретного пользователя с пагинацией и фильтрами. */
   async getByUser(
     userId: string,
     offset?: number,
@@ -62,6 +66,7 @@ export class WgPeerService {
     return this.peerRepo.findByUser(userId, offset, limit, filters);
   }
 
+  /** Получить список пиров в формате для выпадающего списка. */
   async getOptions(
     serverId?: string,
     query?: string,
@@ -69,6 +74,7 @@ export class WgPeerService {
     return this.peerRepo.findOptions(serverId, query);
   }
 
+  /** Получить список пиров пользователя в формате для выпадающего списка. */
   async getOptionsByUser(
     userId: string,
     serverId?: string,
@@ -77,6 +83,7 @@ export class WgPeerService {
     return this.peerRepo.findOptionsByUser(userId, serverId, query);
   }
 
+  /** Получить пир по ID; выбрасывает ошибку 404 если не найден. */
   async getById(id: string): Promise<WgPeer> {
     const peer = await this.peerRepo.findOneWithUser(id);
 
@@ -86,6 +93,7 @@ export class WgPeerService {
     return peer;
   }
 
+  /** Создать новый пир на сервере: генерирует ключи, выделяет IP и применяет к live-интерфейсу если сервер запущен. */
   async create(
     serverId: string,
     dto: IWgPeerCreateRequestDto,
@@ -143,7 +151,7 @@ export class WgPeerService {
       throw err;
     }
 
-    // Apply to live interface if it's up and peer is enabled
+    // Применяем к активному интерфейсу, если он запущен и пир включён
     if (server.status === EWgServerStatus.UP && saved.enabled) {
       try {
         await this.cli.addPeer(
@@ -163,6 +171,7 @@ export class WgPeerService {
     return saved;
   }
 
+  /** Обновить параметры пира и синхронизировать конфигурацию сервера. */
   async update(id: string, dto: IWgPeerUpdateRequestDto): Promise<WgPeer> {
     const peer = await this.getById(id);
     const oldEnabled = peer.enabled;
@@ -212,7 +221,7 @@ export class WgPeerService {
       throw err;
     }
 
-    // Handle presharedKey change on live interface
+    // Обрабатываем изменение presharedKey на активном интерфейсе
     if (dto.presharedKey !== undefined) {
       const server = await this.serverRepo.findOne({
         where: { id: peer.serverId },
@@ -242,6 +251,7 @@ export class WgPeerService {
     return saved;
   }
 
+  /** Удалить пир: убирает из live-интерфейса (если сервер запущен) и перезаписывает конфиг. */
   async delete(id: string): Promise<boolean> {
     const peer = await this.getById(id);
     const server = await this.serverRepo.findOne({
@@ -270,10 +280,12 @@ export class WgPeerService {
     return true;
   }
 
+  /** Отключить пир (установить enabled = false). */
   async disable(id: string): Promise<WgPeer> {
     return this.update(id, { enabled: false });
   }
 
+  /** Добавить включённый пир к live WireGuard-интерфейсу и установить статус UP. */
   async start(id: string): Promise<WgPeer> {
     const peer = await this.getById(id);
 
@@ -309,6 +321,7 @@ export class WgPeerService {
     return peer;
   }
 
+  /** Удалить пир из live WireGuard-интерфейса и установить статус DOWN. */
   async stop(id: string): Promise<WgPeer> {
     const peer = await this.getById(id);
     const server = await this.serverRepo.findOne({
@@ -338,12 +351,14 @@ export class WgPeerService {
     return peer;
   }
 
+  /** Назначить пир пользователю. */
   async assignToUser(id: string, userId: string): Promise<WgPeer> {
     await this.peerRepo.update(id, { userId });
 
     return this.getById(id);
   }
 
+  /** Открепить пир от пользователя. */
   async revokeFromUser(id: string): Promise<WgPeer> {
     await this.peerRepo.update(id, { userId: null });
 
@@ -351,7 +366,7 @@ export class WgPeerService {
   }
 
   /**
-   * Build the client .conf file text for this peer
+   * Генерирует текст файла конфигурации .conf для данного пира
    */
   async buildClientConfig(id: string): Promise<string> {
     const peer = await this.peerRepo.findOne({
@@ -388,7 +403,7 @@ export class WgPeerService {
   }
 
   /**
-   * Build QR code PNG buffer for this peer's client config
+   * Генерирует PNG буфер QR-кода для клиентской конфигурации данного пира
    */
   async buildQrCode(id: string): Promise<Buffer> {
     const configText = await this.buildClientConfig(id);
@@ -397,7 +412,7 @@ export class WgPeerService {
   }
 
   /**
-   * Disable all peers that have passed their expiresAt date
+   * Отключает все пиры, у которых истёк срок expiresAt
    */
   async disableExpiredPeers(): Promise<number> {
     const expired = await this.peerRepo.findExpired();

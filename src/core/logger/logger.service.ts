@@ -19,8 +19,8 @@ export const logger: Logger = pino({
 });
 
 /**
- * Injectable wrapper around the pino logger.
- * Exposes the pino instance directly — use the native pino API.
+ * Injectable-обёртка над pino-логгером.
+ * Предоставляет экземпляр pino напрямую — используйте нативный API pino.
  */
 @Injectable()
 export class LoggerService {

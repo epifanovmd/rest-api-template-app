@@ -2,8 +2,10 @@ import { BaseRepository, InjectableRepository } from "../../core";
 import { Role } from "./role.entity";
 import { ERole } from "./role.types";
 
+/** Репозиторий для работы с ролями. */
 @InjectableRepository(Role)
 export class RoleRepository extends BaseRepository<Role> {
+  /** Найти роль по ID, включая связанные разрешения. */
   async findById(id: string): Promise<Role | null> {
     return this.findOne({
       where: { id },
@@ -11,6 +13,7 @@ export class RoleRepository extends BaseRepository<Role> {
     });
   }
 
+  /** Найти роль по имени, включая связанные разрешения. */
   async findByName(name: ERole): Promise<Role | null> {
     return this.findOne({
       where: { name },
@@ -18,12 +21,14 @@ export class RoleRepository extends BaseRepository<Role> {
     });
   }
 
+  /** Получить все роли со связанными разрешениями. */
   async findAll(): Promise<Role[]> {
     return this.find({
       relations: { permissions: true },
     });
   }
 
+  /** Обновить роль и вернуть обновлённую запись с разрешениями. */
   async updateWithResponse(
     id: string,
     updateData: Partial<Role>,

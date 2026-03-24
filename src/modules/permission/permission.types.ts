@@ -1,35 +1,42 @@
 export enum EPermissions {
   // ── Superadmin ────────────────────────────────────────────────────────────
-  /** Grants access to everything. Equivalent to being ADMIN. */
+  /** Предоставляет доступ ко всему. Эквивалентно роли ADMIN. */
   ALL = "*",
 
   // ── WireGuard wildcards ───────────────────────────────────────────────────
-  /** All WireGuard permissions */
+  /** Все разрешения WireGuard */
   WG_ALL = "wg:*",
-  /** All WireGuard server permissions */
+  /** Все разрешения для серверов WireGuard */
   WG_SERVER_ALL = "wg:server:*",
-  /** All WireGuard peer permissions */
+  /** Все разрешения для пиров WireGuard */
   WG_PEER_ALL = "wg:peer:*",
-  /** All WireGuard statistics permissions */
+  /** Все разрешения для статистики WireGuard */
   WG_STATS_ALL = "wg:stats:*",
 
   // ── WireGuard servers ─────────────────────────────────────────────────────
+  /** Просмотр списка серверов и их состояния */
   WG_SERVER_VIEW = "wg:server:view",
+  /** Создание, редактирование и удаление серверов, управление конфигурацией */
   WG_SERVER_MANAGE = "wg:server:manage",
-  /** User can only access servers assigned to them */
+  /** Пользователь может обращаться только к назначенным ему серверам */
   WG_SERVER_OWN = "wg:server:own",
 
   // ── WireGuard peers ───────────────────────────────────────────────────────
+  /** Просмотр списка пиров и их состояния */
   WG_PEER_VIEW = "wg:peer:view",
+  /** Создание, редактирование и удаление пиров, управление конфигурацией */
   WG_PEER_MANAGE = "wg:peer:manage",
-  /** User can only access peers assigned to them */
+  /** Пользователь может обращаться только к назначенным ему пирам */
   WG_PEER_OWN = "wg:peer:own",
 
   // ── WireGuard statistics ──────────────────────────────────────────────────
+  /** Просмотр статистики трафика и скорости по серверам и пирам */
   WG_STATS_VIEW = "wg:stats:view",
 
   // ── User management ───────────────────────────────────────────────────────
+  /** Просмотр списка пользователей и их профилей */
   USER_VIEW = "user:view",
+  /** Создание, редактирование, блокировка пользователей и назначение ролей */
   USER_MANAGE = "user:manage",
 
 }

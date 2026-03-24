@@ -18,6 +18,7 @@ import { WgServer } from "./wg-server.entity";
 import { WgServerRepository } from "./wg-server.repository";
 import { EWgServerStatus } from "./wg-server.types";
 
+/** Сервис для управления WireGuard-серверами: CRUD, запуск/остановка, статус, конфигурация. */
 @Injectable()
 export class WgServerService {
   constructor(
@@ -35,6 +36,7 @@ export class WgServerService {
     private readonly eventBus: EventBus,
   ) {}
 
+  /** Получить все серверы с пагинацией и опциональными фильтрами. */
   async getAll(
     offset?: number,
     limit?: number,
@@ -51,6 +53,7 @@ export class WgServerService {
     });
   }
 
+  /** Получить серверы конкретного пользователя с пагинацией и фильтрами. */
   async getByUser(
     userId: string,
     offset?: number,
@@ -60,10 +63,12 @@ export class WgServerService {
     return this.serverRepo.findByUser(userId, filters ?? {}, offset, limit);
   }
 
+  /** Получить список серверов в формате для выпадающего списка. */
   async getOptions(query?: string): Promise<IWgServerOptionDto[]> {
     return this.serverRepo.findOptions(query);
   }
 
+  /** Получить список серверов пользователя в формате для выпадающего списка. */
   async getOptionsByUser(
     userId: string,
     query?: string,
@@ -71,6 +76,7 @@ export class WgServerService {
     return this.serverRepo.findOptionsByUser(userId, query);
   }
 
+  /** Получить сервер по ID; выбрасывает ошибку 404 если не найден. */
   async getById(id: string): Promise<WgServer> {
     const server = await this.serverRepo.findOne({ where: { id } });
 
@@ -80,6 +86,7 @@ export class WgServerService {
     return server;
   }
 
+  /** Создать WireGuard-сервер: генерирует ключи, применяет дефолтные хуки и записывает конфиг. */
   async create(dto: IWgServerCreateRequestDto): Promise<WgServer> {
     const { privateKey, publicKey } = await this.keyService.generateKeyPair();
     const { defaults } = config.wireguard;
@@ -110,6 +117,7 @@ export class WgServerService {
     return saved;
   }
 
+  /** Обновить параметры сервера и перезаписать конфиг; при изменении enabled — автоматически запускает/останавливает. */
   async update(id: string, dto: IWgServerUpdateRequestDto): Promise<WgServer> {
     const server = await this.getById(id);
     const snapshot = { ...server };
@@ -135,6 +143,7 @@ export class WgServerService {
     return saved;
   }
 
+  /** Удалить сервер: останавливает его если запущен, затем удаляет конфиг-файл. */
   async delete(id: string): Promise<boolean> {
     const server = await this.getById(id);
 
@@ -156,6 +165,7 @@ export class WgServerService {
     return true;
   }
 
+  /** Запустить WireGuard-интерфейс сервера и обновить статус всех пиров. */
   async start(id: string): Promise<WgServer> {
     const server = await this.getById(id);
 
@@ -193,6 +203,7 @@ export class WgServerService {
     return saved;
   }
 
+  /** Остановить WireGuard-интерфейс сервера и установить статус DOWN всем пирам. */
   async stop(id: string): Promise<WgServer> {
     const server = await this.getById(id);
     const [peers] = await this.peerRepo.findByServer(id);
@@ -222,6 +233,7 @@ export class WgServerService {
     return saved;
   }
 
+  /** Перезапустить WireGuard-интерфейс: выполняет down, затем start. */
   async restart(id: string): Promise<WgServer> {
     const server = await this.getById(id);
 
@@ -230,6 +242,7 @@ export class WgServerService {
     return this.start(id);
   }
 
+  /** Получить актуальный статус сервера из wg show (количество пиров, активные пиры). */
   async getLiveStatus(id: string): Promise<IWgServerStatusDto> {
     const server = await this.getById(id);
     const isUp = await this.cli.isInterfaceUp(server.interface);
@@ -266,8 +279,8 @@ export class WgServerService {
   }
 
   /**
-   * Write the server config file including all active peers.
-   * Called after any server or peer modification.
+   * Записывает конфигурационный файл сервера, включая всех активных пиров.
+   * Вызывается после любого изменения сервера или пира.
    */
   async writeConfig(
     server: WgServer,

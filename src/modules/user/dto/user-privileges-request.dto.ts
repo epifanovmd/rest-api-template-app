@@ -2,11 +2,11 @@ import { EPermissions } from "../../permission/permission.types";
 import { ERole } from "../../role/role.types";
 
 export interface IUserPrivilegesRequestDto {
-  /** Roles to assign to the user (replaces current roles). */
+  /** Роли для назначения пользователю (заменяет текущие роли). */
   roles: ERole[];
   /**
-   * Direct permissions granted to this user on top of role permissions.
-   * Replaces current direct permissions.
+   * Прямые разрешения, выданные этому пользователю дополнительно к разрешениям ролей.
+   * Заменяет текущие прямые разрешения.
    */
   permissions: EPermissions[];
 }

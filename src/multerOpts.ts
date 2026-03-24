@@ -5,22 +5,22 @@ import { v4 } from "uuid";
 import { config } from "./config";
 
 const ALLOWED_MIME_TYPES = new Set([
-  // Images
+  // Изображения
   "image/jpeg",
   "image/png",
   "image/gif",
   "image/webp",
   "image/svg+xml",
-  // Documents
+  // Документы
   "application/pdf",
   "application/msword",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   "application/vnd.ms-excel",
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-  // Archives
+  // Архивы
   "application/zip",
   "application/x-rar-compressed",
-  // Text
+  // Текст
   "text/plain",
   "text/csv",
 ]);

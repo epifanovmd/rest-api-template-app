@@ -25,6 +25,7 @@ export interface WgShowOutput {
   peers: WgPeerStats[];
 }
 
+/** Сервис-обёртка над CLI-инструментами wg и wg-quick для управления WireGuard-интерфейсами. */
 @Injectable()
 export class WgCliService {
   private readonly wg = config.wireguard.binaryPath;
@@ -32,7 +33,7 @@ export class WgCliService {
   private readonly configDir = config.wireguard.configDir;
 
   /**
-   * Start a WireGuard interface
+   * Запустить WireGuard-интерфейс
    */
   async up(interfaceName: string): Promise<void> {
     const confPath = path.join(this.configDir, `${interfaceName}.conf`);
@@ -42,7 +43,7 @@ export class WgCliService {
   }
 
   /**
-   * Stop a WireGuard interface
+   * Остановить WireGuard-интерфейс
    */
   async down(interfaceName: string): Promise<void> {
     const confPath = path.join(this.configDir, `${interfaceName}.conf`);
@@ -52,7 +53,7 @@ export class WgCliService {
   }
 
   /**
-   * Get status of all or a specific interface
+   * Получить статус всех или конкретного интерфейса
    */
   async show(interfaceName?: string): Promise<WgShowOutput[]> {
     const { stdout } = await execAsync(`${this.wg} show all dump`);
@@ -66,7 +67,7 @@ export class WgCliService {
   }
 
   /**
-   * Add a peer to a running interface
+   * Добавить пира к работающему интерфейсу
    */
   async addPeer(
     interfaceName: string,
@@ -89,7 +90,7 @@ export class WgCliService {
   }
 
   /**
-   * Remove a peer from a running interface
+   * Удалить пира из работающего интерфейса
    */
   async removePeer(interfaceName: string, publicKey: string): Promise<void> {
     await execAsync(
@@ -99,7 +100,7 @@ export class WgCliService {
   }
 
   /**
-   * Write the WireGuard config file for a server
+   * Записать конфигурационный файл WireGuard для сервера
    */
   async writeServerConfig(
     interfaceName: string,
@@ -113,7 +114,7 @@ export class WgCliService {
   }
 
   /**
-   * Delete the WireGuard config file
+   * Удалить конфигурационный файл WireGuard
    */
   async deleteServerConfig(interfaceName: string): Promise<void> {
     const confPath = path.join(this.configDir, `${interfaceName}.conf`);
@@ -122,12 +123,12 @@ export class WgCliService {
       await fs.unlink(confPath);
       logger.info({ confPath }, "[WgCli] Config file deleted");
     } catch {
-      // ignore if file doesn't exist
+      // игнорируем, если файл не существует
     }
   }
 
   /**
-   * Check if an interface is currently up
+   * Проверить, активен ли интерфейс в данный момент
    */
   async isInterfaceUp(interfaceName: string): Promise<boolean> {
     try {
@@ -140,8 +141,8 @@ export class WgCliService {
   }
 
   /**
-   * Parse `wg show all dump` output
-   * Format per line:
+   * Разобрать вывод `wg show all dump`
+   * Формат строки:
    *   interface: <name> <pubkey> <privkey> <listen_port> <fwmark>
    *   peer:      <iface> <pubkey> <preshared> <endpoint> <allowed_ips> <last_handshake> <rx> <tx> <keepalive>
    */
@@ -155,7 +156,7 @@ export class WgCliService {
       const parts = line.split("\t");
 
       if (parts.length === 5) {
-        // Interface line: name pubkey privkey listenPort fwmark
+        // Строка интерфейса: name pubkey privkey listenPort fwmark
         const [name, pubkey, , listenPortStr] = parts;
         const listenPort = parseInt(listenPortStr, 10);
 
@@ -167,7 +168,7 @@ export class WgCliService {
         });
         currentIface = name;
       } else if (parts.length === 9 && currentIface) {
-        // Peer line: iface pubkey preshared endpoint allowedIPs lastHandshake rx tx keepalive
+        // Строка пира: iface pubkey preshared endpoint allowedIPs lastHandshake rx tx keepalive
         const [
           ,
           pubkey,

@@ -18,6 +18,7 @@ import { Profile } from "../profile/profile.entity";
 import { ResetPasswordTokens } from "../reset-password-tokens/reset-password-tokens.entity";
 import { Role } from "../role/role.entity";
 
+/** Сущность пользователя системы. */
 @Entity("users")
 @Index("IDX_USERS_EMAIL_PHONE", ["email", "phone"], { unique: true })
 export class User {
@@ -27,15 +28,18 @@ export class User {
   @Column({ type: "varchar", length: 50, nullable: true, unique: true })
   email: string;
 
+  // Флаг подтверждения email через OTP
   @Column({ name: "email_verified", type: "boolean", default: false })
   emailVerified: boolean;
 
   @Column({ type: "varchar", length: 14, nullable: true })
   phone: string;
 
+  // Bcrypt-хеш пароля пользователя
   @Column({ name: "password_hash", type: "varchar", length: 100 })
   passwordHash: string;
 
+  // Временный WebAuthn challenge, хранится между шагами регистрации/аутентификации passkey
   @Column({ type: "varchar", nullable: true })
   challenge?: string;
 
@@ -45,11 +49,11 @@ export class User {
   @UpdateDateColumn({ name: "updated_at" })
   updatedAt: Date;
 
-  // ── Relations ──────────────────────────────────────────────────────────────
+  // ── Связи ──────────────────────────────────────────────────────────────────
 
   /**
-   * Roles assigned to this user.
-   * Effective permissions = union of all role permissions + directPermissions.
+   * Роли, назначенные этому пользователю.
+   * Эффективные разрешения = объединение всех разрешений ролей + directPermissions.
    */
   @ManyToMany(() => Role, { eager: true })
   @JoinTable({
@@ -60,8 +64,8 @@ export class User {
   roles: Role[];
 
   /**
-   * Permissions granted directly to this user (additive on top of role permissions).
-   * Useful for fine-grained overrides without creating a new role.
+   * Разрешения, выданные напрямую этому пользователю (дополнительно к разрешениям ролей).
+   * Полезно для точечного переопределения без создания новой роли.
    */
   @ManyToMany(() => Permission, { eager: true })
   @JoinTable({

@@ -11,12 +11,14 @@ import {
 
 import { User } from "../user/user.entity";
 
+/** Сущность токена сброса пароля. По одному токену на пользователя (PK = userId). */
 @Entity("reset_password_tokens")
 @Index("IDX_RESET_TOKENS_TOKEN", ["token"], { unique: true })
 export class ResetPasswordTokens {
   @PrimaryColumn({ name: "user_id", type: "uuid" })
   userId: string;
 
+  // JWT-токен сброса пароля с ограниченным сроком действия
   @Column({ type: "varchar" })
   token: string;
 
@@ -26,14 +28,14 @@ export class ResetPasswordTokens {
   @UpdateDateColumn({ name: "updated_at" })
   updatedAt: Date;
 
-  // Relations
+  // Связи
   @ManyToOne(() => User, user => user.resetPasswordTokens, {
     onDelete: "CASCADE",
   })
   @JoinColumn({ name: "user_id" })
   user: User;
 
-  // DTO transformation
+  /** Преобразовать сущность в DTO для передачи клиенту. */
   toDTO() {
     return {
       userId: this.userId,
@@ -43,7 +45,7 @@ export class ResetPasswordTokens {
     };
   }
 
-  // Static method for creating reset token
+  /** Создать объект токена сброса пароля. */
   static createToken(
     userId: string,
     token: string,

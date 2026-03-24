@@ -22,10 +22,10 @@ export type SecurityScopes = (RoleStrings | PermissionStrings)[];
 @Injectable()
 export class TokenService {
   /**
-   * Issues access + refresh tokens with merged effective permissions.
+   * Выдаёт access + refresh токены с объединёнными эффективными разрешениями.
    *
-   * Effective permissions = union(role.permissions for each role) ∪ directPermissions.
-   * Computed once at issue time — no DB hit needed during request auth.
+   * Эффективные разрешения = объединение(role.permissions для каждой роли) ∪ directPermissions.
+   * Вычисляется один раз при выдаче — без обращения к БД при аутентификации запроса.
    */
   async issue(user: User): Promise<ITokensDto> {
     const rolePermissions =
@@ -57,8 +57,8 @@ export class TokenService {
   }
 
   /**
-   * Verifies JWT and checks scopes against the token's claims.
-   * No DB queries — all information is embedded in the token.
+   * Верифицирует JWT и проверяет области действия относительно данных токена.
+   * Без запросов к БД — вся информация встроена в токен.
    */
   async verify(token?: string, scopes?: SecurityScopes): Promise<AuthContext> {
     if (!token) {
@@ -95,15 +95,15 @@ export class TokenService {
   }
 
   /**
-   * Checks that the decoded token satisfies ALL required scopes (AND semantics).
+   * Проверяет, что декодированный токен удовлетворяет ВСЕМ требуемым областям (семантика AND).
    *
-   * Superadmin bypass:
-   *   - role ADMIN → skips all checks
-   *   - permission "*" → skips all checks
+   * Обход суперадмина:
+   *   - роль ADMIN → пропускает все проверки
+   *   - разрешение "*" → пропускает все проверки
    *
-   * Wildcard resolution for permissions:
-   *   "wg:server:view" is satisfied by any of:
-   *   - exact "wg:server:view"
+   * Разрешение wildcards для разрешений:
+   *   "wg:server:view" удовлетворяется любым из:
+   *   - точным "wg:server:view"
    *   - wildcard "wg:server:*"
    *   - wildcard "wg:*"
    *   - wildcard "*"
@@ -112,7 +112,7 @@ export class TokenService {
     const roles = decoded.roles ?? [];
     const permissions = decoded.permissions ?? [];
 
-    // Superadmin bypass
+    // Обход суперадмина
     if (
       roles.includes(ERole.ADMIN) ||
       this.hasPermission(permissions, EPermissions.ALL)
@@ -140,10 +140,10 @@ export class TokenService {
   }
 
   /**
-   * Checks if a user's permission set satisfies a required permission,
-   * including wildcard resolution.
+   * Проверяет, удовлетворяет ли набор разрешений пользователя требуемому разрешению,
+   * включая разрешение wildcards.
    *
-   * Examples:
+   * Примеры:
    *   hasPermission(["wg:*"], "wg:server:view")  → true
    *   hasPermission(["wg:server:*"], "wg:server:view")  → true
    *   hasPermission(["wg:peer:*"], "wg:server:view")  → false

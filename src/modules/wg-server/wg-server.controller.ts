@@ -42,9 +42,9 @@ export class WgServerController extends Controller {
   }
 
   /**
-   * List all WireGuard servers with optional filters.
-   * Returns all servers for wg:server:view, own servers for wg:server:own.
-   * @summary Get all servers
+   * Список всех WireGuard-серверов с опциональными фильтрами.
+   * Возвращает все серверы для wg:server:view, собственные серверы для wg:server:own.
+   * @summary Получить все серверы
    */
   @Security("jwt", ["permission:wg:server:view"])
   @Security("jwt", ["permission:wg:server:own"])
@@ -68,9 +68,9 @@ export class WgServerController extends Controller {
   }
 
   /**
-   * Get server options for dropdowns (id + name only).
-   * Returns all options for wg:server:view, own options for wg:server:own.
-   * @summary Get server options
+   * Получить варианты серверов для выпадающих списков (только id + name).
+   * Возвращает все варианты для wg:server:view, собственные для wg:server:own.
+   * @summary Получить варианты серверов
    */
   @Security("jwt", ["permission:wg:server:view"])
   @Security("jwt", ["permission:wg:server:own"])
@@ -89,9 +89,9 @@ export class WgServerController extends Controller {
   }
 
   /**
-   * Get a WireGuard server by ID.
-   * Ownership check for wg:server:own users.
-   * @summary Get server by ID
+   * Получить WireGuard-сервер по ID.
+   * Проверка владельца для пользователей с wg:server:own.
+   * @summary Получить сервер по ID
    */
   @Security("jwt", ["permission:wg:server:view"])
   @Security("jwt", ["permission:wg:server:own"])
@@ -108,10 +108,10 @@ export class WgServerController extends Controller {
   }
 
   /**
-   * Create a new WireGuard server.
-   * Keys are generated automatically.
-   * The config file is written to the WG config directory.
-   * @summary Create server
+   * Создать новый WireGuard-сервер.
+   * Ключи генерируются автоматически.
+   * Конфигурационный файл записывается в директорию конфигов WG.
+   * @summary Создать сервер
    */
   @Security("jwt", ["permission:wg:server:manage"])
   @Post("/")
@@ -127,9 +127,9 @@ export class WgServerController extends Controller {
   }
 
   /**
-   * Update a WireGuard server.
-   * Config file is rewritten automatically.
-   * @summary Update server
+   * Обновить WireGuard-сервер.
+   * Конфигурационный файл перезаписывается автоматически.
+   * @summary Обновить сервер
    */
   @Security("jwt", ["permission:wg:server:manage"])
   @Patch("/{id}")
@@ -144,9 +144,9 @@ export class WgServerController extends Controller {
   }
 
   /**
-   * Delete a WireGuard server.
-   * Stops the interface and removes the config file.
-   * @summary Delete server
+   * Удалить WireGuard-сервер.
+   * Останавливает интерфейс и удаляет конфигурационный файл.
+   * @summary Удалить сервер
    */
   @Security("jwt", ["permission:wg:server:manage"])
   @Delete("/{id}")
@@ -155,8 +155,8 @@ export class WgServerController extends Controller {
   }
 
   /**
-   * Start a WireGuard interface (wg-quick up).
-   * @summary Start server
+   * Запустить WireGuard-интерфейс (wg-quick up).
+   * @summary Запустить сервер
    */
   @Security("jwt", ["permission:wg:server:manage"])
   @Post("/{id}/start")
@@ -167,8 +167,8 @@ export class WgServerController extends Controller {
   }
 
   /**
-   * Stop a WireGuard interface (wg-quick down).
-   * @summary Stop server
+   * Остановить WireGuard-интерфейс (wg-quick down).
+   * @summary Остановить сервер
    */
   @Security("jwt", ["permission:wg:server:manage"])
   @Post("/{id}/stop")
@@ -179,8 +179,8 @@ export class WgServerController extends Controller {
   }
 
   /**
-   * Restart a WireGuard interface.
-   * @summary Restart server
+   * Перезапустить WireGuard-интерфейс.
+   * @summary Перезапустить сервер
    */
   @Security("jwt", ["permission:wg:server:manage"])
   @Post("/{id}/restart")
@@ -191,9 +191,9 @@ export class WgServerController extends Controller {
   }
 
   /**
-   * Get real-time status of a WireGuard interface.
-   * Queries the actual wg interface, not cached DB status.
-   * @summary Get live server status
+   * Получить статус WireGuard-интерфейса в реальном времени.
+   * Запрашивает реальный wg-интерфейс, а не кэшированный статус из БД.
+   * @summary Получить актуальный статус сервера
    */
   @Security("jwt", ["permission:wg:server:view"])
   @Security("jwt", ["permission:wg:server:own"])

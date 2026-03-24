@@ -11,8 +11,8 @@ import { WgPeer } from "../wg-peer/wg-peer.entity";
 import { WgServer } from "../wg-server/wg-server.entity";
 
 /**
- * Instantaneous speed sample for a peer.
- * Calculated as delta(bytes) / delta(time) between two consecutive polls.
+ * Мгновенный сэмпл скорости для пира.
+ * Вычисляется как delta(bytes) / delta(time) между двумя последовательными опросами.
  */
 @Entity("wg_speed_samples")
 @Index("IDX_WG_SPEED_PEER_TS", ["peerId", "timestamp"])
@@ -27,15 +27,15 @@ export class WgSpeedSample {
   @Column({ name: "server_id", type: "uuid", nullable: true })
   serverId: string | null;
 
-  /** Download speed in bytes/sec (server RX from this peer) */
+  /** Скорость загрузки в байт/с (RX сервера от этого пира) */
   @Column({ name: "rx_speed_bps", type: "double precision" })
   rxSpeedBps: number;
 
-  /** Upload speed in bytes/sec (server TX to this peer) */
+  /** Скорость отдачи в байт/с (TX сервера к этому пиру) */
   @Column({ name: "tx_speed_bps", type: "double precision" })
   txSpeedBps: number;
 
-  /** Whether the peer was active at this sample time */
+  /** Был ли пир активен в момент снятия сэмпла */
   @Column({ name: "is_active", type: "boolean" })
   isActive: boolean;
 

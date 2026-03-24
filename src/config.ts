@@ -83,7 +83,7 @@ const configSchema = z.object({
     dbWriteIntervalSec: z.coerce.number().int().positive().default(60),
     socketPollIntervalSec: z.coerce.number().int().positive().default(1),
     statsRetentionDays: z.coerce.number().int().positive().default(30),
-    /** Default iptables hook rules applied to every new server unless overridden */
+    /** Правила iptables по умолчанию, применяемые к каждому новому серверу, если не переопределено */
     defaults: z.object({
       preUp: z.string().default(""),
       preDown: z.string().default(""),
