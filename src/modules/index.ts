@@ -1,6 +1,6 @@
 export { AuthController } from "./auth";
+export { BiometricController } from "./biometric";
+export { FileController } from "./file";
 export { ProfileController } from "./profile";
 export { UserController } from "./user";
-export { WgPeerController } from "./wg-peer";
-export { WgServerController } from "./wg-server";
-export { WgStatisticsController } from "./wg-statistics";
+// EXPORT CONTROLLER HERE

@@ -3,12 +3,6 @@ import { EPermissions } from "../../modules/permission/permission.types";
 /**
  * Проверяет, удовлетворяет ли набор разрешений пользователя требуемому разрешению,
  * включая разрешение wildcards.
- *
- * Примеры:
- *   hasPermission(["wg:*"], "wg:server:view")   → true
- *   hasPermission(["wg:server:*"], "wg:server:view") → true
- *   hasPermission(["wg:peer:*"], "wg:server:view")   → false
- *   hasPermission(["*"], "anything")             → true
  */
 export function hasPermission(userPerms: string[], required: string): boolean {
   if (userPerms.includes(EPermissions.ALL)) return true;

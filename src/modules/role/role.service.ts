@@ -10,12 +10,8 @@ import { ERole } from "./role.types";
 
 const ROLE_DEFAULT_PERMISSIONS: Record<ERole, EPermissions[]> = {
   [ERole.ADMIN]: [EPermissions.ALL],
-  [ERole.USER]: [
-    EPermissions.WG_SERVER_OWN,
-    EPermissions.WG_PEER_OWN,
-    EPermissions.WG_STATS_VIEW,
-  ],
-  [ERole.GUEST]: [EPermissions.WG_PEER_OWN],
+  [ERole.USER]: [EPermissions.USER_VIEW, EPermissions.USER_MANAGE],
+  [ERole.GUEST]: [EPermissions.USER_VIEW],
 };
 
 /** Сервис для управления ролями и их разрешениями. */

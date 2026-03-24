@@ -68,17 +68,6 @@
 			"EPermissions": {
 				"enum": [
 					"*",
-					"wg:*",
-					"wg:server:*",
-					"wg:peer:*",
-					"wg:stats:*",
-					"wg:server:view",
-					"wg:server:manage",
-					"wg:server:own",
-					"wg:peer:view",
-					"wg:peer:manage",
-					"wg:peer:own",
-					"wg:stats:view",
 					"user:view",
 					"user:manage"
 				],
@@ -305,6 +294,9 @@
 					},
 					"roleId": {
 						"type": "string"
+					},
+					"challenge": {
+						"type": "string"
 					}
 				},
 				"type": "object",
@@ -399,14 +391,14 @@
 							"$ref": "#/components/schemas/ERole"
 						},
 						"type": "array",
-						"description": "Roles to assign to the user (replaces current roles)."
+						"description": "Роли для назначения пользователю (заменяет текущие роли)."
 					},
 					"permissions": {
 						"items": {
 							"$ref": "#/components/schemas/EPermissions"
 						},
 						"type": "array",
-						"description": "Direct permissions granted to this user on top of role permissions.\nReplaces current direct permissions."
+						"description": "Прямые разрешения, выданные этому пользователю дополнительно к разрешениям ролей.\nЗаменяет текущие прямые разрешения."
 					}
 				},
 				"required": [
@@ -601,6 +593,153 @@
 				"required": [
 					"password",
 					"token"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IRegisterBiometricResponseDto": {
+				"properties": {
+					"registered": {
+						"type": "boolean"
+					}
+				},
+				"required": [
+					"registered"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IRegisterBiometricRequestDto": {
+				"properties": {
+					"userId": {
+						"type": "string"
+					},
+					"deviceId": {
+						"type": "string"
+					},
+					"deviceName": {
+						"type": "string"
+					},
+					"publicKey": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"userId",
+					"deviceId",
+					"deviceName",
+					"publicKey"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IGenerateNonceResponseDto": {
+				"properties": {
+					"nonce": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"nonce"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IGenerateNonceRequestDto": {
+				"properties": {
+					"userId": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"userId"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IVerifyBiometricSignatureResponseDto": {
+				"properties": {
+					"verified": {
+						"type": "boolean"
+					},
+					"tokens": {
+						"properties": {
+							"refreshToken": {
+								"type": "string"
+							},
+							"accessToken": {
+								"type": "string"
+							}
+						},
+						"required": [
+							"refreshToken",
+							"accessToken"
+						],
+						"type": "object"
+					}
+				},
+				"required": [
+					"verified",
+					"tokens"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IVerifyBiometricSignatureRequestDto": {
+				"properties": {
+					"userId": {
+						"type": "string"
+					},
+					"deviceId": {
+						"type": "string"
+					},
+					"signature": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"userId",
+					"deviceId",
+					"signature"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IFileDto": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"name": {
+						"type": "string"
+					},
+					"type": {
+						"type": "string"
+					},
+					"url": {
+						"type": "string"
+					},
+					"size": {
+						"type": "number",
+						"format": "double"
+					},
+					"createdAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"updatedAt": {
+						"type": "string",
+						"format": "date-time"
+					}
+				},
+				"required": [
+					"id",
+					"name",
+					"type",
+					"url",
+					"size",
+					"createdAt",
+					"updatedAt"
 				],
 				"type": "object",
 				"additionalProperties": false
@@ -1059,796 +1198,6 @@
 				},
 				"required": [
 					"data"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"EWgServerStatus": {
-				"enum": [
-					"up",
-					"down",
-					"error",
-					"unknown"
-				],
-				"type": "string"
-			},
-			"WgPeerDto": {
-				"properties": {
-					"id": {
-						"type": "string"
-					},
-					"serverId": {
-						"type": "string"
-					},
-					"userId": {
-						"type": "string",
-						"nullable": true
-					},
-					"user": {
-						"allOf": [
-							{
-								"$ref": "#/components/schemas/PublicUserDto"
-							}
-						],
-						"nullable": true
-					},
-					"name": {
-						"type": "string"
-					},
-					"publicKey": {
-						"type": "string"
-					},
-					"hasPresharedKey": {
-						"type": "boolean"
-					},
-					"allowedIPs": {
-						"type": "string"
-					},
-					"persistentKeepalive": {
-						"type": "number",
-						"format": "double",
-						"nullable": true
-					},
-					"dns": {
-						"type": "string",
-						"nullable": true
-					},
-					"mtu": {
-						"type": "number",
-						"format": "double",
-						"nullable": true
-					},
-					"clientAllowedIPs": {
-						"type": "string"
-					},
-					"enabled": {
-						"type": "boolean"
-					},
-					"status": {
-						"$ref": "#/components/schemas/EWgServerStatus"
-					},
-					"expiresAt": {
-						"type": "string",
-						"format": "date-time",
-						"nullable": true
-					},
-					"description": {
-						"type": "string",
-						"nullable": true
-					},
-					"lastHandshake": {
-						"type": "string",
-						"format": "date-time",
-						"nullable": true
-					},
-					"isActive": {
-						"type": "boolean"
-					},
-					"createdAt": {
-						"type": "string",
-						"format": "date-time"
-					},
-					"updatedAt": {
-						"type": "string",
-						"format": "date-time"
-					}
-				},
-				"required": [
-					"id",
-					"serverId",
-					"userId",
-					"user",
-					"name",
-					"publicKey",
-					"hasPresharedKey",
-					"allowedIPs",
-					"persistentKeepalive",
-					"dns",
-					"mtu",
-					"clientAllowedIPs",
-					"enabled",
-					"status",
-					"expiresAt",
-					"description",
-					"lastHandshake",
-					"isActive",
-					"createdAt",
-					"updatedAt"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"IWgPeerListDto": {
-				"properties": {
-					"count": {
-						"type": "number",
-						"format": "double"
-					},
-					"totalCount": {
-						"type": "number",
-						"format": "double"
-					},
-					"offset": {
-						"type": "number",
-						"format": "double"
-					},
-					"limit": {
-						"type": "number",
-						"format": "double"
-					},
-					"data": {
-						"items": {
-							"$ref": "#/components/schemas/WgPeerDto"
-						},
-						"type": "array"
-					}
-				},
-				"required": [
-					"data"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"IWgPeerOptionDto": {
-				"properties": {
-					"id": {
-						"type": "string"
-					},
-					"name": {
-						"type": "string"
-					}
-				},
-				"required": [
-					"id",
-					"name"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"IWgPeerOptionsDto": {
-				"properties": {
-					"data": {
-						"items": {
-							"$ref": "#/components/schemas/IWgPeerOptionDto"
-						},
-						"type": "array"
-					}
-				},
-				"required": [
-					"data"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"IWgPeerCreateRequestDto": {
-				"properties": {
-					"name": {
-						"type": "string"
-					},
-					"presharedKey": {
-						"type": "boolean"
-					},
-					"persistentKeepalive": {
-						"type": "number",
-						"format": "double"
-					},
-					"dns": {
-						"type": "string"
-					},
-					"mtu": {
-						"type": "number",
-						"format": "double"
-					},
-					"clientAllowedIPs": {
-						"type": "string"
-					},
-					"description": {
-						"type": "string"
-					},
-					"expiresAt": {
-						"type": "string"
-					},
-					"enabled": {
-						"type": "boolean"
-					}
-				},
-				"required": [
-					"name"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"IWgPeerUpdateRequestDto": {
-				"properties": {
-					"name": {
-						"type": "string"
-					},
-					"allowedIPs": {
-						"type": "string"
-					},
-					"userId": {
-						"type": "string",
-						"nullable": true
-					},
-					"presharedKey": {
-						"type": "boolean",
-						"nullable": true,
-						"description": "true — сгенерировать новый, false/null — удалить существующий"
-					},
-					"persistentKeepalive": {
-						"type": "number",
-						"format": "double",
-						"nullable": true
-					},
-					"dns": {
-						"type": "string",
-						"nullable": true
-					},
-					"mtu": {
-						"type": "number",
-						"format": "double",
-						"nullable": true
-					},
-					"clientAllowedIPs": {
-						"type": "string"
-					},
-					"description": {
-						"type": "string",
-						"nullable": true
-					},
-					"expiresAt": {
-						"type": "string",
-						"nullable": true
-					},
-					"enabled": {
-						"type": "boolean"
-					}
-				},
-				"type": "object",
-				"additionalProperties": false
-			},
-			"WgServerDto": {
-				"properties": {
-					"id": {
-						"type": "string"
-					},
-					"userId": {
-						"type": "string",
-						"nullable": true
-					},
-					"name": {
-						"type": "string"
-					},
-					"interface": {
-						"type": "string"
-					},
-					"listenPort": {
-						"type": "number",
-						"format": "double"
-					},
-					"publicKey": {
-						"type": "string"
-					},
-					"address": {
-						"type": "string"
-					},
-					"dns": {
-						"type": "string",
-						"nullable": true
-					},
-					"endpoint": {
-						"type": "string",
-						"nullable": true
-					},
-					"mtu": {
-						"type": "number",
-						"format": "double",
-						"nullable": true
-					},
-					"preUp": {
-						"type": "string",
-						"nullable": true
-					},
-					"preDown": {
-						"type": "string",
-						"nullable": true
-					},
-					"postUp": {
-						"type": "string",
-						"nullable": true
-					},
-					"postDown": {
-						"type": "string",
-						"nullable": true
-					},
-					"status": {
-						"$ref": "#/components/schemas/EWgServerStatus"
-					},
-					"enabled": {
-						"type": "boolean"
-					},
-					"description": {
-						"type": "string",
-						"nullable": true
-					},
-					"createdAt": {
-						"type": "string",
-						"format": "date-time"
-					},
-					"updatedAt": {
-						"type": "string",
-						"format": "date-time"
-					}
-				},
-				"required": [
-					"id",
-					"userId",
-					"name",
-					"interface",
-					"listenPort",
-					"publicKey",
-					"address",
-					"dns",
-					"endpoint",
-					"mtu",
-					"preUp",
-					"preDown",
-					"postUp",
-					"postDown",
-					"status",
-					"enabled",
-					"description",
-					"createdAt",
-					"updatedAt"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"IWgServerListDto": {
-				"properties": {
-					"count": {
-						"type": "number",
-						"format": "double"
-					},
-					"totalCount": {
-						"type": "number",
-						"format": "double"
-					},
-					"offset": {
-						"type": "number",
-						"format": "double"
-					},
-					"limit": {
-						"type": "number",
-						"format": "double"
-					},
-					"data": {
-						"items": {
-							"$ref": "#/components/schemas/WgServerDto"
-						},
-						"type": "array"
-					}
-				},
-				"required": [
-					"data"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"IWgServerOptionDto": {
-				"properties": {
-					"id": {
-						"type": "string"
-					},
-					"name": {
-						"type": "string"
-					}
-				},
-				"required": [
-					"id",
-					"name"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"IWgServerOptionsDto": {
-				"properties": {
-					"data": {
-						"items": {
-							"$ref": "#/components/schemas/IWgServerOptionDto"
-						},
-						"type": "array"
-					}
-				},
-				"required": [
-					"data"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"IWgServerCreateRequestDto": {
-				"properties": {
-					"userId": {
-						"type": "string",
-						"nullable": true
-					},
-					"name": {
-						"type": "string"
-					},
-					"interface": {
-						"type": "string"
-					},
-					"listenPort": {
-						"type": "number",
-						"format": "double"
-					},
-					"address": {
-						"type": "string"
-					},
-					"dns": {
-						"type": "string"
-					},
-					"endpoint": {
-						"type": "string"
-					},
-					"mtu": {
-						"type": "number",
-						"format": "double"
-					},
-					"preUp": {
-						"type": "string"
-					},
-					"preDown": {
-						"type": "string"
-					},
-					"postUp": {
-						"type": "string"
-					},
-					"postDown": {
-						"type": "string"
-					},
-					"description": {
-						"type": "string"
-					},
-					"enabled": {
-						"type": "boolean"
-					}
-				},
-				"required": [
-					"name",
-					"interface",
-					"listenPort",
-					"address"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"IWgServerUpdateRequestDto": {
-				"properties": {
-					"name": {
-						"type": "string"
-					},
-					"listenPort": {
-						"type": "number",
-						"format": "double"
-					},
-					"address": {
-						"type": "string"
-					},
-					"dns": {
-						"type": "string"
-					},
-					"endpoint": {
-						"type": "string"
-					},
-					"mtu": {
-						"type": "number",
-						"format": "double"
-					},
-					"preUp": {
-						"type": "string",
-						"nullable": true
-					},
-					"preDown": {
-						"type": "string",
-						"nullable": true
-					},
-					"postUp": {
-						"type": "string",
-						"nullable": true
-					},
-					"postDown": {
-						"type": "string",
-						"nullable": true
-					},
-					"description": {
-						"type": "string"
-					},
-					"enabled": {
-						"type": "boolean"
-					}
-				},
-				"type": "object",
-				"additionalProperties": false
-			},
-			"IWgServerStatusDto": {
-				"properties": {
-					"serverId": {
-						"type": "string"
-					},
-					"interface": {
-						"type": "string"
-					},
-					"status": {
-						"$ref": "#/components/schemas/EWgServerStatus"
-					},
-					"listenPort": {
-						"type": "number",
-						"format": "double"
-					},
-					"peerCount": {
-						"type": "number",
-						"format": "double"
-					},
-					"activePeerCount": {
-						"type": "number",
-						"format": "double"
-					},
-					"publicKey": {
-						"type": "string"
-					}
-				},
-				"required": [
-					"serverId",
-					"interface",
-					"status",
-					"listenPort",
-					"peerCount",
-					"activePeerCount",
-					"publicKey"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"WgOverviewTrafficPointDto": {
-				"properties": {
-					"timestamp": {
-						"type": "string",
-						"format": "date-time"
-					},
-					"rxBytes": {
-						"type": "number",
-						"format": "double"
-					},
-					"txBytes": {
-						"type": "number",
-						"format": "double"
-					}
-				},
-				"required": [
-					"timestamp",
-					"rxBytes",
-					"txBytes"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"WgOverviewSpeedPointDto": {
-				"properties": {
-					"timestamp": {
-						"type": "string",
-						"format": "date-time"
-					},
-					"rxSpeedBps": {
-						"type": "number",
-						"format": "double"
-					},
-					"txSpeedBps": {
-						"type": "number",
-						"format": "double"
-					}
-				},
-				"required": [
-					"timestamp",
-					"rxSpeedBps",
-					"txSpeedBps"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"IWgOverviewStatsResponse": {
-				"properties": {
-					"traffic": {
-						"items": {
-							"$ref": "#/components/schemas/WgOverviewTrafficPointDto"
-						},
-						"type": "array"
-					},
-					"speed": {
-						"items": {
-							"$ref": "#/components/schemas/WgOverviewSpeedPointDto"
-						},
-						"type": "array"
-					}
-				},
-				"required": [
-					"traffic",
-					"speed"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"WgOverviewStatsPayload": {
-				"properties": {
-					"totalServers": {
-						"type": "number",
-						"format": "double"
-					},
-					"activeServers": {
-						"type": "number",
-						"format": "double"
-					},
-					"totalPeers": {
-						"type": "number",
-						"format": "double"
-					},
-					"activePeers": {
-						"type": "number",
-						"format": "double"
-					},
-					"totalRxBytes": {
-						"type": "number",
-						"format": "double"
-					},
-					"totalTxBytes": {
-						"type": "number",
-						"format": "double"
-					},
-					"rxSpeedBps": {
-						"type": "number",
-						"format": "double"
-					},
-					"txSpeedBps": {
-						"type": "number",
-						"format": "double"
-					},
-					"timestamp": {
-						"type": "string",
-						"format": "date-time"
-					}
-				},
-				"required": [
-					"totalServers",
-					"activeServers",
-					"totalPeers",
-					"activePeers",
-					"totalRxBytes",
-					"totalTxBytes",
-					"rxSpeedBps",
-					"txSpeedBps",
-					"timestamp"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"WgServerStatsPayload": {
-				"properties": {
-					"serverId": {
-						"type": "string"
-					},
-					"interface": {
-						"type": "string"
-					},
-					"totalRxBytes": {
-						"type": "number",
-						"format": "double"
-					},
-					"totalTxBytes": {
-						"type": "number",
-						"format": "double"
-					},
-					"rxSpeedBps": {
-						"type": "number",
-						"format": "double"
-					},
-					"txSpeedBps": {
-						"type": "number",
-						"format": "double"
-					},
-					"peerCount": {
-						"type": "number",
-						"format": "double"
-					},
-					"activePeerCount": {
-						"type": "number",
-						"format": "double"
-					},
-					"timestamp": {
-						"type": "string",
-						"format": "date-time"
-					}
-				},
-				"required": [
-					"serverId",
-					"interface",
-					"totalRxBytes",
-					"totalTxBytes",
-					"rxSpeedBps",
-					"txSpeedBps",
-					"peerCount",
-					"activePeerCount",
-					"timestamp"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"WgPeerStatsPayload": {
-				"properties": {
-					"peerId": {
-						"type": "string"
-					},
-					"serverId": {
-						"type": "string"
-					},
-					"rxBytes": {
-						"type": "number",
-						"format": "double"
-					},
-					"txBytes": {
-						"type": "number",
-						"format": "double"
-					},
-					"rxSpeedBps": {
-						"type": "number",
-						"format": "double"
-					},
-					"txSpeedBps": {
-						"type": "number",
-						"format": "double"
-					},
-					"lastHandshake": {
-						"type": "string",
-						"format": "date-time",
-						"nullable": true
-					},
-					"isActive": {
-						"type": "boolean"
-					},
-					"timestamp": {
-						"type": "string",
-						"format": "date-time"
-					}
-				},
-				"required": [
-					"peerId",
-					"serverId",
-					"rxBytes",
-					"txBytes",
-					"rxSpeedBps",
-					"txSpeedBps",
-					"lastHandshake",
-					"isActive",
-					"timestamp"
 				],
 				"type": "object",
 				"additionalProperties": false
@@ -2927,6 +2276,230 @@
 				}
 			}
 		},
+		"/api/biometric/register": {
+			"post": {
+				"operationId": "RegisterBiometric",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IRegisterBiometricResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Регистрирует биометрические ключи с устройства",
+				"tags": [
+					"Biometric"
+				],
+				"security": [],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IRegisterBiometricRequestDto"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/biometric/generate-nonce": {
+			"post": {
+				"operationId": "GenerateNonce",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IGenerateNonceResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Генерирует nonce, который необходимо подписать на устройстве",
+				"tags": [
+					"Biometric"
+				],
+				"security": [],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IGenerateNonceRequestDto"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/biometric/verify-signature": {
+			"post": {
+				"operationId": "VerifySignature",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IVerifyBiometricSignatureResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Проверяет подпись и авторизует пользователя",
+				"tags": [
+					"Biometric"
+				],
+				"security": [],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IVerifyBiometricSignatureRequestDto"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/file": {
+			"get": {
+				"operationId": "GetFileById",
+				"responses": {
+					"200": {
+						"description": "Информацию о файле, включая метаданные и его содержимое",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IFileDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Получить файл по ID.\nЭтот эндпоинт позволяет пользователю получить файл по его уникальному ID.\nОн защищен с использованием JWT-аутентификации, что означает, что только аутентифицированные пользователи могут получить доступ к этому ресурсу.",
+				"summary": "Получение файла по ID",
+				"tags": [
+					"Files"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"description": "ID файла, который нужно получить",
+						"in": "query",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			},
+			"post": {
+				"operationId": "UploadFile",
+				"responses": {
+					"200": {
+						"description": "Массив объектов, представляющих загруженные файлы с их метаданными",
+						"content": {
+							"application/json": {
+								"schema": {
+									"items": {
+										"$ref": "#/components/schemas/IFileDto"
+									},
+									"type": "array"
+								}
+							}
+						}
+					}
+				},
+				"description": "Загрузить файл.\nЭтот эндпоинт позволяет пользователю загрузить один файл на сервер.\nОн защищен с использованием JWT-аутентификации, что означает, что только аутентифицированные пользователи могут загружать файлы.",
+				"summary": "Загрузка файла",
+				"tags": [
+					"Files"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"multipart/form-data": {
+							"schema": {
+								"type": "object",
+								"properties": {
+									"file": {
+										"type": "string",
+										"format": "binary",
+										"description": "Файл, который нужно загрузить"
+									}
+								},
+								"required": [
+									"file"
+								]
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/file/{id}": {
+			"delete": {
+				"operationId": "DeleteFile",
+				"responses": {
+					"200": {
+						"description": "Количество удаленных файлов (обычно 1, если файл существует)",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "boolean"
+								}
+							}
+						}
+					}
+				},
+				"description": "Удалить файл.\nЭтот эндпоинт позволяет пользователю удалить файл по его ID. Доступ разрешен только пользователю, который загрузил файл, либо администратору.",
+				"summary": "Удаление файла",
+				"tags": [
+					"Files"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"description": "ID файла, который нужно удалить",
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
 		"/api/passkeys/generate-registration-options": {
 			"post": {
 				"operationId": "GenerateRegistrationOptions",
@@ -3059,1455 +2632,6 @@
 						}
 					}
 				}
-			}
-		},
-		"/api/wg/peers": {
-			"get": {
-				"operationId": "GetPeers",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/IWgPeerListDto"
-								}
-							}
-						}
-					}
-				},
-				"description": "List all peers.\nReturns all peers for wg:peer:view (with optional userId filter), own peers for wg:peer:own.",
-				"summary": "Get peers",
-				"tags": [
-					"WireGuard Peers"
-				],
-				"security": [
-					{
-						"jwt": [
-							"permission:wg:peer:view"
-						]
-					},
-					{
-						"jwt": [
-							"permission:wg:peer:own"
-						]
-					}
-				],
-				"parameters": [
-					{
-						"in": "query",
-						"name": "offset",
-						"required": false,
-						"schema": {
-							"format": "double",
-							"type": "number"
-						}
-					},
-					{
-						"in": "query",
-						"name": "limit",
-						"required": false,
-						"schema": {
-							"format": "double",
-							"type": "number"
-						}
-					},
-					{
-						"in": "query",
-						"name": "query",
-						"required": false,
-						"schema": {
-							"type": "string"
-						}
-					},
-					{
-						"in": "query",
-						"name": "enabled",
-						"required": false,
-						"schema": {
-							"type": "boolean"
-						}
-					},
-					{
-						"in": "query",
-						"name": "status",
-						"required": false,
-						"schema": {
-							"$ref": "#/components/schemas/EWgServerStatus"
-						}
-					},
-					{
-						"in": "query",
-						"name": "serverId",
-						"required": false,
-						"schema": {
-							"type": "string"
-						}
-					},
-					{
-						"in": "query",
-						"name": "userId",
-						"required": false,
-						"schema": {
-							"type": "string"
-						}
-					}
-				]
-			}
-		},
-		"/api/wg/peers/options": {
-			"get": {
-				"operationId": "GetPeersOptions",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/IWgPeerOptionsDto"
-								}
-							}
-						}
-					}
-				},
-				"description": "Get peer options for dropdowns.\nReturns all options for wg:peer:view, own options for wg:peer:own.",
-				"summary": "Get peer options",
-				"tags": [
-					"WireGuard Peers"
-				],
-				"security": [
-					{
-						"jwt": [
-							"permission:wg:peer:view"
-						]
-					},
-					{
-						"jwt": [
-							"permission:wg:peer:own"
-						]
-					}
-				],
-				"parameters": [
-					{
-						"in": "query",
-						"name": "serverId",
-						"required": false,
-						"schema": {
-							"type": "string"
-						}
-					},
-					{
-						"in": "query",
-						"name": "query",
-						"required": false,
-						"schema": {
-							"type": "string"
-						}
-					}
-				]
-			}
-		},
-		"/api/wg/peers/{id}": {
-			"get": {
-				"operationId": "GetPeer",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/WgPeerDto"
-								}
-							}
-						}
-					}
-				},
-				"description": "Get a peer by ID.\nOwnership check for wg:peer:own users.",
-				"summary": "Get peer",
-				"tags": [
-					"WireGuard Peers"
-				],
-				"security": [
-					{
-						"jwt": [
-							"permission:wg:peer:view"
-						]
-					},
-					{
-						"jwt": [
-							"permission:wg:peer:own"
-						]
-					}
-				],
-				"parameters": [
-					{
-						"in": "path",
-						"name": "id",
-						"required": true,
-						"schema": {
-							"type": "string"
-						}
-					}
-				]
-			},
-			"patch": {
-				"operationId": "UpdatePeer",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/WgPeerDto"
-								}
-							}
-						}
-					}
-				},
-				"description": "Update a peer.",
-				"summary": "Update peer",
-				"tags": [
-					"WireGuard Peers"
-				],
-				"security": [
-					{
-						"jwt": [
-							"permission:wg:peer:manage"
-						]
-					}
-				],
-				"parameters": [
-					{
-						"in": "path",
-						"name": "id",
-						"required": true,
-						"schema": {
-							"type": "string"
-						}
-					}
-				],
-				"requestBody": {
-					"required": true,
-					"content": {
-						"application/json": {
-							"schema": {
-								"$ref": "#/components/schemas/IWgPeerUpdateRequestDto"
-							}
-						}
-					}
-				}
-			},
-			"delete": {
-				"operationId": "DeletePeer",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"type": "boolean"
-								}
-							}
-						}
-					}
-				},
-				"description": "Delete a peer.\nPeer is removed from live interface if server is up.",
-				"summary": "Delete peer",
-				"tags": [
-					"WireGuard Peers"
-				],
-				"security": [
-					{
-						"jwt": [
-							"permission:wg:peer:manage"
-						]
-					}
-				],
-				"parameters": [
-					{
-						"in": "path",
-						"name": "id",
-						"required": true,
-						"schema": {
-							"type": "string"
-						}
-					}
-				]
-			}
-		},
-		"/api/wg/servers/{serverId}/peers": {
-			"post": {
-				"operationId": "CreatePeer",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/WgPeerDto"
-								}
-							}
-						}
-					}
-				},
-				"description": "Create a new peer on a server.\nKeys are auto-generated. Peer is applied to live interface if server is up.",
-				"summary": "Create peer",
-				"tags": [
-					"WireGuard Peers"
-				],
-				"security": [
-					{
-						"jwt": [
-							"permission:wg:peer:manage"
-						]
-					}
-				],
-				"parameters": [
-					{
-						"in": "path",
-						"name": "serverId",
-						"required": true,
-						"schema": {
-							"type": "string"
-						}
-					}
-				],
-				"requestBody": {
-					"required": true,
-					"content": {
-						"application/json": {
-							"schema": {
-								"$ref": "#/components/schemas/IWgPeerCreateRequestDto"
-							}
-						}
-					}
-				}
-			}
-		},
-		"/api/wg/peers/{id}/start": {
-			"post": {
-				"operationId": "StartPeer",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/WgPeerDto"
-								}
-							}
-						}
-					}
-				},
-				"description": "Start a peer (add to live WG interface, status → UP).\nRequires peer to be enabled and server to be running.",
-				"summary": "Start peer",
-				"tags": [
-					"WireGuard Peers"
-				],
-				"security": [
-					{
-						"jwt": [
-							"permission:wg:peer:manage"
-						]
-					}
-				],
-				"parameters": [
-					{
-						"in": "path",
-						"name": "id",
-						"required": true,
-						"schema": {
-							"type": "string"
-						}
-					}
-				]
-			}
-		},
-		"/api/wg/peers/{id}/stop": {
-			"post": {
-				"operationId": "StopPeer",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/WgPeerDto"
-								}
-							}
-						}
-					}
-				},
-				"description": "Stop a peer (remove from live WG interface, status → DOWN).",
-				"summary": "Stop peer",
-				"tags": [
-					"WireGuard Peers"
-				],
-				"security": [
-					{
-						"jwt": [
-							"permission:wg:peer:manage"
-						]
-					}
-				],
-				"parameters": [
-					{
-						"in": "path",
-						"name": "id",
-						"required": true,
-						"schema": {
-							"type": "string"
-						}
-					}
-				]
-			}
-		},
-		"/api/wg/peers/{id}/assign": {
-			"post": {
-				"operationId": "AssignPeer",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/WgPeerDto"
-								}
-							}
-						}
-					}
-				},
-				"description": "Assign a peer to a user.",
-				"summary": "Assign peer to user",
-				"tags": [
-					"WireGuard Peers"
-				],
-				"security": [
-					{
-						"jwt": [
-							"permission:wg:peer:manage"
-						]
-					}
-				],
-				"parameters": [
-					{
-						"in": "path",
-						"name": "id",
-						"required": true,
-						"schema": {
-							"type": "string"
-						}
-					},
-					{
-						"in": "query",
-						"name": "userId",
-						"required": true,
-						"schema": {
-							"type": "string"
-						}
-					}
-				]
-			}
-		},
-		"/api/wg/peers/{id}/revoke": {
-			"post": {
-				"operationId": "RevokePeer",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/WgPeerDto"
-								}
-							}
-						}
-					}
-				},
-				"description": "Revoke peer from its current user.",
-				"summary": "Revoke peer from user",
-				"tags": [
-					"WireGuard Peers"
-				],
-				"security": [
-					{
-						"jwt": [
-							"permission:wg:peer:manage"
-						]
-					}
-				],
-				"parameters": [
-					{
-						"in": "path",
-						"name": "id",
-						"required": true,
-						"schema": {
-							"type": "string"
-						}
-					}
-				]
-			}
-		},
-		"/api/wg/peers/{id}/rotate-psk": {
-			"post": {
-				"operationId": "RotatePresharedKey",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/WgPeerDto"
-								}
-							}
-						}
-					}
-				},
-				"description": "Rotate (regenerate) preshared key for a peer.",
-				"summary": "Rotate preshared key",
-				"tags": [
-					"WireGuard Peers"
-				],
-				"security": [
-					{
-						"jwt": [
-							"permission:wg:peer:manage"
-						]
-					}
-				],
-				"parameters": [
-					{
-						"in": "path",
-						"name": "id",
-						"required": true,
-						"schema": {
-							"type": "string"
-						}
-					}
-				]
-			}
-		},
-		"/api/wg/peers/{id}/psk": {
-			"delete": {
-				"operationId": "RemovePresharedKey",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/WgPeerDto"
-								}
-							}
-						}
-					}
-				},
-				"description": "Remove preshared key from a peer.",
-				"summary": "Remove preshared key",
-				"tags": [
-					"WireGuard Peers"
-				],
-				"security": [
-					{
-						"jwt": [
-							"permission:wg:peer:manage"
-						]
-					}
-				],
-				"parameters": [
-					{
-						"in": "path",
-						"name": "id",
-						"required": true,
-						"schema": {
-							"type": "string"
-						}
-					}
-				]
-			}
-		},
-		"/api/wg/peers/{id}/config": {
-			"get": {
-				"operationId": "GetPeerConfig",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"type": "string"
-								}
-							}
-						}
-					}
-				},
-				"description": "Download the WireGuard client .conf file for this peer.\nwg:peer:view can access any peer; wg:peer:own only their own.",
-				"summary": "Get peer config file",
-				"tags": [
-					"WireGuard Peers"
-				],
-				"security": [
-					{
-						"jwt": [
-							"permission:wg:peer:view"
-						]
-					},
-					{
-						"jwt": [
-							"permission:wg:peer:own"
-						]
-					}
-				],
-				"parameters": [
-					{
-						"in": "path",
-						"name": "id",
-						"required": true,
-						"schema": {
-							"type": "string"
-						}
-					}
-				]
-			}
-		},
-		"/api/wg/peers/{id}/qr": {
-			"get": {
-				"operationId": "GetPeerQrCode",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"properties": {
-										"dataUrl": {
-											"type": "string"
-										}
-									},
-									"required": [
-										"dataUrl"
-									],
-									"type": "object"
-								}
-							}
-						}
-					}
-				},
-				"description": "Get QR code PNG image for the client config.\nwg:peer:view can access any peer; wg:peer:own only their own.\nReturns base64-encoded PNG data URL.",
-				"summary": "Get peer QR code",
-				"tags": [
-					"WireGuard Peers"
-				],
-				"security": [
-					{
-						"jwt": [
-							"permission:wg:peer:view"
-						]
-					},
-					{
-						"jwt": [
-							"permission:wg:peer:own"
-						]
-					}
-				],
-				"parameters": [
-					{
-						"in": "path",
-						"name": "id",
-						"required": true,
-						"schema": {
-							"type": "string"
-						}
-					}
-				]
-			}
-		},
-		"/api/wg/servers": {
-			"get": {
-				"operationId": "GetServers",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/IWgServerListDto"
-								}
-							}
-						}
-					}
-				},
-				"description": "List all WireGuard servers with optional filters.\nReturns all servers for wg:server:view, own servers for wg:server:own.",
-				"summary": "Get all servers",
-				"tags": [
-					"WireGuard Servers"
-				],
-				"security": [
-					{
-						"jwt": [
-							"permission:wg:server:view"
-						]
-					},
-					{
-						"jwt": [
-							"permission:wg:server:own"
-						]
-					}
-				],
-				"parameters": [
-					{
-						"in": "query",
-						"name": "offset",
-						"required": false,
-						"schema": {
-							"format": "double",
-							"type": "number"
-						}
-					},
-					{
-						"in": "query",
-						"name": "limit",
-						"required": false,
-						"schema": {
-							"format": "double",
-							"type": "number"
-						}
-					},
-					{
-						"in": "query",
-						"name": "query",
-						"required": false,
-						"schema": {
-							"type": "string"
-						}
-					},
-					{
-						"in": "query",
-						"name": "status",
-						"required": false,
-						"schema": {
-							"$ref": "#/components/schemas/EWgServerStatus"
-						}
-					},
-					{
-						"in": "query",
-						"name": "enabled",
-						"required": false,
-						"schema": {
-							"type": "boolean"
-						}
-					}
-				]
-			},
-			"post": {
-				"operationId": "CreateServer",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/WgServerDto"
-								}
-							}
-						}
-					}
-				},
-				"description": "Create a new WireGuard server.\nKeys are generated automatically.\nThe config file is written to the WG config directory.",
-				"summary": "Create server",
-				"tags": [
-					"WireGuard Servers"
-				],
-				"security": [
-					{
-						"jwt": [
-							"permission:wg:server:manage"
-						]
-					}
-				],
-				"parameters": [],
-				"requestBody": {
-					"required": true,
-					"content": {
-						"application/json": {
-							"schema": {
-								"$ref": "#/components/schemas/IWgServerCreateRequestDto"
-							}
-						}
-					}
-				}
-			}
-		},
-		"/api/wg/servers/options": {
-			"get": {
-				"operationId": "GetServerOptions",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/IWgServerOptionsDto"
-								}
-							}
-						}
-					}
-				},
-				"description": "Get server options for dropdowns (id + name only).\nReturns all options for wg:server:view, own options for wg:server:own.",
-				"summary": "Get server options",
-				"tags": [
-					"WireGuard Servers"
-				],
-				"security": [
-					{
-						"jwt": [
-							"permission:wg:server:view"
-						]
-					},
-					{
-						"jwt": [
-							"permission:wg:server:own"
-						]
-					}
-				],
-				"parameters": [
-					{
-						"in": "query",
-						"name": "query",
-						"required": false,
-						"schema": {
-							"type": "string"
-						}
-					}
-				]
-			}
-		},
-		"/api/wg/servers/{id}": {
-			"get": {
-				"operationId": "GetServer",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/WgServerDto"
-								}
-							}
-						}
-					}
-				},
-				"description": "Get a WireGuard server by ID.\nOwnership check for wg:server:own users.",
-				"summary": "Get server by ID",
-				"tags": [
-					"WireGuard Servers"
-				],
-				"security": [
-					{
-						"jwt": [
-							"permission:wg:server:view"
-						]
-					},
-					{
-						"jwt": [
-							"permission:wg:server:own"
-						]
-					}
-				],
-				"parameters": [
-					{
-						"in": "path",
-						"name": "id",
-						"required": true,
-						"schema": {
-							"type": "string"
-						}
-					}
-				]
-			},
-			"patch": {
-				"operationId": "UpdateServer",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/WgServerDto"
-								}
-							}
-						}
-					}
-				},
-				"description": "Update a WireGuard server.\nConfig file is rewritten automatically.",
-				"summary": "Update server",
-				"tags": [
-					"WireGuard Servers"
-				],
-				"security": [
-					{
-						"jwt": [
-							"permission:wg:server:manage"
-						]
-					}
-				],
-				"parameters": [
-					{
-						"in": "path",
-						"name": "id",
-						"required": true,
-						"schema": {
-							"type": "string"
-						}
-					}
-				],
-				"requestBody": {
-					"required": true,
-					"content": {
-						"application/json": {
-							"schema": {
-								"$ref": "#/components/schemas/IWgServerUpdateRequestDto"
-							}
-						}
-					}
-				}
-			},
-			"delete": {
-				"operationId": "DeleteServer",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"type": "boolean"
-								}
-							}
-						}
-					}
-				},
-				"description": "Delete a WireGuard server.\nStops the interface and removes the config file.",
-				"summary": "Delete server",
-				"tags": [
-					"WireGuard Servers"
-				],
-				"security": [
-					{
-						"jwt": [
-							"permission:wg:server:manage"
-						]
-					}
-				],
-				"parameters": [
-					{
-						"in": "path",
-						"name": "id",
-						"required": true,
-						"schema": {
-							"type": "string"
-						}
-					}
-				]
-			}
-		},
-		"/api/wg/servers/{id}/start": {
-			"post": {
-				"operationId": "StartServer",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/WgServerDto"
-								}
-							}
-						}
-					}
-				},
-				"description": "Start a WireGuard interface (wg-quick up).",
-				"summary": "Start server",
-				"tags": [
-					"WireGuard Servers"
-				],
-				"security": [
-					{
-						"jwt": [
-							"permission:wg:server:manage"
-						]
-					}
-				],
-				"parameters": [
-					{
-						"in": "path",
-						"name": "id",
-						"required": true,
-						"schema": {
-							"type": "string"
-						}
-					}
-				]
-			}
-		},
-		"/api/wg/servers/{id}/stop": {
-			"post": {
-				"operationId": "StopServer",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/WgServerDto"
-								}
-							}
-						}
-					}
-				},
-				"description": "Stop a WireGuard interface (wg-quick down).",
-				"summary": "Stop server",
-				"tags": [
-					"WireGuard Servers"
-				],
-				"security": [
-					{
-						"jwt": [
-							"permission:wg:server:manage"
-						]
-					}
-				],
-				"parameters": [
-					{
-						"in": "path",
-						"name": "id",
-						"required": true,
-						"schema": {
-							"type": "string"
-						}
-					}
-				]
-			}
-		},
-		"/api/wg/servers/{id}/restart": {
-			"post": {
-				"operationId": "RestartServer",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/WgServerDto"
-								}
-							}
-						}
-					}
-				},
-				"description": "Restart a WireGuard interface.",
-				"summary": "Restart server",
-				"tags": [
-					"WireGuard Servers"
-				],
-				"security": [
-					{
-						"jwt": [
-							"permission:wg:server:manage"
-						]
-					}
-				],
-				"parameters": [
-					{
-						"in": "path",
-						"name": "id",
-						"required": true,
-						"schema": {
-							"type": "string"
-						}
-					}
-				]
-			}
-		},
-		"/api/wg/servers/{id}/status": {
-			"get": {
-				"operationId": "GetServerStatus",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/IWgServerStatusDto"
-								}
-							}
-						}
-					}
-				},
-				"description": "Get real-time status of a WireGuard interface.\nQueries the actual wg interface, not cached DB status.",
-				"summary": "Get live server status",
-				"tags": [
-					"WireGuard Servers"
-				],
-				"security": [
-					{
-						"jwt": [
-							"permission:wg:server:view"
-						]
-					},
-					{
-						"jwt": [
-							"permission:wg:server:own"
-						]
-					}
-				],
-				"parameters": [
-					{
-						"in": "path",
-						"name": "id",
-						"required": true,
-						"schema": {
-							"type": "string"
-						}
-					}
-				]
-			}
-		},
-		"/api/wg/statistics/overview": {
-			"get": {
-				"operationId": "GetOverviewStats",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/IWgOverviewStatsResponse"
-								}
-							}
-						}
-					}
-				},
-				"description": "Aggregated traffic + speed across all servers and all peers.\nwg:stats:view — full overview; wg:server:own — own servers only;\nwg:peer:own — own peers only.",
-				"summary": "Overview stats",
-				"tags": [
-					"WireGuard Statistics"
-				],
-				"security": [
-					{
-						"jwt": [
-							"permission:wg:stats:view"
-						]
-					},
-					{
-						"jwt": [
-							"permission:wg:server:own"
-						]
-					},
-					{
-						"jwt": [
-							"permission:wg:peer:own"
-						]
-					}
-				],
-				"parameters": [
-					{
-						"description": "ISO date string (default: 24h ago)",
-						"in": "query",
-						"name": "from",
-						"required": false,
-						"schema": {
-							"type": "string"
-						}
-					},
-					{
-						"description": "ISO date string (default: now)",
-						"in": "query",
-						"name": "to",
-						"required": false,
-						"schema": {
-							"type": "string"
-						}
-					}
-				]
-			}
-		},
-		"/api/wg/statistics/servers/{serverId}": {
-			"get": {
-				"operationId": "GetServerStats",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/IWgOverviewStatsResponse"
-								}
-							}
-						}
-					}
-				},
-				"description": "Aggregated traffic + speed for a specific server (all its peers).\nOptionally filter by a single peer via peerId query param.",
-				"summary": "Server stats",
-				"tags": [
-					"WireGuard Statistics"
-				],
-				"security": [
-					{
-						"jwt": [
-							"permission:wg:stats:view"
-						]
-					},
-					{
-						"jwt": [
-							"permission:wg:server:own"
-						]
-					}
-				],
-				"parameters": [
-					{
-						"description": "Server ID",
-						"in": "path",
-						"name": "serverId",
-						"required": true,
-						"schema": {
-							"type": "string"
-						}
-					},
-					{
-						"description": "ISO date string (default: 24h ago)",
-						"in": "query",
-						"name": "from",
-						"required": false,
-						"schema": {
-							"type": "string"
-						}
-					},
-					{
-						"description": "ISO date string (default: now)",
-						"in": "query",
-						"name": "to",
-						"required": false,
-						"schema": {
-							"type": "string"
-						}
-					},
-					{
-						"description": "Optional peer ID to filter",
-						"in": "query",
-						"name": "peerId",
-						"required": false,
-						"schema": {
-							"type": "string"
-						}
-					}
-				]
-			}
-		},
-		"/api/wg/statistics/peers/{peerId}": {
-			"get": {
-				"operationId": "GetPeerStats",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/IWgOverviewStatsResponse"
-								}
-							}
-						}
-					}
-				},
-				"description": "Aggregated traffic + speed for a specific peer.\nwg:stats:view can view any peer; wg:peer:own only their own.",
-				"summary": "Peer stats",
-				"tags": [
-					"WireGuard Statistics"
-				],
-				"security": [
-					{
-						"jwt": [
-							"permission:wg:stats:view"
-						]
-					},
-					{
-						"jwt": [
-							"permission:wg:peer:own"
-						]
-					}
-				],
-				"parameters": [
-					{
-						"description": "Peer ID",
-						"in": "path",
-						"name": "peerId",
-						"required": true,
-						"schema": {
-							"type": "string"
-						}
-					},
-					{
-						"description": "ISO date string (default: 24h ago)",
-						"in": "query",
-						"name": "from",
-						"required": false,
-						"schema": {
-							"type": "string"
-						}
-					},
-					{
-						"description": "ISO date string (default: now)",
-						"in": "query",
-						"name": "to",
-						"required": false,
-						"schema": {
-							"type": "string"
-						}
-					}
-				]
-			}
-		},
-		"/api/wg/statistics/overview/current": {
-			"get": {
-				"operationId": "GetOverviewCurrent",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"allOf": [
-										{
-											"$ref": "#/components/schemas/WgOverviewStatsPayload"
-										}
-									],
-									"nullable": true
-								}
-							}
-						}
-					}
-				},
-				"description": "Current real-time stats across all servers — use for initial page load\nbefore WebSocket delivers the first wg:stats:overview event.",
-				"summary": "Current overview stats",
-				"tags": [
-					"WireGuard Statistics"
-				],
-				"security": [
-					{
-						"jwt": [
-							"permission:wg:stats:view"
-						]
-					},
-					{
-						"jwt": [
-							"permission:wg:server:own"
-						]
-					},
-					{
-						"jwt": [
-							"permission:wg:peer:own"
-						]
-					}
-				],
-				"parameters": []
-			}
-		},
-		"/api/wg/statistics/servers/{serverId}/current": {
-			"get": {
-				"operationId": "GetServerCurrent",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"allOf": [
-										{
-											"$ref": "#/components/schemas/WgServerStatsPayload"
-										}
-									],
-									"nullable": true
-								}
-							}
-						}
-					}
-				},
-				"description": "Current real-time stats for a specific server — use for initial page load\nbefore WebSocket delivers the first wg:server:stats event.",
-				"summary": "Current server stats",
-				"tags": [
-					"WireGuard Statistics"
-				],
-				"security": [
-					{
-						"jwt": [
-							"permission:wg:stats:view"
-						]
-					},
-					{
-						"jwt": [
-							"permission:wg:server:own"
-						]
-					}
-				],
-				"parameters": [
-					{
-						"description": "Server ID",
-						"in": "path",
-						"name": "serverId",
-						"required": true,
-						"schema": {
-							"type": "string"
-						}
-					}
-				]
-			}
-		},
-		"/api/wg/statistics/peers/{peerId}/current": {
-			"get": {
-				"operationId": "GetPeerCurrent",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"allOf": [
-										{
-											"$ref": "#/components/schemas/WgPeerStatsPayload"
-										}
-									],
-									"nullable": true
-								}
-							}
-						}
-					}
-				},
-				"description": "Current real-time stats for a specific peer — use for initial page load\nbefore WebSocket delivers the first wg:peer:stats event.",
-				"summary": "Current peer stats",
-				"tags": [
-					"WireGuard Statistics"
-				],
-				"security": [
-					{
-						"jwt": [
-							"permission:wg:stats:view"
-						]
-					},
-					{
-						"jwt": [
-							"permission:wg:peer:own"
-						]
-					}
-				],
-				"parameters": [
-					{
-						"description": "Peer ID",
-						"in": "path",
-						"name": "peerId",
-						"required": true,
-						"schema": {
-							"type": "string"
-						}
-					}
-				]
 			}
 		}
 	},

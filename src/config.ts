@@ -35,7 +35,7 @@ const configSchema = z.object({
 
   auth: z.object({
     jwt: z.object({
-      secretKey: z.string().min(1).default("wg-api-secret-key"),
+      secretKey: z.string().min(1).default("rest-api-secret-key"),
     }),
     admin: z.object({
       email: z.string().email().default("admin@admin.com"),
@@ -51,7 +51,7 @@ const configSchema = z.object({
         .default("http://localhost:3000/reset-password?token={{token}}"),
     }),
     webAuthn: z.object({
-      rpName: z.string().default("WireGuard VPN"),
+      rpName: z.string().default("Test"),
       rpHost: z.string().default("localhost"),
       rpSchema: z.string().default("http"),
       rpPort: z.string().default("3000"),
@@ -73,30 +73,6 @@ const configSchema = z.object({
     smtp: z.object({
       user: z.string().default(""),
       pass: z.string().default(""),
-    }),
-  }),
-
-  wireguard: z.object({
-    binaryPath: z.string().default("wg"),
-    quickBinaryPath: z.string().default("wg-quick"),
-    configDir: z.string().default("/etc/wireguard"),
-    dbWriteIntervalSec: z.coerce.number().int().positive().default(60),
-    socketPollIntervalSec: z.coerce.number().int().positive().default(1),
-    statsRetentionDays: z.coerce.number().int().positive().default(30),
-    /** Правила iptables по умолчанию, применяемые к каждому новому серверу, если не переопределено */
-    defaults: z.object({
-      preUp: z.string().default(""),
-      preDown: z.string().default(""),
-      postUp: z
-        .string()
-        .default(
-          "iptables -A FORWARD -i %i -j ACCEPT; iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE",
-        ),
-      postDown: z
-        .string()
-        .default(
-          "iptables -D FORWARD -i %i -j ACCEPT; iptables -t nat -D POSTROUTING -o eth0 -j MASQUERADE",
-        ),
     }),
   }),
 });
@@ -146,19 +122,5 @@ export const config: Config = configSchema.parse({
   },
   email: {
     smtp: { user: env.SMTP_USER, pass: env.SMTP_PASS },
-  },
-  wireguard: {
-    binaryPath: env.WG_BINARY_PATH,
-    quickBinaryPath: env.WG_QUICK_BINARY_PATH,
-    configDir: env.WG_CONFIG_DIR,
-    dbWriteIntervalSec: env.WG_DB_WRITE_INTERVAL_SEC,
-    socketPollIntervalSec: env.WG_SOCKET_POLL_INTERVAL_SEC,
-    statsRetentionDays: env.WG_STATS_RETENTION_DAYS,
-    defaults: {
-      preUp: env.WG_DEFAULT_PRE_UP,
-      preDown: env.WG_DEFAULT_PRE_DOWN,
-      postUp: env.WG_DEFAULT_POST_UP,
-      postDown: env.WG_DEFAULT_POST_DOWN,
-    },
   },
 });

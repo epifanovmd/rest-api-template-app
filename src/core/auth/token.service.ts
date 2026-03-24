@@ -100,13 +100,6 @@ export class TokenService {
    * Обход суперадмина:
    *   - роль ADMIN → пропускает все проверки
    *   - разрешение "*" → пропускает все проверки
-   *
-   * Разрешение wildcards для разрешений:
-   *   "wg:server:view" удовлетворяется любым из:
-   *   - точным "wg:server:view"
-   *   - wildcard "wg:server:*"
-   *   - wildcard "wg:*"
-   *   - wildcard "*"
    */
   private checkScopes(decoded: JWTDecoded, scopes: SecurityScopes): void {
     const roles = decoded.roles ?? [];
@@ -142,12 +135,6 @@ export class TokenService {
   /**
    * Проверяет, удовлетворяет ли набор разрешений пользователя требуемому разрешению,
    * включая разрешение wildcards.
-   *
-   * Примеры:
-   *   hasPermission(["wg:*"], "wg:server:view")  → true
-   *   hasPermission(["wg:server:*"], "wg:server:view")  → true
-   *   hasPermission(["wg:peer:*"], "wg:server:view")  → false
-   *   hasPermission(["*"], "anything")  → true
    */
   private hasPermission(userPerms: string[], required: string): boolean {
     return hasPermission(userPerms, required);

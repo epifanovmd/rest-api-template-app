@@ -4,11 +4,13 @@ import {
   Entity,
   Index,
   JoinColumn,
+  ManyToOne,
   OneToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from "typeorm";
 
+import { File } from "../file/file.entity";
 import { User } from "../user/user.entity";
 import { EProfileStatus } from "./profile.types";
 
@@ -61,4 +63,7 @@ export class Profile {
   @JoinColumn({ name: "user_id" })
   user: User;
 
+  @ManyToOne(() => File, file => file.avatarProfiles, { onDelete: "SET NULL" })
+  @JoinColumn({ name: "avatar_id" })
+  avatar: File;
 }

@@ -11,6 +11,7 @@ import {
   UpdateDateColumn,
 } from "typeorm";
 
+import { Biometric } from "../biometric/biometric.entity";
 import { Otp } from "../otp/otp.entity";
 import { Passkey } from "../passkeys/passkey.entity";
 import { Permission } from "../permission/permission.entity";
@@ -80,6 +81,9 @@ export class User {
     eager: true,
   })
   profile: Profile;
+
+  @OneToMany(() => Biometric, biometric => biometric.user, { cascade: true })
+  biometrics: Biometric[];
 
   @OneToMany(() => Otp, otp => otp.user, { cascade: true })
   otps: Otp[];

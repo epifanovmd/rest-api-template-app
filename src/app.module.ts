@@ -2,6 +2,8 @@ import "reflect-metadata";
 
 import { CoreModule, Module } from "./core";
 import { AuthModule } from "./modules/auth";
+import { BiometricModule } from "./modules/biometric";
+import { FileModule } from "./modules/file";
 import { MailerModule } from "./modules/mailer";
 import { OtpModule } from "./modules/otp";
 import { PasskeysModule } from "./modules/passkeys";
@@ -9,13 +11,9 @@ import { ProfileModule } from "./modules/profile";
 import { ResetPasswordTokensModule } from "./modules/reset-password-tokens";
 import { SocketModule } from "./modules/socket";
 import { UserModule } from "./modules/user";
-import { WgCliModule } from "./modules/wg-cli";
-import { WgPeerModule } from "./modules/wg-peer";
-import { WgServerModule } from "./modules/wg-server";
-import { WgStatisticsModule } from "./modules/wg-statistics";
 
 /**
- * Корневой модуль приложения — WireGuard VPN Management API.
+ * Корневой модуль приложения.
  *
  * Порядок модулей важен для bootstrapper-ов:
  *   - WgStatisticsModule должен идти перед SocketModule, чтобы
@@ -35,18 +33,10 @@ import { WgStatisticsModule } from "./modules/wg-statistics";
     // Модули пользователей / аутентификации
     UserModule,
     ProfileModule,
+    FileModule,
     AuthModule,
+    BiometricModule,
     PasskeysModule,
-
-    // Общие CLI-сервисы WireGuard (без HTTP)
-    WgCliModule,
-
-    // Доменные модули WireGuard
-    WgServerModule,
-    WgPeerModule,
-
-    // Статистика WireGuard + socket-события (должен регистрироваться перед SocketModule)
-    WgStatisticsModule,
 
     // Socket — последним, чтобы все ISocketHandler / ISocketEventListener были привязаны
     SocketModule,
