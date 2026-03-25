@@ -4,6 +4,8 @@ import { App } from "./app";
 import { AppModule } from "./app.module";
 import { logger } from "./core";
 
+const SHUTDOWN_TIMEOUT_MS = 30000;
+
 const bootstrap = async () => {
   const app = new App();
 
@@ -11,6 +13,14 @@ const bootstrap = async () => {
 
   const shutdown = async (signal: string) => {
     logger.info({ signal }, "Shutting down gracefully...");
+
+    const forceExit = setTimeout(() => {
+      logger.error("Graceful shutdown timed out, forcing exit");
+      process.exit(1);
+    }, SHUTDOWN_TIMEOUT_MS);
+
+    forceExit.unref();
+
     try {
       await app.stop();
       logger.info("Server closed.");
@@ -23,6 +33,13 @@ const bootstrap = async () => {
 
   process.on("SIGTERM", () => shutdown("SIGTERM"));
   process.on("SIGINT", () => shutdown("SIGINT"));
+
+  process.on("unhandledRejection", (reason, promise) => {
+    logger.error(
+      { err: reason, promise: String(promise) },
+      "Unhandled promise rejection",
+    );
+  });
 };
 
 bootstrap().catch(error => {

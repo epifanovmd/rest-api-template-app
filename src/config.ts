@@ -12,6 +12,14 @@ const zeroableInt = z.coerce
   .int()
   .transform(v => v || undefined);
 
+const nodeEnvSchema = z
+  .enum(["development", "production", "test"])
+  .default("development");
+
+export const nodeEnv = nodeEnvSchema.parse(process.env.NODE_ENV);
+export const isProduction = nodeEnv === "production";
+export const isDevelopment = nodeEnv === "development";
+
 const configSchema = z.object({
   server: z.object({
     publicHost: z.string().default("localhost"),
@@ -35,11 +43,11 @@ const configSchema = z.object({
 
   auth: z.object({
     jwt: z.object({
-      secretKey: z.string().min(1).default("rest-api-secret-key"),
+      secretKey: z.string().min(16),
     }),
     admin: z.object({
-      email: z.string().email().default("admin@admin.com"),
-      password: z.string().min(6).default("admin"),
+      email: z.string().email(),
+      password: z.string().min(8),
     }),
     otp: z.object({
       expireMinutes: minutes.default(10),
@@ -65,6 +73,11 @@ const configSchema = z.object({
       database: z.string().min(1).default("postgres"),
       username: z.string().min(1).default("pg_user_name"),
       password: z.string().default("pg_password"),
+      ssl: z
+        .string()
+        .default("false")
+        .transform(v => v === "true"),
+      poolMax: z.coerce.number().int().positive().default(20),
       dataPath: z.string().default("/data/postgres"),
     }),
   }),
@@ -117,6 +130,8 @@ export const config: Config = configSchema.parse({
       database: env.POSTGRES_DB,
       username: env.POSTGRES_USER,
       password: env.POSTGRES_PASSWORD,
+      ssl: env.POSTGRES_SSL,
+      poolMax: env.POSTGRES_POOL_MAX,
       dataPath: env.POSTGRES_DATA,
     },
   },

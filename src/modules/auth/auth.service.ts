@@ -5,7 +5,6 @@ import {
 } from "@force-dev/utils";
 import bcrypt from "bcrypt";
 import { inject } from "inversify";
-import sha256 from "sha256";
 
 import {
   ApiResponseDto,
@@ -104,10 +103,7 @@ export class AuthService {
         }
       }
 
-      if (
-        (await bcrypt.compare(password, user.passwordHash)) ||
-        user.passwordHash === sha256(password)
-      ) {
+      if (await bcrypt.compare(password, user.passwordHash)) {
         const fullUser = await this._userService.getUser(user.id);
 
         return {

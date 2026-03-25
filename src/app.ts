@@ -6,7 +6,7 @@ import { Controller } from "tsoa";
 import { DataSource } from "typeorm";
 
 import { iocContainer } from "./app.container";
-import { config } from "./config";
+import { config, nodeEnv } from "./config";
 import { BOOTSTRAP, HttpServer, IBootstrap } from "./core";
 import { logger, ModuleLoader, TypeOrmDataSource } from "./core";
 import { notFoundMiddleware, RegisterAppMiddlewares } from "./middleware";
@@ -27,7 +27,7 @@ export class App {
   }
 
   async start(RootModule: Constructor): Promise<void> {
-    await TypeOrmDataSource.initialize();
+    await this.initializeDatabase();
     this.registerCoreBindings();
     this.loadModules(RootModule);
     this.configureMiddleware();
@@ -106,12 +106,36 @@ export class App {
     });
   }
 
+  private async initializeDatabase(
+    retries = 3,
+    delayMs = 2000,
+  ): Promise<void> {
+    for (let attempt = 1; attempt <= retries; attempt += 1) {
+      try {
+        await TypeOrmDataSource.initialize();
+
+        return;
+      } catch (error) {
+        logger.error(
+          { err: error, attempt, retries },
+          "Database connection failed",
+        );
+
+        if (attempt === retries) {
+          throw error;
+        }
+
+        await new Promise(resolve => setTimeout(resolve, delayMs));
+      }
+    }
+  }
+
   private logStartup(hostname: string, port: number): void {
     const { host: dbHost, port: dbPort, database } = config.database.postgres;
 
     logger.info(
       {
-        env: process.env.NODE_ENV,
+        env: nodeEnv,
         url: `http://${hostname}:${port}`,
         swagger: `http://${hostname}:${port}/api-docs`,
         db: `${dbHost}:${dbPort}/${database}`,

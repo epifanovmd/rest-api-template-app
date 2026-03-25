@@ -47,7 +47,18 @@ export class SocketBootstrap implements IBootstrap {
       socket.emit("authenticated", { userId: user.userId });
 
       // Передаём управление domain-хендлерам
-      await Promise.all(this.handlers.map(h => h.onConnection(socket)));
+      const results = await Promise.allSettled(
+        this.handlers.map(h => h.onConnection(socket)),
+      );
+
+      for (const result of results) {
+        if (result.status === "rejected") {
+          logger.error(
+            { err: result.reason, userId: user.userId },
+            "[Socket] Handler onConnection failed",
+          );
+        }
+      }
 
       socket.on("error", err => {
         logger.error({ err, userId: user.userId }, "[Socket] Socket error");
@@ -66,7 +77,14 @@ export class SocketBootstrap implements IBootstrap {
 
     // 3. Регистрируем все EventBus-слушатели (уведомления, rooms, push)
     for (const listener of this.eventListeners) {
-      listener.register();
+      try {
+        listener.register();
+      } catch (error) {
+        logger.error(
+          { err: error },
+          `[Socket] Event listener registration failed: ${listener.constructor.name}`,
+        );
+      }
     }
   }
 

@@ -23,7 +23,7 @@ export class SocketServerService {
       serveClient: false,
       pingTimeout: 10000,
       pingInterval: 25000,
-      cookie: process.env.NODE_ENV === "production",
+      cookie: false,
     });
   }
 

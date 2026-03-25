@@ -1,7 +1,7 @@
 import { ForbiddenException, UnauthorizedException } from "@force-dev/utils";
 import jwt, { VerifyErrors } from "jsonwebtoken";
 
-import { config } from "../../config";
+import { config, isDevelopment } from "../../config";
 import { EPermissions } from "../../modules/permission/permission.types";
 import { ERole } from "../../modules/role/role.types";
 import { User } from "../../modules/user/user.entity";
@@ -47,7 +47,7 @@ export class TokenService {
       {
         payload,
         opts: {
-          expiresIn: process.env.NODE_ENV === "development" ? "1d" : "15m",
+          expiresIn: isDevelopment ? "1d" : "15m",
         },
       },
       { payload, opts: { expiresIn: "7d" } },

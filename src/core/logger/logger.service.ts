@@ -1,11 +1,22 @@
 import pino, { Logger } from "pino";
 
+import { isDevelopment } from "../../config";
 import { Injectable } from "../decorators";
-
-const isDevelopment = process.env.NODE_ENV !== "production";
 
 export const logger: Logger = pino({
   level: isDevelopment ? "debug" : "info",
+  redact: {
+    paths: [
+      "req.headers.authorization",
+      "*.password",
+      "*.passwordHash",
+      "*.token",
+      "*.accessToken",
+      "*.refreshToken",
+      "*.secretKey",
+    ],
+    censor: "[REDACTED]",
+  },
   transport: isDevelopment
     ? {
         target: "pino-pretty",

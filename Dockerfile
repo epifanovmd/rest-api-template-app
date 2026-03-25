@@ -29,14 +29,14 @@ COPY package*.json yarn.lock ./
 COPY ./patches ./patches
 
 RUN apk update && \
-    apk add --no-cache curl
-
-USER root
+    apk add --no-cache curl && \
+    mkdir -p /app/files && \
+    chown -R node:node /app
 
 # Копируем production-зависимости
-COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder --chown=node:node /app/node_modules ./node_modules
+COPY --from=builder --chown=node:node /app/build ./build
 
-COPY --from=builder /app/build ./build
+USER node
 
-# Определяем команду запуска контейнера
 CMD ["yarn", "server"]

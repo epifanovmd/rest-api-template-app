@@ -1,5 +1,7 @@
 import { HttpException } from "@force-dev/utils";
 
+import { logger } from "../logger/logger.service";
+
 export abstract class BaseDto {
   protected constructor(entity: any) {
     if (!entity) {
@@ -8,11 +10,7 @@ export abstract class BaseDto {
         500,
       );
 
-      if (process.env.NODE_ENV === "development") {
-        const stack = error.stack?.split("\n").map(line => line.trim());
-
-        throw new HttpException(error.message, error.status, { stack });
-      }
+      logger.error({ err: error }, error.message);
 
       throw error;
     }
