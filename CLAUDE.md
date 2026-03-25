@@ -2,6 +2,40 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Detailed Documentation
+
+Подробная документация в `.claude/memory/` — при необходимости глубокого анализа читай эти файлы:
+- `.claude/memory/project_architecture.md` — bootstrap flow, module system, IoC binding, все decorators, middleware stack, guards, EventBus, config, build
+- `.claude/memory/project_access_control.md` — JWT auth flow, RBAC+Permission модель, wildcard hierarchy, @Security syntax, AdminBootstrap
+- `.claude/memory/project_modules.md` — все 12 модулей: entities с полями и связями, все endpoints с security, services, DTOs, validation schemas, socket integration
+- `.claude/memory/project_patterns.md` — паттерны кода (controller/service/dto/repository/validation/socket event), checklist нового модуля, правила которые нельзя нарушать
+
+## Workflow
+
+При получении любой задачи (фича, баг, рефакторинг) — следуй этому процессу:
+
+### 1. Анализ
+- Прочитай `.claude/memory/` файлы, релевантные задаче (не нужно каждый раз исследовать весь проект)
+- Прочитай конкретные файлы кода, которые будут затронуты
+- Определи scope затрагиваемых модулей и файлов
+- Выяви потенциальные риски и edge cases
+
+### 2. План
+- Войди в plan mode и составь пошаговый план с конкретными файлами и изменениями
+- Разбей на мелкие итерации (каждая — рабочее состояние, не ломает существующее)
+- Покажи план пользователю, дождись подтверждения
+
+### 3. Выполнение
+- Выполняй по одной итерации за раз
+- После каждой итерации: проверь lint (`yarn lint`), убедись что код компилируется
+- Не переходи к следующей итерации пока текущая не завершена и стабильна
+- Сообщай прогресс: что сделано, что дальше
+
+### 4. Проверка
+- После всех итераций: `yarn lint`, `yarn build`
+- Проверь что `yarn generate` не сломал routes.ts
+- Кратко резюмируй что было сделано
+
 ## Commands
 
 ```bash
