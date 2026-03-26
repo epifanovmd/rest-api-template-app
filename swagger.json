@@ -5062,7 +5062,7 @@
 		},
 		"/api/bot-api/message/send": {
 			"post": {
-				"operationId": "SendMessage",
+				"operationId": "BotSendMessage",
 				"responses": {
 					"200": {
 						"description": "Ok",
@@ -5100,7 +5100,7 @@
 		},
 		"/api/bot-api/message/{id}/edit": {
 			"post": {
-				"operationId": "EditMessage",
+				"operationId": "BotEditMessage",
 				"responses": {
 					"200": {
 						"description": "Ok",
@@ -5147,7 +5147,7 @@
 		},
 		"/api/bot-api/message/{id}": {
 			"delete": {
-				"operationId": "DeleteMessage",
+				"operationId": "BotDeleteMessage",
 				"responses": {
 					"204": {
 						"description": "No content"

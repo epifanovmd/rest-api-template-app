@@ -2691,9 +2691,9 @@ export function RegisterRoutes(router: KoaRouter) {
         router.post('/api/bot-api/message/send',
             authenticateMiddleware([{"bot":[]}]),
             ...(fetchMiddlewares<Middleware>(BotApiController)),
-            ...(fetchMiddlewares<Middleware>(BotApiController.prototype.sendMessage)),
+            ...(fetchMiddlewares<Middleware>(BotApiController.prototype.botSendMessage)),
 
-            async function BotApiController_sendMessage(context: any, next: any) {
+            async function BotApiController_botSendMessage(context: any, next: any) {
             const args = {
                     req: {"in":"request","name":"req","required":true,"dataType":"object"},
                     body: {"in":"body","name":"body","required":true,"ref":"IBotSendMessageBody"},
@@ -2715,16 +2715,16 @@ export function RegisterRoutes(router: KoaRouter) {
                 controller.setStatus(undefined);
             }
 
-            const promise = controller.sendMessage.apply(controller, validatedArgs as any);
+            const promise = controller.botSendMessage.apply(controller, validatedArgs as any);
             return promiseHandler(controller, promise, context, undefined, undefined);
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         router.post('/api/bot-api/message/:id/edit',
             authenticateMiddleware([{"bot":[]}]),
             ...(fetchMiddlewares<Middleware>(BotApiController)),
-            ...(fetchMiddlewares<Middleware>(BotApiController.prototype.editMessage)),
+            ...(fetchMiddlewares<Middleware>(BotApiController.prototype.botEditMessage)),
 
-            async function BotApiController_editMessage(context: any, next: any) {
+            async function BotApiController_botEditMessage(context: any, next: any) {
             const args = {
                     req: {"in":"request","name":"req","required":true,"dataType":"object"},
                     id: {"in":"path","name":"id","required":true,"dataType":"string"},
@@ -2747,16 +2747,16 @@ export function RegisterRoutes(router: KoaRouter) {
                 controller.setStatus(undefined);
             }
 
-            const promise = controller.editMessage.apply(controller, validatedArgs as any);
+            const promise = controller.botEditMessage.apply(controller, validatedArgs as any);
             return promiseHandler(controller, promise, context, undefined, undefined);
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         router.delete('/api/bot-api/message/:id',
             authenticateMiddleware([{"bot":[]}]),
             ...(fetchMiddlewares<Middleware>(BotApiController)),
-            ...(fetchMiddlewares<Middleware>(BotApiController.prototype.deleteMessage)),
+            ...(fetchMiddlewares<Middleware>(BotApiController.prototype.botDeleteMessage)),
 
-            async function BotApiController_deleteMessage(context: any, next: any) {
+            async function BotApiController_botDeleteMessage(context: any, next: any) {
             const args = {
                     req: {"in":"request","name":"req","required":true,"dataType":"object"},
                     id: {"in":"path","name":"id","required":true,"dataType":"string"},
@@ -2778,7 +2778,7 @@ export function RegisterRoutes(router: KoaRouter) {
                 controller.setStatus(undefined);
             }
 
-            const promise = controller.deleteMessage.apply(controller, validatedArgs as any);
+            const promise = controller.botDeleteMessage.apply(controller, validatedArgs as any);
             return promiseHandler(controller, promise, context, undefined, undefined);
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa

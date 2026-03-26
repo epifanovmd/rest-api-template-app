@@ -47,7 +47,7 @@ export class BotApiController extends Controller {
    */
   @Security("bot")
   @Post("message/send")
-  async sendMessage(
+  async botSendMessage(
     @Request() req: KoaRequest,
     @Body() body: IBotSendMessageBody,
   ): Promise<MessageDto> {
@@ -68,7 +68,7 @@ export class BotApiController extends Controller {
    */
   @Security("bot")
   @Post("message/{id}/edit")
-  async editMessage(
+  async botEditMessage(
     @Request() req: KoaRequest,
     @Path() id: string,
     @Body() body: IBotEditMessageBody,
@@ -85,7 +85,7 @@ export class BotApiController extends Controller {
    */
   @Security("bot")
   @Delete("message/{id}")
-  async deleteMessage(
+  async botDeleteMessage(
     @Request() req: KoaRequest,
     @Path() id: string,
   ): Promise<void> {
