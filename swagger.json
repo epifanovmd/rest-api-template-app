@@ -69,7 +69,17 @@
 				"enum": [
 					"*",
 					"user:view",
-					"user:manage"
+					"user:manage",
+					"contact:view",
+					"contact:manage",
+					"contact:*",
+					"chat:view",
+					"chat:manage",
+					"chat:*",
+					"message:view",
+					"message:manage",
+					"message:*",
+					"push:manage"
 				],
 				"type": "string"
 			},
@@ -293,9 +303,6 @@
 						"type": "string"
 					},
 					"roleId": {
-						"type": "string"
-					},
-					"challenge": {
 						"type": "string"
 					}
 				},
@@ -611,9 +618,6 @@
 			},
 			"IRegisterBiometricRequestDto": {
 				"properties": {
-					"userId": {
-						"type": "string"
-					},
 					"deviceId": {
 						"type": "string"
 					},
@@ -625,7 +629,6 @@
 					}
 				},
 				"required": [
-					"userId",
 					"deviceId",
 					"deviceName",
 					"publicKey"
@@ -647,12 +650,12 @@
 			},
 			"IGenerateNonceRequestDto": {
 				"properties": {
-					"userId": {
+					"deviceId": {
 						"type": "string"
 					}
 				},
 				"required": [
-					"userId"
+					"deviceId"
 				],
 				"type": "object",
 				"additionalProperties": false
@@ -687,9 +690,6 @@
 			},
 			"IVerifyBiometricSignatureRequestDto": {
 				"properties": {
-					"userId": {
-						"type": "string"
-					},
 					"deviceId": {
 						"type": "string"
 					},
@@ -698,9 +698,337 @@
 					}
 				},
 				"required": [
-					"userId",
 					"deviceId",
 					"signature"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IBiometricDeviceDto": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"deviceId": {
+						"type": "string"
+					},
+					"deviceName": {
+						"type": "string"
+					},
+					"lastUsedAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"createdAt": {
+						"type": "string",
+						"format": "date-time"
+					}
+				},
+				"required": [
+					"id",
+					"deviceId",
+					"deviceName",
+					"lastUsedAt",
+					"createdAt"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IBiometricDevicesResponseDto": {
+				"properties": {
+					"devices": {
+						"items": {
+							"$ref": "#/components/schemas/IBiometricDeviceDto"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"devices"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IDeleteBiometricResponseDto": {
+				"properties": {
+					"deleted": {
+						"type": "boolean"
+					}
+				},
+				"required": [
+					"deleted"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"EChatType": {
+				"enum": [
+					"direct",
+					"group"
+				],
+				"type": "string"
+			},
+			"EChatMemberRole": {
+				"enum": [
+					"owner",
+					"admin",
+					"member"
+				],
+				"type": "string"
+			},
+			"ChatMemberDto": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"userId": {
+						"type": "string"
+					},
+					"role": {
+						"$ref": "#/components/schemas/EChatMemberRole"
+					},
+					"joinedAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"mutedUntil": {
+						"type": "string",
+						"format": "date-time",
+						"nullable": true
+					},
+					"profile": {
+						"$ref": "#/components/schemas/PublicProfileDto"
+					}
+				},
+				"required": [
+					"id",
+					"userId",
+					"role",
+					"joinedAt",
+					"mutedUntil"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"ChatDto": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"type": {
+						"$ref": "#/components/schemas/EChatType"
+					},
+					"name": {
+						"type": "string",
+						"nullable": true
+					},
+					"avatarUrl": {
+						"type": "string",
+						"nullable": true
+					},
+					"createdById": {
+						"type": "string"
+					},
+					"lastMessageAt": {
+						"type": "string",
+						"format": "date-time",
+						"nullable": true
+					},
+					"createdAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"updatedAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"members": {
+						"items": {
+							"$ref": "#/components/schemas/ChatMemberDto"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"id",
+					"type",
+					"name",
+					"avatarUrl",
+					"createdById",
+					"lastMessageAt",
+					"createdAt",
+					"updatedAt",
+					"members"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"ICreateDirectChatBody": {
+				"properties": {
+					"targetUserId": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"targetUserId"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"ICreateGroupChatBody": {
+				"properties": {
+					"name": {
+						"type": "string"
+					},
+					"memberIds": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					},
+					"avatarId": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"name",
+					"memberIds"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IChatListDto": {
+				"properties": {
+					"count": {
+						"type": "number",
+						"format": "double"
+					},
+					"totalCount": {
+						"type": "number",
+						"format": "double"
+					},
+					"offset": {
+						"type": "number",
+						"format": "double"
+					},
+					"limit": {
+						"type": "number",
+						"format": "double"
+					},
+					"data": {
+						"items": {
+							"$ref": "#/components/schemas/ChatDto"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"data"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IUpdateChatBody": {
+				"properties": {
+					"name": {
+						"type": "string"
+					},
+					"avatarId": {
+						"type": "string",
+						"nullable": true
+					}
+				},
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IAddMembersBody": {
+				"properties": {
+					"memberIds": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"memberIds"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IUpdateMemberRoleBody": {
+				"properties": {
+					"role": {
+						"$ref": "#/components/schemas/EChatMemberRole"
+					}
+				},
+				"required": [
+					"role"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"EContactStatus": {
+				"enum": [
+					"pending",
+					"accepted",
+					"blocked"
+				],
+				"type": "string"
+			},
+			"ContactDto": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"userId": {
+						"type": "string"
+					},
+					"contactUserId": {
+						"type": "string"
+					},
+					"displayName": {
+						"type": "string",
+						"nullable": true
+					},
+					"status": {
+						"$ref": "#/components/schemas/EContactStatus"
+					},
+					"createdAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"updatedAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"contactProfile": {
+						"$ref": "#/components/schemas/PublicProfileDto"
+					}
+				},
+				"required": [
+					"id",
+					"userId",
+					"contactUserId",
+					"displayName",
+					"status",
+					"createdAt",
+					"updatedAt"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"ICreateContactBody": {
+				"properties": {
+					"contactUserId": {
+						"type": "string"
+					},
+					"displayName": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"contactUserId"
 				],
 				"type": "object",
 				"additionalProperties": false
@@ -740,6 +1068,208 @@
 					"size",
 					"createdAt",
 					"updatedAt"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"EMessageType": {
+				"enum": [
+					"text",
+					"image",
+					"file",
+					"voice",
+					"system"
+				],
+				"type": "string"
+			},
+			"MessageDto": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"chatId": {
+						"type": "string"
+					},
+					"senderId": {
+						"type": "string"
+					},
+					"type": {
+						"$ref": "#/components/schemas/EMessageType"
+					},
+					"content": {
+						"type": "string",
+						"nullable": true
+					},
+					"replyToId": {
+						"type": "string",
+						"nullable": true
+					},
+					"forwardedFromId": {
+						"type": "string",
+						"nullable": true
+					},
+					"isEdited": {
+						"type": "boolean"
+					},
+					"isDeleted": {
+						"type": "boolean"
+					},
+					"createdAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"updatedAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"sender": {
+						"properties": {
+							"avatarUrl": {
+								"type": "string"
+							},
+							"lastName": {
+								"type": "string"
+							},
+							"firstName": {
+								"type": "string"
+							},
+							"id": {
+								"type": "string"
+							}
+						},
+						"required": [
+							"id"
+						],
+						"type": "object"
+					},
+					"replyTo": {
+						"allOf": [
+							{
+								"$ref": "#/components/schemas/MessageDto"
+							}
+						],
+						"nullable": true
+					},
+					"attachments": {
+						"items": {
+							"$ref": "#/components/schemas/MessageAttachmentDto"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"id",
+					"chatId",
+					"senderId",
+					"type",
+					"content",
+					"replyToId",
+					"forwardedFromId",
+					"isEdited",
+					"isDeleted",
+					"createdAt",
+					"updatedAt",
+					"attachments"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"MessageAttachmentDto": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"fileId": {
+						"type": "string"
+					},
+					"fileName": {
+						"type": "string"
+					},
+					"fileUrl": {
+						"type": "string"
+					},
+					"fileType": {
+						"type": "string"
+					},
+					"fileSize": {
+						"type": "number",
+						"format": "double"
+					}
+				},
+				"required": [
+					"id",
+					"fileId",
+					"fileName",
+					"fileUrl",
+					"fileType",
+					"fileSize"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"ISendMessageBody": {
+				"properties": {
+					"type": {
+						"$ref": "#/components/schemas/EMessageType"
+					},
+					"content": {
+						"type": "string"
+					},
+					"replyToId": {
+						"type": "string"
+					},
+					"forwardedFromId": {
+						"type": "string"
+					},
+					"fileIds": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					}
+				},
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IMessageListDto": {
+				"properties": {
+					"data": {
+						"items": {
+							"$ref": "#/components/schemas/MessageDto"
+						},
+						"type": "array"
+					},
+					"hasMore": {
+						"type": "boolean"
+					}
+				},
+				"required": [
+					"data",
+					"hasMore"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IMarkReadBody": {
+				"properties": {
+					"messageId": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"messageId"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IEditMessageBody": {
+				"properties": {
+					"content": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"content"
 				],
 				"type": "object",
 				"additionalProperties": false
@@ -1199,6 +1729,98 @@
 				"required": [
 					"data"
 				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"EDevicePlatform": {
+				"enum": [
+					"ios",
+					"android",
+					"web"
+				],
+				"type": "string"
+			},
+			"DeviceTokenDto": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"token": {
+						"type": "string"
+					},
+					"platform": {
+						"$ref": "#/components/schemas/EDevicePlatform"
+					},
+					"deviceName": {
+						"type": "string",
+						"nullable": true
+					},
+					"createdAt": {
+						"type": "string",
+						"format": "date-time"
+					}
+				},
+				"required": [
+					"id",
+					"token",
+					"platform",
+					"deviceName",
+					"createdAt"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IRegisterDeviceBody": {
+				"properties": {
+					"token": {
+						"type": "string"
+					},
+					"platform": {
+						"$ref": "#/components/schemas/EDevicePlatform"
+					},
+					"deviceName": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"token",
+					"platform"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"NotificationSettingsDto": {
+				"properties": {
+					"muteAll": {
+						"type": "boolean"
+					},
+					"soundEnabled": {
+						"type": "boolean"
+					},
+					"showPreview": {
+						"type": "boolean"
+					}
+				},
+				"required": [
+					"muteAll",
+					"soundEnabled",
+					"showPreview"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IUpdateNotificationSettingsBody": {
+				"properties": {
+					"muteAll": {
+						"type": "boolean"
+					},
+					"soundEnabled": {
+						"type": "boolean"
+					},
+					"showPreview": {
+						"type": "boolean"
+					}
+				},
 				"type": "object",
 				"additionalProperties": false
 			}
@@ -2295,7 +2917,11 @@
 				"tags": [
 					"Biometric"
 				],
-				"security": [],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
 				"parameters": [],
 				"requestBody": {
 					"required": true,
@@ -2328,7 +2954,11 @@
 				"tags": [
 					"Biometric"
 				],
-				"security": [],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
 				"parameters": [],
 				"requestBody": {
 					"required": true,
@@ -2361,7 +2991,11 @@
 				"tags": [
 					"Biometric"
 				],
-				"security": [],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
 				"parameters": [],
 				"requestBody": {
 					"required": true,
@@ -2373,6 +3007,644 @@
 						}
 					}
 				}
+			}
+		},
+		"/api/biometric/devices": {
+			"get": {
+				"operationId": "GetDevices",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IBiometricDevicesResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Список зарегистрированных устройств пользователя",
+				"tags": [
+					"Biometric"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": []
+			}
+		},
+		"/api/biometric/{deviceId}": {
+			"delete": {
+				"operationId": "DeleteDevice",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IDeleteBiometricResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Удалить зарегистрированное устройство",
+				"tags": [
+					"Biometric"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "deviceId",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/chat/direct": {
+			"post": {
+				"operationId": "CreateDirectChat",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ChatDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Создать или получить существующий личный чат.",
+				"summary": "Создание личного чата",
+				"tags": [
+					"Chat"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/ICreateDirectChatBody"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/chat/group": {
+			"post": {
+				"operationId": "CreateGroupChat",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ChatDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Создать групповой чат.",
+				"summary": "Создание группового чата",
+				"tags": [
+					"Chat"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/ICreateGroupChatBody"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/chat": {
+			"get": {
+				"operationId": "GetUserChats",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IChatListDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Получить список чатов текущего пользователя.",
+				"summary": "Список чатов",
+				"tags": [
+					"Chat"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "query",
+						"name": "offset",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					},
+					{
+						"in": "query",
+						"name": "limit",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					}
+				]
+			}
+		},
+		"/api/chat/{id}": {
+			"get": {
+				"operationId": "GetChatById",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ChatDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Получить информацию о чате.",
+				"summary": "Получение чата",
+				"tags": [
+					"Chat"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			},
+			"patch": {
+				"operationId": "UpdateChat",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ChatDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Обновить групповой чат (название, аватар).",
+				"summary": "Обновление чата",
+				"tags": [
+					"Chat"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IUpdateChatBody"
+							}
+						}
+					}
+				}
+			},
+			"delete": {
+				"operationId": "LeaveChat",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "string"
+								}
+							}
+						}
+					}
+				},
+				"description": "Покинуть чат.",
+				"summary": "Выход из чата",
+				"tags": [
+					"Chat"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/chat/{id}/members": {
+			"post": {
+				"operationId": "AddMembers",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"items": {
+										"$ref": "#/components/schemas/ChatMemberDto"
+									},
+									"type": "array"
+								}
+							}
+						}
+					}
+				},
+				"description": "Добавить участников в групповой чат.",
+				"summary": "Добавление участников",
+				"tags": [
+					"Chat"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IAddMembersBody"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/chat/{id}/members/{userId}": {
+			"delete": {
+				"operationId": "RemoveMember",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "string"
+								}
+							}
+						}
+					}
+				},
+				"description": "Удалить участника из группового чата.",
+				"summary": "Удаление участника",
+				"tags": [
+					"Chat"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "path",
+						"name": "userId",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			},
+			"patch": {
+				"operationId": "UpdateMemberRole",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ChatMemberDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Изменить роль участника в групповом чате.",
+				"summary": "Изменение роли участника",
+				"tags": [
+					"Chat"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "path",
+						"name": "userId",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IUpdateMemberRoleBody"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/contact": {
+			"post": {
+				"operationId": "AddContact",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ContactDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Добавить контакт.",
+				"summary": "Добавление контакта",
+				"tags": [
+					"Contact"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/ICreateContactBody"
+							}
+						}
+					}
+				}
+			},
+			"get": {
+				"operationId": "GetContacts",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"items": {
+										"$ref": "#/components/schemas/ContactDto"
+									},
+									"type": "array"
+								}
+							}
+						}
+					}
+				},
+				"description": "Получить список контактов текущего пользователя.",
+				"summary": "Список контактов",
+				"tags": [
+					"Contact"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "query",
+						"name": "status",
+						"required": false,
+						"schema": {
+							"$ref": "#/components/schemas/EContactStatus"
+						}
+					}
+				]
+			}
+		},
+		"/api/contact/{id}/accept": {
+			"patch": {
+				"operationId": "AcceptContact",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ContactDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Принять запрос на добавление в контакты.",
+				"summary": "Принять контакт",
+				"tags": [
+					"Contact"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/contact/{id}": {
+			"delete": {
+				"operationId": "RemoveContact",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "string"
+								}
+							}
+						}
+					}
+				},
+				"description": "Удалить контакт.",
+				"summary": "Удаление контакта",
+				"tags": [
+					"Contact"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/contact/{id}/block": {
+			"post": {
+				"operationId": "BlockContact",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ContactDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Заблокировать контакт.",
+				"summary": "Блокировка контакта",
+				"tags": [
+					"Contact"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
 			}
 		},
 		"/api/file": {
@@ -2490,6 +3762,223 @@
 				"parameters": [
 					{
 						"description": "ID файла, который нужно удалить",
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/chat/{chatId}/message": {
+			"post": {
+				"operationId": "SendMessage",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/MessageDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Отправить сообщение в чат.",
+				"summary": "Отправка сообщения",
+				"tags": [
+					"Message"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "chatId",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/ISendMessageBody"
+							}
+						}
+					}
+				}
+			},
+			"get": {
+				"operationId": "GetMessages",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IMessageListDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Получить сообщения чата с cursor-based пагинацией.",
+				"summary": "Список сообщений",
+				"tags": [
+					"Message"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"description": "ID чата",
+						"in": "path",
+						"name": "chatId",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"description": "ID сообщения для курсора (загрузить более старые)",
+						"in": "query",
+						"name": "before",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"description": "Количество сообщений (по умолчанию 50)",
+						"in": "query",
+						"name": "limit",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					}
+				]
+			}
+		},
+		"/api/chat/{chatId}/message/read": {
+			"post": {
+				"operationId": "MarkAsRead",
+				"responses": {
+					"204": {
+						"description": "No content"
+					}
+				},
+				"description": "Отметить сообщения как прочитанные до указанного messageId.",
+				"summary": "Прочитать сообщения",
+				"tags": [
+					"Message"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "chatId",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IMarkReadBody"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/message/{id}": {
+			"patch": {
+				"operationId": "EditMessage",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/MessageDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Отредактировать сообщение.",
+				"summary": "Редактирование сообщения",
+				"tags": [
+					"Message"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IEditMessageBody"
+							}
+						}
+					}
+				}
+			},
+			"delete": {
+				"operationId": "DeleteMessage",
+				"responses": {
+					"204": {
+						"description": "No content"
+					}
+				},
+				"description": "Удалить сообщение (soft delete).",
+				"summary": "Удаление сообщения",
+				"tags": [
+					"Message"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
 						"in": "path",
 						"name": "id",
 						"required": true,
@@ -2628,6 +4117,138 @@
 						"application/json": {
 							"schema": {
 								"$ref": "#/components/schemas/IVerifyAuthenticationRequestDto"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/device": {
+			"post": {
+				"operationId": "RegisterDevice",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/DeviceTokenDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Зарегистрировать устройство для push-уведомлений.",
+				"summary": "Регистрация устройства",
+				"tags": [
+					"Push"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IRegisterDeviceBody"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/device/{token}": {
+			"delete": {
+				"operationId": "UnregisterDevice",
+				"responses": {
+					"204": {
+						"description": "No content"
+					}
+				},
+				"description": "Удалить устройство из push-уведомлений.",
+				"summary": "Удаление устройства",
+				"tags": [
+					"Push"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "token",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/notification/settings": {
+			"get": {
+				"operationId": "GetSettings",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/NotificationSettingsDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Получить настройки уведомлений текущего пользователя.",
+				"summary": "Настройки уведомлений",
+				"tags": [
+					"Push"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": []
+			},
+			"patch": {
+				"operationId": "UpdateSettings",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/NotificationSettingsDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Обновить настройки уведомлений.",
+				"summary": "Обновление настроек уведомлений",
+				"tags": [
+					"Push"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IUpdateNotificationSettingsBody"
 							}
 						}
 					}

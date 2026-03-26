@@ -85,6 +85,11 @@ export class PasskeysService {
       );
     }
 
+    if (!user.challengeExpiresAt || user.challengeExpiresAt < new Date()) {
+      await this._userService.setChallenge(userId, null);
+      throw new InternalServerErrorException("Challenge истёк");
+    }
+
     let verification;
 
     try {
@@ -175,6 +180,11 @@ export class PasskeysService {
       throw new InternalServerErrorException(
         "Challenge не найден. Сначала вызовите generate-authentication-options.",
       );
+    }
+
+    if (!user.challengeExpiresAt || user.challengeExpiresAt < new Date()) {
+      await this._userService.setChallenge(user.id, null);
+      throw new InternalServerErrorException("Challenge истёк");
     }
 
     let verifyData;

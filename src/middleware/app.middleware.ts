@@ -17,6 +17,6 @@ export const RegisterAppMiddlewares = (
     .use(errorMiddleware)
     .use(corsMiddleware)
     .use(rateLimitMiddleware)
-    .use(bodyParserMiddleware)
-    .use(helmetMiddleware);
+    .use(bodyParserMiddleware);
+  // .use(helmetMiddleware);
 };

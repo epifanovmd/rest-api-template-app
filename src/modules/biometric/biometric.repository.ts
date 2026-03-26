@@ -1,3 +1,5 @@
+import { DeleteResult } from "typeorm";
+
 import { BaseRepository, InjectableRepository } from "../../core";
 import { Biometric } from "./biometric.entity";
 
@@ -13,7 +15,6 @@ export class BiometricRepository extends BaseRepository<Biometric> {
   async findByUserId(userId: string): Promise<Biometric[]> {
     return this.find({
       where: { userId },
-      relations: { user: true },
     });
   }
 
@@ -26,7 +27,17 @@ export class BiometricRepository extends BaseRepository<Biometric> {
         userId,
         deviceId,
       },
-      relations: { user: true },
     });
+  }
+
+  async countByUserId(userId: string): Promise<number> {
+    return this.count({ where: { userId } });
+  }
+
+  async deleteByUserIdAndDeviceId(
+    userId: string,
+    deviceId: string,
+  ): Promise<DeleteResult> {
+    return this.delete({ userId, deviceId });
   }
 }

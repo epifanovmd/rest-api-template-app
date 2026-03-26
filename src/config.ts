@@ -88,6 +88,10 @@ const configSchema = z.object({
       pass: z.string().default(""),
     }),
   }),
+
+  firebase: z.object({
+    serviceAccountPath: z.string().default(""),
+  }),
 });
 
 export type Config = z.infer<typeof configSchema>;
@@ -137,5 +141,8 @@ export const config: Config = configSchema.parse({
   },
   email: {
     smtp: { user: env.SMTP_USER, pass: env.SMTP_PASS },
+  },
+  firebase: {
+    serviceAccountPath: env.FIREBASE_SERVICE_ACCOUNT_PATH,
   },
 });

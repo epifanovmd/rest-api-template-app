@@ -1,6 +1,6 @@
 # Параметры для подключения по SSH
 SSH_USER=root
-SSH_HOST=194.87.44.216
+SSH_HOST=147.45.245.104
 
 .PHONY: all deploy clean copy remove-container docker-compose-up status logs restart-container backup
 

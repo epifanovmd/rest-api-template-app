@@ -1,7 +1,4 @@
-export interface IBiometricDto {}
-
 export interface IRegisterBiometricRequestDto {
-  userId: string;
   deviceId: string;
   deviceName: string;
   publicKey: string;
@@ -12,7 +9,7 @@ export interface IRegisterBiometricResponseDto {
 }
 
 export interface IGenerateNonceRequestDto {
-  userId: string;
+  deviceId: string;
 }
 
 export interface IGenerateNonceResponseDto {
@@ -20,7 +17,6 @@ export interface IGenerateNonceResponseDto {
 }
 
 export interface IVerifyBiometricSignatureRequestDto {
-  userId: string;
   deviceId: string;
   signature: string;
 }
@@ -31,4 +27,20 @@ export interface IVerifyBiometricSignatureResponseDto {
     accessToken: string;
     refreshToken: string;
   };
+}
+
+export interface IBiometricDeviceDto {
+  id: string;
+  deviceId: string;
+  deviceName: string;
+  lastUsedAt: Date;
+  createdAt: Date;
+}
+
+export interface IBiometricDevicesResponseDto {
+  devices: IBiometricDeviceDto[];
+}
+
+export interface IDeleteBiometricResponseDto {
+  deleted: boolean;
 }

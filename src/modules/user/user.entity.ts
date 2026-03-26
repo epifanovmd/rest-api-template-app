@@ -44,6 +44,9 @@ export class User {
   @Column({ type: "varchar", nullable: true })
   challenge?: string;
 
+  @Column({ name: "challenge_expires_at", type: "timestamp", nullable: true })
+  challengeExpiresAt?: Date;
+
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 

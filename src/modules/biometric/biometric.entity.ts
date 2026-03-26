@@ -29,6 +29,12 @@ export class Biometric {
   @Column({ name: "device_name", type: "varchar", length: 100, nullable: true })
   deviceName: string;
 
+  @Column({ type: "varchar", nullable: true })
+  challenge: string | null;
+
+  @Column({ name: "challenge_expires_at", type: "timestamp", nullable: true })
+  challengeExpiresAt: Date | null;
+
   @Column({ name: "last_used_at", type: "timestamp", nullable: true })
   lastUsedAt: Date;
 

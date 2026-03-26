@@ -125,10 +125,14 @@ export class UserService {
     return user;
   }
 
-  /** Установить или сбросить WebAuthn challenge для пользователя. */
+  /** Установить или сбросить WebAuthn challenge для пользователя (TTL 5 минут). */
   async setChallenge(id: string, challenge: string | null) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await this._userRepository.update(id, { challenge: challenge as any });
+    await this._userRepository.update(id, {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      challenge: challenge as any,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      challengeExpiresAt: challenge ? new Date(Date.now() + 5 * 60 * 1000) as any : null,
+    });
   }
 
   /**
