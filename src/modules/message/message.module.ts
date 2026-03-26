@@ -7,16 +7,22 @@ import { MessageListener } from "./message.listener";
 import { MessageRepository } from "./message.repository";
 import { MessageService } from "./message.service";
 import { MessageAttachmentRepository } from "./message-attachment.repository";
+import { MessageMentionRepository } from "./message-mention.repository";
+import { MessageReactionRepository } from "./message-reaction.repository";
+import { MessageSchedulerBootstrap } from "./message-scheduler.bootstrap";
 
 @Module({
   providers: [
     MessageRepository,
     MessageAttachmentRepository,
+    MessageReactionRepository,
+    MessageMentionRepository,
     MessageService,
     ChatMessageController,
     MessageController,
     asSocketHandler(MessageHandler),
     asSocketListener(MessageListener),
   ],
+  bootstrappers: [MessageSchedulerBootstrap],
 })
 export class MessageModule {}

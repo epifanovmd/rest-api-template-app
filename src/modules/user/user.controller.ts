@@ -5,6 +5,7 @@ import {
   Delete,
   Get,
   Patch,
+  Path,
   Post,
   Query,
   Request,
@@ -34,6 +35,7 @@ import { UserService } from "./user.service";
 import {
   ChangePasswordSchema,
   SetPrivilegesSchema,
+  SetUsernameSchema,
   UserUpdateSchema,
 } from "./validation";
 
@@ -96,6 +98,62 @@ export class UserController extends Controller {
     const user = getContextUser(req);
 
     return this._userService.deleteUser(user.userId);
+  }
+
+  /**
+   * Установить username для текущего пользователя.
+   * @summary Установка username
+   */
+  @Security("jwt")
+  @ValidateBody(SetUsernameSchema)
+  @Patch("my/username")
+  setUsername(
+    @Request() req: KoaRequest,
+    @Body() body: { username: string },
+  ): Promise<UserDto> {
+    const user = getContextUser(req);
+
+    return this._userService
+      .setUsername(user.userId, body.username)
+      .then(UserDto.fromEntity);
+  }
+
+  /**
+   * Поиск пользователей по запросу (username, email, имя, фамилия).
+   * @summary Поиск пользователей
+   */
+  @Security("jwt")
+  @Get("search")
+  async searchUsers(
+    @Query() q: string,
+    @Query() limit?: number,
+    @Query() offset?: number,
+  ): Promise<IUserListDto> {
+    const [result, totalCount] = await this._userService.searchUsers(
+      q,
+      limit ?? 20,
+      offset ?? 0,
+    );
+
+    return {
+      offset,
+      limit,
+      count: result.length,
+      totalCount,
+      data: result.map(PublicUserDto.fromEntity),
+    };
+  }
+
+  /**
+   * Получить пользователя по username.
+   * @summary Получение по username
+   */
+  @Security("jwt")
+  @Get("by-username/{username}")
+  getUserByUsername(@Path() username: string): Promise<PublicUserDto> {
+    return this._userService
+      .getUserByUsername(username)
+      .then(PublicUserDto.fromEntity);
   }
 
   /**

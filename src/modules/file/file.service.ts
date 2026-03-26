@@ -2,6 +2,7 @@ import { NotFoundException } from "@force-dev/utils";
 import fs from "fs";
 import { inject, injectable } from "inversify";
 import path from "path";
+import sharp from "sharp";
 import { File } from "tsoa";
 import { v4 } from "uuid";
 
@@ -30,12 +31,51 @@ export class FileService {
       files.map(async file => {
         const id = v4();
 
+        let thumbnailUrl: string | null = null;
+        let width: number | null = null;
+        let height: number | null = null;
+
+        // Generate thumbnail for images
+        if (file.mimetype.startsWith("image/")) {
+          try {
+            const image = sharp(file.path);
+            const metadata = await image.metadata();
+
+            width = metadata.width ?? null;
+            height = metadata.height ?? null;
+
+            const thumbFilename = `${id}_thumb.webp`;
+            const thumbPath = path.join(
+              path.dirname(file.path),
+              thumbFilename,
+            );
+
+            await image
+              .resize(200, 200, { fit: "inside", withoutEnlargement: true })
+              .webp({ quality: 70 })
+              .toFile(thumbPath);
+
+            const urlDir = path.dirname(file.path);
+            const relThumbUrl = path.join(
+              path.basename(urlDir),
+              thumbFilename,
+            );
+
+            thumbnailUrl = `/${relThumbUrl}`;
+          } catch (err) {
+            logger.error({ err }, "Failed to generate thumbnail");
+          }
+        }
+
         return this._fileRepository.createAndSave({
           id,
           name: file.originalname,
           type: file.mimetype,
           url: file.path,
           size: file.size,
+          thumbnailUrl,
+          width,
+          height,
         });
       }),
     );

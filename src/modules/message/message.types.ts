@@ -4,4 +4,12 @@ export enum EMessageType {
   FILE = "file",
   VOICE = "voice",
   SYSTEM = "system",
+  POLL = "poll",
+  STICKER = "sticker",
+}
+
+export enum EMessageStatus {
+  SENT = "sent",
+  DELIVERED = "delivered",
+  READ = "read",
 }

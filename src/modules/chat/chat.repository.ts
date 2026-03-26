@@ -44,4 +44,34 @@ export class ChatRepository extends BaseRepository<Chat> {
 
     return qb.getManyAndCount();
   }
+
+  async findPublicChannels(query?: string, offset?: number, limit?: number) {
+    const qb = this.createQueryBuilder("chat")
+      .leftJoinAndSelect("chat.avatar", "avatar")
+      .where("chat.type = :type", { type: EChatType.CHANNEL })
+      .andWhere("chat.isPublic = true")
+      .orderBy("chat.createdAt", "DESC");
+
+    if (query) {
+      qb.andWhere(
+        "(chat.name ILIKE :q OR chat.username ILIKE :q)",
+        { q: `%${query}%` },
+      );
+    }
+
+    if (offset !== undefined) qb.skip(offset);
+    if (limit !== undefined) qb.take(limit);
+
+    return qb.getManyAndCount();
+  }
+
+  async findByUsername(username: string) {
+    return this.findOne({
+      where: { username },
+      relations: {
+        members: { user: { profile: true } },
+        avatar: true,
+      },
+    });
+  }
 }

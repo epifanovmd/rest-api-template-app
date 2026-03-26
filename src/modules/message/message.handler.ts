@@ -22,5 +22,17 @@ export class MessageHandler implements ISocketHandler {
         // Ignore errors in socket handler — user may not be a member
       }
     });
+
+    socket.on("message:delivered", async ({ chatId, messageIds }) => {
+      try {
+        await this._messageService.markAsDelivered(
+          chatId,
+          socket.data.userId,
+          messageIds,
+        );
+      } catch {
+        // Ignore errors in socket handler
+      }
+    });
   }
 }

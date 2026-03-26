@@ -10,6 +10,7 @@ export class UserDto extends BaseDto {
   email?: string;
   emailVerified?: boolean;
   phone?: string;
+  username: string | null;
   profile?: ProfileDto;
   roles: IRoleDto[];
   directPermissions: IPermissionDto[];
@@ -23,6 +24,7 @@ export class UserDto extends BaseDto {
     this.email = entity.email;
     this.emailVerified = entity.emailVerified;
     this.phone = entity.phone;
+    this.username = entity.username;
     this.profile = entity.profile && ProfileDto.fromEntity(entity.profile);
     this.roles = entity.roles?.map(r => r.toDTO()) ?? [];
     this.directPermissions = entity.directPermissions?.map(p => p.toDTO()) ?? [];
@@ -38,6 +40,7 @@ export class UserDto extends BaseDto {
 export class PublicUserDto extends BaseDto {
   userId: string;
   email: string;
+  username: string | null;
   profile: PublicProfileDto;
 
   constructor(entity: User) {
@@ -45,6 +48,7 @@ export class PublicUserDto extends BaseDto {
 
     this.userId = entity.id;
     this.email = entity.email;
+    this.username = entity.username;
     this.profile = PublicProfileDto.fromEntity(entity.profile);
   }
 

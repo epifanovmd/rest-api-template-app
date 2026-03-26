@@ -156,6 +156,10 @@
 					"phone": {
 						"type": "string"
 					},
+					"username": {
+						"type": "string",
+						"nullable": true
+					},
 					"profile": {
 						"$ref": "#/components/schemas/ProfileDto"
 					},
@@ -182,6 +186,7 @@
 				},
 				"required": [
 					"id",
+					"username",
 					"roles",
 					"directPermissions",
 					"createdAt",
@@ -219,6 +224,34 @@
 						"$ref": "#/components/schemas/EProfileStatus"
 					}
 				},
+				"type": "object",
+				"additionalProperties": false
+			},
+			"EPrivacyLevel": {
+				"enum": [
+					"everyone",
+					"contacts",
+					"nobody"
+				],
+				"type": "string"
+			},
+			"PrivacySettingsDto": {
+				"properties": {
+					"showLastOnline": {
+						"$ref": "#/components/schemas/EPrivacyLevel"
+					},
+					"showPhone": {
+						"$ref": "#/components/schemas/EPrivacyLevel"
+					},
+					"showAvatar": {
+						"$ref": "#/components/schemas/EPrivacyLevel"
+					}
+				},
+				"required": [
+					"showLastOnline",
+					"showPhone",
+					"showAvatar"
+				],
 				"type": "object",
 				"additionalProperties": false
 			},
@@ -317,6 +350,10 @@
 					"email": {
 						"type": "string"
 					},
+					"username": {
+						"type": "string",
+						"nullable": true
+					},
 					"profile": {
 						"$ref": "#/components/schemas/PublicProfileDto"
 					}
@@ -324,6 +361,7 @@
 				"required": [
 					"userId",
 					"email",
+					"username",
 					"profile"
 				],
 				"type": "object",
@@ -467,6 +505,10 @@
 					"phone": {
 						"type": "string"
 					},
+					"username": {
+						"type": "string",
+						"nullable": true
+					},
 					"profile": {
 						"$ref": "#/components/schemas/ProfileDto"
 					},
@@ -496,6 +538,7 @@
 				},
 				"required": [
 					"id",
+					"username",
 					"roles",
 					"directPermissions",
 					"createdAt",
@@ -558,6 +601,39 @@
 					}
 				]
 			},
+			"I2FARequiredDto": {
+				"properties": {
+					"require2FA": {
+						"type": "boolean",
+						"enum": [
+							true
+						],
+						"nullable": false
+					},
+					"twoFactorToken": {
+						"type": "string"
+					},
+					"twoFactorHint": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"require2FA",
+					"twoFactorToken"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"ISignInResponseDto": {
+				"anyOf": [
+					{
+						"$ref": "#/components/schemas/IUserWithTokensDto"
+					},
+					{
+						"$ref": "#/components/schemas/I2FARequiredDto"
+					}
+				]
+			},
 			"ISignInRequestDto": {
 				"properties": {
 					"login": {
@@ -600,6 +676,49 @@
 				"required": [
 					"password",
 					"token"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IEnable2FARequestDto": {
+				"properties": {
+					"password": {
+						"type": "string"
+					},
+					"hint": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"password"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IDisable2FARequestDto": {
+				"properties": {
+					"password": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"password"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IVerify2FARequestDto": {
+				"properties": {
+					"twoFactorToken": {
+						"type": "string"
+					},
+					"password": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"twoFactorToken",
+					"password"
 				],
 				"type": "object",
 				"additionalProperties": false
@@ -761,10 +880,735 @@
 				"type": "object",
 				"additionalProperties": false
 			},
+			"EMessageType": {
+				"enum": [
+					"text",
+					"image",
+					"file",
+					"voice",
+					"system",
+					"poll",
+					"sticker"
+				],
+				"type": "string"
+			},
+			"EMessageStatus": {
+				"enum": [
+					"sent",
+					"delivered",
+					"read"
+				],
+				"type": "string"
+			},
+			"Record_string.unknown_": {
+				"properties": {},
+				"type": "object",
+				"description": "Construct a type with a set of properties K of type T"
+			},
+			"MessageDto": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"chatId": {
+						"type": "string"
+					},
+					"senderId": {
+						"type": "string"
+					},
+					"type": {
+						"$ref": "#/components/schemas/EMessageType"
+					},
+					"status": {
+						"$ref": "#/components/schemas/EMessageStatus"
+					},
+					"content": {
+						"type": "string",
+						"nullable": true
+					},
+					"replyToId": {
+						"type": "string",
+						"nullable": true
+					},
+					"forwardedFromId": {
+						"type": "string",
+						"nullable": true
+					},
+					"isEdited": {
+						"type": "boolean"
+					},
+					"isDeleted": {
+						"type": "boolean"
+					},
+					"isPinned": {
+						"type": "boolean"
+					},
+					"pinnedAt": {
+						"type": "string",
+						"format": "date-time",
+						"nullable": true
+					},
+					"pinnedById": {
+						"type": "string",
+						"nullable": true
+					},
+					"stickerId": {
+						"type": "string",
+						"nullable": true
+					},
+					"encryptedContent": {
+						"type": "string",
+						"nullable": true
+					},
+					"encryptionMetadata": {
+						"allOf": [
+							{
+								"$ref": "#/components/schemas/Record_string.unknown_"
+							}
+						],
+						"nullable": true
+					},
+					"keyboard": {
+						"nullable": true
+					},
+					"linkPreviews": {
+						"items": {
+							"properties": {
+								"siteName": {
+									"type": "string",
+									"nullable": true
+								},
+								"imageUrl": {
+									"type": "string",
+									"nullable": true
+								},
+								"description": {
+									"type": "string",
+									"nullable": true
+								},
+								"title": {
+									"type": "string",
+									"nullable": true
+								},
+								"url": {
+									"type": "string"
+								}
+							},
+							"required": [
+								"siteName",
+								"imageUrl",
+								"description",
+								"title",
+								"url"
+							],
+							"type": "object"
+						},
+						"type": "array",
+						"nullable": true
+					},
+					"scheduledAt": {
+						"type": "string",
+						"format": "date-time",
+						"nullable": true
+					},
+					"isScheduled": {
+						"type": "boolean"
+					},
+					"selfDestructSeconds": {
+						"type": "number",
+						"format": "double",
+						"nullable": true
+					},
+					"selfDestructAt": {
+						"type": "string",
+						"format": "date-time",
+						"nullable": true
+					},
+					"createdAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"updatedAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"sender": {
+						"properties": {
+							"avatarUrl": {
+								"type": "string"
+							},
+							"lastName": {
+								"type": "string"
+							},
+							"firstName": {
+								"type": "string"
+							},
+							"id": {
+								"type": "string"
+							}
+						},
+						"required": [
+							"id"
+						],
+						"type": "object"
+					},
+					"replyTo": {
+						"allOf": [
+							{
+								"$ref": "#/components/schemas/MessageDto"
+							}
+						],
+						"nullable": true
+					},
+					"attachments": {
+						"items": {
+							"$ref": "#/components/schemas/MessageAttachmentDto"
+						},
+						"type": "array"
+					},
+					"reactions": {
+						"items": {
+							"properties": {
+								"userIds": {
+									"items": {
+										"type": "string"
+									},
+									"type": "array"
+								},
+								"count": {
+									"type": "number",
+									"format": "double"
+								},
+								"emoji": {
+									"type": "string"
+								}
+							},
+							"required": [
+								"userIds",
+								"count",
+								"emoji"
+							],
+							"type": "object"
+						},
+						"type": "array"
+					},
+					"mentions": {
+						"items": {
+							"properties": {
+								"isAll": {
+									"type": "boolean"
+								},
+								"userId": {
+									"type": "string",
+									"nullable": true
+								}
+							},
+							"required": [
+								"isAll",
+								"userId"
+							],
+							"type": "object"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"id",
+					"chatId",
+					"senderId",
+					"type",
+					"status",
+					"content",
+					"replyToId",
+					"forwardedFromId",
+					"isEdited",
+					"isDeleted",
+					"isPinned",
+					"pinnedAt",
+					"pinnedById",
+					"stickerId",
+					"encryptedContent",
+					"encryptionMetadata",
+					"keyboard",
+					"linkPreviews",
+					"scheduledAt",
+					"isScheduled",
+					"selfDestructSeconds",
+					"selfDestructAt",
+					"createdAt",
+					"updatedAt",
+					"attachments",
+					"reactions",
+					"mentions"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"MessageAttachmentDto": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"fileId": {
+						"type": "string"
+					},
+					"fileName": {
+						"type": "string"
+					},
+					"fileUrl": {
+						"type": "string"
+					},
+					"fileType": {
+						"type": "string"
+					},
+					"fileSize": {
+						"type": "number",
+						"format": "double"
+					},
+					"thumbnailUrl": {
+						"type": "string",
+						"nullable": true
+					},
+					"width": {
+						"type": "number",
+						"format": "double",
+						"nullable": true
+					},
+					"height": {
+						"type": "number",
+						"format": "double",
+						"nullable": true
+					}
+				},
+				"required": [
+					"id",
+					"fileId",
+					"fileName",
+					"fileUrl",
+					"fileType",
+					"fileSize",
+					"thumbnailUrl",
+					"width",
+					"height"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IBotSendMessageBody": {
+				"properties": {
+					"chatId": {
+						"type": "string"
+					},
+					"content": {
+						"type": "string"
+					},
+					"type": {
+						"$ref": "#/components/schemas/EMessageType"
+					},
+					"replyToId": {
+						"type": "string"
+					},
+					"fileIds": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"chatId"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IBotEditMessageBody": {
+				"properties": {
+					"content": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"content"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"BotCommandDto": {
+				"properties": {
+					"command": {
+						"type": "string"
+					},
+					"description": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"command",
+					"description"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"BotDetailDto": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"username": {
+						"type": "string"
+					},
+					"displayName": {
+						"type": "string"
+					},
+					"description": {
+						"type": "string",
+						"nullable": true
+					},
+					"avatarUrl": {
+						"type": "string",
+						"nullable": true
+					},
+					"isActive": {
+						"type": "boolean"
+					},
+					"createdAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"token": {
+						"type": "string"
+					},
+					"webhookUrl": {
+						"type": "string",
+						"nullable": true
+					},
+					"commands": {
+						"items": {
+							"$ref": "#/components/schemas/BotCommandDto"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"id",
+					"username",
+					"displayName",
+					"description",
+					"avatarUrl",
+					"isActive",
+					"createdAt",
+					"token",
+					"webhookUrl",
+					"commands"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"ICreateBotBody": {
+				"properties": {
+					"username": {
+						"type": "string"
+					},
+					"displayName": {
+						"type": "string"
+					},
+					"description": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"username",
+					"displayName"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"BotDto": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"username": {
+						"type": "string"
+					},
+					"displayName": {
+						"type": "string"
+					},
+					"description": {
+						"type": "string",
+						"nullable": true
+					},
+					"avatarUrl": {
+						"type": "string",
+						"nullable": true
+					},
+					"isActive": {
+						"type": "boolean"
+					},
+					"createdAt": {
+						"type": "string",
+						"format": "date-time"
+					}
+				},
+				"required": [
+					"id",
+					"username",
+					"displayName",
+					"description",
+					"avatarUrl",
+					"isActive",
+					"createdAt"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IUpdateBotBody": {
+				"properties": {
+					"displayName": {
+						"type": "string"
+					},
+					"description": {
+						"type": "string",
+						"nullable": true
+					},
+					"avatarId": {
+						"type": "string",
+						"nullable": true
+					}
+				},
+				"type": "object",
+				"additionalProperties": false
+			},
+			"ISetWebhookBody": {
+				"properties": {
+					"url": {
+						"type": "string"
+					},
+					"secret": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"url"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"ISetCommandsBody": {
+				"properties": {
+					"commands": {
+						"items": {
+							"properties": {
+								"description": {
+									"type": "string"
+								},
+								"command": {
+									"type": "string"
+								}
+							},
+							"required": [
+								"description",
+								"command"
+							],
+							"type": "object"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"commands"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"ECallType": {
+				"enum": [
+					"voice",
+					"video"
+				],
+				"type": "string"
+			},
+			"ECallStatus": {
+				"enum": [
+					"ringing",
+					"active",
+					"ended",
+					"missed",
+					"declined"
+				],
+				"type": "string"
+			},
+			"CallDto": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"callerId": {
+						"type": "string"
+					},
+					"calleeId": {
+						"type": "string"
+					},
+					"chatId": {
+						"type": "string",
+						"nullable": true
+					},
+					"type": {
+						"$ref": "#/components/schemas/ECallType"
+					},
+					"status": {
+						"$ref": "#/components/schemas/ECallStatus"
+					},
+					"startedAt": {
+						"type": "string",
+						"format": "date-time",
+						"nullable": true
+					},
+					"endedAt": {
+						"type": "string",
+						"format": "date-time",
+						"nullable": true
+					},
+					"duration": {
+						"type": "number",
+						"format": "double",
+						"nullable": true
+					},
+					"createdAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"updatedAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"caller": {
+						"properties": {
+							"avatarUrl": {
+								"type": "string"
+							},
+							"lastName": {
+								"type": "string"
+							},
+							"firstName": {
+								"type": "string"
+							},
+							"id": {
+								"type": "string"
+							}
+						},
+						"required": [
+							"id"
+						],
+						"type": "object"
+					},
+					"callee": {
+						"properties": {
+							"avatarUrl": {
+								"type": "string"
+							},
+							"lastName": {
+								"type": "string"
+							},
+							"firstName": {
+								"type": "string"
+							},
+							"id": {
+								"type": "string"
+							}
+						},
+						"required": [
+							"id"
+						],
+						"type": "object"
+					}
+				},
+				"required": [
+					"id",
+					"callerId",
+					"calleeId",
+					"chatId",
+					"type",
+					"status",
+					"startedAt",
+					"endedAt",
+					"duration",
+					"createdAt",
+					"updatedAt"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IInitiateCallBody": {
+				"properties": {
+					"calleeId": {
+						"type": "string"
+					},
+					"chatId": {
+						"type": "string"
+					},
+					"type": {
+						"$ref": "#/components/schemas/ECallType"
+					}
+				},
+				"required": [
+					"calleeId"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"ICallHistoryDto": {
+				"properties": {
+					"data": {
+						"items": {
+							"$ref": "#/components/schemas/CallDto"
+						},
+						"type": "array"
+					},
+					"totalCount": {
+						"type": "number",
+						"format": "double"
+					}
+				},
+				"required": [
+					"data",
+					"totalCount"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"ISetSlowModeBody": {
+				"properties": {
+					"seconds": {
+						"type": "number",
+						"format": "double"
+					}
+				},
+				"required": [
+					"seconds"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IBanMemberBody": {
+				"properties": {
+					"duration": {
+						"type": "number",
+						"format": "double"
+					},
+					"reason": {
+						"type": "string"
+					}
+				},
+				"type": "object",
+				"additionalProperties": false
+			},
 			"EChatType": {
 				"enum": [
 					"direct",
-					"group"
+					"group",
+					"channel",
+					"secret"
 				],
 				"type": "string"
 			},
@@ -772,7 +1616,8 @@
 				"enum": [
 					"owner",
 					"admin",
-					"member"
+					"member",
+					"subscriber"
 				],
 				"type": "string"
 			},
@@ -796,6 +1641,16 @@
 						"format": "date-time",
 						"nullable": true
 					},
+					"isPinnedChat": {
+						"type": "boolean"
+					},
+					"isArchived": {
+						"type": "boolean"
+					},
+					"folderId": {
+						"type": "string",
+						"nullable": true
+					},
 					"profile": {
 						"$ref": "#/components/schemas/PublicProfileDto"
 					}
@@ -805,7 +1660,10 @@
 					"userId",
 					"role",
 					"joinedAt",
-					"mutedUntil"
+					"mutedUntil",
+					"isPinnedChat",
+					"isArchived",
+					"folderId"
 				],
 				"type": "object",
 				"additionalProperties": false
@@ -821,6 +1679,17 @@
 					"name": {
 						"type": "string",
 						"nullable": true
+					},
+					"description": {
+						"type": "string",
+						"nullable": true
+					},
+					"username": {
+						"type": "string",
+						"nullable": true
+					},
+					"isPublic": {
+						"type": "boolean"
 					},
 					"avatarUrl": {
 						"type": "string",
@@ -853,6 +1722,9 @@
 					"id",
 					"type",
 					"name",
+					"description",
+					"username",
+					"isPublic",
 					"avatarUrl",
 					"createdById",
 					"lastMessageAt",
@@ -897,6 +1769,54 @@
 				"type": "object",
 				"additionalProperties": false
 			},
+			"ICreateChannelBody": {
+				"properties": {
+					"name": {
+						"type": "string"
+					},
+					"description": {
+						"type": "string"
+					},
+					"username": {
+						"type": "string"
+					},
+					"avatarId": {
+						"type": "string"
+					},
+					"isPublic": {
+						"type": "boolean"
+					}
+				},
+				"required": [
+					"name"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IUpdateChannelBody": {
+				"properties": {
+					"name": {
+						"type": "string"
+					},
+					"description": {
+						"type": "string",
+						"nullable": true
+					},
+					"username": {
+						"type": "string",
+						"nullable": true
+					},
+					"avatarId": {
+						"type": "string",
+						"nullable": true
+					},
+					"isPublic": {
+						"type": "boolean"
+					}
+				},
+				"type": "object",
+				"additionalProperties": false
+			},
 			"IChatListDto": {
 				"properties": {
 					"count": {
@@ -928,6 +1848,18 @@
 				"type": "object",
 				"additionalProperties": false
 			},
+			"ICreateSecretChatBody": {
+				"properties": {
+					"targetUserId": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"targetUserId"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
 			"IUpdateChatBody": {
 				"properties": {
 					"name": {
@@ -938,6 +1870,82 @@
 						"nullable": true
 					}
 				},
+				"type": "object",
+				"additionalProperties": false
+			},
+			"ChatInviteDto": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"chatId": {
+						"type": "string"
+					},
+					"code": {
+						"type": "string"
+					},
+					"createdById": {
+						"type": "string"
+					},
+					"expiresAt": {
+						"type": "string",
+						"format": "date-time",
+						"nullable": true
+					},
+					"maxUses": {
+						"type": "number",
+						"format": "double",
+						"nullable": true
+					},
+					"useCount": {
+						"type": "number",
+						"format": "double"
+					},
+					"isActive": {
+						"type": "boolean"
+					},
+					"createdAt": {
+						"type": "string",
+						"format": "date-time"
+					}
+				},
+				"required": [
+					"id",
+					"chatId",
+					"code",
+					"createdById",
+					"expiresAt",
+					"maxUses",
+					"useCount",
+					"isActive",
+					"createdAt"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"ICreateInviteBody": {
+				"properties": {
+					"expiresAt": {
+						"type": "string"
+					},
+					"maxUses": {
+						"type": "number",
+						"format": "double"
+					}
+				},
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IMuteChatBody": {
+				"properties": {
+					"mutedUntil": {
+						"type": "string",
+						"nullable": true
+					}
+				},
+				"required": [
+					"mutedUntil"
+				],
 				"type": "object",
 				"additionalProperties": false
 			},
@@ -965,6 +1973,79 @@
 				"required": [
 					"role"
 				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IMoveChatToFolderBody": {
+				"properties": {
+					"folderId": {
+						"type": "string",
+						"nullable": true
+					}
+				},
+				"required": [
+					"folderId"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"ChatFolderDto": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"userId": {
+						"type": "string"
+					},
+					"name": {
+						"type": "string"
+					},
+					"position": {
+						"type": "number",
+						"format": "double"
+					},
+					"createdAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"updatedAt": {
+						"type": "string",
+						"format": "date-time"
+					}
+				},
+				"required": [
+					"id",
+					"userId",
+					"name",
+					"position",
+					"createdAt",
+					"updatedAt"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"ICreateFolderBody": {
+				"properties": {
+					"name": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"name"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IUpdateFolderBody": {
+				"properties": {
+					"name": {
+						"type": "string"
+					},
+					"position": {
+						"type": "number",
+						"format": "double"
+					}
+				},
 				"type": "object",
 				"additionalProperties": false
 			},
@@ -1033,6 +2114,150 @@
 				"type": "object",
 				"additionalProperties": false
 			},
+			"IUploadKeysBody": {
+				"properties": {
+					"deviceId": {
+						"type": "string"
+					},
+					"identityKey": {
+						"type": "string"
+					},
+					"signedPreKey": {
+						"properties": {
+							"signature": {
+								"type": "string"
+							},
+							"publicKey": {
+								"type": "string"
+							},
+							"id": {
+								"type": "number",
+								"format": "double"
+							}
+						},
+						"required": [
+							"signature",
+							"publicKey",
+							"id"
+						],
+						"type": "object"
+					},
+					"oneTimePreKeys": {
+						"items": {
+							"properties": {
+								"publicKey": {
+									"type": "string"
+								},
+								"id": {
+									"type": "number",
+									"format": "double"
+								}
+							},
+							"required": [
+								"publicKey",
+								"id"
+							],
+							"type": "object"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"deviceId",
+					"identityKey",
+					"signedPreKey",
+					"oneTimePreKeys"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"KeyBundleDto": {
+				"properties": {
+					"userId": {
+						"type": "string"
+					},
+					"deviceId": {
+						"type": "string"
+					},
+					"identityKey": {
+						"type": "string"
+					},
+					"signedPreKey": {
+						"properties": {
+							"signature": {
+								"type": "string"
+							},
+							"publicKey": {
+								"type": "string"
+							},
+							"id": {
+								"type": "number",
+								"format": "double"
+							}
+						},
+						"required": [
+							"signature",
+							"publicKey",
+							"id"
+						],
+						"type": "object"
+					},
+					"oneTimePreKey": {
+						"properties": {
+							"publicKey": {
+								"type": "string"
+							},
+							"id": {
+								"type": "number",
+								"format": "double"
+							}
+						},
+						"required": [
+							"publicKey",
+							"id"
+						],
+						"type": "object",
+						"nullable": true
+					}
+				},
+				"required": [
+					"userId",
+					"deviceId",
+					"identityKey",
+					"signedPreKey",
+					"oneTimePreKey"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IUploadPreKeysBody": {
+				"properties": {
+					"keys": {
+						"items": {
+							"properties": {
+								"publicKey": {
+									"type": "string"
+								},
+								"id": {
+									"type": "number",
+									"format": "double"
+								}
+							},
+							"required": [
+								"publicKey",
+								"id"
+							],
+							"type": "object"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"keys"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
 			"IFileDto": {
 				"properties": {
 					"id": {
@@ -1072,141 +2297,6 @@
 				"type": "object",
 				"additionalProperties": false
 			},
-			"EMessageType": {
-				"enum": [
-					"text",
-					"image",
-					"file",
-					"voice",
-					"system"
-				],
-				"type": "string"
-			},
-			"MessageDto": {
-				"properties": {
-					"id": {
-						"type": "string"
-					},
-					"chatId": {
-						"type": "string"
-					},
-					"senderId": {
-						"type": "string"
-					},
-					"type": {
-						"$ref": "#/components/schemas/EMessageType"
-					},
-					"content": {
-						"type": "string",
-						"nullable": true
-					},
-					"replyToId": {
-						"type": "string",
-						"nullable": true
-					},
-					"forwardedFromId": {
-						"type": "string",
-						"nullable": true
-					},
-					"isEdited": {
-						"type": "boolean"
-					},
-					"isDeleted": {
-						"type": "boolean"
-					},
-					"createdAt": {
-						"type": "string",
-						"format": "date-time"
-					},
-					"updatedAt": {
-						"type": "string",
-						"format": "date-time"
-					},
-					"sender": {
-						"properties": {
-							"avatarUrl": {
-								"type": "string"
-							},
-							"lastName": {
-								"type": "string"
-							},
-							"firstName": {
-								"type": "string"
-							},
-							"id": {
-								"type": "string"
-							}
-						},
-						"required": [
-							"id"
-						],
-						"type": "object"
-					},
-					"replyTo": {
-						"allOf": [
-							{
-								"$ref": "#/components/schemas/MessageDto"
-							}
-						],
-						"nullable": true
-					},
-					"attachments": {
-						"items": {
-							"$ref": "#/components/schemas/MessageAttachmentDto"
-						},
-						"type": "array"
-					}
-				},
-				"required": [
-					"id",
-					"chatId",
-					"senderId",
-					"type",
-					"content",
-					"replyToId",
-					"forwardedFromId",
-					"isEdited",
-					"isDeleted",
-					"createdAt",
-					"updatedAt",
-					"attachments"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"MessageAttachmentDto": {
-				"properties": {
-					"id": {
-						"type": "string"
-					},
-					"fileId": {
-						"type": "string"
-					},
-					"fileName": {
-						"type": "string"
-					},
-					"fileUrl": {
-						"type": "string"
-					},
-					"fileType": {
-						"type": "string"
-					},
-					"fileSize": {
-						"type": "number",
-						"format": "double"
-					}
-				},
-				"required": [
-					"id",
-					"fileId",
-					"fileName",
-					"fileUrl",
-					"fileType",
-					"fileSize"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
 			"ISendMessageBody": {
 				"properties": {
 					"type": {
@@ -1226,6 +2316,28 @@
 							"type": "string"
 						},
 						"type": "array"
+					},
+					"mentionedUserIds": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					},
+					"mentionAll": {
+						"type": "boolean"
+					},
+					"encryptedContent": {
+						"type": "string"
+					},
+					"encryptionMetadata": {
+						"$ref": "#/components/schemas/Record_string.unknown_"
+					},
+					"scheduledAt": {
+						"type": "string"
+					},
+					"selfDestructSeconds": {
+						"type": "number",
+						"format": "double"
 					}
 				},
 				"type": "object",
@@ -1250,6 +2362,135 @@
 				"type": "object",
 				"additionalProperties": false
 			},
+			"IMessageSearchDto": {
+				"properties": {
+					"data": {
+						"items": {
+							"$ref": "#/components/schemas/MessageDto"
+						},
+						"type": "array"
+					},
+					"totalCount": {
+						"type": "number",
+						"format": "double"
+					}
+				},
+				"required": [
+					"data",
+					"totalCount"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"MediaItemDto": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"messageId": {
+						"type": "string"
+					},
+					"chatId": {
+						"type": "string"
+					},
+					"senderId": {
+						"type": "string"
+					},
+					"attachments": {
+						"items": {
+							"$ref": "#/components/schemas/MessageAttachmentDto"
+						},
+						"type": "array"
+					},
+					"createdAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"sender": {
+						"properties": {
+							"avatarUrl": {
+								"type": "string"
+							},
+							"lastName": {
+								"type": "string"
+							},
+							"firstName": {
+								"type": "string"
+							},
+							"id": {
+								"type": "string"
+							}
+						},
+						"required": [
+							"id"
+						],
+						"type": "object"
+					}
+				},
+				"required": [
+					"id",
+					"messageId",
+					"chatId",
+					"senderId",
+					"attachments",
+					"createdAt"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IMediaGalleryDto": {
+				"properties": {
+					"data": {
+						"items": {
+							"$ref": "#/components/schemas/MediaItemDto"
+						},
+						"type": "array"
+					},
+					"totalCount": {
+						"type": "number",
+						"format": "double"
+					}
+				},
+				"required": [
+					"data",
+					"totalCount"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IMediaStatsDto": {
+				"properties": {
+					"images": {
+						"type": "number",
+						"format": "double"
+					},
+					"videos": {
+						"type": "number",
+						"format": "double"
+					},
+					"audio": {
+						"type": "number",
+						"format": "double"
+					},
+					"documents": {
+						"type": "number",
+						"format": "double"
+					},
+					"total": {
+						"type": "number",
+						"format": "double"
+					}
+				},
+				"required": [
+					"images",
+					"videos",
+					"audio",
+					"documents",
+					"total"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
 			"IMarkReadBody": {
 				"properties": {
 					"messageId": {
@@ -1270,6 +2511,18 @@
 				},
 				"required": [
 					"content"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IAddReactionBody": {
+				"properties": {
+					"emoji": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"emoji"
 				],
 				"type": "object",
 				"additionalProperties": false
@@ -1732,6 +2985,146 @@
 				"type": "object",
 				"additionalProperties": false
 			},
+			"PollOptionDto": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"text": {
+						"type": "string"
+					},
+					"position": {
+						"type": "number",
+						"format": "double"
+					},
+					"voterCount": {
+						"type": "number",
+						"format": "double"
+					},
+					"voterIds": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"id",
+					"text",
+					"position",
+					"voterCount",
+					"voterIds"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"PollDto": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"messageId": {
+						"type": "string"
+					},
+					"question": {
+						"type": "string"
+					},
+					"isAnonymous": {
+						"type": "boolean"
+					},
+					"isMultipleChoice": {
+						"type": "boolean"
+					},
+					"isClosed": {
+						"type": "boolean"
+					},
+					"closedAt": {
+						"type": "string",
+						"format": "date-time",
+						"nullable": true
+					},
+					"options": {
+						"items": {
+							"$ref": "#/components/schemas/PollOptionDto"
+						},
+						"type": "array"
+					},
+					"totalVotes": {
+						"type": "number",
+						"format": "double"
+					},
+					"userVotedOptionIds": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					},
+					"createdAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"updatedAt": {
+						"type": "string",
+						"format": "date-time"
+					}
+				},
+				"required": [
+					"id",
+					"messageId",
+					"question",
+					"isAnonymous",
+					"isMultipleChoice",
+					"isClosed",
+					"closedAt",
+					"options",
+					"totalVotes",
+					"userVotedOptionIds",
+					"createdAt",
+					"updatedAt"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"ICreatePollBody": {
+				"properties": {
+					"question": {
+						"type": "string"
+					},
+					"options": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					},
+					"isAnonymous": {
+						"type": "boolean"
+					},
+					"isMultipleChoice": {
+						"type": "boolean"
+					}
+				},
+				"required": [
+					"question",
+					"options"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IVotePollBody": {
+				"properties": {
+					"optionIds": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"optionIds"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
 			"EDevicePlatform": {
 				"enum": [
 					"ios",
@@ -1823,6 +3216,278 @@
 				},
 				"type": "object",
 				"additionalProperties": false
+			},
+			"SessionDto": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"userId": {
+						"type": "string"
+					},
+					"deviceName": {
+						"type": "string",
+						"nullable": true
+					},
+					"deviceType": {
+						"type": "string",
+						"nullable": true
+					},
+					"ip": {
+						"type": "string",
+						"nullable": true
+					},
+					"userAgent": {
+						"type": "string",
+						"nullable": true
+					},
+					"lastActiveAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"createdAt": {
+						"type": "string",
+						"format": "date-time"
+					}
+				},
+				"required": [
+					"id",
+					"userId",
+					"deviceName",
+					"deviceType",
+					"ip",
+					"userAgent",
+					"lastActiveAt",
+					"createdAt"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"StickerDto": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"packId": {
+						"type": "string"
+					},
+					"emoji": {
+						"type": "string",
+						"nullable": true
+					},
+					"fileId": {
+						"type": "string"
+					},
+					"fileUrl": {
+						"type": "string"
+					},
+					"position": {
+						"type": "number",
+						"format": "double"
+					},
+					"createdAt": {
+						"type": "string",
+						"format": "date-time"
+					}
+				},
+				"required": [
+					"id",
+					"packId",
+					"emoji",
+					"fileId",
+					"fileUrl",
+					"position",
+					"createdAt"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"StickerPackDto": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"name": {
+						"type": "string"
+					},
+					"title": {
+						"type": "string"
+					},
+					"creatorId": {
+						"type": "string"
+					},
+					"isOfficial": {
+						"type": "boolean"
+					},
+					"isAnimated": {
+						"type": "boolean"
+					},
+					"stickers": {
+						"items": {
+							"$ref": "#/components/schemas/StickerDto"
+						},
+						"type": "array"
+					},
+					"createdAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"updatedAt": {
+						"type": "string",
+						"format": "date-time"
+					}
+				},
+				"required": [
+					"id",
+					"name",
+					"title",
+					"creatorId",
+					"isOfficial",
+					"isAnimated",
+					"stickers",
+					"createdAt",
+					"updatedAt"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"ICreateStickerPackBody": {
+				"properties": {
+					"name": {
+						"type": "string"
+					},
+					"title": {
+						"type": "string"
+					},
+					"isAnimated": {
+						"type": "boolean"
+					}
+				},
+				"required": [
+					"name",
+					"title"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IStickerPackListDto": {
+				"properties": {
+					"data": {
+						"items": {
+							"$ref": "#/components/schemas/StickerPackDto"
+						},
+						"type": "array"
+					},
+					"totalCount": {
+						"type": "number",
+						"format": "double"
+					}
+				},
+				"required": [
+					"data",
+					"totalCount"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IAddStickerBody": {
+				"properties": {
+					"emoji": {
+						"type": "string"
+					},
+					"fileId": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"fileId"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"ESyncEntityType": {
+				"enum": [
+					"message",
+					"chat",
+					"chat_member",
+					"contact",
+					"profile"
+				],
+				"type": "string"
+			},
+			"ESyncAction": {
+				"enum": [
+					"create",
+					"update",
+					"delete"
+				],
+				"type": "string"
+			},
+			"SyncLogDto": {
+				"properties": {
+					"version": {
+						"type": "string"
+					},
+					"entityType": {
+						"$ref": "#/components/schemas/ESyncEntityType"
+					},
+					"entityId": {
+						"type": "string"
+					},
+					"action": {
+						"$ref": "#/components/schemas/ESyncAction"
+					},
+					"chatId": {
+						"type": "string",
+						"nullable": true
+					},
+					"payload": {
+						"allOf": [
+							{
+								"$ref": "#/components/schemas/Record_string.unknown_"
+							}
+						],
+						"nullable": true
+					},
+					"createdAt": {
+						"type": "string",
+						"format": "date-time"
+					}
+				},
+				"required": [
+					"version",
+					"entityType",
+					"entityId",
+					"action",
+					"chatId",
+					"payload",
+					"createdAt"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"ISyncResponseDto": {
+				"properties": {
+					"changes": {
+						"items": {
+							"$ref": "#/components/schemas/SyncLogDto"
+						},
+						"type": "array"
+					},
+					"currentVersion": {
+						"type": "string"
+					},
+					"hasMore": {
+						"type": "boolean"
+					}
+				},
+				"required": [
+					"changes",
+					"currentVersion",
+					"hasMore"
+				],
+				"type": "object",
+				"additionalProperties": false
 			}
 		},
 		"securitySchemes": {
@@ -1909,6 +3574,81 @@
 							"schema": {
 								"$ref": "#/components/schemas/IProfileUpdateRequestDto",
 								"description": "Обновленные данные профиля"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/profile/my/privacy": {
+			"get": {
+				"operationId": "GetPrivacySettings",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/PrivacySettingsDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Получить настройки приватности.",
+				"summary": "Настройки приватности",
+				"tags": [
+					"Profile"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": []
+			},
+			"patch": {
+				"operationId": "UpdatePrivacySettings",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/PrivacySettingsDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Обновить настройки приватности.",
+				"summary": "Обновление настроек приватности",
+				"tags": [
+					"Profile"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"properties": {
+									"showAvatar": {
+										"$ref": "#/components/schemas/EPrivacyLevel"
+									},
+									"showPhone": {
+										"$ref": "#/components/schemas/EPrivacyLevel"
+									},
+									"showLastOnline": {
+										"$ref": "#/components/schemas/EPrivacyLevel"
+									}
+								},
+								"type": "object"
 							}
 						}
 					}
@@ -2303,6 +4043,144 @@
 					}
 				],
 				"parameters": []
+			}
+		},
+		"/api/user/my/username": {
+			"patch": {
+				"operationId": "SetUsername",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/UserDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Установить username для текущего пользователя.",
+				"summary": "Установка username",
+				"tags": [
+					"User"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"properties": {
+									"username": {
+										"type": "string"
+									}
+								},
+								"required": [
+									"username"
+								],
+								"type": "object"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/user/search": {
+			"get": {
+				"operationId": "SearchUsers",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IUserListDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Поиск пользователей по запросу (username, email, имя, фамилия).",
+				"summary": "Поиск пользователей",
+				"tags": [
+					"User"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "query",
+						"name": "q",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "limit",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					},
+					{
+						"in": "query",
+						"name": "offset",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					}
+				]
+			}
+		},
+		"/api/user/by-username/{username}": {
+			"get": {
+				"operationId": "GetUserByUsername",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/PublicUserDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Получить пользователя по username.",
+				"summary": "Получение по username",
+				"tags": [
+					"User"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "username",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
 			}
 		},
 		"/api/user/all": {
@@ -2746,7 +4624,7 @@
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/IUserWithTokensDto"
+									"$ref": "#/components/schemas/ISignInResponseDto"
 								}
 							}
 						}
@@ -2892,6 +4770,116 @@
 							},
 							"example": {
 								"refreshToken": "old-refresh-token"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/auth/enable-2fa": {
+			"post": {
+				"operationId": "Enable2FA",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Включить двухфакторную аутентификацию.",
+				"summary": "Включение 2FA",
+				"tags": [
+					"Authorization"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IEnable2FARequestDto"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/auth/disable-2fa": {
+			"post": {
+				"operationId": "Disable2FA",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Отключить двухфакторную аутентификацию.",
+				"summary": "Отключение 2FA",
+				"tags": [
+					"Authorization"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IDisable2FARequestDto"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/auth/verify-2fa": {
+			"post": {
+				"operationId": "Verify2FA",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IUserWithTokensDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Верифицировать 2FA и получить токены.",
+				"summary": "Верификация 2FA",
+				"tags": [
+					"Authorization"
+				],
+				"security": [],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IVerify2FARequestDto"
 							}
 						}
 					}
@@ -3072,6 +5060,899 @@
 				]
 			}
 		},
+		"/api/bot-api/message/send": {
+			"post": {
+				"operationId": "SendMessage",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/MessageDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Отправить сообщение от имени бота.",
+				"summary": "Bot: отправка сообщения",
+				"tags": [
+					"Bot API"
+				],
+				"security": [
+					{
+						"bot": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IBotSendMessageBody"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/bot-api/message/{id}/edit": {
+			"post": {
+				"operationId": "EditMessage",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/MessageDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Редактировать сообщение бота.",
+				"summary": "Bot: редактирование сообщения",
+				"tags": [
+					"Bot API"
+				],
+				"security": [
+					{
+						"bot": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IBotEditMessageBody"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/bot-api/message/{id}": {
+			"delete": {
+				"operationId": "DeleteMessage",
+				"responses": {
+					"204": {
+						"description": "No content"
+					}
+				},
+				"description": "Удалить сообщение бота.",
+				"summary": "Bot: удаление сообщения",
+				"tags": [
+					"Bot API"
+				],
+				"security": [
+					{
+						"bot": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/bot": {
+			"post": {
+				"operationId": "CreateBot",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/BotDetailDto"
+								}
+							}
+						}
+					}
+				},
+				"summary": "Создать бота",
+				"tags": [
+					"Bot"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/ICreateBotBody"
+							}
+						}
+					}
+				}
+			},
+			"get": {
+				"operationId": "GetMyBots",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"items": {
+										"$ref": "#/components/schemas/BotDto"
+									},
+									"type": "array"
+								}
+							}
+						}
+					}
+				},
+				"summary": "Мои боты",
+				"tags": [
+					"Bot"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": []
+			}
+		},
+		"/api/bot/{id}": {
+			"get": {
+				"operationId": "GetBotById",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/BotDetailDto"
+								}
+							}
+						}
+					}
+				},
+				"summary": "Детали бота",
+				"tags": [
+					"Bot"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			},
+			"patch": {
+				"operationId": "UpdateBot",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/BotDetailDto"
+								}
+							}
+						}
+					}
+				},
+				"summary": "Обновить бота",
+				"tags": [
+					"Bot"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IUpdateBotBody"
+							}
+						}
+					}
+				}
+			},
+			"delete": {
+				"operationId": "DeleteBot",
+				"responses": {
+					"204": {
+						"description": "No content"
+					}
+				},
+				"summary": "Удалить бота",
+				"tags": [
+					"Bot"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/bot/{id}/token": {
+			"post": {
+				"operationId": "RegenerateToken",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/BotDetailDto"
+								}
+							}
+						}
+					}
+				},
+				"summary": "Перегенерировать токен",
+				"tags": [
+					"Bot"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/bot/{id}/webhook": {
+			"post": {
+				"operationId": "SetWebhook",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/BotDetailDto"
+								}
+							}
+						}
+					}
+				},
+				"summary": "Установить webhook",
+				"tags": [
+					"Bot"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/ISetWebhookBody"
+							}
+						}
+					}
+				}
+			},
+			"delete": {
+				"operationId": "DeleteWebhook",
+				"responses": {
+					"204": {
+						"description": "No content"
+					}
+				},
+				"summary": "Удалить webhook",
+				"tags": [
+					"Bot"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/bot/{id}/commands": {
+			"post": {
+				"operationId": "SetCommands",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"items": {
+										"$ref": "#/components/schemas/BotCommandDto"
+									},
+									"type": "array"
+								}
+							}
+						}
+					}
+				},
+				"summary": "Установить команды бота",
+				"tags": [
+					"Bot"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/ISetCommandsBody"
+							}
+						}
+					}
+				}
+			},
+			"get": {
+				"operationId": "GetCommands",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"items": {
+										"$ref": "#/components/schemas/BotCommandDto"
+									},
+									"type": "array"
+								}
+							}
+						}
+					}
+				},
+				"summary": "Получить команды бота",
+				"tags": [
+					"Bot"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/call": {
+			"post": {
+				"operationId": "InitiateCall",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/CallDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Инициировать звонок.",
+				"summary": "Начать звонок",
+				"tags": [
+					"Call"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IInitiateCallBody"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/call/{id}/answer": {
+			"post": {
+				"operationId": "AnswerCall",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/CallDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Ответить на звонок.",
+				"summary": "Ответить",
+				"tags": [
+					"Call"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/call/{id}/decline": {
+			"post": {
+				"operationId": "DeclineCall",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/CallDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Отклонить звонок.",
+				"summary": "Отклонить",
+				"tags": [
+					"Call"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/call/{id}/end": {
+			"post": {
+				"operationId": "EndCall",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/CallDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Завершить звонок.",
+				"summary": "Завершить",
+				"tags": [
+					"Call"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/call/history": {
+			"get": {
+				"operationId": "GetCallHistory",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ICallHistoryDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Получить историю звонков.",
+				"summary": "История звонков",
+				"tags": [
+					"Call"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "query",
+						"name": "limit",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					},
+					{
+						"in": "query",
+						"name": "offset",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					}
+				]
+			}
+		},
+		"/api/call/active": {
+			"get": {
+				"operationId": "GetActiveCall",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"allOf": [
+										{
+											"$ref": "#/components/schemas/CallDto"
+										}
+									],
+									"nullable": true
+								}
+							}
+						}
+					}
+				},
+				"description": "Получить активный звонок.",
+				"summary": "Активный звонок",
+				"tags": [
+					"Call"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": []
+			}
+		},
+		"/api/chat/{id}/slow-mode": {
+			"patch": {
+				"operationId": "SetSlowMode",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"slowModeSeconds": {
+											"type": "number",
+											"format": "double"
+										},
+										"chatId": {
+											"type": "string"
+										}
+									},
+									"required": [
+										"slowModeSeconds",
+										"chatId"
+									],
+									"type": "object"
+								}
+							}
+						}
+					}
+				},
+				"description": "Установить режим медленной отправки.",
+				"summary": "Медленный режим",
+				"tags": [
+					"Chat Moderation"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/ISetSlowModeBody"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/chat/{id}/members/{userId}/ban": {
+			"post": {
+				"operationId": "BanMember",
+				"responses": {
+					"204": {
+						"description": "No content"
+					}
+				},
+				"description": "Заблокировать участника чата.",
+				"summary": "Блокировка участника",
+				"tags": [
+					"Chat Moderation"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "path",
+						"name": "userId",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IBanMemberBody"
+							}
+						}
+					}
+				}
+			},
+			"delete": {
+				"operationId": "UnbanMember",
+				"responses": {
+					"204": {
+						"description": "No content"
+					}
+				},
+				"description": "Разблокировать участника чата.",
+				"summary": "Разблокировка участника",
+				"tags": [
+					"Chat Moderation"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "path",
+						"name": "userId",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/chat/{id}/members/banned": {
+			"get": {
+				"operationId": "GetBannedMembers",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"items": {},
+									"type": "array"
+								}
+							}
+						}
+					}
+				},
+				"description": "Получить заблокированных участников.",
+				"summary": "Заблокированные участники",
+				"tags": [
+					"Chat Moderation"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
 		"/api/chat/direct": {
 			"post": {
 				"operationId": "CreateDirectChat",
@@ -3142,6 +6023,256 @@
 						"application/json": {
 							"schema": {
 								"$ref": "#/components/schemas/ICreateGroupChatBody"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/chat/channel": {
+			"post": {
+				"operationId": "CreateChannel",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ChatDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Создать канал.",
+				"summary": "Создание канала",
+				"tags": [
+					"Chat"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/ICreateChannelBody"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/chat/channel/{id}": {
+			"patch": {
+				"operationId": "UpdateChannel",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ChatDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Обновить канал.",
+				"summary": "Обновление канала",
+				"tags": [
+					"Chat"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IUpdateChannelBody"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/chat/channel/{id}/subscribe": {
+			"post": {
+				"operationId": "SubscribeToChannel",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ChatDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Подписаться на публичный канал.",
+				"summary": "Подписка на канал",
+				"tags": [
+					"Chat"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			},
+			"delete": {
+				"operationId": "UnsubscribeFromChannel",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "string"
+								}
+							}
+						}
+					}
+				},
+				"description": "Отписаться от канала.",
+				"summary": "Отписка от канала",
+				"tags": [
+					"Chat"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/chat/channel/search": {
+			"get": {
+				"operationId": "SearchChannels",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IChatListDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Поиск публичных каналов.",
+				"summary": "Поиск каналов",
+				"tags": [
+					"Chat"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "query",
+						"name": "q",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "offset",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					},
+					{
+						"in": "query",
+						"name": "limit",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					}
+				]
+			}
+		},
+		"/api/chat/secret": {
+			"post": {
+				"operationId": "CreateSecretChat",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ChatDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Создать секретный (E2E encrypted) чат.",
+				"summary": "Создание секретного чата",
+				"tags": [
+					"Chat"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/ICreateSecretChatBody"
 							}
 						}
 					}
@@ -3312,6 +6443,213 @@
 				]
 			}
 		},
+		"/api/chat/{id}/invite": {
+			"post": {
+				"operationId": "CreateInviteLink",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ChatInviteDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Создать invite-ссылку для группового чата.",
+				"summary": "Создание invite-ссылки",
+				"tags": [
+					"Chat"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/ICreateInviteBody"
+							}
+						}
+					}
+				}
+			},
+			"get": {
+				"operationId": "GetInvites",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"items": {
+										"$ref": "#/components/schemas/ChatInviteDto"
+									},
+									"type": "array"
+								}
+							}
+						}
+					}
+				},
+				"description": "Получить список invite-ссылок чата.",
+				"summary": "Список invite-ссылок",
+				"tags": [
+					"Chat"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/chat/{id}/invite/{inviteId}": {
+			"delete": {
+				"operationId": "RevokeInvite",
+				"responses": {
+					"204": {
+						"description": "No content"
+					}
+				},
+				"description": "Отозвать invite-ссылку.",
+				"summary": "Отзыв invite-ссылки",
+				"tags": [
+					"Chat"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "path",
+						"name": "inviteId",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/chat/join/{code}": {
+			"post": {
+				"operationId": "JoinByInvite",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ChatDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Присоединиться к чату по invite-коду.",
+				"summary": "Вступление по invite-ссылке",
+				"tags": [
+					"Chat"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "code",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/chat/{id}/mute": {
+			"patch": {
+				"operationId": "MuteChat",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ChatMemberDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Замутить или размутить чат.",
+				"summary": "Мут чата",
+				"tags": [
+					"Chat"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IMuteChatBody"
+							}
+						}
+					}
+				}
+			}
+		},
 		"/api/chat/{id}/members": {
 			"post": {
 				"operationId": "AddMembers",
@@ -3458,6 +6796,341 @@
 						}
 					}
 				}
+			}
+		},
+		"/api/chat/{id}/pin": {
+			"post": {
+				"operationId": "PinChat",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ChatMemberDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Закрепить чат.",
+				"summary": "Закрепление чата",
+				"tags": [
+					"Chat"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			},
+			"delete": {
+				"operationId": "UnpinChat",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ChatMemberDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Открепить чат.",
+				"summary": "Открепление чата",
+				"tags": [
+					"Chat"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/chat/{id}/archive": {
+			"post": {
+				"operationId": "ArchiveChat",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ChatMemberDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Архивировать чат.",
+				"summary": "Архивация чата",
+				"tags": [
+					"Chat"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			},
+			"delete": {
+				"operationId": "UnarchiveChat",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ChatMemberDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Разархивировать чат.",
+				"summary": "Разархивация чата",
+				"tags": [
+					"Chat"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/chat/{id}/folder": {
+			"patch": {
+				"operationId": "MoveChatToFolder",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ChatMemberDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Переместить чат в папку.",
+				"summary": "Перемещение в папку",
+				"tags": [
+					"Chat"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IMoveChatToFolderBody"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/chat/folder/list": {
+			"get": {
+				"operationId": "GetUserFolders",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"items": {
+										"$ref": "#/components/schemas/ChatFolderDto"
+									},
+									"type": "array"
+								}
+							}
+						}
+					}
+				},
+				"description": "Получить список папок чатов.",
+				"summary": "Список папок",
+				"tags": [
+					"Chat"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": []
+			}
+		},
+		"/api/chat/folder": {
+			"post": {
+				"operationId": "CreateFolder",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ChatFolderDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Создать папку для чатов.",
+				"summary": "Создание папки",
+				"tags": [
+					"Chat"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/ICreateFolderBody"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/chat/folder/{folderId}": {
+			"patch": {
+				"operationId": "UpdateFolder",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ChatFolderDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Обновить папку.",
+				"summary": "Обновление папки",
+				"tags": [
+					"Chat"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "folderId",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IUpdateFolderBody"
+							}
+						}
+					}
+				}
+			},
+			"delete": {
+				"operationId": "DeleteFolder",
+				"responses": {
+					"204": {
+						"description": "No content"
+					}
+				},
+				"description": "Удалить папку.",
+				"summary": "Удаление папки",
+				"tags": [
+					"Chat"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "folderId",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
 			}
 		},
 		"/api/contact": {
@@ -3639,6 +7312,151 @@
 					{
 						"in": "path",
 						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/encryption/keys": {
+			"post": {
+				"operationId": "UploadKeys",
+				"responses": {
+					"204": {
+						"description": "No content"
+					}
+				},
+				"description": "Загрузить ключи устройства (identity + signed prekey + one-time prekeys).",
+				"summary": "Загрузка ключей",
+				"tags": [
+					"Encryption"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IUploadKeysBody"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/encryption/keys/{userId}": {
+			"get": {
+				"operationId": "GetKeyBundle",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/KeyBundleDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Получить key bundle пользователя для установки E2E сессии.",
+				"summary": "Получение key bundle",
+				"tags": [
+					"Encryption"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "userId",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/encryption/keys/prekeys": {
+			"post": {
+				"operationId": "UploadPreKeys",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"availableCount": {
+											"type": "number",
+											"format": "double"
+										}
+									},
+									"required": [
+										"availableCount"
+									],
+									"type": "object"
+								}
+							}
+						}
+					}
+				},
+				"description": "Загрузить дополнительные one-time prekeys.",
+				"summary": "Загрузка prekeys",
+				"tags": [
+					"Encryption"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IUploadPreKeysBody"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/encryption/keys/{deviceId}": {
+			"delete": {
+				"operationId": "RevokeDevice",
+				"responses": {
+					"204": {
+						"description": "No content"
+					}
+				},
+				"description": "Отозвать ключи устройства.",
+				"summary": "Отзыв ключей устройства",
+				"tags": [
+					"Encryption"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "deviceId",
 						"required": true,
 						"schema": {
 							"type": "string"
@@ -3874,6 +7692,213 @@
 				]
 			}
 		},
+		"/api/chat/{chatId}/message/search": {
+			"get": {
+				"operationId": "SearchMessages",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IMessageSearchDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Поиск сообщений в чате.",
+				"summary": "Поиск в чате",
+				"tags": [
+					"Message"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "chatId",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "q",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "limit",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					},
+					{
+						"in": "query",
+						"name": "offset",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					}
+				]
+			}
+		},
+		"/api/chat/{chatId}/message/pinned": {
+			"get": {
+				"operationId": "GetPinnedMessages",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"items": {
+										"$ref": "#/components/schemas/MessageDto"
+									},
+									"type": "array"
+								}
+							}
+						}
+					}
+				},
+				"description": "Получить закреплённые сообщения чата.",
+				"summary": "Закреплённые сообщения",
+				"tags": [
+					"Message"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "chatId",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/chat/{chatId}/media": {
+			"get": {
+				"operationId": "GetChatMedia",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IMediaGalleryDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Получить медиафайлы чата.",
+				"summary": "Медиа-галерея чата",
+				"tags": [
+					"Message"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"description": "ID чата",
+						"in": "path",
+						"name": "chatId",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"description": "Фильтр по MIME-префиксу (image, video, audio)",
+						"in": "query",
+						"name": "type",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"description": "Количество (по умолчанию 50)",
+						"in": "query",
+						"name": "limit",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					},
+					{
+						"description": "Смещение",
+						"in": "query",
+						"name": "offset",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					}
+				]
+			}
+		},
+		"/api/chat/{chatId}/media/stats": {
+			"get": {
+				"operationId": "GetChatMediaStats",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IMediaStatsDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Получить статистику медиафайлов чата.",
+				"summary": "Статистика медиа",
+				"tags": [
+					"Message"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "chatId",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
 		"/api/chat/{chatId}/message/read": {
 			"post": {
 				"operationId": "MarkAsRead",
@@ -3912,6 +7937,139 @@
 						}
 					}
 				}
+			}
+		},
+		"/api/chat/{chatId}/message/scheduled": {
+			"get": {
+				"operationId": "GetScheduledMessages",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"items": {
+										"$ref": "#/components/schemas/MessageDto"
+									},
+									"type": "array"
+								}
+							}
+						}
+					}
+				},
+				"description": "Получить запланированные сообщения чата.",
+				"summary": "Запланированные сообщения",
+				"tags": [
+					"Message"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "chatId",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/chat/{chatId}/message/scheduled/{messageId}": {
+			"delete": {
+				"operationId": "CancelScheduledMessage",
+				"responses": {
+					"204": {
+						"description": "No content"
+					}
+				},
+				"description": "Отменить запланированное сообщение.",
+				"summary": "Отмена запланированного сообщения",
+				"tags": [
+					"Message"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "chatId",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "path",
+						"name": "messageId",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/message/search": {
+			"get": {
+				"operationId": "SearchMessages",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IMessageSearchDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Глобальный поиск по сообщениям во всех чатах пользователя.",
+				"summary": "Глобальный поиск сообщений",
+				"tags": [
+					"Message"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "query",
+						"name": "q",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "limit",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					},
+					{
+						"in": "query",
+						"name": "offset",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					}
+				]
 			}
 		},
 		"/api/message/{id}": {
@@ -3969,6 +8127,176 @@
 				},
 				"description": "Удалить сообщение (soft delete).",
 				"summary": "Удаление сообщения",
+				"tags": [
+					"Message"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/message/{id}/reaction": {
+			"post": {
+				"operationId": "AddReaction",
+				"responses": {
+					"204": {
+						"description": "No content"
+					}
+				},
+				"description": "Добавить реакцию на сообщение.",
+				"summary": "Добавление реакции",
+				"tags": [
+					"Message"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IAddReactionBody"
+							}
+						}
+					}
+				}
+			},
+			"delete": {
+				"operationId": "RemoveReaction",
+				"responses": {
+					"204": {
+						"description": "No content"
+					}
+				},
+				"description": "Удалить реакцию с сообщения.",
+				"summary": "Удаление реакции",
+				"tags": [
+					"Message"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/message/{id}/pin": {
+			"post": {
+				"operationId": "PinMessage",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/MessageDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Закрепить сообщение.",
+				"summary": "Закрепление сообщения",
+				"tags": [
+					"Message"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			},
+			"delete": {
+				"operationId": "UnpinMessage",
+				"responses": {
+					"204": {
+						"description": "No content"
+					}
+				},
+				"description": "Открепить сообщение.",
+				"summary": "Открепление сообщения",
+				"tags": [
+					"Message"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/message/{id}/open": {
+			"post": {
+				"operationId": "MarkMessageOpened",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/MessageDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Отметить сообщение как открытое (запускает таймер самоуничтожения).",
+				"summary": "Открытие сообщения",
 				"tags": [
 					"Message"
 				],
@@ -4123,6 +8451,209 @@
 				}
 			}
 		},
+		"/api/chat/{chatId}/poll": {
+			"post": {
+				"operationId": "CreatePoll",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/PollDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Создать опрос в чате.",
+				"summary": "Создание опроса",
+				"tags": [
+					"Poll"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "chatId",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/ICreatePollBody"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/poll/{id}/vote": {
+			"post": {
+				"operationId": "Vote",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/PollDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Проголосовать в опросе.",
+				"summary": "Голосование",
+				"tags": [
+					"Poll"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IVotePollBody"
+							}
+						}
+					}
+				}
+			},
+			"delete": {
+				"operationId": "RetractVote",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/PollDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Отозвать голос.",
+				"summary": "Отзыв голоса",
+				"tags": [
+					"Poll"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/poll/{id}/close": {
+			"post": {
+				"operationId": "ClosePoll",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/PollDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Закрыть опрос.",
+				"summary": "Закрытие опроса",
+				"tags": [
+					"Poll"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/poll/{id}": {
+			"get": {
+				"operationId": "GetPoll",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/PollDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Получить опрос по ID.",
+				"summary": "Получение опроса",
+				"tags": [
+					"Poll"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
 		"/api/device": {
 			"post": {
 				"operationId": "RegisterDevice",
@@ -4253,6 +8784,477 @@
 						}
 					}
 				}
+			}
+		},
+		"/api/session": {
+			"get": {
+				"operationId": "GetSessions",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"items": {
+										"$ref": "#/components/schemas/SessionDto"
+									},
+									"type": "array"
+								}
+							}
+						}
+					}
+				},
+				"description": "Получить список активных сессий пользователя.",
+				"summary": "Список сессий",
+				"tags": [
+					"Session"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": []
+			}
+		},
+		"/api/session/{id}": {
+			"delete": {
+				"operationId": "TerminateSession",
+				"responses": {
+					"204": {
+						"description": "No content"
+					}
+				},
+				"description": "Завершить конкретную сессию.",
+				"summary": "Завершение сессии",
+				"tags": [
+					"Session"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/session/terminate-others": {
+			"post": {
+				"operationId": "TerminateOtherSessions",
+				"responses": {
+					"204": {
+						"description": "No content"
+					}
+				},
+				"description": "Завершить все сессии, кроме текущей.",
+				"summary": "Завершение остальных сессий",
+				"tags": [
+					"Session"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": []
+			}
+		},
+		"/api/sticker/pack": {
+			"post": {
+				"operationId": "CreatePack",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/StickerPackDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Создать набор стикеров.",
+				"summary": "Создание набора",
+				"tags": [
+					"Sticker"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/ICreateStickerPackBody"
+							}
+						}
+					}
+				}
+			},
+			"get": {
+				"operationId": "GetUserPacks",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"items": {
+										"$ref": "#/components/schemas/StickerPackDto"
+									},
+									"type": "array"
+								}
+							}
+						}
+					}
+				},
+				"description": "Получить мои наборы стикеров.",
+				"summary": "Мои стикеры",
+				"tags": [
+					"Sticker"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": []
+			}
+		},
+		"/api/sticker/pack/featured": {
+			"get": {
+				"operationId": "GetFeaturedPacks",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IStickerPackListDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Получить рекомендуемые наборы стикеров.",
+				"summary": "Рекомендуемые стикеры",
+				"tags": [
+					"Sticker"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "query",
+						"name": "limit",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					},
+					{
+						"in": "query",
+						"name": "offset",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					}
+				]
+			}
+		},
+		"/api/sticker/pack/search": {
+			"get": {
+				"operationId": "SearchPacks",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IStickerPackListDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Поиск наборов стикеров.",
+				"summary": "Поиск стикеров",
+				"tags": [
+					"Sticker"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "query",
+						"name": "q",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "limit",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					},
+					{
+						"in": "query",
+						"name": "offset",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					}
+				]
+			}
+		},
+		"/api/sticker/pack/{id}": {
+			"get": {
+				"operationId": "GetPackById",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/StickerPackDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Получить набор стикеров по ID.",
+				"summary": "Набор стикеров",
+				"tags": [
+					"Sticker"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/sticker/pack/{id}/add": {
+			"post": {
+				"operationId": "AddPack",
+				"responses": {
+					"204": {
+						"description": "No content"
+					}
+				},
+				"description": "Добавить набор стикеров в свою коллекцию.",
+				"summary": "Добавить набор",
+				"tags": [
+					"Sticker"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/sticker/pack/{id}/remove": {
+			"delete": {
+				"operationId": "RemovePack",
+				"responses": {
+					"204": {
+						"description": "No content"
+					}
+				},
+				"description": "Удалить набор стикеров из своей коллекции.",
+				"summary": "Удалить набор",
+				"tags": [
+					"Sticker"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/sticker/pack/{id}/sticker": {
+			"post": {
+				"operationId": "AddSticker",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/StickerPackDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Добавить стикер в набор.",
+				"summary": "Добавить стикер",
+				"tags": [
+					"Sticker"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IAddStickerBody"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/sticker/{id}": {
+			"delete": {
+				"operationId": "RemoveSticker",
+				"responses": {
+					"204": {
+						"description": "No content"
+					}
+				},
+				"description": "Удалить стикер.",
+				"summary": "Удаление стикера",
+				"tags": [
+					"Sticker"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/sync": {
+			"get": {
+				"operationId": "GetChanges",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ISyncResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Получить изменения с указанной версии.",
+				"summary": "Incremental sync",
+				"tags": [
+					"Sync"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "query",
+						"name": "sinceVersion",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "limit",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					}
+				]
 			}
 		}
 	},

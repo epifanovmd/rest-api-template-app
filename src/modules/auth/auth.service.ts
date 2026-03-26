@@ -5,7 +5,9 @@ import {
 } from "@force-dev/utils";
 import bcrypt from "bcrypt";
 import { inject } from "inversify";
+import jwt from "jsonwebtoken";
 
+import { config } from "../../config";
 import {
   ApiResponseDto,
   Injectable,
@@ -18,8 +20,10 @@ import { MailerService } from "../mailer";
 import { ResetPasswordTokensService } from "../reset-password-tokens";
 import { UserService } from "../user";
 import { UserDto } from "../user/dto";
+import { UserRepository } from "../user/user.repository";
 import {
   ISignInRequestDto,
+  ISignInResponseDto,
   IUserWithTokensDto,
   TSignUpRequestDto,
 } from "./auth.dto";
@@ -33,6 +37,7 @@ export class AuthService {
     @inject(ResetPasswordTokensService)
     private _resetPasswordTokensService: ResetPasswordTokensService,
     @inject(TokenService) private _tokenService: TokenService,
+    @inject(UserRepository) private _userRepository: UserRepository,
   ) {}
 
   /** Зарегистрировать нового пользователя и сразу выдать токены. */
@@ -71,11 +76,11 @@ export class AuthService {
       passwordHash: await bcrypt.hash(password, 12),
     });
 
-    return this.signIn({ login, password });
+    return this.signIn({ login, password }) as Promise<IUserWithTokensDto>;
   }
 
   /** Аутентифицировать пользователя по логину (email/телефон) и паролю. */
-  async signIn(body: ISignInRequestDto): Promise<IUserWithTokensDto> {
+  async signIn(body: ISignInRequestDto): Promise<ISignInResponseDto> {
     const { login, password } = body;
 
     try {
@@ -104,6 +109,21 @@ export class AuthService {
       }
 
       if (await bcrypt.compare(password, user.passwordHash)) {
+        // Check if 2FA is enabled
+        if (user.twoFactorHash) {
+          const twoFactorToken = jwt.sign(
+            { userId: user.id, type: "2fa" },
+            config.auth.jwt.secretKey,
+            { expiresIn: "5m" },
+          );
+
+          return {
+            require2FA: true,
+            twoFactorToken,
+            twoFactorHint: user.twoFactorHint ?? undefined,
+          };
+        }
+
         const fullUser = await this._userService.getUser(user.id);
 
         return {
@@ -186,5 +206,72 @@ export class AuthService {
     const user = await this._userService.getUser(userId);
 
     return this._tokenService.issue(user);
+  }
+
+  /** Включить 2FA для пользователя. */
+  async enable2FA(userId: string, password: string, hint?: string) {
+    const user = await this._userService.getUser(userId);
+
+    if (user.twoFactorHash) {
+      throw new BadRequestException("2FA уже включена");
+    }
+
+    const twoFactorHash = await bcrypt.hash(password, 12);
+
+    await this._userRepository.update(userId, {
+      twoFactorHash,
+      twoFactorHint: hint ?? null,
+    });
+
+    return new ApiResponseDto({ message: "2FA успешно включена." });
+  }
+
+  /** Отключить 2FA для пользователя. */
+  async disable2FA(userId: string, password: string) {
+    const user = await this._userService.getUser(userId);
+
+    if (!user.twoFactorHash) {
+      throw new BadRequestException("2FA не включена");
+    }
+
+    if (!(await bcrypt.compare(password, user.twoFactorHash))) {
+      throw new UnauthorizedException("Неверный пароль 2FA");
+    }
+
+    await this._userRepository.update(userId, {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      twoFactorHash: null as any,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      twoFactorHint: null as any,
+    });
+
+    return new ApiResponseDto({ message: "2FA успешно отключена." });
+  }
+
+  /** Верифицировать 2FA и выдать токены. */
+  async verify2FA(
+    twoFactorToken: string,
+    password: string,
+  ): Promise<IUserWithTokensDto> {
+    const decoded = await verifyToken(twoFactorToken);
+
+    if ((decoded as Record<string, unknown>).type !== "2fa") {
+      throw new UnauthorizedException("Неверный токен 2FA");
+    }
+
+    const user = await this._userService.getUser(decoded.userId);
+
+    if (!user.twoFactorHash) {
+      throw new BadRequestException("2FA не включена для этого пользователя");
+    }
+
+    if (!(await bcrypt.compare(password, user.twoFactorHash))) {
+      throw new UnauthorizedException("Неверный пароль 2FA");
+    }
+
+    return {
+      ...UserDto.fromEntity(user),
+      tokens: await this._tokenService.issue(user),
+    };
   }
 }

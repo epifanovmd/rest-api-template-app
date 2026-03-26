@@ -6,6 +6,8 @@ export * from "./chat.module";
 export * from "./chat.repository";
 export * from "./chat.service";
 export * from "./chat.types";
+export * from "./chat-folder.entity";
+export * from "./chat-folder.repository";
 export * from "./chat-member.entity";
 export * from "./chat-member.repository";
 export * from "./dto";

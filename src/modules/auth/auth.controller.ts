@@ -1,27 +1,43 @@
 import { inject, injectable } from "inversify";
-import { Body, Controller, Post, Route, Tags } from "tsoa";
+import {
+  Body,
+  Controller,
+  Post,
+  Request,
+  Route,
+  Security,
+  Tags,
+} from "tsoa";
 
 import {
   ApiResponseDto,
+  getContextUser,
   ITokensDto,
   ThrottleGuard,
   UseGuards,
   ValidateBody,
 } from "../../core";
+import { KoaRequest } from "../../types/koa";
 import {
+  IDisable2FARequestDto,
+  IEnable2FARequestDto,
   ISignInRequestDto,
+  ISignInResponseDto,
   IUserLoginRequestDto,
   IUserResetPasswordRequestDto,
   IUserWithTokensDto,
+  IVerify2FARequestDto,
   TSignUpRequestDto,
 } from "./auth.dto";
 import { AuthService } from "./auth.service";
 import {
+  Enable2FASchema,
   RefreshSchema,
   RequestResetPasswordSchema,
   ResetPasswordSchema,
   SignInSchema,
   SignUpSchema,
+  Verify2FASchema,
 } from "./validation";
 
 @injectable()
@@ -68,7 +84,7 @@ export class AuthController extends Controller {
   @UseGuards(ThrottleGuard(10, 60_000))
   @Post("/sign-in")
   @ValidateBody(SignInSchema)
-  signIn(@Body() body: ISignInRequestDto): Promise<IUserWithTokensDto> {
+  signIn(@Body() body: ISignInRequestDto): Promise<ISignInResponseDto> {
     return this._authService.signIn(body);
   }
 
@@ -127,5 +143,46 @@ export class AuthController extends Controller {
   @ValidateBody(RefreshSchema)
   refresh(@Body() body: { refreshToken: string }): Promise<ITokensDto> {
     return this._authService.updateTokens(body.refreshToken);
+  }
+
+  /**
+   * Включить двухфакторную аутентификацию.
+   * @summary Включение 2FA
+   */
+  @Security("jwt")
+  @Post("/enable-2fa")
+  @ValidateBody(Enable2FASchema)
+  enable2FA(
+    @Request() req: KoaRequest,
+    @Body() body: IEnable2FARequestDto,
+  ): Promise<ApiResponseDto> {
+    const user = getContextUser(req);
+
+    return this._authService.enable2FA(user.userId, body.password, body.hint);
+  }
+
+  /**
+   * Отключить двухфакторную аутентификацию.
+   * @summary Отключение 2FA
+   */
+  @Security("jwt")
+  @Post("/disable-2fa")
+  disable2FA(
+    @Request() req: KoaRequest,
+    @Body() body: IDisable2FARequestDto,
+  ): Promise<ApiResponseDto> {
+    const user = getContextUser(req);
+
+    return this._authService.disable2FA(user.userId, body.password);
+  }
+
+  /**
+   * Верифицировать 2FA и получить токены.
+   * @summary Верификация 2FA
+   */
+  @Post("/verify-2fa")
+  @ValidateBody(Verify2FASchema)
+  verify2FA(@Body() body: IVerify2FARequestDto): Promise<IUserWithTokensDto> {
+    return this._authService.verify2FA(body.twoFactorToken, body.password);
   }
 }

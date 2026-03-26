@@ -1,6 +1,7 @@
 import { inject } from "inversify";
 
 import { EventBus, Injectable } from "../../core";
+import { ChatMemberRepository } from "../chat/chat-member.repository";
 import { ContactRequestEvent } from "../contact/events";
 import { MessageCreatedEvent } from "../message/events";
 import { ISocketEventListener, SocketClientRegistry } from "../socket";
@@ -13,6 +14,8 @@ export class PushListener implements ISocketEventListener {
     @inject(PushService) private readonly _pushService: PushService,
     @inject(SocketClientRegistry)
     private readonly _clientRegistry: SocketClientRegistry,
+    @inject(ChatMemberRepository)
+    private readonly _memberRepo: ChatMemberRepository,
   ) {}
 
   register(): void {
@@ -20,18 +23,38 @@ export class PushListener implements ISocketEventListener {
     this._eventBus.on(
       MessageCreatedEvent,
       async (event: MessageCreatedEvent) => {
-        const offlineUserIds = event.memberUserIds.filter(
+        const candidateUserIds = event.memberUserIds.filter(
           uid =>
             uid !== event.message.senderId &&
             !this._clientRegistry.isOnline(uid),
         );
 
+        if (candidateUserIds.length === 0) return;
+
+        // Filter out muted users
+        const now = new Date();
+        const offlineUserIds: string[] = [];
+
+        for (const uid of candidateUserIds) {
+          const membership = await this._memberRepo.findMembership(
+            event.chatId,
+            uid,
+          );
+
+          if (!membership?.mutedUntil || membership.mutedUntil <= now) {
+            offlineUserIds.push(uid);
+          }
+        }
+
         if (offlineUserIds.length === 0) return;
 
         const senderName =
           event.message.sender?.profile?.firstName ?? "Новое сообщение";
-        const body =
-          event.message.content?.slice(0, 100) ?? "Медиа-сообщение";
+        // Hide content preview for encrypted messages
+        const isEncrypted = !!event.message.encryptedContent;
+        const body = isEncrypted
+          ? "Зашифрованное сообщение"
+          : event.message.content?.slice(0, 100) ?? "Медиа-сообщение";
 
         await this._pushService.sendToUsers(offlineUserIds, {
           title: senderName,
@@ -42,6 +65,34 @@ export class PushListener implements ISocketEventListener {
             messageId: event.message.id,
           },
         });
+
+        // Send mention push to muted users (bypass mute for mentions)
+        if (
+          event.mentionedUserIds.length > 0 ||
+          event.mentionAll
+        ) {
+          const mutedMentioned = candidateUserIds.filter(
+            uid => !offlineUserIds.includes(uid),
+          );
+
+          const mentionTargets = event.mentionAll
+            ? mutedMentioned
+            : mutedMentioned.filter(uid =>
+                event.mentionedUserIds.includes(uid),
+              );
+
+          if (mentionTargets.length > 0) {
+            await this._pushService.sendToUsers(mentionTargets, {
+              title: `${senderName} упомянул вас`,
+              body,
+              data: {
+                type: "mention",
+                chatId: event.chatId,
+                messageId: event.message.id,
+              },
+            });
+          }
+        }
       },
     );
 

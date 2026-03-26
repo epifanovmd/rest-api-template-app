@@ -6,7 +6,11 @@ import { MessageDto } from "./dto";
 import {
   MessageCreatedEvent,
   MessageDeletedEvent,
+  MessageDeliveredEvent,
+  MessagePinnedEvent,
+  MessageReactionEvent,
   MessageReadEvent,
+  MessageUnpinnedEvent,
   MessageUpdatedEvent,
 } from "./events";
 
@@ -63,6 +67,54 @@ export class MessageListener implements ISocketEventListener {
           messageId: event.messageId,
           chatId: event.chatId,
         });
+      },
+    );
+
+    this._eventBus.on(
+      MessagePinnedEvent,
+      (event: MessagePinnedEvent) => {
+        const dto = MessageDto.fromEntity(event.message);
+
+        this._emitter.toRoom(
+          `chat_${event.chatId}`,
+          "message:pinned",
+          dto,
+        );
+      },
+    );
+
+    this._eventBus.on(
+      MessageUnpinnedEvent,
+      (event: MessageUnpinnedEvent) => {
+        this._emitter.toRoom(`chat_${event.chatId}`, "message:unpinned", {
+          messageId: event.messageId,
+          chatId: event.chatId,
+        });
+      },
+    );
+
+    this._eventBus.on(
+      MessageReactionEvent,
+      (event: MessageReactionEvent) => {
+        this._emitter.toRoom(`chat_${event.chatId}`, "message:reaction", {
+          messageId: event.messageId,
+          chatId: event.chatId,
+          userId: event.userId,
+          emoji: event.emoji,
+        });
+      },
+    );
+
+    this._eventBus.on(
+      MessageDeliveredEvent,
+      (event: MessageDeliveredEvent) => {
+        for (const messageId of event.messageIds) {
+          this._emitter.toRoom(`chat_${event.chatId}`, "message:status", {
+            messageId,
+            chatId: event.chatId,
+            status: "delivered",
+          });
+        }
       },
     );
 

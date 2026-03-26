@@ -1,4 +1,8 @@
-import { ConflictException, NotFoundException } from "@force-dev/utils";
+import {
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+} from "@force-dev/utils";
 import bcrypt from "bcrypt";
 import { inject } from "inversify";
 import { FindOptionsRelations, FindOptionsWhere, ILike } from "typeorm";
@@ -238,6 +242,44 @@ export class UserService {
     const deleted = await this._userRepository.delete(userId);
 
     return !!deleted.affected;
+  }
+
+  /** Установить username для пользователя. */
+  async setUsername(userId: string, username: string) {
+    if (!(/^[a-z0-9_]{5,32}$/).test(username)) {
+      throw new BadRequestException(
+        "Username: 5-32 символа, допустимы a-z, 0-9, _",
+      );
+    }
+
+    const existing = await this._userRepository.findByUsername(username);
+
+    if (existing && existing.id !== userId) {
+      throw new ConflictException("Этот username уже занят");
+    }
+
+    await this._userRepository.update(userId, { username });
+
+    return this.getUser(userId);
+  }
+
+  /** Поиск пользователей по запросу. */
+  async searchUsers(query: string, limit: number = 20, offset: number = 0) {
+    return this._userRepository.searchByQuery(query, limit, offset);
+  }
+
+  /** Получить пользователя по username. */
+  async getUserByUsername(username: string) {
+    const user = await this._userRepository.findByUsername(
+      username,
+      UserService.relations,
+    );
+
+    if (!user) {
+      throw new NotFoundException("Пользователь не найден");
+    }
+
+    return user;
   }
 
   /** Стандартный набор связей, загружаемых при запросах пользователя. */

@@ -22,6 +22,7 @@ import { Role } from "../role/role.entity";
 /** Сущность пользователя системы. */
 @Entity("users")
 @Index("IDX_USERS_EMAIL_PHONE", ["email", "phone"], { unique: true })
+@Index("IDX_USERS_USERNAME", ["username"], { unique: true, where: "username IS NOT NULL" })
 export class User {
   @PrimaryGeneratedColumn("uuid")
   id: string;
@@ -36,6 +37,9 @@ export class User {
   @Column({ type: "varchar", length: 14, nullable: true })
   phone: string;
 
+  @Column({ type: "varchar", length: 32, nullable: true, unique: true })
+  username: string | null;
+
   // Bcrypt-хеш пароля пользователя
   @Column({ name: "password_hash", type: "varchar", length: 100 })
   passwordHash: string;
@@ -46,6 +50,12 @@ export class User {
 
   @Column({ name: "challenge_expires_at", type: "timestamp", nullable: true })
   challengeExpiresAt?: Date;
+
+  @Column({ name: "two_factor_hash", type: "varchar", length: 100, nullable: true })
+  twoFactorHash: string | null;
+
+  @Column({ name: "two_factor_hint", type: "varchar", length: 100, nullable: true })
+  twoFactorHint: string | null;
 
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;

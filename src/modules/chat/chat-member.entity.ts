@@ -44,6 +44,18 @@ export class ChatMember {
   @Column({ name: "last_read_message_id", type: "uuid", nullable: true })
   lastReadMessageId: string | null;
 
+  @Column({ name: "is_pinned_chat", type: "boolean", default: false })
+  isPinnedChat: boolean;
+
+  @Column({ name: "pinned_chat_at", type: "timestamp", nullable: true })
+  pinnedChatAt: Date | null;
+
+  @Column({ name: "is_archived", type: "boolean", default: false })
+  isArchived: boolean;
+
+  @Column({ name: "folder_id", type: "uuid", nullable: true })
+  folderId: string | null;
+
   @ManyToOne(() => Chat, chat => chat.members, { onDelete: "CASCADE" })
   @JoinColumn({ name: "chat_id" })
   chat: Chat;

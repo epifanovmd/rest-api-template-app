@@ -12,8 +12,10 @@ import {
 
 import { Chat } from "../chat/chat.entity";
 import { User } from "../user/user.entity";
-import { EMessageType } from "./message.types";
+import { EMessageStatus, EMessageType } from "./message.types";
 import { MessageAttachment } from "./message-attachment.entity";
+import { MessageMention } from "./message-mention.entity";
+import { MessageReaction } from "./message-reaction.entity";
 
 @Entity("messages")
 @Index("IDX_MESSAGES_CHAT_CREATED", ["chatId", "createdAt"])
@@ -44,11 +46,60 @@ export class Message {
   @Column({ name: "forwarded_from_id", type: "uuid", nullable: true })
   forwardedFromId: string | null;
 
+  @Column({
+    type: "enum",
+    enum: EMessageStatus,
+    default: EMessageStatus.SENT,
+  })
+  status: EMessageStatus;
+
   @Column({ name: "is_edited", type: "boolean", default: false })
   isEdited: boolean;
 
   @Column({ name: "is_deleted", type: "boolean", default: false })
   isDeleted: boolean;
+
+  @Column({ name: "is_pinned", type: "boolean", default: false })
+  isPinned: boolean;
+
+  @Column({ name: "pinned_at", type: "timestamp", nullable: true })
+  pinnedAt: Date | null;
+
+  @Column({ name: "pinned_by_id", type: "uuid", nullable: true })
+  pinnedById: string | null;
+
+  @Column({ name: "encrypted_content", type: "text", nullable: true })
+  encryptedContent: string | null;
+
+  @Column({ name: "encryption_metadata", type: "jsonb", nullable: true })
+  encryptionMetadata: Record<string, unknown> | null;
+
+  @Column({ name: "sticker_id", type: "uuid", nullable: true })
+  stickerId: string | null;
+
+  @Column({ type: "jsonb", nullable: true })
+  keyboard: unknown | null;
+
+  @Column({ name: "link_previews", type: "jsonb", nullable: true })
+  linkPreviews: Array<{
+    url: string;
+    title: string | null;
+    description: string | null;
+    imageUrl: string | null;
+    siteName: string | null;
+  }> | null;
+
+  @Column({ name: "scheduled_at", type: "timestamp", nullable: true })
+  scheduledAt: Date | null;
+
+  @Column({ name: "is_scheduled", type: "boolean", default: false })
+  isScheduled: boolean;
+
+  @Column({ name: "self_destruct_seconds", type: "integer", nullable: true })
+  selfDestructSeconds: number | null;
+
+  @Column({ name: "self_destruct_at", type: "timestamp", nullable: true })
+  selfDestructAt: Date | null;
 
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
@@ -77,4 +128,15 @@ export class Message {
     eager: true,
   })
   attachments: MessageAttachment[];
+
+  @OneToMany(() => MessageReaction, reaction => reaction.message, {
+    cascade: true,
+  })
+  reactions: MessageReaction[];
+
+  @OneToMany(() => MessageMention, mention => mention.message, {
+    cascade: true,
+    eager: true,
+  })
+  mentions: MessageMention[];
 }

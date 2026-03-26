@@ -1,7 +1,7 @@
 import { IListResponseDto } from "../../../core";
 import { BaseDto } from "../../../core/dto/BaseDto";
 import { Message } from "../message.entity";
-import { EMessageType } from "../message.types";
+import { EMessageStatus, EMessageType } from "../message.types";
 import { MessageAttachment } from "../message-attachment.entity";
 
 export class MessageAttachmentDto extends BaseDto {
@@ -11,6 +11,9 @@ export class MessageAttachmentDto extends BaseDto {
   fileUrl: string;
   fileType: string;
   fileSize: number;
+  thumbnailUrl: string | null;
+  width: number | null;
+  height: number | null;
 
   constructor(entity: MessageAttachment) {
     super(entity);
@@ -21,6 +24,9 @@ export class MessageAttachmentDto extends BaseDto {
     this.fileUrl = entity.file?.url ?? "";
     this.fileType = entity.file?.type ?? "";
     this.fileSize = entity.file?.size ?? 0;
+    this.thumbnailUrl = entity.file?.thumbnailUrl ?? null;
+    this.width = entity.file?.width ?? null;
+    this.height = entity.file?.height ?? null;
   }
 
   static fromEntity(entity: MessageAttachment) {
@@ -33,11 +39,30 @@ export class MessageDto extends BaseDto {
   chatId: string;
   senderId: string;
   type: EMessageType;
+  status: EMessageStatus;
   content: string | null;
   replyToId: string | null;
   forwardedFromId: string | null;
   isEdited: boolean;
   isDeleted: boolean;
+  isPinned: boolean;
+  pinnedAt: Date | null;
+  pinnedById: string | null;
+  stickerId: string | null;
+  encryptedContent: string | null;
+  encryptionMetadata: Record<string, unknown> | null;
+  keyboard: unknown | null;
+  linkPreviews: Array<{
+    url: string;
+    title: string | null;
+    description: string | null;
+    imageUrl: string | null;
+    siteName: string | null;
+  }> | null;
+  scheduledAt: Date | null;
+  isScheduled: boolean;
+  selfDestructSeconds: number | null;
+  selfDestructAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
   sender?: {
@@ -48,6 +73,8 @@ export class MessageDto extends BaseDto {
   };
   replyTo?: MessageDto | null;
   attachments: MessageAttachmentDto[];
+  reactions: { emoji: string; count: number; userIds: string[] }[];
+  mentions: { userId: string | null; isAll: boolean }[];
 
   constructor(entity: Message) {
     super(entity);
@@ -56,11 +83,24 @@ export class MessageDto extends BaseDto {
     this.chatId = entity.chatId;
     this.senderId = entity.senderId;
     this.type = entity.type;
+    this.status = entity.status;
     this.content = entity.isDeleted ? null : entity.content;
     this.replyToId = entity.replyToId;
     this.forwardedFromId = entity.forwardedFromId;
     this.isEdited = entity.isEdited;
     this.isDeleted = entity.isDeleted;
+    this.isPinned = entity.isPinned;
+    this.pinnedAt = entity.pinnedAt;
+    this.pinnedById = entity.pinnedById;
+    this.stickerId = entity.stickerId ?? null;
+    this.encryptedContent = entity.encryptedContent;
+    this.encryptionMetadata = entity.encryptionMetadata;
+    this.keyboard = entity.keyboard;
+    this.linkPreviews = entity.linkPreviews ?? null;
+    this.scheduledAt = entity.scheduledAt ?? null;
+    this.isScheduled = entity.isScheduled ?? false;
+    this.selfDestructSeconds = entity.selfDestructSeconds ?? null;
+    this.selfDestructAt = entity.selfDestructAt ?? null;
     this.createdAt = entity.createdAt;
     this.updatedAt = entity.updatedAt;
 
@@ -79,6 +119,32 @@ export class MessageDto extends BaseDto {
 
     this.attachments =
       entity.attachments?.map(MessageAttachmentDto.fromEntity) ?? [];
+
+    // Build reactions summary
+    if (entity.reactions && entity.reactions.length > 0) {
+      const map = new Map<string, string[]>();
+
+      for (const r of entity.reactions) {
+        const list = map.get(r.emoji) ?? [];
+
+        list.push(r.userId);
+        map.set(r.emoji, list);
+      }
+
+      this.reactions = Array.from(map.entries()).map(([emoji, userIds]) => ({
+        emoji,
+        count: userIds.length,
+        userIds,
+      }));
+    } else {
+      this.reactions = [];
+    }
+
+    this.mentions =
+      entity.mentions?.map(m => ({
+        userId: m.userId,
+        isAll: m.isAll,
+      })) ?? [];
   }
 
   static fromEntity(entity: Message) {
@@ -89,6 +155,11 @@ export class MessageDto extends BaseDto {
 export interface IMessageListDto {
   data: MessageDto[];
   hasMore: boolean;
+}
+
+export interface IMessageSearchDto {
+  data: MessageDto[];
+  totalCount: number;
 }
 
 export interface IMessageListResponseDto

@@ -22,6 +22,28 @@ export interface IAuthenticateRequestDto {
   code: string;
 }
 
+export interface I2FARequiredDto {
+  require2FA: true;
+  twoFactorToken: string;
+  twoFactorHint?: string;
+}
+
+export interface IEnable2FARequestDto {
+  password: string;
+  hint?: string;
+}
+
+export interface IVerify2FARequestDto {
+  twoFactorToken: string;
+  password: string;
+}
+
+export interface IDisable2FARequestDto {
+  password: string;
+}
+
+export type ISignInResponseDto = IUserWithTokensDto | I2FARequiredDto;
+
 export type TSignUpRequestDto =
   | {
       firstName?: string;

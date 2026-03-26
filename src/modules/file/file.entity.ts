@@ -26,6 +26,15 @@ export class File {
   @Column({ type: "int" })
   size: number;
 
+  @Column({ name: "thumbnail_url", type: "varchar", length: 120, nullable: true })
+  thumbnailUrl: string | null;
+
+  @Column({ type: "int", nullable: true })
+  width: number | null;
+
+  @Column({ type: "int", nullable: true })
+  height: number | null;
+
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 
@@ -43,6 +52,9 @@ export class File {
       type: this.type,
       url: this.url,
       size: this.size,
+      thumbnailUrl: this.thumbnailUrl,
+      width: this.width,
+      height: this.height,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
     };

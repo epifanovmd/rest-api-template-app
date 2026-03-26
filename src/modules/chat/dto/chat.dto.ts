@@ -11,6 +11,9 @@ export class ChatMemberDto extends BaseDto {
   role: EChatMemberRole;
   joinedAt: Date;
   mutedUntil: Date | null;
+  isPinnedChat: boolean;
+  isArchived: boolean;
+  folderId: string | null;
   profile?: PublicProfileDto;
 
   constructor(entity: ChatMember) {
@@ -21,6 +24,9 @@ export class ChatMemberDto extends BaseDto {
     this.role = entity.role;
     this.joinedAt = entity.joinedAt;
     this.mutedUntil = entity.mutedUntil;
+    this.isPinnedChat = entity.isPinnedChat;
+    this.isArchived = entity.isArchived;
+    this.folderId = entity.folderId;
 
     if (entity.user?.profile) {
       this.profile = PublicProfileDto.fromEntity(entity.user.profile);
@@ -36,6 +42,9 @@ export class ChatDto extends BaseDto {
   id: string;
   type: EChatType;
   name: string | null;
+  description: string | null;
+  username: string | null;
+  isPublic: boolean;
   avatarUrl: string | null;
   createdById: string;
   lastMessageAt: Date | null;
@@ -49,6 +58,9 @@ export class ChatDto extends BaseDto {
     this.id = entity.id;
     this.type = entity.type;
     this.name = entity.name;
+    this.description = entity.description;
+    this.username = entity.username;
+    this.isPublic = entity.isPublic;
     this.avatarUrl = entity.avatar?.url ?? null;
     this.createdById = entity.createdById;
     this.lastMessageAt = entity.lastMessageAt;

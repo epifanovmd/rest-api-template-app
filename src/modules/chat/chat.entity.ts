@@ -17,6 +17,7 @@ import { ChatMember } from "./chat-member.entity";
 
 @Entity("chats")
 @Index("IDX_CHATS_LAST_MESSAGE_AT", ["lastMessageAt"])
+@Index("IDX_CHATS_USERNAME", ["username"], { unique: true, where: "username IS NOT NULL" })
 export class Chat {
   @PrimaryGeneratedColumn("uuid")
   id: string;
@@ -32,6 +33,18 @@ export class Chat {
 
   @Column({ name: "created_by_id", type: "uuid" })
   createdById: string;
+
+  @Column({ type: "varchar", length: 500, nullable: true })
+  description: string | null;
+
+  @Column({ type: "varchar", length: 50, nullable: true, unique: true })
+  username: string | null;
+
+  @Column({ name: "is_public", type: "boolean", default: false })
+  isPublic: boolean;
+
+  @Column({ name: "slow_mode_seconds", type: "integer", default: 0 })
+  slowModeSeconds: number;
 
   @Column({
     name: "last_message_at",

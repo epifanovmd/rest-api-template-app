@@ -18,12 +18,19 @@ import { getContextUser, Injectable, ValidateBody } from "../../core";
 import { KoaRequest } from "../../types/koa";
 import { ChatService } from "./chat.service";
 import { EChatMemberRole } from "./chat.types";
-import { ChatMemberDto } from "./dto";
+import { ChatFolderDto, ChatInviteDto, ChatMemberDto } from "./dto";
 import { ChatDto, IChatListDto } from "./dto";
 import {
   AddMembersSchema,
+  CreateChannelSchema,
   CreateDirectChatSchema,
+  CreateFolderSchema,
   CreateGroupChatSchema,
+  CreateInviteSchema,
+  CreateSecretChatSchema,
+  MoveChatToFolderSchema,
+  MuteChatSchema,
+  UpdateChannelSchema,
   UpdateChatSchema,
   UpdateMemberRoleSchema,
 } from "./validation";
@@ -47,8 +54,50 @@ interface IAddMembersBody {
   memberIds: string[];
 }
 
+interface IMuteChatBody {
+  mutedUntil: string | null;
+}
+
+interface ICreateChannelBody {
+  name: string;
+  description?: string;
+  username?: string;
+  avatarId?: string;
+  isPublic?: boolean;
+}
+
+interface IUpdateChannelBody {
+  name?: string;
+  description?: string | null;
+  username?: string | null;
+  avatarId?: string | null;
+  isPublic?: boolean;
+}
+
+interface ICreateSecretChatBody {
+  targetUserId: string;
+}
+
+interface ICreateInviteBody {
+  expiresAt?: string;
+  maxUses?: number;
+}
+
 interface IUpdateMemberRoleBody {
   role: EChatMemberRole;
+}
+
+interface ICreateFolderBody {
+  name: string;
+}
+
+interface IUpdateFolderBody {
+  name?: string;
+  position?: number;
+}
+
+interface IMoveChatToFolderBody {
+  folderId: string | null;
 }
 
 @Injectable()
@@ -94,6 +143,111 @@ export class ChatController extends Controller {
       body.memberIds,
       body.avatarId,
     );
+  }
+
+  /**
+   * Создать канал.
+   * @summary Создание канала
+   */
+  @Security("jwt")
+  @ValidateBody(CreateChannelSchema)
+  @Post("channel")
+  createChannel(
+    @Request() req: KoaRequest,
+    @Body() body: ICreateChannelBody,
+  ): Promise<ChatDto> {
+    const user = getContextUser(req);
+
+    return this._chatService.createChannel(user.userId, body);
+  }
+
+  /**
+   * Обновить канал.
+   * @summary Обновление канала
+   */
+  @Security("jwt")
+  @ValidateBody(UpdateChannelSchema)
+  @Patch("channel/{id}")
+  updateChannel(
+    @Request() req: KoaRequest,
+    @Path() id: string,
+    @Body() body: IUpdateChannelBody,
+  ): Promise<ChatDto> {
+    const user = getContextUser(req);
+
+    return this._chatService.updateChannel(id, user.userId, body);
+  }
+
+  /**
+   * Подписаться на публичный канал.
+   * @summary Подписка на канал
+   */
+  @Security("jwt")
+  @Post("channel/{id}/subscribe")
+  subscribeToChannel(
+    @Request() req: KoaRequest,
+    @Path() id: string,
+  ): Promise<ChatDto> {
+    const user = getContextUser(req);
+
+    return this._chatService.subscribeToChannel(id, user.userId);
+  }
+
+  /**
+   * Отписаться от канала.
+   * @summary Отписка от канала
+   */
+  @Security("jwt")
+  @Delete("channel/{id}/subscribe")
+  unsubscribeFromChannel(
+    @Request() req: KoaRequest,
+    @Path() id: string,
+  ): Promise<string> {
+    const user = getContextUser(req);
+
+    return this._chatService.unsubscribeFromChannel(id, user.userId);
+  }
+
+  /**
+   * Поиск публичных каналов.
+   * @summary Поиск каналов
+   */
+  @Security("jwt")
+  @Get("channel/search")
+  async searchChannels(
+    @Query() q?: string,
+    @Query() offset?: number,
+    @Query() limit?: number,
+  ): Promise<IChatListDto> {
+    const [chats, totalCount] = await this._chatService.getPublicChannels(
+      q,
+      offset,
+      limit,
+    );
+
+    return {
+      offset,
+      limit,
+      count: chats.length,
+      totalCount,
+      data: chats.map(ChatDto.fromEntity),
+    };
+  }
+
+  /**
+   * Создать секретный (E2E encrypted) чат.
+   * @summary Создание секретного чата
+   */
+  @Security("jwt")
+  @ValidateBody(CreateSecretChatSchema)
+  @Post("secret")
+  createSecretChat(
+    @Request() req: KoaRequest,
+    @Body() body: ICreateSecretChatBody,
+  ): Promise<ChatDto> {
+    const user = getContextUser(req);
+
+    return this._chatService.createSecretChat(user.userId, body.targetUserId);
   }
 
   /**
@@ -171,6 +325,91 @@ export class ChatController extends Controller {
   }
 
   /**
+   * Создать invite-ссылку для группового чата.
+   * @summary Создание invite-ссылки
+   */
+  @Security("jwt")
+  @ValidateBody(CreateInviteSchema)
+  @Post("{id}/invite")
+  createInviteLink(
+    @Request() req: KoaRequest,
+    @Path() id: string,
+    @Body() body: ICreateInviteBody,
+  ): Promise<ChatInviteDto> {
+    const user = getContextUser(req);
+
+    return this._chatService.createInviteLink(id, user.userId, body);
+  }
+
+  /**
+   * Получить список invite-ссылок чата.
+   * @summary Список invite-ссылок
+   */
+  @Security("jwt")
+  @Get("{id}/invite")
+  getInvites(
+    @Request() req: KoaRequest,
+    @Path() id: string,
+  ): Promise<ChatInviteDto[]> {
+    const user = getContextUser(req);
+
+    return this._chatService.getInvites(id, user.userId);
+  }
+
+  /**
+   * Отозвать invite-ссылку.
+   * @summary Отзыв invite-ссылки
+   */
+  @Security("jwt")
+  @Delete("{id}/invite/{inviteId}")
+  async revokeInvite(
+    @Request() req: KoaRequest,
+    @Path() id: string,
+    @Path() inviteId: string,
+  ): Promise<void> {
+    const user = getContextUser(req);
+
+    await this._chatService.revokeInvite(id, inviteId, user.userId);
+  }
+
+  /**
+   * Присоединиться к чату по invite-коду.
+   * @summary Вступление по invite-ссылке
+   */
+  @Security("jwt")
+  @Post("join/{code}")
+  joinByInvite(
+    @Request() req: KoaRequest,
+    @Path() code: string,
+  ): Promise<ChatDto> {
+    const user = getContextUser(req);
+
+    return this._chatService.joinByInvite(code, user.userId);
+  }
+
+  /**
+   * Замутить или размутить чат.
+   * @summary Мут чата
+   */
+  @Security("jwt")
+  @ValidateBody(MuteChatSchema)
+  @Patch("{id}/mute")
+  async muteChat(
+    @Request() req: KoaRequest,
+    @Path() id: string,
+    @Body() body: IMuteChatBody,
+  ): Promise<ChatMemberDto> {
+    const user = getContextUser(req);
+    const member = await this._chatService.muteChat(
+      id,
+      user.userId,
+      body.mutedUntil ? new Date(body.mutedUntil) : null,
+    );
+
+    return ChatMemberDto.fromEntity(member);
+  }
+
+  /**
    * Добавить участников в групповой чат.
    * @summary Добавление участников
    */
@@ -230,5 +469,150 @@ export class ChatController extends Controller {
     );
 
     return ChatMemberDto.fromEntity(member);
+  }
+
+  /**
+   * Закрепить чат.
+   * @summary Закрепление чата
+   */
+  @Security("jwt")
+  @Post("{id}/pin")
+  async pinChat(
+    @Request() req: KoaRequest,
+    @Path() id: string,
+  ): Promise<ChatMemberDto> {
+    const user = getContextUser(req);
+    const member = await this._chatService.pinChat(id, user.userId);
+
+    return ChatMemberDto.fromEntity(member);
+  }
+
+  /**
+   * Открепить чат.
+   * @summary Открепление чата
+   */
+  @Security("jwt")
+  @Delete("{id}/pin")
+  async unpinChat(
+    @Request() req: KoaRequest,
+    @Path() id: string,
+  ): Promise<ChatMemberDto> {
+    const user = getContextUser(req);
+    const member = await this._chatService.unpinChat(id, user.userId);
+
+    return ChatMemberDto.fromEntity(member);
+  }
+
+  /**
+   * Архивировать чат.
+   * @summary Архивация чата
+   */
+  @Security("jwt")
+  @Post("{id}/archive")
+  async archiveChat(
+    @Request() req: KoaRequest,
+    @Path() id: string,
+  ): Promise<ChatMemberDto> {
+    const user = getContextUser(req);
+    const member = await this._chatService.archiveChat(id, user.userId);
+
+    return ChatMemberDto.fromEntity(member);
+  }
+
+  /**
+   * Разархивировать чат.
+   * @summary Разархивация чата
+   */
+  @Security("jwt")
+  @Delete("{id}/archive")
+  async unarchiveChat(
+    @Request() req: KoaRequest,
+    @Path() id: string,
+  ): Promise<ChatMemberDto> {
+    const user = getContextUser(req);
+    const member = await this._chatService.unarchiveChat(id, user.userId);
+
+    return ChatMemberDto.fromEntity(member);
+  }
+
+  /**
+   * Переместить чат в папку.
+   * @summary Перемещение в папку
+   */
+  @Security("jwt")
+  @ValidateBody(MoveChatToFolderSchema)
+  @Patch("{id}/folder")
+  async moveChatToFolder(
+    @Request() req: KoaRequest,
+    @Path() id: string,
+    @Body() body: IMoveChatToFolderBody,
+  ): Promise<ChatMemberDto> {
+    const user = getContextUser(req);
+    const member = await this._chatService.moveChatToFolder(
+      id,
+      user.userId,
+      body.folderId,
+    );
+
+    return ChatMemberDto.fromEntity(member);
+  }
+
+  /**
+   * Получить список папок чатов.
+   * @summary Список папок
+   */
+  @Security("jwt")
+  @Get("folder/list")
+  getUserFolders(@Request() req: KoaRequest): Promise<ChatFolderDto[]> {
+    const user = getContextUser(req);
+
+    return this._chatService.getUserFolders(user.userId);
+  }
+
+  /**
+   * Создать папку для чатов.
+   * @summary Создание папки
+   */
+  @Security("jwt")
+  @ValidateBody(CreateFolderSchema)
+  @Post("folder")
+  createFolder(
+    @Request() req: KoaRequest,
+    @Body() body: ICreateFolderBody,
+  ): Promise<ChatFolderDto> {
+    const user = getContextUser(req);
+
+    return this._chatService.createFolder(user.userId, body.name);
+  }
+
+  /**
+   * Обновить папку.
+   * @summary Обновление папки
+   */
+  @Security("jwt")
+  @Patch("folder/{folderId}")
+  updateFolder(
+    @Request() req: KoaRequest,
+    @Path() folderId: string,
+    @Body() body: IUpdateFolderBody,
+  ): Promise<ChatFolderDto> {
+    const user = getContextUser(req);
+
+    return this._chatService.updateFolder(user.userId, folderId, body);
+  }
+
+  /**
+   * Удалить папку.
+   * @summary Удаление папки
+   */
+  @Security("jwt")
+  @Delete("folder/{folderId}")
+  async deleteFolder(
+    @Request() req: KoaRequest,
+    @Path() folderId: string,
+  ): Promise<void> {
+    const user = getContextUser(req);
+
+    await this._chatService.deleteFolder(user.userId, folderId);
   }
 }

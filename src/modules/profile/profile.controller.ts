@@ -12,21 +12,29 @@ import {
   Tags,
 } from "tsoa";
 
-import { getContextUser, Injectable } from "../../core";
+import { getContextUser, Injectable, ValidateBody } from "../../core";
 import { KoaRequest } from "../../types/koa";
 import {
   IProfileListDto,
   IProfileUpdateRequestDto,
+  PrivacySettingsDto,
   ProfileDto,
   PublicProfileDto,
 } from "./dto";
+import { EPrivacyLevel } from "./privacy-settings.entity";
+import { PrivacySettingsService } from "./privacy-settings.service";
 import { ProfileService } from "./profile.service";
+import { UpdatePrivacySchema } from "./validation";
 
 @Injectable()
 @Tags("Profile")
 @Route("api/profile")
 export class ProfileController extends Controller {
-  constructor(@inject(ProfileService) private _profileService: ProfileService) {
+  constructor(
+    @inject(ProfileService) private _profileService: ProfileService,
+    @inject(PrivacySettingsService)
+    private _privacyService: PrivacySettingsService,
+  ) {
     super();
   }
 
@@ -63,6 +71,46 @@ export class ProfileController extends Controller {
     const user = getContextUser(req);
 
     return this._profileService.updateProfile(user.userId, body);
+  }
+
+  /**
+   * Получить настройки приватности.
+   * @summary Настройки приватности
+   */
+  @Security("jwt")
+  @Get("my/privacy")
+  async getPrivacySettings(
+    @Request() req: KoaRequest,
+  ): Promise<PrivacySettingsDto> {
+    const user = getContextUser(req);
+    const settings = await this._privacyService.getSettings(user.userId);
+
+    return PrivacySettingsDto.fromEntity(settings);
+  }
+
+  /**
+   * Обновить настройки приватности.
+   * @summary Обновление настроек приватности
+   */
+  @Security("jwt")
+  @ValidateBody(UpdatePrivacySchema)
+  @Patch("my/privacy")
+  async updatePrivacySettings(
+    @Request() req: KoaRequest,
+    @Body()
+    body: {
+      showLastOnline?: EPrivacyLevel;
+      showPhone?: EPrivacyLevel;
+      showAvatar?: EPrivacyLevel;
+    },
+  ): Promise<PrivacySettingsDto> {
+    const user = getContextUser(req);
+    const settings = await this._privacyService.updateSettings(
+      user.userId,
+      body,
+    );
+
+    return PrivacySettingsDto.fromEntity(settings);
   }
 
   /**

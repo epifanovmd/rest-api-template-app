@@ -1,4 +1,4 @@
-import { FindOptionsRelations, FindOptionsWhere, ILike } from "typeorm";
+import { Brackets, FindOptionsRelations, FindOptionsWhere, ILike } from "typeorm";
 import { QueryDeepPartialEntity } from "typeorm/query-builder/QueryPartialEntity";
 
 import { BaseRepository, InjectableRepository } from "../../core";
@@ -76,6 +76,43 @@ export class UserRepository extends BaseRepository<User> {
     return this.findOne({
       where: { id },
     });
+  }
+
+  /** Найти пользователя по username. */
+  async findByUsername(
+    username: string,
+    relations?: FindOptionsRelations<User>,
+  ): Promise<User | null> {
+    return this.findOne({
+      where: { username },
+      relations,
+    });
+  }
+
+  /** Поиск пользователей по запросу (ILIKE по username, email, firstName, lastName). */
+  async searchByQuery(
+    query: string,
+    limit: number,
+    offset: number,
+  ): Promise<[User[], number]> {
+    const qb = this.createQueryBuilder("user")
+      .leftJoinAndSelect("user.profile", "profile")
+      .leftJoinAndSelect("user.roles", "roles")
+      .leftJoinAndSelect("roles.permissions", "rolePermissions")
+      .leftJoinAndSelect("user.directPermissions", "directPermissions")
+      .where(
+        new Brackets(q => {
+          q.where("user.username ILIKE :query", { query: `%${query}%` })
+            .orWhere("user.email ILIKE :query", { query: `%${query}%` })
+            .orWhere("profile.firstName ILIKE :query", { query: `%${query}%` })
+            .orWhere("profile.lastName ILIKE :query", { query: `%${query}%` });
+        }),
+      )
+      .orderBy("user.createdAt", "DESC")
+      .skip(offset)
+      .take(limit);
+
+    return qb.getManyAndCount();
   }
 
   /** Получить список пользователей для выпадающего списка с опциональной фильтрацией по строке запроса. */
