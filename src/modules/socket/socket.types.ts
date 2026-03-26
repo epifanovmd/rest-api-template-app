@@ -2,6 +2,9 @@ import { Server, Socket as SocketIO } from "socket.io";
 import { DefaultEventsMap } from "socket.io/dist/typed-events";
 
 import { AuthContext } from "../../types/koa";
+import { ChatDto } from "../chat/dto/chat.dto";
+import { ContactDto } from "../contact/dto/contact.dto";
+import { MessageDto } from "../message/dto/message.dto";
 import { PublicProfileDto } from "../profile/dto";
 
 // ─── События Клиент → Сервер ─────────────────────────────────────────────
@@ -32,16 +35,16 @@ export interface ISocketEmitEvents {
 
   // ─── Chat events ────────────────────────────────────────────────────────
   /** Новое сообщение */
-  "message:new": (...args: [any]) => void;
+  "message:new": (...args: [MessageDto]) => void;
   /** Сообщение отредактировано */
-  "message:updated": (...args: [any]) => void;
+  "message:updated": (...args: [MessageDto]) => void;
   /** Сообщение удалено */
   "message:deleted": (...args: [{ messageId: string; chatId: string }]) => void;
 
   /** Новый чат создан */
-  "chat:created": (...args: [any]) => void;
+  "chat:created": (...args: [ChatDto]) => void;
   /** Чат обновлён */
-  "chat:updated": (...args: [any]) => void;
+  "chat:updated": (...args: [ChatDto]) => void;
   /** Кто-то набирает текст */
   "chat:typing": (
     ...args: [{ chatId: string; userId: string }]
@@ -51,15 +54,15 @@ export interface ISocketEmitEvents {
     ...args: [{ chatId: string; unreadCount: number }]
   ) => void;
   /** Участник добавлен */
-  "chat:member:joined": (...args: [any]) => void;
+  "chat:member:joined": (...args: [{ chatId: string; userId: string }]) => void;
   /** Участник удалён */
-  "chat:member:left": (...args: [any]) => void;
+  "chat:member:left": (...args: [{ chatId: string; userId: string }]) => void;
 
   // ─── Contact events ─────────────────────────────────────────────────────
   /** Запрос на добавление в контакты */
-  "contact:request": (...args: [any]) => void;
+  "contact:request": (...args: [ContactDto]) => void;
   /** Контакт принят */
-  "contact:accepted": (...args: [any]) => void;
+  "contact:accepted": (...args: [ContactDto]) => void;
 }
 
 // ─── Типы Socket ─────────────────────────────────────────────────────────────
