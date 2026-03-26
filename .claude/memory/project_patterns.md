@@ -1,55 +1,53 @@
 ---
 name: Code Patterns & Conventions
-description: Паттерны написания кода — как создавать модули, контроллеры, сервисы, DTOs, события, socket handlers. Правила которые нельзя нарушать
+description: Паттерны написания кода — модули, контроллеры, сервисы, DTOs, события, socket, тесты. Правила которые нельзя нарушать
 type: project
 ---
 
 ## Создание нового модуля (checklist)
 
-1. Создать `src/modules/feature/feature.module.ts`:
+1. `src/modules/feature/feature.module.ts`:
 ```typescript
 @Module({
-  providers: [FeatureRepository, FeatureService, FeatureController],
+  providers: [FeatureRepository, FeatureService, FeatureController,
+              asSocketHandler(FeatureHandler), asSocketListener(FeatureListener)],
+  bootstrappers: [FeatureBootstrap], // опционально
 })
 export class FeatureModule {}
 ```
 
-2. Добавить в `AppModule.imports` (перед SocketModule)
+2. Зарегистрировать в `src/app.module.ts` (перед SocketModule)
+3. Entity → Repository → Service → Controller → DTO → Validation → Events → Socket
 
-3. Entity: `@Entity()` + TypeORM columns + relations
-
-4. Repository: `@InjectableRepository(Feature) extends BaseRepository<Feature>`
-
-5. Service: `@Injectable()`, inject через constructor, бизнес-логика
-
-6. Controller: `@Injectable()`, `@Tags("Feature")`, `@Route("api/feature")`, extends Controller
-
-7. DTO: class extends BaseDto, static `fromEntity(entity)`
-
-8. Validation: Zod schemas + `@ValidateBody(schema)` на контроллере
-
-9. `yarn generate` — обновить routes.ts
-
-## Controller Pattern
+## Entity
 
 ```typescript
-@Injectable()
-@Tags("Feature")
-@Route("api/feature")
-export class FeatureController extends Controller {
-  constructor(@inject(FeatureService) private _service: FeatureService) {
-    super();
-  }
+@Entity("features")
+@Index("IDX_FEATURES_USER", ["userId"])
+export class Feature {
+  @PrimaryGeneratedColumn("uuid") id: string;
+  @Column({ name: "user_id", type: "uuid" }) userId: string;
+  @Column({ type: "varchar", length: 100 }) name: string;
+  @Column({ type: "jsonb", nullable: true }) metadata: Record<string, unknown> | null;
+  @CreateDateColumn({ name: "created_at" }) createdAt: Date;
+  @UpdateDateColumn({ name: "updated_at" }) updatedAt: Date;
+  @ManyToOne(() => User, { onDelete: "CASCADE" })
+  @JoinColumn({ name: "user_id" }) user: User;
+}
+```
 
-  @Security("jwt", ["permission:feature:view"])
-  @Get("{id}")
-  async getById(@Path() id: string): Promise<FeatureDto> {
-    return this._service.getById(id).then(FeatureDto.fromEntity);
+## Repository
+
+```typescript
+@InjectableRepository(Feature)
+export class FeatureRepository extends BaseRepository<Feature> {
+  async findByUserId(userId: string) {
+    return this.find({ where: { userId }, order: { createdAt: "DESC" } });
   }
 }
 ```
 
-## Service Pattern
+## Service
 
 ```typescript
 @Injectable()
@@ -59,128 +57,141 @@ export class FeatureService {
     @inject(EventBus) private _eventBus: EventBus,
   ) {}
 
-  async create(data: CreateDto): Promise<Feature> {
-    const entity = await this._repo.createAndSave(data);
+  async create(userId: string, data: {...}) {
+    const entity = await this._repo.createAndSave({ userId, ...data });
     this._eventBus.emit(new FeatureCreatedEvent(entity));
-    return entity;
+    return FeatureDto.fromEntity(entity);
   }
 }
 ```
 
-## DTO Pattern
+## Controller
+
+```typescript
+@Injectable()
+@Tags("Feature")
+@Route("api/feature")
+export class FeatureController extends Controller {
+  constructor(@inject(FeatureService) private _service: FeatureService) { super(); }
+
+  @Security("jwt")
+  @ValidateBody(CreateFeatureSchema)
+  @Post()
+  create(@Request() req: KoaRequest, @Body() body: ICreateBody): Promise<FeatureDto> {
+    const user = getContextUser(req);
+    return this._service.create(user.userId, body);
+  }
+}
+```
+
+## DTO
 
 ```typescript
 export class FeatureDto extends BaseDto {
   id: string;
   name: string;
-
   constructor(entity: Feature) {
-    super(entity);  // throws if entity undefined
+    super(entity);
     this.id = entity.id;
     this.name = entity.name;
   }
-
-  static fromEntity(entity: Feature): FeatureDto {
-    return new FeatureDto(entity);
-  }
+  static fromEntity(entity: Feature) { return new FeatureDto(entity); }
 }
 ```
 
-BaseDto кидает HttpException если entity === undefined (защита от забытых relations).
-
-## Repository Pattern
+## Validation (Zod)
 
 ```typescript
-@InjectableRepository(Feature)
-export class FeatureRepository extends BaseRepository<Feature> {
-  findById(id: string) {
-    return this.findOne({ where: { id }, relations: { ... } });
-  }
-}
-```
-
-Транзакции: `this._repo.withTransaction((repo, em) => { ... })` — НЕ ручной QueryRunner.
-
-## Validation Pattern (Zod)
-
-```typescript
-// validation/create-feature.validate.ts
 export const CreateFeatureSchema = z.object({
   name: z.string().min(1).max(100),
-  type: z.nativeEnum(EFeatureType),
+  description: z.string().max(500).optional(),
 });
-
-// В контроллере:
-@ValidateBody(CreateFeatureSchema)
-@Post()
-async create(@Body() body: ICreateFeatureDto): Promise<FeatureDto> { ... }
 ```
 
-При ошибке валидации: BadRequestException с field-level messages.
+Export из `validation/index.ts`.
 
-## Socket Event Pattern
-
-Для real-time уведомлений из нового модуля:
+## Events
 
 ```typescript
-// 1. Event class
-export class FeatureUpdatedEvent {
-  constructor(public readonly feature: FeatureDto) {}
+export class FeatureCreatedEvent {
+  constructor(public readonly feature: Feature) {}
 }
+```
 
-// 2. Listener (ISocketEventListener)
+## Socket Handler (client → server)
+
+```typescript
+@Injectable()
+export class FeatureHandler implements ISocketHandler {
+  onConnection(socket: TSocket): void {
+    socket.on("feature:action", async (data) => {
+      // handle
+    });
+  }
+}
+```
+
+## Socket Listener (EventBus → server → client)
+
+```typescript
 @Injectable()
 export class FeatureListener implements ISocketEventListener {
   constructor(
     @inject(EventBus) private _eventBus: EventBus,
     @inject(SocketEmitterService) private _emitter: SocketEmitterService,
   ) {}
-
   register(): void {
-    this._eventBus.on(FeatureUpdatedEvent, event => {
-      this._emitter.toRoom("feature", "feature:updated", event.feature);
+    this._eventBus.on(FeatureCreatedEvent, (event) => {
+      this._emitter.toUser(event.feature.userId, "feature:created", dto);
     });
   }
 }
-
-// 3. Handler (ISocketHandler) — optional, for client subscriptions
-@Injectable()
-export class FeatureHandler implements ISocketHandler {
-  onConnection(socket: TSocket): void {
-    socket.on("feature:subscribe", () => socket.join("feature"));
-  }
-}
-
-// 4. Register in module
-@Module({
-  providers: [
-    FeatureService,
-    { provide: SOCKET_EVENT_LISTENER, useClass: FeatureListener },
-    { provide: SOCKET_HANDLER, useClass: FeatureHandler },
-  ],
-})
 ```
 
-## Добавление нового Permission
+Регистрация: `asSocketHandler(cls)` / `asSocketListener(cls)` в @Module.
 
-1. Добавить в `EPermissions` enum (`src/modules/permission/permission.types.ts`):
+## Тесты (Mocha + Chai + Sinon)
+
 ```typescript
-FEATURE_VIEW = "feature:view",
-FEATURE_MANAGE = "feature:manage",
-FEATURE_ALL = "feature:*",  // wildcard
+import "reflect-metadata";
+import { expect } from "chai";
+import sinon from "sinon";
+import { createMockRepository, createMockEventBus, uuid } from "../../test/helpers";
+
+describe("FeatureService", () => {
+  let service: FeatureService;
+  let mockRepo: ReturnType<typeof createMockRepository>;
+  let mockEventBus: ReturnType<typeof createMockEventBus>;
+  let sandbox: sinon.SinonSandbox;
+
+  beforeEach(() => {
+    sandbox = sinon.createSandbox();
+    mockRepo = createMockRepository();
+    mockEventBus = createMockEventBus();
+    service = new FeatureService(mockRepo as any, mockEventBus as any);
+  });
+  afterEach(() => sandbox.restore());
+
+  it("should create feature", async () => {
+    mockRepo.createAndSave.resolves({ id: uuid(), name: "test" });
+    const result = await service.create(uuid(), { name: "test" });
+    expect(result).to.exist;
+    expect(mockEventBus.emit.calledOnce).to.be.true;
+  });
+});
 ```
 
-2. Использовать в контроллере: `@Security("jwt", ["permission:feature:view"])`
+Файл `.test.ts` рядом с сервисом. Test helpers: `src/test/helpers.ts`.
 
-3. Обновить `seedDefaultPermissions()` в RoleService если нужно дать роли по умолчанию
+## Правила
 
-## Правила которые нельзя нарушать
-
-- **Сервисы НЕ инжектируют** SocketService/SocketEmitterService — только EventBus
-- **Кросс-модульное взаимодействие** только через EventBus (domain events)
-- **Ошибки** только из `@force-dev/utils`: BadRequestException, NotFoundException, ForbiddenException, ConflictException, UnauthorizedException. Никогда `new Error()`
-- **Логирование** только через LoggerService/logger (pino), никогда `console.*`
-- **Контроллеры** обязательно в `@Module.providers` — tsoa требует IoC bind
-- **SocketModule** последний в imports AppModule
-- **routes.ts** никогда не редактировать — `yarn generate`
-- **@Security scopes** используют `"permission:..."`, не `"role:..."` (кроме legacy user-admin endpoints с `"role:admin"`)
+1. **routes.ts** — НИКОГДА не редактировать вручную (авто-генерация tsoa)
+2. **@Injectable()** — НЕ регистрирует в контейнере. Только `@Module.providers`
+3. **Сервисы НЕ инжектят SocketService** — используют EventBus
+4. **Controller body interfaces** — объявляются в контроллере, НЕ экспортируются
+5. **Security scopes** — `permission:name`, НЕ `role:name` (кроме admin endpoints)
+6. **Naming:** entity singular (User), table plural (users), column snake_case, field camelCase
+7. **Soft delete** — для сообщений (isDeleted=true, content=null), НЕ hard delete
+8. **Cascades** — через TypeORM (onDelete: CASCADE/SET NULL), НЕ через код
+9. **Validation** — Zod на входе, НЕ в service layer
+10. **Enums** — в `*.types.ts`, НЕ в entity файле

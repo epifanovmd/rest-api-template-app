@@ -1,6 +1,6 @@
 ---
 name: Authentication & Access Control
-description: JWT auth flow, RBAC+Permission модель, wildcard hierarchy, @Security syntax, scope checking logic, token lifecycle
+description: JWT auth flow, 2FA, RBAC+Permission модель, wildcard hierarchy, @Security syntax, bot auth, biometric, passkeys, sessions
 type: project
 ---
 
@@ -8,112 +8,95 @@ type: project
 
 ```
 users ──ManyToMany──▶ roles ──ManyToMany──▶ permissions
-  │        (user_roles)          (role_permissions)     ▲
-  └──ManyToMany (user_permissions)──────────────────────┘
+  │                                           ▲
+  └──ManyToMany──directPermissions────────────┘
 ```
-
-User.roles — eager ManyToMany → Role (user_roles)
-User.directPermissions — eager ManyToMany → Permission (user_permissions)
-Role.permissions — eager ManyToMany → Permission (role_permissions)
 
 ## Роли (ERole)
 
-`ADMIN = "admin"` | `USER = "user"` | `GUEST = "guest"`
-
-ADMIN — superadmin bypass: проходит все permission-проверки автоматически.
+- `ADMIN` — суперадмин, bypass всех проверок
+- `USER` — обычный пользователь (default)
+- `GUEST` — гостевой доступ
 
 ## Permissions (EPermissions)
 
-```
-ALL = "*"                      — superadmin, полный доступ
+- `* (ALL)` — суперадмин
+- `user:view`, `user:manage`
+- `contact:view`, `contact:manage`, `contact:*`
+- `chat:view`, `chat:manage`, `chat:*`
+- `message:view`, `message:manage`, `message:*`
+- `push:manage`
 
-USER_VIEW = "user:view"        — просмотр пользователей и профилей
-USER_MANAGE = "user:manage"    — создание, редактирование, блокировка, назначение ролей
-
-CONTACT_VIEW = "contact:view"
-CONTACT_MANAGE = "contact:manage"
-CONTACT_ALL = "contact:*"
-
-CHAT_VIEW = "chat:view"
-CHAT_MANAGE = "chat:manage"
-CHAT_ALL = "chat:*"
-
-MESSAGE_VIEW = "message:view"
-MESSAGE_MANAGE = "message:manage"
-MESSAGE_ALL = "message:*"
-
-PUSH_MANAGE = "push:manage"
-```
-
-При добавлении нового домена — добавлять в enum с иерархией `domain:action`, wildcard `domain:*`.
-
-## JWT Payload (TokenPayload)
-
-```typescript
-{ userId, roles: ERole[], permissions: EPermissions[], emailVerified: boolean }
-```
-
-**permissions** = union(все role.permissions) ∪ directPermissions — вычисляется при `TokenService.issue()`.
-Ноль DB-запросов при проверке — всё из JWT.
-
-## Token Lifecycle
-
-- `issue(user)` → access token (15 мин) + refresh token (7 дней)
-- `verify(token, scopes?)` → decode JWT + checkScopes
-- `updateTokens(refreshToken)` → verify refresh + issue new pair
-
-## Scope Checking (@Security)
-
-```typescript
-@Security("jwt", ["permission:user:view", "permission:user:manage"])
-```
-
-**AND-семантика**: ВСЕ scopes должны быть удовлетворены.
-
-Порядок проверки `checkScopes()`:
-1. Superadmin bypass: `roles.includes(ADMIN) || hasPermission(perms, "*")` → skip
-2. Для каждого scope:
-   - `"role:admin"` → проверяет `roles.includes(ERole.ADMIN)`
-   - `"permission:user:view"` → проверяет `hasPermission(perms, "user:view")`
-
-## Wildcard Hierarchy
+## Wildcards
 
 `hasPermission(userPerms, required)`:
-1. `userPerms.includes("*")` → true
-2. exact match
-3. Prefix wildcards: для `"user:view"` проверяет `"user:*"`, для `"wg:server:view"` проверяет `"wg:server:*"` → `"wg:*"`
+- `*` → matches everything
+- `chat:*` → matches `chat:view`, `chat:manage`
+- `wg:server:*` → matches `wg:server:view`
+- Exact match: `user:view` → `user:view`
 
-## @Security в контроллерах — текущее использование
+## JWT Token
 
-| Scope | Где используется |
-|---|---|
-| `@Security("jwt")` | Все "my" эндпоинты (user/my, profile/my), changePassword, file CRUD, все chat/contact/message/push endpoints, biometric endpoints |
-| `@Security("jwt", ["permission:user:view"])` | GET user/all, user/options, user/{id} |
-| `@Security("jwt", ["permission:user:manage"])` | setPrivileges, update/delete other user, roles list |
-| `@Security("jwt", ["role:admin"])` | profile/all, profile update/delete other, role permissions set |
-| Без @Security | auth sign-up/sign-in, passkeys auth endpoints |
+**Payload:** `{ userId, roles[], permissions[], emailVerified }`
 
-**Примечание:** Chat/Contact/Message/Push модули используют `@Security("jwt")` без permission scopes — авторизация на уровне бизнес-логики (membership checks в сервисах).
+permissions = объединение(role.permissions) ∪ directPermissions. Вычисляется при issue, без DB hit при verify.
 
-## AuthContext в контроллерах
+**Сроки:** access 15min (prod) / 1d (dev), refresh 7d.
+
+## @Security syntax
 
 ```typescript
-const { userId, roles, permissions, emailVerified } = getContextUser(req);
+@Security("jwt")                                    // любой авторизованный
+@Security("jwt", ["role:admin"])                     // только ADMIN
+@Security("jwt", ["permission:user:view"])           // нужен user:view
+@Security("jwt", ["permission:chat:manage", "role:admin"])  // AND семантика
+@Security("bot")                                     // Bot token auth
 ```
 
-`getContextUser(req: KoaRequest)` — извлекает из `req.ctx.request.user`, throws UnauthorizedException если нет.
+Bypass: role ADMIN или permission `*` → пропускает ВСЕ проверки.
 
-## AdminBootstrap
+## 2FA (Cloud Password)
 
-При старте:
-1. Создаёт admin из `config.auth.admin.email` + `config.auth.admin.password` (bcrypt)
-2. `roleService.seedDefaultPermissions()`:
-   - ADMIN → [ALL="*"]
-   - USER → [USER_VIEW, USER_MANAGE]
-   - GUEST → [USER_VIEW]
-   - Только если у роли ещё нет permissions
+**User entity:** twoFactorHash (bcrypt), twoFactorHint
 
-## setPrivileges API
+**Flow:**
+1. `POST enable-2fa { password, hint? }` → bcrypt hash → save
+2. `POST sign-in` → если twoFactorHash есть → return `{ require2FA: true, twoFactorToken (JWT 5min), twoFactorHint }`
+3. `POST verify-2fa { twoFactorToken, password }` → verify token + bcrypt compare → issue full tokens
+4. `POST disable-2fa { password }` → verify → clear twoFactorHash
 
-`PATCH /api/user/setPrivileges/{id}` — заменяет roles[] и directPermissions[] пользователя.
-Несуществующие роли/permissions автоматически создаются (upsert).
+## Bot Auth
+
+**Security scheme "bot":**
+- Header: `Authorization: Bot <128-char-hex-token>` или `X-Bot-Token: <token>`
+- `koa-authentication.ts` → return minimal AuthContext `{ userId: "bot" }`
+- Controller извлекает token → `BotService.getBotByToken(token)` → использует `bot.ownerId`
+
+## Biometric Auth
+
+**Entity Biometric:** userId+deviceId(unique), publicKey, challenge, challengeExpiresAt, lastUsedAt
+
+**Flow:**
+1. `POST register` → save publicKey (max 5 devices)
+2. `POST generate-nonce` → crypto.randomBytes(32) → save challenge (TTL 5min)
+3. `POST verify-signature` → crypto.createVerify SHA256 → verify → issue tokens
+
+## Passkeys (WebAuthn)
+
+**Entity Passkey:** id(credentialId), publicKey(Uint8Array), counter, deviceType, transports
+
+**Flow (registration):**
+1. `POST generate-registration-options` (jwt) → @simplewebauthn/server → set challenge
+2. `POST verify-registration` (jwt) → verify → save passkey → clear challenge
+
+**Flow (authentication):**
+1. `POST generate-authentication-options` (public) → find user by login → get passkeys → set challenge
+2. `POST verify-authentication` (public) → verify → update counter → issue tokens
+
+## Sessions
+
+**Entity Session:** userId, refreshToken(unique), deviceName, deviceType, ip, userAgent, lastActiveAt
+
+**Endpoints:** GET /api/session, DELETE /api/session/{id}, POST /api/session/terminate-others
+
+**Socket:** `session:terminated` → клиент на другом устройстве разлогинивается

@@ -3,7 +3,7 @@
     "noEmit": true,
     "module": "esnext",
     "target": "es6",
-    "types": ["reflect-metadata", "jest"],
+    "types": ["reflect-metadata", "mocha", "node"],
     "lib": ["es6"],
     "noImplicitAny": false,
     "sourceMap": true,

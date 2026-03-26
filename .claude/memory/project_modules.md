@@ -1,387 +1,184 @@
 ---
 name: Feature Modules Reference
-description: Все модули проекта — entities, services, endpoints, DTOs, events, validation schemas. Полный справочник для быстрого ориентирования
+description: Все 24 модуля проекта — entities, services, endpoints, events, socket, validation. Полный справочник
 type: project
 ---
 
-## Структура каждого модуля
+## Структура модуля
 
 ```
 src/modules/feature/
 ├── feature.entity.ts          # TypeORM @Entity
-├── feature.repository.ts      # @InjectableRepository(Entity), extends BaseRepository
+├── feature.repository.ts      # @InjectableRepository, extends BaseRepository
 ├── feature.service.ts         # @Injectable, бизнес-логика
-├── feature.controller.ts      # @Injectable, tsoa @Route/@Get/@Post
-├── feature.dto.ts             # DTOs с static fromEntity()
+├── feature.controller.ts      # @Injectable, tsoa @Route
 ├── feature.module.ts          # @Module declaration
-├── validation/                # Zod schemas для @ValidateBody
-└── events/                    # Domain events (optional)
+├── feature.types.ts           # Enums
+├── dto/                       # DTOs с static fromEntity()
+├── validation/                # Zod schemas
+├── events/                    # Domain events
+├── feature.handler.ts         # ISocketHandler (client→server)
+└── feature.listener.ts        # ISocketEventListener (EventBus→socket)
 ```
 
 ---
 
-## Auth Module (`src/modules/auth/`)
+## Auth Module
 
-**Нет entity** — использует User через UserService.
+**Endpoints (8):** sign-up, sign-in, verify-2fa, enable-2fa, disable-2fa, request-reset-password, reset-password, refresh
+**Rate limits:** sign-up 5/60s, sign-in 10/60s, reset 3/300s
+**2FA flow:** signIn → require2FA → verify-2fa → tokens
 
-**Endpoints (все публичные + throttle):**
-- `POST /api/auth/sign-up` — ThrottleGuard(5, 60s), ValidateBody(SignUpSchema)
-- `POST /api/auth/sign-in` — ThrottleGuard(10, 60s), ValidateBody(SignInSchema)
-- `POST /api/auth/request-reset-password` — ThrottleGuard(3, 300s)
-- `POST /api/auth/reset-password` — ValidateBody(ResetPasswordSchema)
-- `POST /api/auth/refresh` — ValidateBody(RefreshSchema)
+## User Module
 
-**Validation:**
-- SignUpSchema: password (6-100), email (optional) OR phone (optional, +7/8 format), firstName/lastName optional
-- SignInSchema: login (1-100), password (6-100)
-- ResetPasswordSchema: token (min 1), password (6-100)
-- RefreshSchema: refreshToken (min 1)
+**Entity User:** id, email, phone, username(unique), passwordHash, emailVerified, twoFactorHash, twoFactorHint, challenge → roles(M2M), directPermissions(M2M), profile(O2O), biometrics/passkeys/otps(O2M)
+**Endpoints (15):** my(GET/PATCH/DELETE), my/username, search, by-username, all, options, {id}, setPrivileges, requestVerifyEmail, verifyEmail, update, changePassword, delete
+**Bootstrap:** AdminBootstrap — seed admin + permissions
 
-**AuthService:** signUp (bcrypt hash, create user, issue tokens), signIn (find by email/phone, verify password), requestResetPassword (create JWT reset token, send email), resetPassword (verify token, update password), updateTokens (verify refresh, re-issue)
+## Profile Module
 
----
+**Entity Profile:** userId(unique), firstName, lastName, birthDate, gender, status(online/offline), lastOnline → avatar(M2O→File)
+**Entity PrivacySettings:** userId(unique), showLastOnline/showPhone/showAvatar (everyone/contacts/nobody)
+**Endpoints (9):** my, my/update, my/privacy(GET/PATCH), my/delete, all, {userId}, update/{userId}, delete/{userId}
+**Socket:** profile:subscribe → profile:updated
 
-## User Module (`src/modules/user/`)
+## Role Module
 
-**Entity User:** id, email (unique w/ phone), emailVerified, phone, passwordHash (bcrypt), challenge (WebAuthn), challengeExpiresAt, createdAt, updatedAt
-- Relations: roles (ManyToMany eager), directPermissions (ManyToMany eager), profile (OneToOne cascade eager), biometrics/otps/passkeys/resetPasswordTokens (OneToMany cascade)
+**Entity Role:** name(admin/user/guest) → permissions(M2M eager)
+**Endpoints (2):** GET /roles, PATCH /{id}/permissions
 
-**Endpoints:**
-- `GET /api/user/my` — @Security("jwt")
-- `PATCH /api/user/my/update` — @Security("jwt")
-- `DELETE /api/user/my/delete` — @Security("jwt")
-- `GET /api/user/all` — permission:user:view, query: offset, limit, query
-- `GET /api/user/options` — permission:user:view
-- `GET /api/user/{id}` — permission:user:view
-- `PATCH /api/user/setPrivileges/{id}` — permission:user:manage, ValidateBody
-- `POST /api/user/requestVerifyEmail` — @Security("jwt")
-- `GET /api/user/verifyEmail/{code}` — @Security("jwt")
-- `PATCH /api/user/update/{id}` — permission:user:manage
-- `POST /api/user/changePassword` — @Security("jwt"), ValidateBody
-- `DELETE /api/user/delete/{id}` — permission:user:manage
+## Permission Module
 
-**Validation:**
-- ChangePasswordSchema: password (6-100)
-- UserUpdateSchema: email (optional, lowercase), phone (optional, normalize +7), roleId (uuid optional). Min 1 field
-- SetPrivilegesSchema: roles (ERole[] min 1), permissions (EPermissions[] default [])
+**Entity Permission:** name(EPermissions) → roles(M2M)
+**Wildcards:** *, user:*, chat:*, contact:*, message:*
 
-**AdminBootstrap:** seed admin user + default role permissions при старте.
+## OTP Module
 
-**Repository custom:** findByEmail, findByPhone, findByEmailOrPhone, findOptions (dropdown id+name)
+**Entity Otp:** userId(PK), code(6 digits), expireAt
+**Internal:** используется UserService для email verification
 
----
+## Biometric Module
 
-## Profile Module (`src/modules/profile/`)
+**Entity Biometric:** userId+deviceId(unique), publicKey, deviceName, challenge, challengeExpiresAt, lastUsedAt
+**Endpoints (5):** register, generate-nonce, verify-signature, devices, delete/{deviceId}
+**Лимит:** max 5 устройств. Challenge TTL 5 мин.
 
-**Entity Profile:** id, userId (unique, CASCADE), firstName, lastName, birthDate, gender, status (online/offline), lastOnline
-- Relations: user (OneToOne), avatar (ManyToOne → File, SET NULL)
+## Passkeys Module
 
-**Endpoints:**
-- `GET /api/profile/my` — @Security("jwt")
-- `PATCH /api/profile/my/update` — @Security("jwt")
-- `DELETE /api/profile/my/delete` — @Security("jwt")
-- `GET /api/profile/all` — role:admin
-- `GET /api/profile/{userId}` — @Security("jwt")
-- `PATCH /api/profile/update/{userId}` — role:admin
-- `DELETE /api/profile/delete/{userId}` — role:admin
+**Entity Passkey:** id(credentialId), publicKey(Uint8Array), userId, counter, deviceType, transports, lastUsed
+**Endpoints (4):** generate-registration-options(jwt), verify-registration(jwt), generate-authentication-options(public), verify-authentication(public)
 
-**Socket integration:**
-- `ProfileHandler` (ISocketHandler) — слушает "profile:subscribe", добавляет в room "profile"
-- `ProfileListener` (ISocketEventListener) — подписывается на ProfileUpdatedEvent → emit "profile:updated" в room
-- `ProfileUpdatedEvent`: содержит PublicProfileDto
+## Encryption Module
 
-**DTOs:** ProfileDto (full), PublicProfileDto (id, firstName, lastName, status, lastOnline)
+**Entity UserKey:** userId+deviceId(unique), identityKey, signedPreKeyId/Public/Signature, isActive
+**Entity OneTimePreKey:** userId+keyId(unique), publicKey, isUsed
+**Endpoints (4):** POST keys, GET keys/{userId}, POST keys/prekeys, DELETE keys/{deviceId}
+**Socket:** e2e:key-exchange, e2e:ratchet (client+server relay), e2e:prekeys-low (server)
 
----
+## File Module
 
-## Role Module (`src/modules/role/`)
+**Entity File:** id, name, type(MIME), url, size, thumbnailUrl, width, height
+**Endpoints (3):** GET, POST(multipart upload), DELETE
+**Thumbnails:** sharp — 200x200 webp при upload
 
-**Entity Role:** id, name (ERole enum, unique), permissions (ManyToMany eager → Permission)
+## Link Preview Module
 
-**Endpoints:**
-- `GET /api/roles` — permission:user:manage
-- `PATCH /api/roles/{id}/permissions` — role:admin, ValidateBody(SetRolePermissionsSchema)
+**Entity LinkPreview:** url(unique), title, description, imageUrl, siteName, fetchedAt
+**Internal:** авто при sendMessage — cheerio OG-парсинг, кеш в БД → message.linkPreviews(jsonb)
 
-**RoleService:** getRoles(), setRolePermissions(roleId, perms[]), seedDefaultPermissions()
+## Contact Module
 
----
+**Entity Contact:** userId+contactUserId(unique), displayName, status(pending/accepted/blocked)
+**Двусторонняя модель:** addContact → 2 записи (initiator ACCEPTED, target PENDING)
+**Endpoints (5):** POST(add), GET(list, ?status), PATCH accept, DELETE, POST block
+**Socket:** contact:request, contact:accepted
 
-## Permission Module (`src/modules/permission/`)
+## Chat Module
 
-**Entity Permission:** id, name (EPermissions enum, unique), roles (ManyToMany ← Role)
+**Entity Chat:** type(direct/group/channel/secret), name, description, username(unique), isPublic, slowModeSeconds, avatarId, createdById, lastMessageAt
+**Entity ChatMember:** chatId+userId(unique), role(owner/admin/member/subscriber), joinedAt, mutedUntil, lastReadMessageId, isPinnedChat, pinnedChatAt, isArchived, folderId
+**Entity ChatInvite:** code(unique), chatId, expiresAt, maxUses, useCount, isActive
+**Entity ChatFolder:** userId+name(unique), position
 
-**EPermissions enum:**
-- `ALL = "*"` — superadmin
-- `USER_VIEW = "user:view"`, `USER_MANAGE = "user:manage"`
-- `CONTACT_VIEW = "contact:view"`, `CONTACT_MANAGE = "contact:manage"`, `CONTACT_ALL = "contact:*"`
-- `CHAT_VIEW = "chat:view"`, `CHAT_MANAGE = "chat:manage"`, `CHAT_ALL = "chat:*"`
-- `MESSAGE_VIEW = "message:view"`, `MESSAGE_MANAGE = "message:manage"`, `MESSAGE_ALL = "message:*"`
-- `PUSH_MANAGE = "push:manage"`
+**Endpoints (29):**
+- Создание: direct, group, channel, secret
+- CRUD: list, get, update, delete(leave)
+- Channel: update, subscribe, unsubscribe, search
+- Invite: create, list, revoke, join
+- Members: add, remove, update role
+- UX: mute, pin/unpin, archive/unarchive, move to folder
+- Folders: list, create, update, delete
 
-**Нет контроллера** — управление через RoleController и UserController.setPrivileges.
+**Moderation (4):** slow-mode, ban, unban, banned list
 
----
+**Socket (14):** chat:join/leave/typing (client) + created/updated/typing/unread/member:joined/left/pinned/archived/slow-mode/member:banned/unbanned (server)
 
-## OTP Module (`src/modules/otp/`)
+## Message Module
 
-**Entity Otp:** userId (PK), code (6 цифр), expireAt. Methods: isExpired(), createOtp(userId, code, minutes)
+**Entity Message:** chatId, senderId, type(text/image/file/voice/system/poll/sticker), content, status(sent/delivered/read), replyToId, forwardedFromId, isEdited, isDeleted, isPinned, pinnedAt, pinnedById, stickerId, encryptedContent, encryptionMetadata(jsonb), keyboard(jsonb), linkPreviews(jsonb), scheduledAt, isScheduled, selfDestructSeconds, selfDestructAt
+**Entity MessageAttachment:** messageId, fileId → file(eager)
+**Entity MessageReaction:** messageId+userId(unique), emoji
+**Entity MessageMention:** messageId, userId(nullable), isAll
 
-**OtpService:** create(userId) → generate 6-digit code, upsert; check(userId, code) → verify + delete
+**Endpoints (17):** send, list(cursor), search(in chat), pinned, media, media/stats, read, scheduled, cancel scheduled, global search, edit, delete, pin/unpin, reaction add/remove, open(self-destruct)
 
-Используется UserService для email verification.
+**Bootstrap:** MessageSchedulerBootstrap — 10s interval: scheduled send + self-destruct cleanup
 
----
+**Socket (10):** message:read/delivered (client) + new/updated/deleted/reaction/pinned/unpinned/status/self-destructed (server)
 
-## Biometric Module (`src/modules/biometric/`)
+## Poll Module
 
-**Entity Biometric:** id, userId, deviceId (unique with userId), publicKey (text), deviceName, challenge (nullable), challengeExpiresAt (nullable), lastUsedAt, createdAt, updatedAt
+**Entities:** Poll(messageId unique, question, isAnonymous, isMultipleChoice, isClosed), PollOption(text, position), PollVote(pollId+optionId+userId unique)
+**Endpoints (5):** create(in chat), vote, retract vote, close, get results
+**Socket:** poll:voted, poll:closed
 
-**Endpoints (все @Security("jwt")):**
-- `POST /api/biometric/register` — регистрация ключа (upsert по userId+deviceId, макс 5 устройств)
-- `POST /api/biometric/generate-nonce` — генерация challenge (32 bytes random, TTL 5 мин), сохраняется в Biometric entity
-- `POST /api/biometric/verify-signature` — верификация crypto signature → tokens
-- `GET /api/biometric/devices` — список зарегистрированных устройств
-- `DELETE /api/biometric/{deviceId}` — удалить устройство
+## Sticker Module
 
-**BiometricService:** Node.js crypto.createVerify SHA256, PEM key conversion, challenge хранится в Biometric entity (не в User).
+**Entities:** StickerPack(name, title, creatorId, isOfficial, isAnimated), Sticker(packId, emoji, fileId, position), UserStickerPack(userId+packId unique)
+**Endpoints (9):** pack CRUD, search, featured, add/remove to user, add/delete sticker
 
----
+## Call Module
 
-## Passkeys Module (`src/modules/passkeys/`)
+**Entity Call:** callerId, calleeId, chatId?, type(voice/video), status(ringing/active/ended/missed/declined), startedAt, endedAt, duration
+**Endpoints (6):** initiate, answer, decline, end, history, active
+**WebRTC Socket (12):** offer/answer/ice-candidate/hangup (client) + incoming/answered/declined/ended/missed + offer/answer/ice-candidate relay (server)
 
-**Entity Passkey:** id (credential ID), publicKey (bytea/Uint8Array), userId, counter, deviceType, transports, lastUsed
+## Bot Module
 
-**Endpoints:**
-- `POST /api/passkeys/generate-registration-options` — @Security("jwt")
-- `POST /api/passkeys/verify-registration` — @Security("jwt")
-- `POST /api/passkeys/generate-authentication-options` — публичный
-- `POST /api/passkeys/verify-authentication` — публичный
+**Entity Bot:** ownerId, username(unique), displayName, description, avatarId, token(unique 128 hex), webhookUrl, webhookSecret, isActive
+**Entity BotCommand:** botId+command(unique), description
+**Management (10 jwt):** CRUD + token regenerate + webhook set/delete + commands set/get
+**Bot API (3 bot-token):** message send/edit/delete
+**Webhook:** HMAC-SHA256, retry 3x (1s→5s→25s), 10s timeout
+**Listener:** MessageCreatedEvent → parse /commands → webhook delivery
 
-**PasskeysService:** @simplewebauthn/server, challenge хранится в user.challenge. Config из auth.webAuthn (rpName, rpHost, rpSchema, rpPort).
+## Push Module
 
----
+**Entity DeviceToken:** userId, token(unique), platform(ios/android/web), deviceName
+**Entity NotificationSettings:** userId(unique), muteAll, soundEnabled, showPreview
+**Endpoints (4):** POST/DELETE device, GET/PATCH notification/settings
+**PushService:** Firebase Admin SDK (FCM). Graceful если не настроен.
+**PushListener:** MessageCreated → push offline (mute filter + mention bypass + encrypted hide). ContactRequest → push.
 
-## File Module (`src/modules/file/`)
+## Session Module
 
-**Entity File:** id, name, type (MIME), url, size. Relation: avatarProfiles (OneToMany ← Profile)
+**Entity Session:** userId, refreshToken(unique), deviceName, deviceType, ip, userAgent, lastActiveAt
+**Endpoints (3):** GET sessions, DELETE session, POST terminate-others
+**Socket:** session:terminated
 
-**Endpoints:**
-- `GET /api/file` — @Security("jwt"), query: id
-- `POST /api/file` — @Security("jwt"), multipart upload
-- `DELETE /api/file/{id}` — @Security("jwt"), удаляет из DB и filesystem
+## Sync Module
 
-**FileService:** uploadFile(files[]) → save to DB; deleteFile(id) → delete from DB + fs at config.server.filesFolderPath
+**Entity SyncLog:** version(bigint auto), entityType(message/chat/chat_member/contact/profile), entityId, action(create/update/delete), userId?, chatId?, payload(jsonb)
+**Endpoint (1):** GET /api/sync?sinceVersion=&limit=
+**Listener:** подписка на все EventBus events → автоматическая запись
+**Socket:** sync:available
 
----
+## Mailer Module
 
-## Contact Module (`src/modules/contact/`)
+**Internal.** Nodemailer + Gmail SMTP + EJS templates.
+**Методы:** sendCodeMail(email, code), sendResetPasswordMail(email, token)
 
-**Entity Contact:** id, userId, contactUserId, displayName (varchar 80, nullable), status (EContactStatus enum), createdAt, updatedAt
-- Indexes: unique(userId, contactUserId), (contactUserId, userId)
-- Relations: user (ManyToOne → User, CASCADE), contactUser (ManyToOne → User, CASCADE)
+## Reset Password Tokens Module
 
-**EContactStatus:** `PENDING`, `ACCEPTED`, `BLOCKED`
-
-**Endpoints (все @Security("jwt")):**
-- `POST /api/contact` — добавить контакт, ValidateBody(CreateContactSchema)
-- `GET /api/contact` — список контактов, query: status (optional filter)
-- `PATCH /api/contact/{id}/accept` — принять запрос
-- `DELETE /api/contact/{id}` — удалить контакт (обе стороны)
-- `POST /api/contact/{id}/block` — заблокировать контакт
-
-**ContactService:** Двусторонняя модель: при addContact создаётся 2 записи — инициатор (ACCEPTED) + получатель (PENDING). acceptContact меняет статус. removeContact удаляет обе стороны. blockContact меняет статус на BLOCKED.
-
-**Events:** ContactRequestEvent (→ contact:request), ContactAcceptedEvent (→ contact:accepted)
-
-**Socket:** ContactListener — подписывается на ContactRequestEvent и ContactAcceptedEvent, emit в user room.
-
-**Validation:**
-- CreateContactSchema: contactUserId (uuid), displayName (max 80, optional)
-
----
-
-## Chat Module (`src/modules/chat/`)
-
-**Entity Chat:** id, type (EChatType), name (varchar 100, nullable), avatarId (nullable → File), createdById (→ User), lastMessageAt (nullable), createdAt, updatedAt
-- Relations: avatar (ManyToOne → File, SET NULL), createdBy (ManyToOne → User, SET NULL), members (OneToMany → ChatMember, cascade)
-- Index: lastMessageAt
-
-**Entity ChatMember:** id, chatId, userId, role (EChatMemberRole), joinedAt, mutedUntil (nullable), lastReadMessageId (nullable)
-- Indexes: unique(chatId, userId), (userId)
-- Relations: chat (ManyToOne → Chat, CASCADE), user (ManyToOne → User, CASCADE)
-
-**EChatType:** `DIRECT`, `GROUP`
-**EChatMemberRole:** `OWNER`, `ADMIN`, `MEMBER`
-
-**Endpoints (все @Security("jwt")):**
-- `POST /api/chat/direct` — создать/получить личный чат, ValidateBody(CreateDirectChatSchema)
-- `POST /api/chat/group` — создать групповой чат, ValidateBody(CreateGroupChatSchema)
-- `GET /api/chat` — список чатов текущего пользователя, query: offset, limit
-- `GET /api/chat/{id}` — получить чат по ID
-- `PATCH /api/chat/{id}` — обновить групповой чат (название, аватар), ValidateBody(UpdateChatSchema)
-- `DELETE /api/chat/{id}` — покинуть чат
-- `POST /api/chat/{id}/members` — добавить участников, ValidateBody(AddMembersSchema)
-- `DELETE /api/chat/{id}/members/{userId}` — удалить участника
-- `PATCH /api/chat/{id}/members/{userId}` — изменить роль участника, ValidateBody(UpdateMemberRoleSchema)
-
-**ChatService:**
-- createDirectChat: проверка на дубликат, создаёт chat + 2 member записи
-- createGroupChat: создатель = OWNER, остальные = MEMBER
-- updateChat: только GROUP, только ADMIN/OWNER
-- leaveChat: OWNER не может уйти пока есть другие участники (должен передать права)
-- addMembers/removeMember: только ADMIN/OWNER, нельзя удалить OWNER
-- updateMemberRole: только OWNER
-- isMember, getMemberUserIds — helper методы для MessageService
-
-**Events:** ChatCreatedEvent, ChatUpdatedEvent, ChatMemberJoinedEvent, ChatMemberLeftEvent
-
-**Socket:**
-- ChatHandler (ISocketHandler) — слушает "chat:join" (join room `chat:{chatId}`), "chat:leave", "chat:typing" (emit typing в room)
-- ChatListener (ISocketEventListener) — подписывается на ChatCreatedEvent, ChatUpdatedEvent, ChatMemberJoinedEvent, ChatMemberLeftEvent → emit в user rooms
-
-**Validation:**
-- CreateDirectChatSchema: targetUserId (uuid)
-- CreateGroupChatSchema: name (1-100), memberIds (uuid[] min 1), avatarId (uuid, optional)
-- UpdateChatSchema: name (1-100, optional), avatarId (uuid, nullable, optional)
-- AddMembersSchema: memberIds (uuid[] min 1)
-- UpdateMemberRoleSchema: role (EChatMemberRole)
-
----
-
-## Message Module (`src/modules/message/`)
-
-**Entity Message:** id, chatId (→ Chat), senderId (→ User), type (EMessageType), content (text, nullable), replyToId (→ Message, nullable), forwardedFromId (→ Message, nullable), isEdited (boolean), isDeleted (boolean), createdAt, updatedAt
-- Relations: chat (ManyToOne → Chat, CASCADE), sender (ManyToOne → User, SET NULL), replyTo/forwardedFrom (ManyToOne → Message, SET NULL), attachments (OneToMany → MessageAttachment, cascade, eager)
-- Indexes: (chatId, createdAt), (senderId)
-
-**Entity MessageAttachment:** id, messageId, fileId, createdAt
-- Relations: message (ManyToOne → Message, CASCADE), file (ManyToOne → File, CASCADE, eager)
-- Index: (messageId)
-
-**EMessageType:** `TEXT`, `IMAGE`, `FILE`, `VOICE`, `SYSTEM`
-
-**Endpoints (все @Security("jwt")):**
-
-ChatMessageController (@Route("api/chat")):
-- `POST /api/chat/{chatId}/message` — отправить сообщение, ValidateBody(SendMessageSchema)
-- `GET /api/chat/{chatId}/message` — список сообщений (cursor-based), query: before, limit
-- `POST /api/chat/{chatId}/message/read` — отметить прочитанным, ValidateBody(MarkReadSchema)
-
-MessageController (@Route("api/message")):
-- `PATCH /api/message/{id}` — редактировать сообщение, ValidateBody(EditMessageSchema)
-- `DELETE /api/message/{id}` — удалить сообщение (soft delete)
-
-**MessageService:**
-- sendMessage: проверка membership, создание в транзакции (message + attachments + updateLastMessageAt)
-- getMessages: cursor-based пагинация (before messageId), default limit 50
-- editMessage: только автор, isEdited=true
-- deleteMessage: автор или ADMIN/OWNER чата, soft delete (isDeleted=true, content=null)
-- markAsRead: обновляет lastReadMessageId в ChatMember
-- getUnreadCount: подсчёт непрочитанных по lastReadMessageId
-
-**Events:** MessageCreatedEvent (chatId, memberUserIds), MessageUpdatedEvent (chatId), MessageDeletedEvent (messageId, chatId), MessageReadEvent (chatId, userId, messageId)
-
-**Socket:**
-- MessageHandler (ISocketHandler) — слушает "message:read" → вызывает markAsRead
-- MessageListener (ISocketEventListener) — подписывается на все message events → emit в chat room и user rooms
-
-**Validation:**
-- SendMessageSchema: type (EMessageType, default TEXT), content (max 4000, optional), replyToId (uuid, optional), forwardedFromId (uuid, optional), fileIds (uuid[] max 10, optional). Refine: content или fileIds обязателен
-- EditMessageSchema: content (1-4000)
-- MarkReadSchema: messageId (uuid)
-
----
-
-## Push Module (`src/modules/push/`)
-
-**Entity DeviceToken:** id, userId, token (varchar 512, unique), platform (EDevicePlatform), deviceName (varchar 100, nullable), createdAt, updatedAt
-- Relations: user (ManyToOne → User, CASCADE)
-- Indexes: (userId), unique(token)
-
-**Entity NotificationSettings:** id, userId (unique), muteAll (boolean, default false), soundEnabled (boolean, default true), showPreview (boolean, default true)
-- Relations: user (OneToOne → User, CASCADE)
-- Index: unique(userId)
-
-**EDevicePlatform:** `IOS`, `ANDROID`, `WEB`
-
-**Endpoints (все @Security("jwt")):**
-
-DeviceController (@Route("api/device")):
-- `POST /api/device` — зарегистрировать устройство, ValidateBody(RegisterDeviceSchema)
-- `DELETE /api/device/{token}` — удалить устройство
-
-NotificationSettingsController (@Route("api/notification")):
-- `GET /api/notification/settings` — получить настройки уведомлений
-- `PATCH /api/notification/settings` — обновить настройки, ValidateBody(UpdateNotificationSettingsSchema)
-
-**PushService:** Firebase Admin SDK (FCM). Инициализация из config.firebase.serviceAccountPath. sendToUser/sendToUsers — проверяет muteAll, отправляет multicast, удаляет невалидные токены. Graceful degradation — если Firebase не настроен, push отключён.
-
-**DeviceTokenService:** registerToken (upsert по token), unregisterToken, getTokensForUser.
-
-**NotificationSettingsService:** getSettings (auto-create default), updateSettings (upsert).
-
-**Socket:** PushListener — подписывается на MessageCreatedEvent → push уведомление участникам чата (кроме отправителя).
-
-**Validation:**
-- RegisterDeviceSchema: token (1-512), platform (EDevicePlatform), deviceName (max 100, optional)
-- UpdateNotificationSettingsSchema: muteAll (boolean, optional), soundEnabled (boolean, optional), showPreview (boolean, optional)
-
----
-
-## Mailer Module (`src/modules/mailer/`)
-
-**Нет entity/controller.** Nodemailer с Gmail SMTP.
-
-**MailerService:** sendCodeMail(email, code) — EJS template; sendResetPasswordMail(email, token) — EJS template с URL из config.
-
----
-
-## Reset-Password-Tokens Module (`src/modules/reset-password-tokens/`)
-
-**Entity ResetPasswordTokens:** userId (PK), token (JWT, unique index)
-
-**Service:** create(userId) → JWT с expiry из config, upsert; check(token) → verify JWT + find in DB + delete.
-
----
-
-## Socket Module (`src/modules/socket/`)
-
-**Нет entity.** Инфраструктурный модуль.
-
-**Сервисы:**
-- `SocketServerService` — обёртка над Socket.IO Server
-- `SocketAuthMiddleware` — JWT из handshake.auth.token → TokenService.verify()
-- `SocketClientRegistry` — Map<userId, Set<socket>>, isOnline(userId)
-- `SocketEmitterService` — toUser(userId, event, args), toRoom(room, event, args), broadcast(event, args)
-
-**Socket Types:**
-
-Client → Server (ISocketEvents):
-- `"profile:subscribe"` — подписка на обновления профиля
-- `"chat:join"` — присоединиться к комнате чата `{ chatId }`
-- `"chat:leave"` — покинуть комнату чата `{ chatId }`
-- `"chat:typing"` — индикатор набора текста `{ chatId }`
-- `"message:read"` — отметить сообщения прочитанными `{ chatId, messageId }`
-
-Server → Client (ISocketEmitEvents):
-- `"authenticated"` — успешная аутентификация
-- `"auth_error"` — ошибка аутентификации
-- `"profile:updated"` — обновление профиля (PublicProfileDto)
-- `"message:new"` — новое сообщение
-- `"message:updated"` — сообщение отредактировано
-- `"message:deleted"` — сообщение удалено `{ messageId, chatId }`
-- `"chat:created"` — новый чат
-- `"chat:updated"` — чат обновлён
-- `"chat:typing"` — кто-то набирает текст `{ chatId, userId }`
-- `"chat:unread"` — обновление непрочитанных `{ chatId, unreadCount }`
-- `"chat:member:joined"` — участник добавлен
-- `"chat:member:left"` — участник удалён
-- `"contact:request"` — запрос на добавление в контакты
-- `"contact:accepted"` — контакт принят
-
-**SocketBootstrap:** auth middleware → on("connection") → register socket + join user room → call all ISocketHandler.onConnection() → on("disconnect") → unregister. Затем register all ISocketEventListener.
-
-**Interfaces для расширения:**
-- `ISocketHandler` / `SOCKET_HANDLER` — входящие события (onConnection)
-- `ISocketEventListener` / `SOCKET_EVENT_LISTENER` — EventBus → socket emit (register)
-- Helpers: `asSocketHandler(cls)`, `asSocketListener(cls)` для удобной регистрации в @Module
+**Entity:** userId(PK), token(JWT unique)
+**Internal.** create(userId) → JWT, check(token) → verify + delete

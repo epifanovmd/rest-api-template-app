@@ -1,0 +1,7 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "commonjs",
+    "types": ["reflect-metadata", "mocha", "chai", "sinon", "node"]
+  }
+}
