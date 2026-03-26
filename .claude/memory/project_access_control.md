@@ -25,9 +25,24 @@ ADMIN — superadmin bypass: проходит все permission-проверки
 ## Permissions (EPermissions)
 
 ```
-ALL = "*"                  — superadmin, полный доступ
-USER_VIEW = "user:view"    — просмотр пользователей и профилей
-USER_MANAGE = "user:manage" — создание, редактирование, блокировка, назначение ролей
+ALL = "*"                      — superadmin, полный доступ
+
+USER_VIEW = "user:view"        — просмотр пользователей и профилей
+USER_MANAGE = "user:manage"    — создание, редактирование, блокировка, назначение ролей
+
+CONTACT_VIEW = "contact:view"
+CONTACT_MANAGE = "contact:manage"
+CONTACT_ALL = "contact:*"
+
+CHAT_VIEW = "chat:view"
+CHAT_MANAGE = "chat:manage"
+CHAT_ALL = "chat:*"
+
+MESSAGE_VIEW = "message:view"
+MESSAGE_MANAGE = "message:manage"
+MESSAGE_ALL = "message:*"
+
+PUSH_MANAGE = "push:manage"
 ```
 
 При добавлении нового домена — добавлять в enum с иерархией `domain:action`, wildcard `domain:*`.
@@ -72,11 +87,13 @@ USER_MANAGE = "user:manage" — создание, редактирование, 
 
 | Scope | Где используется |
 |---|---|
-| `@Security("jwt")` | Все "my" эндпоинты (user/my, profile/my), changePassword, file CRUD |
+| `@Security("jwt")` | Все "my" эндпоинты (user/my, profile/my), changePassword, file CRUD, все chat/contact/message/push endpoints, biometric endpoints |
 | `@Security("jwt", ["permission:user:view"])` | GET user/all, user/options, user/{id} |
 | `@Security("jwt", ["permission:user:manage"])` | setPrivileges, update/delete other user, roles list |
 | `@Security("jwt", ["role:admin"])` | profile/all, profile update/delete other, role permissions set |
 | Без @Security | auth sign-up/sign-in, passkeys auth endpoints |
+
+**Примечание:** Chat/Contact/Message/Push модули используют `@Security("jwt")` без permission scopes — авторизация на уровне бизнес-логики (membership checks в сервисах).
 
 ## AuthContext в контроллерах
 

@@ -43,7 +43,7 @@ src/modules/feature/
 
 ## User Module (`src/modules/user/`)
 
-**Entity User:** id, email (unique w/ phone), emailVerified, phone, passwordHash (bcrypt), challenge (WebAuthn)
+**Entity User:** id, email (unique w/ phone), emailVerified, phone, passwordHash (bcrypt), challenge (WebAuthn), challengeExpiresAt, createdAt, updatedAt
 - Relations: roles (ManyToMany eager), directPermissions (ManyToMany eager), profile (OneToOne cascade eager), biometrics/otps/passkeys/resetPasswordTokens (OneToMany cascade)
 
 **Endpoints:**
@@ -110,6 +110,14 @@ src/modules/feature/
 
 **Entity Permission:** id, name (EPermissions enum, unique), roles (ManyToMany ← Role)
 
+**EPermissions enum:**
+- `ALL = "*"` — superadmin
+- `USER_VIEW = "user:view"`, `USER_MANAGE = "user:manage"`
+- `CONTACT_VIEW = "contact:view"`, `CONTACT_MANAGE = "contact:manage"`, `CONTACT_ALL = "contact:*"`
+- `CHAT_VIEW = "chat:view"`, `CHAT_MANAGE = "chat:manage"`, `CHAT_ALL = "chat:*"`
+- `MESSAGE_VIEW = "message:view"`, `MESSAGE_MANAGE = "message:manage"`, `MESSAGE_ALL = "message:*"`
+- `PUSH_MANAGE = "push:manage"`
+
 **Нет контроллера** — управление через RoleController и UserController.setPrivileges.
 
 ---
@@ -126,14 +134,16 @@ src/modules/feature/
 
 ## Biometric Module (`src/modules/biometric/`)
 
-**Entity Biometric:** id, userId, deviceId (unique with userId), publicKey (text), deviceName, lastUsedAt
+**Entity Biometric:** id, userId, deviceId (unique with userId), publicKey (text), deviceName, challenge (nullable), challengeExpiresAt (nullable), lastUsedAt, createdAt, updatedAt
 
-**Endpoints (все публичные):**
-- `POST /api/biometric/register` — регистрация ключа
-- `POST /api/biometric/generate-nonce` — генерация challenge (32 bytes random)
+**Endpoints (все @Security("jwt")):**
+- `POST /api/biometric/register` — регистрация ключа (upsert по userId+deviceId, макс 5 устройств)
+- `POST /api/biometric/generate-nonce` — генерация challenge (32 bytes random, TTL 5 мин), сохраняется в Biometric entity
 - `POST /api/biometric/verify-signature` — верификация crypto signature → tokens
+- `GET /api/biometric/devices` — список зарегистрированных устройств
+- `DELETE /api/biometric/{deviceId}` — удалить устройство
 
-**BiometricService:** Node.js crypto.createVerify SHA256, PEM key conversion, challenge-response flow.
+**BiometricService:** Node.js crypto.createVerify SHA256, PEM key conversion, challenge хранится в Biometric entity (не в User).
 
 ---
 
@@ -164,6 +174,160 @@ src/modules/feature/
 
 ---
 
+## Contact Module (`src/modules/contact/`)
+
+**Entity Contact:** id, userId, contactUserId, displayName (varchar 80, nullable), status (EContactStatus enum), createdAt, updatedAt
+- Indexes: unique(userId, contactUserId), (contactUserId, userId)
+- Relations: user (ManyToOne → User, CASCADE), contactUser (ManyToOne → User, CASCADE)
+
+**EContactStatus:** `PENDING`, `ACCEPTED`, `BLOCKED`
+
+**Endpoints (все @Security("jwt")):**
+- `POST /api/contact` — добавить контакт, ValidateBody(CreateContactSchema)
+- `GET /api/contact` — список контактов, query: status (optional filter)
+- `PATCH /api/contact/{id}/accept` — принять запрос
+- `DELETE /api/contact/{id}` — удалить контакт (обе стороны)
+- `POST /api/contact/{id}/block` — заблокировать контакт
+
+**ContactService:** Двусторонняя модель: при addContact создаётся 2 записи — инициатор (ACCEPTED) + получатель (PENDING). acceptContact меняет статус. removeContact удаляет обе стороны. blockContact меняет статус на BLOCKED.
+
+**Events:** ContactRequestEvent (→ contact:request), ContactAcceptedEvent (→ contact:accepted)
+
+**Socket:** ContactListener — подписывается на ContactRequestEvent и ContactAcceptedEvent, emit в user room.
+
+**Validation:**
+- CreateContactSchema: contactUserId (uuid), displayName (max 80, optional)
+
+---
+
+## Chat Module (`src/modules/chat/`)
+
+**Entity Chat:** id, type (EChatType), name (varchar 100, nullable), avatarId (nullable → File), createdById (→ User), lastMessageAt (nullable), createdAt, updatedAt
+- Relations: avatar (ManyToOne → File, SET NULL), createdBy (ManyToOne → User, SET NULL), members (OneToMany → ChatMember, cascade)
+- Index: lastMessageAt
+
+**Entity ChatMember:** id, chatId, userId, role (EChatMemberRole), joinedAt, mutedUntil (nullable), lastReadMessageId (nullable)
+- Indexes: unique(chatId, userId), (userId)
+- Relations: chat (ManyToOne → Chat, CASCADE), user (ManyToOne → User, CASCADE)
+
+**EChatType:** `DIRECT`, `GROUP`
+**EChatMemberRole:** `OWNER`, `ADMIN`, `MEMBER`
+
+**Endpoints (все @Security("jwt")):**
+- `POST /api/chat/direct` — создать/получить личный чат, ValidateBody(CreateDirectChatSchema)
+- `POST /api/chat/group` — создать групповой чат, ValidateBody(CreateGroupChatSchema)
+- `GET /api/chat` — список чатов текущего пользователя, query: offset, limit
+- `GET /api/chat/{id}` — получить чат по ID
+- `PATCH /api/chat/{id}` — обновить групповой чат (название, аватар), ValidateBody(UpdateChatSchema)
+- `DELETE /api/chat/{id}` — покинуть чат
+- `POST /api/chat/{id}/members` — добавить участников, ValidateBody(AddMembersSchema)
+- `DELETE /api/chat/{id}/members/{userId}` — удалить участника
+- `PATCH /api/chat/{id}/members/{userId}` — изменить роль участника, ValidateBody(UpdateMemberRoleSchema)
+
+**ChatService:**
+- createDirectChat: проверка на дубликат, создаёт chat + 2 member записи
+- createGroupChat: создатель = OWNER, остальные = MEMBER
+- updateChat: только GROUP, только ADMIN/OWNER
+- leaveChat: OWNER не может уйти пока есть другие участники (должен передать права)
+- addMembers/removeMember: только ADMIN/OWNER, нельзя удалить OWNER
+- updateMemberRole: только OWNER
+- isMember, getMemberUserIds — helper методы для MessageService
+
+**Events:** ChatCreatedEvent, ChatUpdatedEvent, ChatMemberJoinedEvent, ChatMemberLeftEvent
+
+**Socket:**
+- ChatHandler (ISocketHandler) — слушает "chat:join" (join room `chat:{chatId}`), "chat:leave", "chat:typing" (emit typing в room)
+- ChatListener (ISocketEventListener) — подписывается на ChatCreatedEvent, ChatUpdatedEvent, ChatMemberJoinedEvent, ChatMemberLeftEvent → emit в user rooms
+
+**Validation:**
+- CreateDirectChatSchema: targetUserId (uuid)
+- CreateGroupChatSchema: name (1-100), memberIds (uuid[] min 1), avatarId (uuid, optional)
+- UpdateChatSchema: name (1-100, optional), avatarId (uuid, nullable, optional)
+- AddMembersSchema: memberIds (uuid[] min 1)
+- UpdateMemberRoleSchema: role (EChatMemberRole)
+
+---
+
+## Message Module (`src/modules/message/`)
+
+**Entity Message:** id, chatId (→ Chat), senderId (→ User), type (EMessageType), content (text, nullable), replyToId (→ Message, nullable), forwardedFromId (→ Message, nullable), isEdited (boolean), isDeleted (boolean), createdAt, updatedAt
+- Relations: chat (ManyToOne → Chat, CASCADE), sender (ManyToOne → User, SET NULL), replyTo/forwardedFrom (ManyToOne → Message, SET NULL), attachments (OneToMany → MessageAttachment, cascade, eager)
+- Indexes: (chatId, createdAt), (senderId)
+
+**Entity MessageAttachment:** id, messageId, fileId, createdAt
+- Relations: message (ManyToOne → Message, CASCADE), file (ManyToOne → File, CASCADE, eager)
+- Index: (messageId)
+
+**EMessageType:** `TEXT`, `IMAGE`, `FILE`, `VOICE`, `SYSTEM`
+
+**Endpoints (все @Security("jwt")):**
+
+ChatMessageController (@Route("api/chat")):
+- `POST /api/chat/{chatId}/message` — отправить сообщение, ValidateBody(SendMessageSchema)
+- `GET /api/chat/{chatId}/message` — список сообщений (cursor-based), query: before, limit
+- `POST /api/chat/{chatId}/message/read` — отметить прочитанным, ValidateBody(MarkReadSchema)
+
+MessageController (@Route("api/message")):
+- `PATCH /api/message/{id}` — редактировать сообщение, ValidateBody(EditMessageSchema)
+- `DELETE /api/message/{id}` — удалить сообщение (soft delete)
+
+**MessageService:**
+- sendMessage: проверка membership, создание в транзакции (message + attachments + updateLastMessageAt)
+- getMessages: cursor-based пагинация (before messageId), default limit 50
+- editMessage: только автор, isEdited=true
+- deleteMessage: автор или ADMIN/OWNER чата, soft delete (isDeleted=true, content=null)
+- markAsRead: обновляет lastReadMessageId в ChatMember
+- getUnreadCount: подсчёт непрочитанных по lastReadMessageId
+
+**Events:** MessageCreatedEvent (chatId, memberUserIds), MessageUpdatedEvent (chatId), MessageDeletedEvent (messageId, chatId), MessageReadEvent (chatId, userId, messageId)
+
+**Socket:**
+- MessageHandler (ISocketHandler) — слушает "message:read" → вызывает markAsRead
+- MessageListener (ISocketEventListener) — подписывается на все message events → emit в chat room и user rooms
+
+**Validation:**
+- SendMessageSchema: type (EMessageType, default TEXT), content (max 4000, optional), replyToId (uuid, optional), forwardedFromId (uuid, optional), fileIds (uuid[] max 10, optional). Refine: content или fileIds обязателен
+- EditMessageSchema: content (1-4000)
+- MarkReadSchema: messageId (uuid)
+
+---
+
+## Push Module (`src/modules/push/`)
+
+**Entity DeviceToken:** id, userId, token (varchar 512, unique), platform (EDevicePlatform), deviceName (varchar 100, nullable), createdAt, updatedAt
+- Relations: user (ManyToOne → User, CASCADE)
+- Indexes: (userId), unique(token)
+
+**Entity NotificationSettings:** id, userId (unique), muteAll (boolean, default false), soundEnabled (boolean, default true), showPreview (boolean, default true)
+- Relations: user (OneToOne → User, CASCADE)
+- Index: unique(userId)
+
+**EDevicePlatform:** `IOS`, `ANDROID`, `WEB`
+
+**Endpoints (все @Security("jwt")):**
+
+DeviceController (@Route("api/device")):
+- `POST /api/device` — зарегистрировать устройство, ValidateBody(RegisterDeviceSchema)
+- `DELETE /api/device/{token}` — удалить устройство
+
+NotificationSettingsController (@Route("api/notification")):
+- `GET /api/notification/settings` — получить настройки уведомлений
+- `PATCH /api/notification/settings` — обновить настройки, ValidateBody(UpdateNotificationSettingsSchema)
+
+**PushService:** Firebase Admin SDK (FCM). Инициализация из config.firebase.serviceAccountPath. sendToUser/sendToUsers — проверяет muteAll, отправляет multicast, удаляет невалидные токены. Graceful degradation — если Firebase не настроен, push отключён.
+
+**DeviceTokenService:** registerToken (upsert по token), unregisterToken, getTokensForUser.
+
+**NotificationSettingsService:** getSettings (auto-create default), updateSettings (upsert).
+
+**Socket:** PushListener — подписывается на MessageCreatedEvent → push уведомление участникам чата (кроме отправителя).
+
+**Validation:**
+- RegisterDeviceSchema: token (1-512), platform (EDevicePlatform), deviceName (max 100, optional)
+- UpdateNotificationSettingsSchema: muteAll (boolean, optional), soundEnabled (boolean, optional), showPreview (boolean, optional)
+
+---
+
 ## Mailer Module (`src/modules/mailer/`)
 
 **Нет entity/controller.** Nodemailer с Gmail SMTP.
@@ -191,8 +355,29 @@ src/modules/feature/
 - `SocketEmitterService` — toUser(userId, event, args), toRoom(room, event, args), broadcast(event, args)
 
 **Socket Types:**
-- Client → Server: `"profile:subscribe"`
-- Server → Client: `"authenticated"`, `"auth_error"`, `"profile:updated"`
+
+Client → Server (ISocketEvents):
+- `"profile:subscribe"` — подписка на обновления профиля
+- `"chat:join"` — присоединиться к комнате чата `{ chatId }`
+- `"chat:leave"` — покинуть комнату чата `{ chatId }`
+- `"chat:typing"` — индикатор набора текста `{ chatId }`
+- `"message:read"` — отметить сообщения прочитанными `{ chatId, messageId }`
+
+Server → Client (ISocketEmitEvents):
+- `"authenticated"` — успешная аутентификация
+- `"auth_error"` — ошибка аутентификации
+- `"profile:updated"` — обновление профиля (PublicProfileDto)
+- `"message:new"` — новое сообщение
+- `"message:updated"` — сообщение отредактировано
+- `"message:deleted"` — сообщение удалено `{ messageId, chatId }`
+- `"chat:created"` — новый чат
+- `"chat:updated"` — чат обновлён
+- `"chat:typing"` — кто-то набирает текст `{ chatId, userId }`
+- `"chat:unread"` — обновление непрочитанных `{ chatId, unreadCount }`
+- `"chat:member:joined"` — участник добавлен
+- `"chat:member:left"` — участник удалён
+- `"contact:request"` — запрос на добавление в контакты
+- `"contact:accepted"` — контакт принят
 
 **SocketBootstrap:** auth middleware → on("connection") → register socket + join user room → call all ISocketHandler.onConnection() → on("disconnect") → unregister. Затем register all ISocketEventListener.
 

@@ -39,17 +39,30 @@ ModuleLoader обходит дерево depth-first с дедупликацие
 ```typescript
 @Module({
   imports: [
-    CoreModule,                  // EventBus, LoggerService, TokenService
-    MailerModule,                // MailerService (SMTP)
-    OtpModule,                   // OtpService
-    ResetPasswordTokensModule,   // ResetPasswordTokensService
-    UserModule,                  // + AdminBootstrap (seed admin + permissions)
-    ProfileModule,               // + ProfileHandler, ProfileListener (socket)
+    // Инфраструктура
+    CoreModule,
+
+    // Вспомогательные модули
+    MailerModule,
+    OtpModule,
+    ResetPasswordTokensModule,
+
+    // Модули пользователей / аутентификации
+    UserModule,
+    ProfileModule,
     FileModule,
     AuthModule,
     BiometricModule,
     PasskeysModule,
-    SocketModule,                // ПОСЛЕДНИЙ — SocketBootstrap нужны все bindings
+
+    // Мессенджер
+    ContactModule,
+    ChatModule,
+    MessageModule,
+    PushModule,
+
+    // Socket — последним
+    SocketModule,
   ],
 })
 ```
@@ -148,8 +161,9 @@ Zod-validated, reads from `.env.{NODE_ENV}` или `.env`:
 | `auth.otp` | expireMinutes |
 | `auth.resetPassword` | expireMinutes, webUrl (template с `{{token}}`) |
 | `auth.webAuthn` | rpName, rpHost, rpSchema, rpPort |
-| `database.postgres` | host, port, database, username, password, dataPath |
+| `database.postgres` | host, port, database, username, password, ssl, poolMax, dataPath |
 | `email.smtp` | user, pass |
+| `firebase` | serviceAccountPath |
 
 ## Build
 
