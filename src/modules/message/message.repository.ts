@@ -37,7 +37,7 @@ export class MessageRepository extends BaseRepository<Message> {
     if (before) {
       const cursorMessage = await this.findOne({
         where: { id: before },
-        select: ["createdAt"],
+        select: ["id", "createdAt"],
       });
 
       if (cursorMessage) {

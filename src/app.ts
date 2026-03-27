@@ -48,7 +48,9 @@ export class App {
     });
 
     if (TypeOrmDataSource.isInitialized) {
+      logger.info("Closing database connection...");
       await TypeOrmDataSource.destroy();
+      logger.info("Database connection closed");
     }
   }
 
@@ -110,9 +112,21 @@ export class App {
     retries = 3,
     delayMs = 2000,
   ): Promise<void> {
+    const { host: dbHost, port: dbPort, database } = config.database.postgres;
+
     for (let attempt = 1; attempt <= retries; attempt += 1) {
       try {
+        logger.info(
+          { attempt, retries, db: `${dbHost}:${dbPort}/${database}` },
+          "Connecting to database...",
+        );
+
         await TypeOrmDataSource.initialize();
+
+        logger.info(
+          { db: `${dbHost}:${dbPort}/${database}` },
+          "Database connection established",
+        );
 
         return;
       } catch (error) {
@@ -125,6 +139,10 @@ export class App {
           throw error;
         }
 
+        logger.info(
+          { delayMs, nextAttempt: attempt + 1 },
+          "Retrying database connection...",
+        );
         await new Promise(resolve => setTimeout(resolve, delayMs));
       }
     }
