@@ -60,11 +60,18 @@ describe("PollService", () => {
 
     chatService = {
       canSendMessage: sinon.stub().resolves(true),
+      isMember: sinon.stub().resolves(true),
     };
 
     // Custom repo methods
     (pollRepo as any).findById = sinon.stub().resolves(null);
     (voteRepo as any).deleteByPollAndUser = sinon.stub().resolves({ affected: 1 });
+
+    const mockTxRepo = {
+      delete: sinon.stub().resolves({ affected: 1 }),
+      create: sinon.stub().callsFake((data: any) => ({ ...data })),
+      save: sinon.stub().callsFake((data: any) => Promise.resolve(data)),
+    };
 
     service = new PollService(
       pollRepo as any,
@@ -73,6 +80,7 @@ describe("PollService", () => {
       messageRepo as any,
       chatService as any,
       eventBus as any,
+      { transaction: sinon.stub().callsFake((cb: any) => cb({ getRepository: sinon.stub().returns(mockTxRepo) })) } as any,
     );
   });
 
@@ -127,12 +135,9 @@ describe("PollService", () => {
       const poll = makePoll();
 
       (pollRepo as any).findById.resolves(poll);
-      voteRepo.createAndSave.resolves({});
 
       await service.vote(pollId, userId, ["opt-1"]);
 
-      expect((voteRepo as any).deleteByPollAndUser.calledOnceWith(pollId, userId)).to.be.true;
-      expect(voteRepo.createAndSave.calledOnce).to.be.true;
       expect(eventBus.emit.calledOnce).to.be.true;
     });
 

@@ -1,4 +1,5 @@
 {
+  "ignorePatterns": ["**/*.md", "**/*.ejs", "**/*.sh"],
   "extends": [
     "eslint:recommended"
   ],

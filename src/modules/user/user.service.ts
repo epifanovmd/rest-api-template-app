@@ -5,13 +5,14 @@ import {
 } from "@force-dev/utils";
 import bcrypt from "bcrypt";
 import { inject } from "inversify";
-import { FindOptionsRelations, FindOptionsWhere, ILike } from "typeorm";
+import { DataSource, FindOptionsRelations, FindOptionsWhere, ILike } from "typeorm";
 
 import { ApiResponseDto, Injectable } from "../../core";
 import { MailerService } from "../mailer";
 import { OtpService } from "../otp";
 import { PermissionRepository } from "../permission";
 import { ProfileRepository } from "../profile";
+import { Profile } from "../profile/profile.entity";
 import { EProfileStatus } from "../profile/profile.types";
 import { RoleRepository } from "../role";
 import { ERole } from "../role/role.types";
@@ -34,6 +35,7 @@ export class UserService {
     @inject(PermissionRepository)
     private permissionRepository: PermissionRepository,
     @inject(ProfileRepository) private _profileRepository: ProfileRepository,
+    @inject(DataSource) private _dataSource: DataSource,
   ) {}
 
   /** Получить список пользователей с пагинацией и опциональной фильтрацией по email. */
@@ -82,14 +84,24 @@ export class UserService {
 
   /** Создать нового пользователя, его профиль и назначить роль USER по умолчанию. */
   async createUser(body: Partial<User>) {
-    const user = await this._userRepository.createAndSave({ ...body });
+    const userId = await this._dataSource.transaction(async manager => {
+      const userRepo = manager.getRepository(User);
+      const profileRepo = manager.getRepository(Profile);
 
-    await this._profileRepository.createAndSave({
-      userId: user.id,
-      status: EProfileStatus.Offline,
+      const user = userRepo.create({ ...body });
+      const savedUser = await userRepo.save(user);
+
+      const profile = profileRepo.create({
+        userId: savedUser.id,
+        status: EProfileStatus.Offline,
+      });
+
+      await profileRepo.save(profile);
+
+      return savedUser.id;
     });
 
-    return this.setPrivileges(user.id, {
+    return this.setPrivileges(userId, {
       roles: [ERole.USER],
       permissions: [],
     });
@@ -98,8 +110,8 @@ export class UserService {
   /** Создать нового пользователя с ролью ADMIN; выбрасывает ConflictException если уже существует. */
   async createAdmin(body: Partial<User>) {
     const existingUser = await this._userRepository.findByEmailOrPhone(
-      body.email,
-      body.phone,
+      body.email ?? undefined,
+      body.phone ?? undefined,
     );
 
     if (existingUser) {

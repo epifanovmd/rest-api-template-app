@@ -32,8 +32,8 @@ export interface IVerifyBiometricSignatureResponseDto {
 export interface IBiometricDeviceDto {
   id: string;
   deviceId: string;
-  deviceName: string;
-  lastUsedAt: Date;
+  deviceName: string | null;
+  lastUsedAt: Date | null;
   createdAt: Date;
 }
 

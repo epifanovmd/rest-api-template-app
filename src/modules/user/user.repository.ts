@@ -43,8 +43,8 @@ export class UserRepository extends BaseRepository<User> {
 
   /** Найти пользователя по email или телефону; возвращает null, если ни один параметр не передан. */
   async findByEmailOrPhone(
-    email?: string,
-    phone?: string,
+    email?: string | null,
+    phone?: string | null,
     relations?: FindOptionsRelations<User>,
   ) {
     const where: FindOptionsWhere<User>[] = [];

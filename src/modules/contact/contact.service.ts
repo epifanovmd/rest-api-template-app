@@ -5,8 +5,10 @@ import {
   NotFoundException,
 } from "@force-dev/utils";
 import { inject } from "inversify";
+import { DataSource } from "typeorm";
 
 import { EventBus, Injectable } from "../../core";
+import { Contact } from "./contact.entity";
 import { ContactRepository } from "./contact.repository";
 import { EContactStatus } from "./contact.types";
 import { ContactDto } from "./dto";
@@ -17,6 +19,7 @@ export class ContactService {
   constructor(
     @inject(ContactRepository) private _contactRepo: ContactRepository,
     @inject(EventBus) private _eventBus: EventBus,
+    @inject(DataSource) private _dataSource: DataSource,
   ) {}
 
   async addContact(
@@ -40,22 +43,34 @@ export class ContactService {
       throw new ConflictException("Контакт уже существует");
     }
 
-    // Создаём запись для инициатора (accepted) и для получателя (pending)
-    const initiatorContact = await this._contactRepo.createAndSave({
-      userId,
-      contactUserId,
-      displayName: displayName ?? null,
-      status: EContactStatus.ACCEPTED,
-    });
+    // Создаём запись для инициатора (accepted) и для получателя (pending) в транзакции
+    const initiatorContactId = await this._dataSource.transaction(
+      async manager => {
+        const contactRepo = manager.getRepository(Contact);
 
-    await this._contactRepo.createAndSave({
-      userId: contactUserId,
-      contactUserId: userId,
-      displayName: null,
-      status: EContactStatus.PENDING,
-    });
+        const initiatorContact = contactRepo.create({
+          userId,
+          contactUserId,
+          displayName: displayName ?? null,
+          status: EContactStatus.ACCEPTED,
+        });
 
-    const contact = await this._contactRepo.findById(initiatorContact.id);
+        const saved = await contactRepo.save(initiatorContact);
+
+        const recipientContact = contactRepo.create({
+          userId: contactUserId,
+          contactUserId: userId,
+          displayName: null,
+          status: EContactStatus.PENDING,
+        });
+
+        await contactRepo.save(recipientContact);
+
+        return saved.id;
+      },
+    );
+
+    const contact = await this._contactRepo.findById(initiatorContactId);
     const dto = ContactDto.fromEntity(contact!);
 
     this._eventBus.emit(new ContactRequestEvent(dto, contactUserId));
@@ -93,14 +108,18 @@ export class ContactService {
       throw new NotFoundException("Контакт не найден");
     }
 
-    // Удаляем обе стороны связи
-    await this._contactRepo.delete({
-      userId,
-      contactUserId: contact.contactUserId,
-    });
-    await this._contactRepo.delete({
-      userId: contact.contactUserId,
-      contactUserId: userId,
+    // Удаляем обе стороны связи в транзакции
+    await this._dataSource.transaction(async manager => {
+      const contactRepo = manager.getRepository(Contact);
+
+      await contactRepo.delete({
+        userId,
+        contactUserId: contact.contactUserId,
+      });
+      await contactRepo.delete({
+        userId: contact.contactUserId,
+        contactUserId: userId,
+      });
     });
 
     return contactId;

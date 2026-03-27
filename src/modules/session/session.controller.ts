@@ -1,5 +1,6 @@
 import { inject } from "inversify";
 import {
+  Body,
   Controller,
   Delete,
   Get,
@@ -61,18 +62,13 @@ export class SessionController extends Controller {
   @Post("terminate-others")
   async terminateOtherSessions(
     @Request() req: KoaRequest,
+    @Body() body: { currentSessionId: string },
   ): Promise<void> {
     const user = getContextUser(req);
 
-    // Use userId as fallback session identifier
-    // In a real implementation, the current session ID would come from the token
-    const sessions = await this._sessionService.getSessions(user.userId);
-
-    if (sessions.length > 0) {
-      await this._sessionService.terminateAllOther(
-        user.userId,
-        sessions[0].id,
-      );
-    }
+    await this._sessionService.terminateAllOther(
+      user.userId,
+      body.currentSessionId,
+    );
   }
 }

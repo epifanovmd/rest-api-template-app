@@ -8,6 +8,7 @@ import { inject } from "inversify";
 import { EventBus, Injectable, logger } from "../../core";
 import { ChatRepository } from "../chat/chat.repository";
 import { ChatService } from "../chat/chat.service";
+import { EChatMemberRole } from "../chat/chat.types";
 import { ChatMemberRepository } from "../chat/chat-member.repository";
 import { LinkPreviewService } from "../link-preview/link-preview.service";
 import { IMediaStatsDto, MediaItemDto, MessageDto } from "./dto";
@@ -228,7 +229,7 @@ export class MessageService {
         userId,
       );
 
-      if (!membership || membership.role === "member") {
+      if (!membership || membership.role === EChatMemberRole.MEMBER) {
         throw new ForbiddenException(
           "Недостаточно прав для удаления сообщения",
         );
@@ -260,7 +261,8 @@ export class MessageService {
 
     if (
       !membership ||
-      (membership.role !== "admin" && membership.role !== "owner")
+      (membership.role !== EChatMemberRole.ADMIN &&
+        membership.role !== EChatMemberRole.OWNER)
     ) {
       throw new ForbiddenException("Недостаточно прав для закрепления");
     }
@@ -293,7 +295,8 @@ export class MessageService {
 
     if (
       !membership ||
-      (membership.role !== "admin" && membership.role !== "owner")
+      (membership.role !== EChatMemberRole.ADMIN &&
+        membership.role !== EChatMemberRole.OWNER)
     ) {
       throw new ForbiddenException("Недостаточно прав для открепления");
     }

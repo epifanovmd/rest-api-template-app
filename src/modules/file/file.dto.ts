@@ -4,6 +4,9 @@ export interface IFileDto {
   type: string;
   url: string;
   size: number;
+  thumbnailUrl: string | null;
+  width: number | null;
+  height: number | null;
   createdAt: Date;
   updatedAt: Date;
 }

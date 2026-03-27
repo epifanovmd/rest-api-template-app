@@ -4,7 +4,7 @@ import {
   Entity,
   Index,
   JoinColumn,
-  ManyToOne,
+  OneToOne,
   PrimaryColumn,
   UpdateDateColumn,
 } from "typeorm";
@@ -29,7 +29,7 @@ export class ResetPasswordTokens {
   updatedAt: Date;
 
   // Связи
-  @ManyToOne(() => User, user => user.resetPasswordTokens, {
+  @OneToOne(() => User, user => user.resetPasswordTokens, {
     onDelete: "CASCADE",
   })
   @JoinColumn({ name: "user_id" })

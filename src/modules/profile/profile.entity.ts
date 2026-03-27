@@ -26,18 +26,18 @@ export class Profile {
   userId: string;
 
   @Column({ name: "first_name", type: "varchar", length: 40, nullable: true })
-  firstName: string;
+  firstName: string | null;
 
   @Column({ name: "last_name", type: "varchar", length: 40, nullable: true })
-  lastName: string;
+  lastName: string | null;
 
   // Дата рождения пользователя
-  @Column({ name: "birth_date", type: "timestamp", nullable: true })
-  birthDate: Date;
+  @Column({ name: "birth_date", type: "date", nullable: true })
+  birthDate: Date | null;
 
   // Пол пользователя в свободной форме
   @Column({ type: "varchar", length: 20, nullable: true })
-  gender: string;
+  gender: string | null;
 
   // Текущий статус присутствия (online/offline)
   @Column({
@@ -50,7 +50,7 @@ export class Profile {
 
   // Время последнего онлайна пользователя
   @Column({ name: "last_online", type: "timestamp", nullable: true })
-  lastOnline: Date;
+  lastOnline: Date | null;
 
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;

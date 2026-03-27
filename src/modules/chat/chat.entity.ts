@@ -31,8 +31,8 @@ export class Chat {
   @Column({ name: "avatar_id", type: "uuid", nullable: true })
   avatarId: string | null;
 
-  @Column({ name: "created_by_id", type: "uuid" })
-  createdById: string;
+  @Column({ name: "created_by_id", type: "uuid", nullable: true })
+  createdById: string | null;
 
   @Column({ type: "varchar", length: 500, nullable: true })
   description: string | null;
@@ -63,9 +63,9 @@ export class Chat {
   @JoinColumn({ name: "avatar_id" })
   avatar: File | null;
 
-  @ManyToOne(() => User, { onDelete: "SET NULL" })
+  @ManyToOne(() => User, { onDelete: "SET NULL", nullable: true })
   @JoinColumn({ name: "created_by_id" })
-  createdBy: User;
+  createdBy: User | null;
 
   @OneToMany(() => ChatMember, member => member.chat, { cascade: true })
   members: ChatMember[];

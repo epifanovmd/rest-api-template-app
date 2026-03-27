@@ -6,14 +6,14 @@ export class MediaItemDto extends BaseDto {
   id: string;
   messageId: string;
   chatId: string;
-  senderId: string;
+  senderId: string | null;
   attachments: MessageAttachmentDto[];
   createdAt: Date;
   sender?: {
     id: string;
-    firstName?: string;
-    lastName?: string;
-    avatarUrl?: string;
+    firstName?: string | null;
+    lastName?: string | null;
+    avatarUrl?: string | null;
   };
 
   constructor(entity: Message) {

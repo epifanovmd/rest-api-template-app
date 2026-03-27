@@ -1,9 +1,10 @@
-import { inject, injectable } from "inversify";
+import { inject } from "inversify";
 import {
   Controller,
   Delete,
   File,
   Get,
+  Path,
   Post,
   Query,
   Route,
@@ -64,7 +65,7 @@ export class FileController extends Controller {
    */
   @Security("jwt")
   @Delete("/{id}")
-  deleteFile(id: string): Promise<boolean> {
+  deleteFile(@Path() id: string): Promise<boolean> {
     return this._fileService.deleteFile(id);
   }
 }

@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  HttpException,
   NotFoundException,
   UnauthorizedException,
 } from "@force-dev/utils";
@@ -132,9 +133,10 @@ export class AuthService {
         };
       }
     } catch (error) {
-      if (!(error instanceof UnauthorizedException)) {
-        logger.error({ err: error }, "Sign in error");
+      if (error instanceof HttpException) {
+        throw error;
       }
+      logger.error({ err: error }, "Sign in error");
     }
 
     throw new UnauthorizedException("Не верный логин или пароль");

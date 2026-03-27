@@ -27,8 +27,8 @@ export class Message {
   @Column({ name: "chat_id", type: "uuid" })
   chatId: string;
 
-  @Column({ name: "sender_id", type: "uuid" })
-  senderId: string;
+  @Column({ name: "sender_id", type: "uuid", nullable: true })
+  senderId: string | null;
 
   @Column({
     type: "enum",
@@ -111,9 +111,9 @@ export class Message {
   @JoinColumn({ name: "chat_id" })
   chat: Chat;
 
-  @ManyToOne(() => User, { onDelete: "SET NULL" })
+  @ManyToOne(() => User, { onDelete: "SET NULL", nullable: true })
   @JoinColumn({ name: "sender_id" })
-  sender: User;
+  sender: User | null;
 
   @ManyToOne(() => Message, { onDelete: "SET NULL", nullable: true })
   @JoinColumn({ name: "reply_to_id" })

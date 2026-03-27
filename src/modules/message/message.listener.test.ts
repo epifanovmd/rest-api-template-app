@@ -175,16 +175,16 @@ describe("MessageListener", () => {
   });
 
   describe("MessageReadEvent", () => {
-    it("should emit chat:unread to chat room", () => {
+    it("should emit chat:unread to user", () => {
       const messageId = "msg-1";
       const event = new MessageReadEvent(chatId, userId2, messageId);
 
       eventHandlers["MessageReadEvent"](event);
 
-      expect(emitter.toRoom.calledOnce).to.be.true;
-      expect(emitter.toRoom.firstCall.args[0]).to.equal(`chat_${chatId}`);
-      expect(emitter.toRoom.firstCall.args[1]).to.equal("chat:unread");
-      expect(emitter.toRoom.firstCall.args[2]).to.deep.equal({
+      expect(emitter.toUser.calledOnce).to.be.true;
+      expect(emitter.toUser.firstCall.args[0]).to.equal(userId2);
+      expect(emitter.toUser.firstCall.args[1]).to.equal("chat:unread");
+      expect(emitter.toUser.firstCall.args[2]).to.deep.equal({
         chatId,
         unreadCount: 0,
       });

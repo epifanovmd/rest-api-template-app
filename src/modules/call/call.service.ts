@@ -4,8 +4,10 @@ import {
   NotFoundException,
 } from "@force-dev/utils";
 import { inject } from "inversify";
+import { DataSource } from "typeorm";
 
 import { EventBus, Injectable } from "../../core";
+import { Call } from "./call.entity";
 import { CallRepository } from "./call.repository";
 import { ECallStatus, ECallType } from "./call.types";
 import { CallDto } from "./dto";
@@ -22,6 +24,7 @@ export class CallService {
   constructor(
     @inject(CallRepository) private _callRepo: CallRepository,
     @inject(EventBus) private _eventBus: EventBus,
+    @inject(DataSource) private _dataSource: DataSource,
   ) {}
 
   async initiateCall(
@@ -32,31 +35,59 @@ export class CallService {
       throw new BadRequestException("Нельзя позвонить самому себе");
     }
 
-    // Check for existing active calls
-    const activeCalls = await this._callRepo.findActiveCalls(callerId);
+    // Check + create in a transaction with row-level locking
+    const savedId = await this._dataSource.transaction(async manager => {
+      const callRepo = manager.getRepository(Call);
+      const activeStatuses = [ECallStatus.RINGING, ECallStatus.ACTIVE];
 
-    if (activeCalls.length > 0) {
-      throw new BadRequestException("У вас уже есть активный звонок");
-    }
+      // Lock rows for caller's active calls using SELECT ... FOR UPDATE
+      const callerActiveCalls = await callRepo
+        .createQueryBuilder("call")
+        .setLock("pessimistic_write")
+        .where(
+          "(call.callerId = :callerId OR call.calleeId = :callerId)",
+          { callerId },
+        )
+        .andWhere("call.status IN (:...statuses)", {
+          statuses: activeStatuses,
+        })
+        .getMany();
 
-    const calleeActiveCalls = await this._callRepo.findActiveCalls(
-      data.calleeId,
-    );
+      if (callerActiveCalls.length > 0) {
+        throw new BadRequestException("У вас уже есть активный звонок");
+      }
 
-    if (calleeActiveCalls.length > 0) {
-      throw new BadRequestException("Пользователь уже в звонке");
-    }
+      // Lock rows for callee's active calls
+      const calleeActiveCalls = await callRepo
+        .createQueryBuilder("call")
+        .setLock("pessimistic_write")
+        .where(
+          "(call.callerId = :calleeId OR call.calleeId = :calleeId)",
+          { calleeId: data.calleeId },
+        )
+        .andWhere("call.status IN (:...statuses)", {
+          statuses: activeStatuses,
+        })
+        .getMany();
 
-    const call = this._callRepo.create({
-      callerId,
-      calleeId: data.calleeId,
-      chatId: data.chatId ?? null,
-      type: data.type ?? ECallType.VOICE,
-      status: ECallStatus.RINGING,
+      if (calleeActiveCalls.length > 0) {
+        throw new BadRequestException("Пользователь уже в звонке");
+      }
+
+      const call = callRepo.create({
+        callerId,
+        calleeId: data.calleeId,
+        chatId: data.chatId ?? null,
+        type: data.type ?? ECallType.VOICE,
+        status: ECallStatus.RINGING,
+      });
+
+      const saved = await callRepo.save(call);
+
+      return saved.id;
     });
 
-    const saved = await this._callRepo.save(call);
-    const fullCall = await this._callRepo.findById(saved.id);
+    const fullCall = await this._callRepo.findById(savedId);
 
     this._eventBus.emit(new CallInitiatedEvent(fullCall!));
 

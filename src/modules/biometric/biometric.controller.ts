@@ -4,6 +4,7 @@ import {
   Controller,
   Delete,
   Get,
+  Path,
   Post,
   Request,
   Route,
@@ -117,7 +118,7 @@ export class BiometricController extends Controller {
   @Delete("/{deviceId}")
   async deleteDevice(
     @Request() req: KoaRequest,
-    deviceId: string,
+    @Path() deviceId: string,
   ): Promise<IDeleteBiometricResponseDto> {
     const { userId } = getContextUser(req);
 

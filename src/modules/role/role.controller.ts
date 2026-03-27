@@ -4,6 +4,7 @@ import {
   Controller,
   Get,
   Patch,
+  Path,
   Route,
   Security,
   Tags,
@@ -15,7 +16,7 @@ import { IRoleDto } from "./role.dto";
 import { RoleService } from "./role.service";
 import { SetRolePermissionsSchema } from "./validation";
 
-export interface IRolePermissionsRequestDto {
+interface IRolePermissionsRequestDto {
   permissions: EPermissions[];
 }
 
@@ -50,11 +51,11 @@ export class RoleController extends Controller {
    * @param body Список прав
    * @returns Обновлённая роль
    */
-  @Security("jwt", ["role:admin"])
+  @Security("jwt", ["permission:role:manage"])
   @Patch("{id}/permissions")
   @ValidateBody(SetRolePermissionsSchema)
   setRolePermissions(
-    id: string,
+    @Path() id: string,
     @Body() body: IRolePermissionsRequestDto,
   ): Promise<IRoleDto> {
     return this._roleService

@@ -1,7 +1,8 @@
 import {
+  BadRequestException,
   ConflictException,
-  InternalServerErrorException,
   NotFoundException,
+  UnauthorizedException,
 } from "@force-dev/utils";
 import { createVerify, randomBytes } from "crypto";
 import { inject } from "inversify";
@@ -85,7 +86,7 @@ export class BiometricService {
     }
 
     if (!biometric.challenge) {
-      throw new InternalServerErrorException(
+      throw new BadRequestException(
         "Challenge не найден. Сначала вызовите generate-nonce.",
       );
     }
@@ -97,7 +98,7 @@ export class BiometricService {
       biometric.challenge = null;
       biometric.challengeExpiresAt = null;
       await this._biometricRepository.save(biometric);
-      throw new InternalServerErrorException("Challenge истёк");
+      throw new BadRequestException("Challenge истёк");
     }
 
     const isValid = this._verifySignature({
@@ -107,7 +108,7 @@ export class BiometricService {
     });
 
     if (!isValid) {
-      throw new InternalServerErrorException("Неверная биометрическая подпись");
+      throw new UnauthorizedException("Неверная биометрическая подпись");
     }
 
     // Инвалидируем challenge после успешной проверки

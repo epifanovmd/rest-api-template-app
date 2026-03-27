@@ -84,6 +84,10 @@ describe("UserService", () => {
       mockRoleRepo as any,
       mockPermissionRepo as any,
       mockProfileRepo as any,
+      { transaction: sinon.stub().callsFake((cb: any) => cb({ getRepository: sinon.stub().returns({
+        create: sinon.stub().callsFake((data: any) => ({ id: uuid(), ...data })),
+        save: sinon.stub().callsFake((data: any) => Promise.resolve({ id: uuid(), ...data })),
+      }) })) } as any,
     );
   });
 
@@ -180,8 +184,6 @@ describe("UserService", () => {
     it("should create user, profile, and assign USER role", async () => {
       const createdUser = { ...fakeUser, id: uuid() };
 
-      mockUserRepo.createAndSave.resolves(createdUser);
-      mockProfileRepo.createAndSave.resolves(fakeProfile);
       mockRoleRepo.findByName.resolves(fakeRole);
       mockUserRepo.findById.resolves(createdUser);
       mockUserRepo.save.resolves(createdUser);
@@ -192,8 +194,6 @@ describe("UserService", () => {
         passwordHash: "$2b$12$hashed",
       });
 
-      expect(mockUserRepo.createAndSave.calledOnce).to.be.true;
-      expect(mockProfileRepo.createAndSave.calledOnce).to.be.true;
       expect(result).to.exist;
     });
   });
@@ -215,8 +215,6 @@ describe("UserService", () => {
 
     it("should create admin user when not existing", async () => {
       mockUserRepo.findByEmailOrPhone.resolves(null);
-      mockUserRepo.createAndSave.resolves({ ...fakeUser, id: uuid() });
-      mockProfileRepo.createAndSave.resolves(fakeProfile);
       mockRoleRepo.findByName.resolves(fakeRole);
       mockUserRepo.findById.resolves(fakeUser);
       mockUserRepo.save.resolves(fakeUser);

@@ -18,7 +18,7 @@ export class Role {
   id: string;
 
   // Уникальное название роли из перечисления ERole
-  @Column({ type: "enum", enum: ERole })
+  @Column({ type: "enum", enum: ERole, unique: true })
   name: ERole;
 
   @CreateDateColumn({ name: "created_at" })

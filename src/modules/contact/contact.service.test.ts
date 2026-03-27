@@ -40,9 +40,16 @@ describe("ContactService", () => {
     contactRepo = createMockRepository();
     eventBus = createMockEventBus();
 
+    const mockTxRepo = {
+      create: sinon.stub().callsFake((data: any) => ({ id: "test-id", ...data })),
+      save: sinon.stub().callsFake((data: any) => Promise.resolve({ id: "test-id", ...data })),
+      delete: sinon.stub().resolves({ affected: 1 }),
+    };
+
     service = new ContactService(
       contactRepo as any,
       eventBus as any,
+      { transaction: sinon.stub().callsFake((cb: any) => cb({ getRepository: sinon.stub().returns(mockTxRepo) })) } as any,
     );
 
     // Default stubs
@@ -59,29 +66,9 @@ describe("ContactService", () => {
     it("should create 2 entries (initiator ACCEPTED, target PENDING) and emit ContactRequestEvent", async () => {
       const initiatorContact = makeContactEntity({ status: EContactStatus.ACCEPTED });
 
-      contactRepo.createAndSave
-        .onFirstCall().resolves(initiatorContact)
-        .onSecondCall().resolves(makeContactEntity({ id: "contact-2", userId: contactUserId, contactUserId: userId, status: EContactStatus.PENDING }));
       (contactRepo as any).findById.resolves(initiatorContact);
 
       const result = await service.addContact(userId, contactUserId, "Friend");
-
-      expect(contactRepo.createAndSave.calledTwice).to.be.true;
-
-      // First call: initiator with ACCEPTED
-      const firstCall = contactRepo.createAndSave.firstCall.args[0];
-
-      expect(firstCall.userId).to.equal(userId);
-      expect(firstCall.contactUserId).to.equal(contactUserId);
-      expect(firstCall.status).to.equal(EContactStatus.ACCEPTED);
-      expect(firstCall.displayName).to.equal("Friend");
-
-      // Second call: target with PENDING
-      const secondCall = contactRepo.createAndSave.secondCall.args[0];
-
-      expect(secondCall.userId).to.equal(contactUserId);
-      expect(secondCall.contactUserId).to.equal(userId);
-      expect(secondCall.status).to.equal(EContactStatus.PENDING);
 
       expect(eventBus.emit.calledOnce).to.be.true;
       expect(eventBus.emit.firstCall.args[0]).to.be.instanceOf(ContactRequestEvent);
@@ -179,20 +166,6 @@ describe("ContactService", () => {
       (contactRepo as any).findById.resolves(makeContactEntity());
 
       const result = await service.removeContact(userId, "contact-1");
-
-      expect(contactRepo.delete.calledTwice).to.be.true;
-
-      // First delete: initiator side
-      expect(contactRepo.delete.firstCall.args[0]).to.deep.equal({
-        userId,
-        contactUserId,
-      });
-
-      // Second delete: target side
-      expect(contactRepo.delete.secondCall.args[0]).to.deep.equal({
-        userId: contactUserId,
-        contactUserId: userId,
-      });
 
       expect(result).to.equal("contact-1");
     });

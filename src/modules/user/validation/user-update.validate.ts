@@ -20,9 +20,6 @@ export const UserUpdateSchema = z
         if (cleaned.startsWith("8") && cleaned.length === 11) {
           return "+7" + cleaned.substring(1);
         }
-        if (cleaned.length === 10) {
-          return "+7" + cleaned;
-        }
 
         return val;
       })

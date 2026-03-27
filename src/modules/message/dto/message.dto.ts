@@ -37,7 +37,7 @@ export class MessageAttachmentDto extends BaseDto {
 export class MessageDto extends BaseDto {
   id: string;
   chatId: string;
-  senderId: string;
+  senderId: string | null;
   type: EMessageType;
   status: EMessageStatus;
   content: string | null;
@@ -67,9 +67,9 @@ export class MessageDto extends BaseDto {
   updatedAt: Date;
   sender?: {
     id: string;
-    firstName?: string;
-    lastName?: string;
-    avatarUrl?: string;
+    firstName?: string | null;
+    lastName?: string | null;
+    avatarUrl?: string | null;
   };
   replyTo?: MessageDto | null;
   attachments: MessageAttachmentDto[];

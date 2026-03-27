@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from "@force-dev/utils";
 import { inject } from "inversify";
+import { DataSource } from "typeorm";
 
 import { EventBus, Injectable } from "../../core";
 import { ChatService } from "../chat/chat.service";
@@ -13,6 +14,7 @@ import { PollDto } from "./dto";
 import { PollClosedEvent, PollVotedEvent } from "./events";
 import { PollRepository } from "./poll.repository";
 import { PollOptionRepository } from "./poll-option.repository";
+import { PollVote } from "./poll-vote.entity";
 import { PollVoteRepository } from "./poll-vote.repository";
 
 @Injectable()
@@ -24,6 +26,7 @@ export class PollService {
     @inject(MessageRepository) private _messageRepo: MessageRepository,
     @inject(ChatService) private _chatService: ChatService,
     @inject(EventBus) private _eventBus: EventBus,
+    @inject(DataSource) private _dataSource: DataSource,
   ) {}
 
   async createPoll(
@@ -99,6 +102,19 @@ export class PollService {
       throw new BadRequestException("Опрос закрыт");
     }
 
+    // Verify user is a member of the chat containing the poll
+    const chatId = poll.message?.chatId;
+
+    if (chatId) {
+      const isMember = await this._chatService.isMember(chatId, userId);
+
+      if (!isMember) {
+        throw new ForbiddenException(
+          "Вы не являетесь участником чата с этим опросом",
+        );
+      }
+    }
+
     // Validate option IDs belong to this poll
     const validOptionIds = poll.options.map(o => o.id);
 
@@ -114,17 +130,18 @@ export class PollService {
       );
     }
 
-    // Remove existing votes
-    await this._voteRepo.deleteByPollAndUser(pollId, userId);
+    // Remove existing votes + create new votes in a transaction
+    await this._dataSource.transaction(async manager => {
+      const voteRepo = manager.getRepository(PollVote);
 
-    // Create new votes
-    for (const optionId of optionIds) {
-      await this._voteRepo.createAndSave({
-        pollId,
-        optionId,
-        userId,
-      });
-    }
+      await voteRepo.delete({ pollId, userId });
+
+      const votes = optionIds.map(optionId =>
+        voteRepo.create({ pollId, optionId, userId }),
+      );
+
+      await voteRepo.save(votes);
+    });
 
     const updatedPoll = await this._pollRepo.findById(pollId);
 
@@ -144,6 +161,19 @@ export class PollService {
 
     if (poll.isClosed) {
       throw new BadRequestException("Опрос закрыт");
+    }
+
+    // Verify user is a member of the chat containing the poll
+    const chatId = poll.message?.chatId;
+
+    if (chatId) {
+      const isMember = await this._chatService.isMember(chatId, userId);
+
+      if (!isMember) {
+        throw new ForbiddenException(
+          "Вы не являетесь участником чата с этим опросом",
+        );
+      }
     }
 
     await this._voteRepo.deleteByPollAndUser(pollId, userId);

@@ -27,6 +27,14 @@ interface IBanMemberBody {
   reason?: string;
 }
 
+interface IBannedMemberDto {
+  userId: string;
+  chatId: string;
+  reason?: string;
+  bannedAt: Date;
+  expiresAt?: Date;
+}
+
 @Injectable()
 @Tags("Chat Moderation")
 @Route("api/chat")
@@ -104,7 +112,7 @@ export class ChatModerationController extends Controller {
   getBannedMembers(
     @Request() req: KoaRequest,
     @Path() id: string,
-  ): Promise<unknown[]> {
+  ): Promise<IBannedMemberDto[]> {
     const user = getContextUser(req);
 
     return this._moderationService.getBannedMembers(id, user.userId);

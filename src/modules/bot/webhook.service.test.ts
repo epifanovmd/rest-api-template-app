@@ -1,10 +1,9 @@
 import "reflect-metadata";
 
+import { expect } from "chai";
 import crypto from "crypto";
 import http from "http";
 import https from "https";
-
-import { expect } from "chai";
 import sinon from "sinon";
 
 import { WebhookService } from "./webhook.service";

@@ -12,13 +12,20 @@ export class ChatHandler implements ISocketHandler {
 
   onConnection(socket: TSocket): void {
     socket.on("chat:join", async ({ chatId }) => {
-      const membership = await this._memberRepo.findMembership(
-        chatId,
-        socket.data.userId,
-      );
+      try {
+        const membership = await this._memberRepo.findMembership(
+          chatId,
+          socket.data.userId,
+        );
 
-      if (membership) {
-        socket.join(`chat_${chatId}`);
+        if (membership) {
+          socket.join(`chat_${chatId}`);
+        }
+      } catch (error) {
+        socket.emit("error", {
+          event: "chat:join",
+          message: "Failed to join chat",
+        });
       }
     });
 

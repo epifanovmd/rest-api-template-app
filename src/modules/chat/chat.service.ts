@@ -5,12 +5,16 @@ import {
 } from "@force-dev/utils";
 import crypto from "crypto";
 import { inject } from "inversify";
+import { DataSource } from "typeorm";
 
 import { EventBus, Injectable } from "../../core";
+import { Chat } from "./chat.entity";
 import { ChatRepository } from "./chat.repository";
 import { EChatMemberRole, EChatType } from "./chat.types";
 import { ChatFolderRepository } from "./chat-folder.repository";
+import { ChatInvite } from "./chat-invite.entity";
 import { ChatInviteRepository } from "./chat-invite.repository";
+import { ChatMember } from "./chat-member.entity";
 import { ChatMemberRepository } from "./chat-member.repository";
 import { ChatDto, ChatFolderDto, ChatInviteDto } from "./dto";
 import {
@@ -30,6 +34,7 @@ export class ChatService {
     @inject(ChatFolderRepository)
     private _folderRepo: ChatFolderRepository,
     @inject(EventBus) private _eventBus: EventBus,
+    @inject(DataSource) private _dataSource: DataSource,
   ) {}
 
   async createDirectChat(userId: string, targetUserId: string) {
@@ -50,25 +55,49 @@ export class ChatService {
       return ChatDto.fromEntity(chat!);
     }
 
-    const chat = await this._chatRepo.createAndSave({
-      type: EChatType.DIRECT,
-      name: null,
-      createdById: userId,
+    const chatId = await this._dataSource.transaction(async manager => {
+      const chatRepo = manager.getRepository(Chat);
+      const memberRepo = manager.getRepository(ChatMember);
+
+      // Double-check inside transaction to prevent race condition
+      const existingInTx = await chatRepo
+        .createQueryBuilder("chat")
+        .innerJoin("chat.members", "m1", "m1.userId = :userId", { userId })
+        .innerJoin("chat.members", "m2", "m2.userId = :targetUserId", {
+          targetUserId,
+        })
+        .where("chat.type = :type", { type: EChatType.DIRECT })
+        .getOne();
+
+      if (existingInTx) {
+        return existingInTx.id;
+      }
+
+      const chat = chatRepo.create({
+        type: EChatType.DIRECT,
+        name: null,
+        createdById: userId,
+      });
+
+      const savedChat = await chatRepo.save(chat);
+
+      await memberRepo.save([
+        memberRepo.create({
+          chatId: savedChat.id,
+          userId,
+          role: EChatMemberRole.MEMBER,
+        }),
+        memberRepo.create({
+          chatId: savedChat.id,
+          userId: targetUserId,
+          role: EChatMemberRole.MEMBER,
+        }),
+      ]);
+
+      return savedChat.id;
     });
 
-    await this._memberRepo.createAndSave({
-      chatId: chat.id,
-      userId,
-      role: EChatMemberRole.MEMBER,
-    });
-
-    await this._memberRepo.createAndSave({
-      chatId: chat.id,
-      userId: targetUserId,
-      role: EChatMemberRole.MEMBER,
-    });
-
-    const fullChat = await this._chatRepo.findById(chat.id);
+    const fullChat = await this._chatRepo.findById(chatId);
     const memberUserIds = [userId, targetUserId];
 
     this._eventBus.emit(new ChatCreatedEvent(fullChat!, memberUserIds));
@@ -82,32 +111,43 @@ export class ChatService {
     memberIds: string[],
     avatarId?: string,
   ) {
-    const chat = await this._chatRepo.createAndSave({
-      type: EChatType.GROUP,
-      name,
-      avatarId: avatarId ?? null,
-      createdById: userId,
-    });
-
-    // Создатель — owner
-    await this._memberRepo.createAndSave({
-      chatId: chat.id,
-      userId,
-      role: EChatMemberRole.OWNER,
-    });
-
-    // Добавляем участников
     const uniqueMembers = [...new Set(memberIds.filter(id => id !== userId))];
 
-    for (const memberId of uniqueMembers) {
-      await this._memberRepo.createAndSave({
-        chatId: chat.id,
-        userId: memberId,
-        role: EChatMemberRole.MEMBER,
-      });
-    }
+    const chatId = await this._dataSource.transaction(async manager => {
+      const chatRepo = manager.getRepository(Chat);
+      const memberRepo = manager.getRepository(ChatMember);
 
-    const fullChat = await this._chatRepo.findById(chat.id);
+      const chat = chatRepo.create({
+        type: EChatType.GROUP,
+        name,
+        avatarId: avatarId ?? null,
+        createdById: userId,
+      });
+
+      const savedChat = await chatRepo.save(chat);
+
+      // Создатель — owner + участники
+      const memberships = [
+        memberRepo.create({
+          chatId: savedChat.id,
+          userId,
+          role: EChatMemberRole.OWNER,
+        }),
+        ...uniqueMembers.map(memberId =>
+          memberRepo.create({
+            chatId: savedChat.id,
+            userId: memberId,
+            role: EChatMemberRole.MEMBER,
+          }),
+        ),
+      ];
+
+      await memberRepo.save(memberships);
+
+      return savedChat.id;
+    });
+
+    const fullChat = await this._chatRepo.findById(chatId);
     const allMemberIds = [userId, ...uniqueMembers];
 
     this._eventBus.emit(new ChatCreatedEvent(fullChat!, allMemberIds));
@@ -573,14 +613,21 @@ export class ChatService {
       return ChatDto.fromEntity(chat!);
     }
 
-    await this._memberRepo.createAndSave({
-      chatId: invite.chatId,
-      userId,
-      role: EChatMemberRole.MEMBER,
-    });
+    // Create membership + increment useCount in a transaction
+    await this._dataSource.transaction(async manager => {
+      const memberRepo = manager.getRepository(ChatMember);
+      const inviteRepo = manager.getRepository(ChatInvite);
 
-    invite.useCount += 1;
-    await this._inviteRepo.save(invite);
+      const member = memberRepo.create({
+        chatId: invite.chatId,
+        userId,
+        role: EChatMemberRole.MEMBER,
+      });
+
+      await memberRepo.save(member);
+
+      await inviteRepo.increment({ id: invite.id }, "useCount", 1);
+    });
 
     const memberUserIds = await this._memberRepo.getMemberUserIds(
       invite.chatId,

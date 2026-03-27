@@ -62,19 +62,42 @@ const upload = multer(multerOpts);
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 
 const models: TsoaRoute.Models = {
+    "EProfileStatus": {
+        "dataType": "refEnum",
+        "enums": ["online","offline"],
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "IFileDto": {
+        "dataType": "refObject",
+        "properties": {
+            "id": {"dataType":"string","required":true},
+            "name": {"dataType":"string","required":true},
+            "type": {"dataType":"string","required":true},
+            "url": {"dataType":"string","required":true},
+            "size": {"dataType":"double","required":true},
+            "thumbnailUrl": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
+            "width": {"dataType":"union","subSchemas":[{"dataType":"double"},{"dataType":"enum","enums":[null]}],"required":true},
+            "height": {"dataType":"union","subSchemas":[{"dataType":"double"},{"dataType":"enum","enums":[null]}],"required":true},
+            "createdAt": {"dataType":"datetime","required":true},
+            "updatedAt": {"dataType":"datetime","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "ProfileDto": {
         "dataType": "refObject",
         "properties": {
             "id": {"dataType":"string","required":true},
             "userId": {"dataType":"string","required":true},
-            "firstName": {"dataType":"string"},
-            "lastName": {"dataType":"string"},
-            "birthDate": {"dataType":"union","subSchemas":[{"dataType":"datetime"},{"dataType":"enum","enums":[null]}]},
-            "gender": {"dataType":"string"},
-            "status": {"dataType":"string"},
-            "lastOnline": {"dataType":"union","subSchemas":[{"dataType":"datetime"},{"dataType":"enum","enums":[null]}]},
+            "firstName": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
+            "lastName": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
+            "birthDate": {"dataType":"union","subSchemas":[{"dataType":"datetime"},{"dataType":"enum","enums":[null]}],"required":true},
+            "gender": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
+            "status": {"ref":"EProfileStatus","required":true},
+            "lastOnline": {"dataType":"union","subSchemas":[{"dataType":"datetime"},{"dataType":"enum","enums":[null]}],"required":true},
             "createdAt": {"dataType":"datetime","required":true},
             "updatedAt": {"dataType":"datetime","required":true},
+            "avatar": {"ref":"IFileDto"},
             "user": {"ref":"UserDto"},
         },
         "additionalProperties": false,
@@ -117,9 +140,9 @@ const models: TsoaRoute.Models = {
         "dataType": "refObject",
         "properties": {
             "id": {"dataType":"string","required":true},
-            "email": {"dataType":"string"},
+            "email": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
             "emailVerified": {"dataType":"boolean"},
-            "phone": {"dataType":"string"},
+            "phone": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
             "username": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
             "profile": {"ref":"ProfileDto"},
             "roles": {"dataType":"array","array":{"dataType":"refObject","ref":"IRoleDto"},"required":true},
@@ -130,17 +153,11 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "EProfileStatus": {
-        "dataType": "refEnum",
-        "enums": ["online","offline"],
-    },
-    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "IProfileUpdateRequestDto": {
         "dataType": "refObject",
         "properties": {
             "firstName": {"dataType":"string"},
             "lastName": {"dataType":"string"},
-            "bio": {"dataType":"string"},
             "birthDate": {"dataType":"datetime"},
             "gender": {"dataType":"string"},
             "status": {"ref":"EProfileStatus"},
@@ -167,10 +184,10 @@ const models: TsoaRoute.Models = {
         "dataType": "refObject",
         "properties": {
             "id": {"dataType":"string","required":true},
-            "firstName": {"dataType":"string"},
-            "lastName": {"dataType":"string"},
+            "firstName": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
+            "lastName": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
             "status": {"ref":"EProfileStatus","required":true},
-            "lastOnline": {"dataType":"datetime"},
+            "lastOnline": {"dataType":"union","subSchemas":[{"dataType":"datetime"},{"dataType":"enum","enums":[null]}],"required":true},
         },
         "additionalProperties": false,
     },
@@ -209,7 +226,7 @@ const models: TsoaRoute.Models = {
         "dataType": "refObject",
         "properties": {
             "userId": {"dataType":"string","required":true},
-            "email": {"dataType":"string","required":true},
+            "email": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
             "username": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
             "profile": {"ref":"PublicProfileDto","required":true},
         },
@@ -232,7 +249,7 @@ const models: TsoaRoute.Models = {
         "dataType": "refObject",
         "properties": {
             "id": {"dataType":"string","required":true},
-            "name": {"dataType":"string","required":true},
+            "name": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
         },
         "additionalProperties": false,
     },
@@ -284,9 +301,9 @@ const models: TsoaRoute.Models = {
         "dataType": "refObject",
         "properties": {
             "id": {"dataType":"string","required":true},
-            "email": {"dataType":"string"},
+            "email": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
             "emailVerified": {"dataType":"boolean"},
-            "phone": {"dataType":"string"},
+            "phone": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
             "username": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
             "profile": {"ref":"ProfileDto"},
             "roles": {"dataType":"array","array":{"dataType":"refObject","ref":"IRoleDto"},"required":true},
@@ -427,8 +444,8 @@ const models: TsoaRoute.Models = {
         "properties": {
             "id": {"dataType":"string","required":true},
             "deviceId": {"dataType":"string","required":true},
-            "deviceName": {"dataType":"string","required":true},
-            "lastUsedAt": {"dataType":"datetime","required":true},
+            "deviceName": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
+            "lastUsedAt": {"dataType":"union","subSchemas":[{"dataType":"datetime"},{"dataType":"enum","enums":[null]}],"required":true},
             "createdAt": {"dataType":"datetime","required":true},
         },
         "additionalProperties": false,
@@ -470,7 +487,7 @@ const models: TsoaRoute.Models = {
         "properties": {
             "id": {"dataType":"string","required":true},
             "chatId": {"dataType":"string","required":true},
-            "senderId": {"dataType":"string","required":true},
+            "senderId": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
             "type": {"ref":"EMessageType","required":true},
             "status": {"ref":"EMessageStatus","required":true},
             "content": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
@@ -492,7 +509,7 @@ const models: TsoaRoute.Models = {
             "selfDestructAt": {"dataType":"union","subSchemas":[{"dataType":"datetime"},{"dataType":"enum","enums":[null]}],"required":true},
             "createdAt": {"dataType":"datetime","required":true},
             "updatedAt": {"dataType":"datetime","required":true},
-            "sender": {"dataType":"nestedObjectLiteral","nestedProperties":{"avatarUrl":{"dataType":"string"},"lastName":{"dataType":"string"},"firstName":{"dataType":"string"},"id":{"dataType":"string","required":true}}},
+            "sender": {"dataType":"nestedObjectLiteral","nestedProperties":{"avatarUrl":{"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}]},"lastName":{"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}]},"firstName":{"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}]},"id":{"dataType":"string","required":true}}},
             "replyTo": {"dataType":"union","subSchemas":[{"ref":"MessageDto"},{"dataType":"enum","enums":[null]}]},
             "attachments": {"dataType":"array","array":{"dataType":"refObject","ref":"MessageAttachmentDto"},"required":true},
             "reactions": {"dataType":"array","array":{"dataType":"nestedObjectLiteral","nestedProperties":{"userIds":{"dataType":"array","array":{"dataType":"string"},"required":true},"count":{"dataType":"double","required":true},"emoji":{"dataType":"string","required":true}}},"required":true},
@@ -638,8 +655,8 @@ const models: TsoaRoute.Models = {
             "duration": {"dataType":"union","subSchemas":[{"dataType":"double"},{"dataType":"enum","enums":[null]}],"required":true},
             "createdAt": {"dataType":"datetime","required":true},
             "updatedAt": {"dataType":"datetime","required":true},
-            "caller": {"dataType":"nestedObjectLiteral","nestedProperties":{"avatarUrl":{"dataType":"string"},"lastName":{"dataType":"string"},"firstName":{"dataType":"string"},"id":{"dataType":"string","required":true}}},
-            "callee": {"dataType":"nestedObjectLiteral","nestedProperties":{"avatarUrl":{"dataType":"string"},"lastName":{"dataType":"string"},"firstName":{"dataType":"string"},"id":{"dataType":"string","required":true}}},
+            "caller": {"dataType":"nestedObjectLiteral","nestedProperties":{"avatarUrl":{"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}]},"lastName":{"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}]},"firstName":{"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}]},"id":{"dataType":"string","required":true}}},
+            "callee": {"dataType":"nestedObjectLiteral","nestedProperties":{"avatarUrl":{"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}]},"lastName":{"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}]},"firstName":{"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}]},"id":{"dataType":"string","required":true}}},
         },
         "additionalProperties": false,
     },
@@ -680,6 +697,18 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "IBannedMemberDto": {
+        "dataType": "refObject",
+        "properties": {
+            "userId": {"dataType":"string","required":true},
+            "chatId": {"dataType":"string","required":true},
+            "reason": {"dataType":"string"},
+            "bannedAt": {"dataType":"datetime","required":true},
+            "expiresAt": {"dataType":"datetime"},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "EChatType": {
         "dataType": "refEnum",
         "enums": ["direct","group","channel","secret"],
@@ -698,7 +727,9 @@ const models: TsoaRoute.Models = {
             "role": {"ref":"EChatMemberRole","required":true},
             "joinedAt": {"dataType":"datetime","required":true},
             "mutedUntil": {"dataType":"union","subSchemas":[{"dataType":"datetime"},{"dataType":"enum","enums":[null]}],"required":true},
+            "lastReadMessageId": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
             "isPinnedChat": {"dataType":"boolean","required":true},
+            "pinnedChatAt": {"dataType":"union","subSchemas":[{"dataType":"datetime"},{"dataType":"enum","enums":[null]}],"required":true},
             "isArchived": {"dataType":"boolean","required":true},
             "folderId": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
             "profile": {"ref":"PublicProfileDto"},
@@ -716,7 +747,8 @@ const models: TsoaRoute.Models = {
             "username": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
             "isPublic": {"dataType":"boolean","required":true},
             "avatarUrl": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
-            "createdById": {"dataType":"string","required":true},
+            "createdById": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
+            "slowModeSeconds": {"dataType":"double","required":true},
             "lastMessageAt": {"dataType":"union","subSchemas":[{"dataType":"datetime"},{"dataType":"enum","enums":[null]}],"required":true},
             "createdAt": {"dataType":"datetime","required":true},
             "updatedAt": {"dataType":"datetime","required":true},
@@ -943,20 +975,6 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "IFileDto": {
-        "dataType": "refObject",
-        "properties": {
-            "id": {"dataType":"string","required":true},
-            "name": {"dataType":"string","required":true},
-            "type": {"dataType":"string","required":true},
-            "url": {"dataType":"string","required":true},
-            "size": {"dataType":"double","required":true},
-            "createdAt": {"dataType":"datetime","required":true},
-            "updatedAt": {"dataType":"datetime","required":true},
-        },
-        "additionalProperties": false,
-    },
-    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "ISendMessageBody": {
         "dataType": "refObject",
         "properties": {
@@ -999,10 +1017,10 @@ const models: TsoaRoute.Models = {
             "id": {"dataType":"string","required":true},
             "messageId": {"dataType":"string","required":true},
             "chatId": {"dataType":"string","required":true},
-            "senderId": {"dataType":"string","required":true},
+            "senderId": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
             "attachments": {"dataType":"array","array":{"dataType":"refObject","ref":"MessageAttachmentDto"},"required":true},
             "createdAt": {"dataType":"datetime","required":true},
-            "sender": {"dataType":"nestedObjectLiteral","nestedProperties":{"avatarUrl":{"dataType":"string"},"lastName":{"dataType":"string"},"firstName":{"dataType":"string"},"id":{"dataType":"string","required":true}}},
+            "sender": {"dataType":"nestedObjectLiteral","nestedProperties":{"avatarUrl":{"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}]},"lastName":{"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}]},"firstName":{"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}]},"id":{"dataType":"string","required":true}}},
         },
         "additionalProperties": false,
     },
@@ -1422,7 +1440,7 @@ const models: TsoaRoute.Models = {
             "id": {"dataType":"string","required":true},
             "name": {"dataType":"string","required":true},
             "title": {"dataType":"string","required":true},
-            "creatorId": {"dataType":"string","required":true},
+            "creatorId": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
             "isOfficial": {"dataType":"boolean","required":true},
             "isAnimated": {"dataType":"boolean","required":true},
             "stickers": {"dataType":"array","array":{"dataType":"refObject","ref":"StickerDto"},"required":true},
@@ -1657,7 +1675,7 @@ export function RegisterRoutes(router: KoaRouter) {
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         router.get('/api/profile/all',
-            authenticateMiddleware([{"jwt":["role:admin"]}]),
+            authenticateMiddleware([{"jwt":["permission:profile:view"]}]),
             ...(fetchMiddlewares<Middleware>(ProfileController)),
             ...(fetchMiddlewares<Middleware>(ProfileController.prototype.getProfiles)),
 
@@ -1718,7 +1736,7 @@ export function RegisterRoutes(router: KoaRouter) {
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         router.patch('/api/profile/update/:userId',
-            authenticateMiddleware([{"jwt":["role:admin"]}]),
+            authenticateMiddleware([{"jwt":["permission:profile:manage"]}]),
             ...(fetchMiddlewares<Middleware>(ProfileController)),
             ...(fetchMiddlewares<Middleware>(ProfileController.prototype.updateProfile)),
 
@@ -1749,7 +1767,7 @@ export function RegisterRoutes(router: KoaRouter) {
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         router.delete('/api/profile/delete/:userId',
-            authenticateMiddleware([{"jwt":["role:admin"]}]),
+            authenticateMiddleware([{"jwt":["permission:profile:manage"]}]),
             ...(fetchMiddlewares<Middleware>(ProfileController)),
             ...(fetchMiddlewares<Middleware>(ProfileController.prototype.deleteProfile)),
 
@@ -1808,7 +1826,7 @@ export function RegisterRoutes(router: KoaRouter) {
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         router.patch('/api/roles/:id/permissions',
-            authenticateMiddleware([{"jwt":["role:admin"]}]),
+            authenticateMiddleware([{"jwt":["permission:role:manage"]}]),
             ...(fetchMiddlewares<Middleware>(RoleController)),
             ...(fetchMiddlewares<Middleware>(RoleController.prototype.setRolePermissions)),
 
@@ -5696,6 +5714,7 @@ export function RegisterRoutes(router: KoaRouter) {
             async function SessionController_terminateOtherSessions(context: any, next: any) {
             const args = {
                     req: {"in":"request","name":"req","required":true,"dataType":"object"},
+                    body: {"in":"body","name":"body","required":true,"dataType":"nestedObjectLiteral","nestedProperties":{"currentSessionId":{"dataType":"string","required":true}}},
             };
 
             let validatedArgs: any[] = [];

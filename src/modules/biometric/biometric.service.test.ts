@@ -1,9 +1,10 @@
 import "reflect-metadata";
 
 import {
+  BadRequestException,
   ConflictException,
-  InternalServerErrorException,
   NotFoundException,
+  UnauthorizedException,
 } from "@force-dev/utils";
 import { expect } from "chai";
 import sinon from "sinon";
@@ -143,7 +144,7 @@ describe("BiometricService", () => {
       }
     });
 
-    it("should throw InternalServerErrorException when no challenge", async () => {
+    it("should throw BadRequestException when no challenge", async () => {
       biometricRepo.findByUserIdAndDeviceId.resolves(
         makeBiometric({ challenge: null }),
       );
@@ -152,7 +153,7 @@ describe("BiometricService", () => {
         await service.verifyBiometricSignature(userId, deviceId, "sig");
         expect.fail("Should have thrown");
       } catch (err) {
-        expect(err).to.be.instanceOf(InternalServerErrorException);
+        expect(err).to.be.instanceOf(BadRequestException);
         expect((err as any).message).to.include("Challenge не найден");
       }
     });
@@ -169,7 +170,7 @@ describe("BiometricService", () => {
         await service.verifyBiometricSignature(userId, deviceId, "sig");
         expect.fail("Should have thrown");
       } catch (err) {
-        expect(err).to.be.instanceOf(InternalServerErrorException);
+        expect(err).to.be.instanceOf(BadRequestException);
         expect((err as any).message).to.include("Challenge истёк");
         expect(biometricRepo.save.calledOnce).to.be.true;
         expect(bio.challenge).to.be.null;
@@ -177,7 +178,7 @@ describe("BiometricService", () => {
       }
     });
 
-    it("should throw InternalServerErrorException when signature is invalid", async () => {
+    it("should throw UnauthorizedException when signature is invalid", async () => {
       // Provide a valid-looking biometric with active challenge but bad key/signature
       // so crypto.createVerify will catch and return false
       const bio = makeBiometric({
@@ -192,7 +193,7 @@ describe("BiometricService", () => {
         await service.verifyBiometricSignature(userId, deviceId, "bad-sig");
         expect.fail("Should have thrown");
       } catch (err) {
-        expect(err).to.be.instanceOf(InternalServerErrorException);
+        expect(err).to.be.instanceOf(UnauthorizedException);
         expect((err as any).message).to.include("Неверная биометрическая подпись");
       }
     });

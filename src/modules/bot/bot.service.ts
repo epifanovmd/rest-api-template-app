@@ -5,9 +5,11 @@ import {
 } from "@force-dev/utils";
 import crypto from "crypto";
 import { inject } from "inversify";
+import { DataSource } from "typeorm";
 
 import { Injectable } from "../../core";
 import { BotRepository } from "./bot.repository";
+import { BotCommand } from "./bot-command.entity";
 import { BotCommandRepository } from "./bot-command.repository";
 
 @Injectable()
@@ -15,6 +17,7 @@ export class BotService {
   constructor(
     @inject(BotRepository) private _botRepo: BotRepository,
     @inject(BotCommandRepository) private _cmdRepo: BotCommandRepository,
+    @inject(DataSource) private _dataSource: DataSource,
   ) {}
 
   async createBot(
@@ -118,16 +121,22 @@ export class BotService {
   ) {
     await this.getBotById(botId, ownerId);
 
-    // Delete existing and insert new
-    await this._cmdRepo.delete({ botId });
+    // Delete existing and insert new in a transaction
+    await this._dataSource.transaction(async manager => {
+      const cmdRepo = manager.getRepository(BotCommand);
 
-    for (const cmd of commands) {
-      await this._cmdRepo.createAndSave({
-        botId,
-        command: cmd.command,
-        description: cmd.description,
-      });
-    }
+      await cmdRepo.delete({ botId });
+
+      const entities = commands.map(cmd =>
+        cmdRepo.create({
+          botId,
+          command: cmd.command,
+          description: cmd.description,
+        }),
+      );
+
+      await cmdRepo.save(entities);
+    });
 
     return this._cmdRepo.findByBotId(botId);
   }

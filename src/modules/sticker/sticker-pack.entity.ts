@@ -23,8 +23,8 @@ export class StickerPack {
   @Column({ type: "varchar", length: 200 })
   title: string;
 
-  @Column({ name: "creator_id", type: "uuid" })
-  creatorId: string;
+  @Column({ name: "creator_id", type: "uuid", nullable: true })
+  creatorId: string | null;
 
   @Column({ name: "is_official", type: "boolean", default: false })
   isOfficial: boolean;
@@ -38,9 +38,9 @@ export class StickerPack {
   @UpdateDateColumn({ name: "updated_at" })
   updatedAt: Date;
 
-  @ManyToOne(() => User, { onDelete: "SET NULL" })
+  @ManyToOne(() => User, { onDelete: "SET NULL", nullable: true })
   @JoinColumn({ name: "creator_id" })
-  creator: User;
+  creator: User | null;
 
   @OneToMany(() => Sticker, sticker => sticker.pack, {
     cascade: true,

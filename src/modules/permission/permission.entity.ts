@@ -17,7 +17,7 @@ export class Permission {
   id: string;
 
   // Уникальный идентификатор разрешения из перечисления EPermissions
-  @Column({ type: "enum", enum: EPermissions })
+  @Column({ type: "enum", enum: EPermissions, unique: true })
   name: EPermissions;
 
   @CreateDateColumn({ name: "created_at" })

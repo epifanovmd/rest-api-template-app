@@ -22,17 +22,19 @@ export class BotListener implements ISocketEventListener {
     this._eventBus.on(
       MessageCreatedEvent,
       async (event: MessageCreatedEvent) => {
-        // Find bots in this chat
-        const members = await this._memberRepo.findChatMembers(event.chatId);
+        // Find members of this chat
+        const memberUserIds =
+          await this._memberRepo.getMemberUserIds(event.chatId);
 
-        for (const member of members) {
-          // Check if member is a bot (find by userId as ownerId pattern)
-          const bots = await this._botRepo.find({
-            where: { isActive: true },
-          });
+        if (memberUserIds.length === 0) return;
+
+        // Find active bots whose owner is a member of this chat
+        // Bots act on behalf of their owner, so we check if ownerId is in chat members
+        for (const userId of memberUserIds) {
+          const bots = await this._botRepo.findByOwnerId(userId);
 
           for (const bot of bots) {
-            if (!bot.webhookUrl) continue;
+            if (!bot.isActive || !bot.webhookUrl) continue;
 
             const isCommand =
               event.message.content?.startsWith("/") ?? false;
@@ -56,8 +58,6 @@ export class BotListener implements ISocketEventListener {
 
             await this._webhookService.deliverEvent(bot, eventType, payload);
           }
-
-          break; // Only process once per chat, not per member
         }
       },
     );

@@ -73,7 +73,7 @@ export class ProfileService {
   async deleteProfile(userId: string) {
     const deleted = await this._profileRepository.delete({ userId });
 
-    if (!deleted) {
+    if (deleted.affected === 0) {
       throw new NotFoundException("Профиль не найден");
     }
 

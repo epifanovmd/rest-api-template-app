@@ -1,4 +1,4 @@
-import { inject, injectable } from "inversify";
+import { inject } from "inversify";
 import {
   Body,
   Controller,
@@ -12,6 +12,7 @@ import {
 import {
   ApiResponseDto,
   getContextUser,
+  Injectable,
   ITokensDto,
   ThrottleGuard,
   UseGuards,
@@ -31,6 +32,7 @@ import {
 } from "./auth.dto";
 import { AuthService } from "./auth.service";
 import {
+  Disable2FASchema,
   Enable2FASchema,
   RefreshSchema,
   RequestResetPasswordSchema,
@@ -40,7 +42,7 @@ import {
   Verify2FASchema,
 } from "./validation";
 
-@injectable()
+@Injectable()
 @Tags("Authorization")
 @Route("api/auth")
 export class AuthController extends Controller {
@@ -167,6 +169,7 @@ export class AuthController extends Controller {
    */
   @Security("jwt")
   @Post("/disable-2fa")
+  @ValidateBody(Disable2FASchema)
   disable2FA(
     @Request() req: KoaRequest,
     @Body() body: IDisable2FARequestDto,

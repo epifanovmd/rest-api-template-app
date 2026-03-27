@@ -208,7 +208,7 @@ export class UserController extends Controller {
    */
   @Security("jwt", ["permission:user:view"])
   @Get("/{id}")
-  getUserById(id: string): Promise<UserDto> {
+  getUserById(@Path() id: string): Promise<UserDto> {
     return this._userService.getUser(id).then(UserDto.fromEntity);
   }
 
@@ -225,7 +225,7 @@ export class UserController extends Controller {
   @Patch("setPrivileges/{id}")
   @ValidateBody(SetPrivilegesSchema)
   setPrivileges(
-    id: string,
+    @Path() id: string,
     @Body() body: IUserPrivilegesRequestDto,
   ): Promise<UserDto> {
     return this._userService.setPrivileges(id, body).then(UserDto.fromEntity);
@@ -258,7 +258,7 @@ export class UserController extends Controller {
   @Security("jwt")
   @Get("verifyEmail/{code}")
   verifyEmail(
-    code: string,
+    @Path() code: string,
     @Request() req: KoaRequest,
   ): Promise<ApiResponseDto> {
     const user = getContextUser(req);
@@ -279,7 +279,7 @@ export class UserController extends Controller {
   @Patch("update/{id}")
   @ValidateBody(UserUpdateSchema)
   updateUser(
-    id: string,
+    @Path() id: string,
     @Body() body: IUserUpdateRequestDto,
   ): Promise<UserDto> {
     return this._userService.updateUser(id, body).then(UserDto.fromEntity);
@@ -316,7 +316,7 @@ export class UserController extends Controller {
    */
   @Security("jwt", ["permission:user:manage"])
   @Delete("delete/{id}")
-  deleteUser(id: string): Promise<boolean> {
+  deleteUser(@Path() id: string): Promise<boolean> {
     return this._userService.deleteUser(id);
   }
 }

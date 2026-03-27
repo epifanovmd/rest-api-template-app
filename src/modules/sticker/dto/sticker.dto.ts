@@ -32,7 +32,7 @@ export class StickerPackDto extends BaseDto {
   id: string;
   name: string;
   title: string;
-  creatorId: string;
+  creatorId: string | null;
   isOfficial: boolean;
   isAnimated: boolean;
   stickers: StickerDto[];

@@ -27,7 +27,7 @@ export class Biometric {
   publicKey: string;
 
   @Column({ name: "device_name", type: "varchar", length: 100, nullable: true })
-  deviceName: string;
+  deviceName: string | null;
 
   @Column({ type: "varchar", nullable: true })
   challenge: string | null;
@@ -36,7 +36,7 @@ export class Biometric {
   challengeExpiresAt: Date | null;
 
   @Column({ name: "last_used_at", type: "timestamp", nullable: true })
-  lastUsedAt: Date;
+  lastUsedAt: Date | null;
 
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;

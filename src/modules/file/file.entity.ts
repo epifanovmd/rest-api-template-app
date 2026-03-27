@@ -17,16 +17,16 @@ export class File {
   @Column({ type: "varchar", length: 255 })
   name: string;
 
-  @Column({ type: "varchar", length: 40 })
+  @Column({ type: "varchar", length: 127 })
   type: string;
 
-  @Column({ type: "varchar", length: 120 })
+  @Column({ type: "varchar", length: 2048 })
   url: string;
 
   @Column({ type: "int" })
   size: number;
 
-  @Column({ name: "thumbnail_url", type: "varchar", length: 120, nullable: true })
+  @Column({ name: "thumbnail_url", type: "varchar", length: 2048, nullable: true })
   thumbnailUrl: string | null;
 
   @Column({ type: "int", nullable: true })

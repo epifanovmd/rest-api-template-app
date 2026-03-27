@@ -7,9 +7,9 @@ import { User } from "../user.entity";
 
 export class UserDto extends BaseDto {
   id: string;
-  email?: string;
+  email: string | null;
   emailVerified?: boolean;
-  phone?: string;
+  phone: string | null;
   username: string | null;
   profile?: ProfileDto;
   roles: IRoleDto[];
@@ -39,7 +39,7 @@ export class UserDto extends BaseDto {
 
 export class PublicUserDto extends BaseDto {
   userId: string;
-  email: string;
+  email: string | null;
   username: string | null;
   profile: PublicProfileDto;
 
@@ -61,7 +61,7 @@ export interface IUserListDto extends IListResponseDto<PublicUserDto[]> {}
 
 export interface IUserOptionDto {
   id: string;
-  name: string;
+  name: string | null;
 }
 
 export interface IUserOptionsDto {

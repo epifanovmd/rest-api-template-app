@@ -210,6 +210,10 @@ export interface ISocketEmitEvents {
   "session:terminated": (
     ...args: [{ sessionId: string }]
   ) => void;
+
+  // ─── Error event ──────────────────────────────────────────────────────
+  /** Общая ошибка обработки socket-события */
+  error: (...args: [{ event: string; message: string }]) => void;
 }
 
 // ─── Типы Socket ─────────────────────────────────────────────────────────────

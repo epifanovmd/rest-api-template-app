@@ -48,13 +48,8 @@ export class Passkey {
   deviceType: CredentialDeviceType;
 
   @Column({
-    type: "simple-array",
+    type: "jsonb",
     nullable: true,
-    transformer: {
-      to: (value: AuthenticatorTransportFuture[] | undefined) =>
-        value ? JSON.stringify(value) : null,
-      from: (value: string | null) => (value ? JSON.parse(value) : null),
-    },
   })
   transports?: AuthenticatorTransportFuture[];
 

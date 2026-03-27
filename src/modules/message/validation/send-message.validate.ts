@@ -7,6 +7,8 @@ export const SendMessageSchema = z
     type: z.nativeEnum(EMessageType).default(EMessageType.TEXT),
     content: z
       .string()
+      .trim()
+      .min(1, "Сообщение не должно быть пустым")
       .max(4000, "Сообщение не должно превышать 4000 символов")
       .optional(),
     replyToId: z.string().uuid("Некорректный UUID").optional(),

@@ -11,7 +11,9 @@ export class ChatMemberDto extends BaseDto {
   role: EChatMemberRole;
   joinedAt: Date;
   mutedUntil: Date | null;
+  lastReadMessageId: string | null;
   isPinnedChat: boolean;
+  pinnedChatAt: Date | null;
   isArchived: boolean;
   folderId: string | null;
   profile?: PublicProfileDto;
@@ -24,7 +26,9 @@ export class ChatMemberDto extends BaseDto {
     this.role = entity.role;
     this.joinedAt = entity.joinedAt;
     this.mutedUntil = entity.mutedUntil;
+    this.lastReadMessageId = entity.lastReadMessageId;
     this.isPinnedChat = entity.isPinnedChat;
+    this.pinnedChatAt = entity.pinnedChatAt;
     this.isArchived = entity.isArchived;
     this.folderId = entity.folderId;
 
@@ -46,7 +50,8 @@ export class ChatDto extends BaseDto {
   username: string | null;
   isPublic: boolean;
   avatarUrl: string | null;
-  createdById: string;
+  createdById: string | null;
+  slowModeSeconds: number;
   lastMessageAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
@@ -63,6 +68,7 @@ export class ChatDto extends BaseDto {
     this.isPublic = entity.isPublic;
     this.avatarUrl = entity.avatar?.url ?? null;
     this.createdById = entity.createdById;
+    this.slowModeSeconds = entity.slowModeSeconds;
     this.lastMessageAt = entity.lastMessageAt;
     this.createdAt = entity.createdAt;
     this.updatedAt = entity.updatedAt;

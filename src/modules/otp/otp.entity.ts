@@ -3,7 +3,7 @@ import {
   CreateDateColumn,
   Entity,
   JoinColumn,
-  ManyToOne,
+  OneToOne,
   PrimaryColumn,
   UpdateDateColumn,
 } from "typeorm";
@@ -31,7 +31,7 @@ export class Otp {
   updatedAt: Date;
 
   // Связи
-  @ManyToOne(() => User, user => user.otps, { onDelete: "CASCADE" })
+  @OneToOne(() => User, user => user.otps, { onDelete: "CASCADE" })
   @JoinColumn({ name: "user_id" })
   user: User;
 

@@ -1,6 +1,6 @@
 import { NotFoundException } from "@force-dev/utils";
-import fs from "fs";
-import { inject, injectable } from "inversify";
+import fs from "fs/promises";
+import { inject } from "inversify";
 import path from "path";
 import sharp from "sharp";
 import { File } from "tsoa";
@@ -97,21 +97,13 @@ export class FileService {
 
   private async _deleteFileFromServer(url: string) {
     try {
-      fs.readdir(config.server.filesFolderPath, err => {
-        if (err) {
-          throw err;
-        }
+      await fs.readdir(config.server.filesFolderPath);
 
-        const file = url.split("/")?.[1];
+      const file = url.split("/")?.[1];
 
-        if (file) {
-          fs.unlink(path.join(config.server.filesFolderPath, file), err => {
-            if (err) {
-              throw err;
-            }
-          });
-        }
-      });
+      if (file) {
+        await fs.unlink(path.join(config.server.filesFolderPath, file));
+      }
     } catch (e) {
       logger.error({ err: e, url }, "Error deleting file from server");
       throw e;

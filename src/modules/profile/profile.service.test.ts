@@ -177,7 +177,7 @@ describe("ProfileService", () => {
     });
 
     it("should throw NotFoundException when profile not found", async () => {
-      mockProfileRepo.delete.resolves(null);
+      mockProfileRepo.delete.resolves({ affected: 0 });
 
       try {
         await service.deleteProfile("nonexistent");

@@ -16,15 +16,15 @@ export class CallDto extends BaseDto {
   updatedAt: Date;
   caller?: {
     id: string;
-    firstName?: string;
-    lastName?: string;
-    avatarUrl?: string;
+    firstName?: string | null;
+    lastName?: string | null;
+    avatarUrl?: string | null;
   };
   callee?: {
     id: string;
-    firstName?: string;
-    lastName?: string;
-    avatarUrl?: string;
+    firstName?: string | null;
+    lastName?: string | null;
+    avatarUrl?: string | null;
   };
 
   constructor(entity: Call) {

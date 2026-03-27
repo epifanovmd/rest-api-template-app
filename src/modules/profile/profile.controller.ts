@@ -5,6 +5,7 @@ import {
   Delete,
   Get,
   Patch,
+  Path,
   Query,
   Request,
   Route,
@@ -48,10 +49,11 @@ export class ProfileController extends Controller {
    */
   @Security("jwt")
   @Get("my")
-  getMyProfile(@Request() req: KoaRequest): Promise<ProfileDto> {
+  async getMyProfile(@Request() req: KoaRequest): Promise<ProfileDto> {
     const user = getContextUser(req);
+    const profile = await this._profileService.getProfileByUserId(user.userId);
 
-    return this._profileService.getProfileByUserId(user.userId);
+    return ProfileDto.fromEntity(profile);
   }
 
   /**
@@ -64,13 +66,14 @@ export class ProfileController extends Controller {
    */
   @Security("jwt")
   @Patch("/my/update")
-  updateMyProfile(
+  async updateMyProfile(
     @Request() req: KoaRequest,
     @Body() body: IProfileUpdateRequestDto,
   ): Promise<ProfileDto> {
     const user = getContextUser(req);
+    const profile = await this._profileService.updateProfile(user.userId, body);
 
-    return this._profileService.updateProfile(user.userId, body);
+    return ProfileDto.fromEntity(profile);
   }
 
   /**
@@ -138,7 +141,7 @@ export class ProfileController extends Controller {
    * @param limit Лимит количества возвращаемых профилей
    * @returns Список всех профилей с информацией о них
    */
-  @Security("jwt", ["role:admin"])
+  @Security("jwt", ["permission:profile:view"])
   @Get("all")
   async getProfiles(
     @Query("offset") offset?: number,
@@ -165,7 +168,7 @@ export class ProfileController extends Controller {
    */
   @Security("jwt")
   @Get("/{userId}")
-  async getProfileById(userId: string): Promise<PublicProfileDto> {
+  async getProfileById(@Path() userId: string): Promise<PublicProfileDto> {
     const profile = await this._profileService.getProfileByUserId(userId);
 
     return PublicProfileDto.fromEntity(profile);
@@ -180,13 +183,15 @@ export class ProfileController extends Controller {
    * @param body Данные для обновления профиля
    * @returns Обновленный профиль пользователя
    */
-  @Security("jwt", ["role:admin"])
+  @Security("jwt", ["permission:profile:manage"])
   @Patch("update/{userId}")
-  updateProfile(
-    userId: string,
+  async updateProfile(
+    @Path() userId: string,
     @Body() body: IProfileUpdateRequestDto,
   ): Promise<ProfileDto> {
-    return this._profileService.updateProfile(userId, body);
+    const profile = await this._profileService.updateProfile(userId, body);
+
+    return ProfileDto.fromEntity(profile);
   }
 
   /**
@@ -197,9 +202,9 @@ export class ProfileController extends Controller {
    * @param userId ID пользователя, профиль которого необходимо удалить
    * @returns Сообщение об успешном удалении
    */
-  @Security("jwt", ["role:admin"])
+  @Security("jwt", ["permission:profile:manage"])
   @Delete("delete/{userId}")
-  deleteProfile(userId: string): Promise<string> {
+  deleteProfile(@Path() userId: string): Promise<string> {
     return this._profileService.deleteProfile(userId);
   }
 }

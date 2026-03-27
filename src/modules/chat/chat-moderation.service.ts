@@ -3,6 +3,7 @@ import { inject } from "inversify";
 
 import { EventBus, Injectable } from "../../core";
 import { ChatRepository } from "./chat.repository";
+import { EChatMemberRole } from "./chat.types";
 import { ChatMemberRepository } from "./chat-member.repository";
 import {
   ChatMemberBannedEvent,
@@ -25,7 +26,10 @@ export class ChatModerationService {
       throw new ForbiddenException("Вы не являетесь участником этого чата");
     }
 
-    if (membership.role !== "admin" && membership.role !== "owner") {
+    if (
+      membership.role !== EChatMemberRole.ADMIN &&
+      membership.role !== EChatMemberRole.OWNER
+    ) {
       throw new ForbiddenException(
         "Только администратор может изменять режим медленной отправки",
       );
@@ -51,7 +55,10 @@ export class ChatModerationService {
       throw new ForbiddenException("Вы не являетесь участником этого чата");
     }
 
-    if (membership.role !== "admin" && membership.role !== "owner") {
+    if (
+      membership.role !== EChatMemberRole.ADMIN &&
+      membership.role !== EChatMemberRole.OWNER
+    ) {
       throw new ForbiddenException(
         "Только администратор может блокировать участников",
       );
@@ -71,8 +78,9 @@ export class ChatModerationService {
     }
 
     if (
-      targetMembership.role === "owner" ||
-      (targetMembership.role === "admin" && membership.role !== "owner")
+      targetMembership.role === EChatMemberRole.OWNER ||
+      (targetMembership.role === EChatMemberRole.ADMIN &&
+        membership.role !== EChatMemberRole.OWNER)
     ) {
       throw new ForbiddenException(
         "Недостаточно прав для блокировки этого участника",
@@ -98,11 +106,23 @@ export class ChatModerationService {
       throw new ForbiddenException("Вы не являетесь участником этого чата");
     }
 
-    if (membership.role !== "admin" && membership.role !== "owner") {
+    if (
+      membership.role !== EChatMemberRole.ADMIN &&
+      membership.role !== EChatMemberRole.OWNER
+    ) {
       throw new ForbiddenException(
         "Только администратор может разблокировать участников",
       );
     }
+
+    // Re-add the member to the chat (banning removes the membership)
+    await this._memberRepo.save(
+      this._memberRepo.create({
+        chatId,
+        userId: targetUserId,
+        role: EChatMemberRole.MEMBER,
+      }),
+    );
 
     this._eventBus.emit(
       new ChatMemberUnbannedEvent(chatId, targetUserId, userId),
@@ -116,7 +136,10 @@ export class ChatModerationService {
       throw new ForbiddenException("Вы не являетесь участником этого чата");
     }
 
-    if (membership.role !== "admin" && membership.role !== "owner") {
+    if (
+      membership.role !== EChatMemberRole.ADMIN &&
+      membership.role !== EChatMemberRole.OWNER
+    ) {
       throw new ForbiddenException(
         "Только администратор может просматривать заблокированных",
       );

@@ -77,12 +77,28 @@ describe("ChatService — cascade & additional methods", () => {
     folderRepo = createMockRepository() as any;
     eventBus = createMockEventBus();
 
+    const mockTxQb: any = {};
+    const txQbMethods = ["innerJoin", "where", "andWhere"];
+
+    for (const m of txQbMethods) {
+      mockTxQb[m] = sinon.stub().returns(mockTxQb);
+    }
+    mockTxQb.getOne = sinon.stub().resolves(null);
+
+    const mockTxRepo = {
+      create: sinon.stub().callsFake((data: any) => ({ id: chatId, ...data })),
+      save: sinon.stub().callsFake((data: any) => Promise.resolve(Array.isArray(data) ? data : { id: chatId, ...data })),
+      createQueryBuilder: sinon.stub().returns(mockTxQb),
+      increment: sinon.stub().resolves(),
+    };
+
     service = new ChatService(
       chatRepo as any,
       memberRepo as any,
       inviteRepo as any,
       folderRepo as any,
       eventBus as any,
+      { transaction: sinon.stub().callsFake((cb: any) => cb({ getRepository: sinon.stub().returns(mockTxRepo) })) } as any,
     );
 
     // Default stubs for custom repo methods
