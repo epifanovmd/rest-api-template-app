@@ -7,13 +7,15 @@ import { File } from "tsoa";
 import { v4 } from "uuid";
 
 import { config } from "../../config";
-import { Injectable, logger } from "../../core";
+import { EventBus, Injectable, logger } from "../../core";
+import { FileUploadedEvent } from "./events";
 import { FileRepository } from "./file.repository";
 
 @Injectable()
 export class FileService {
   constructor(
     @inject(FileRepository) private _fileRepository: FileRepository,
+    @inject(EventBus) private _eventBus: EventBus,
   ) {}
 
   async getFileById(id: string) {
@@ -26,7 +28,7 @@ export class FileService {
     return file.toDTO();
   }
 
-  async uploadFile(files: File[]) {
+  async uploadFile(files: File[], userId?: string) {
     const fileEntities = await Promise.all(
       files.map(async file => {
         const id = v4();
@@ -79,6 +81,14 @@ export class FileService {
         });
       }),
     );
+
+    if (userId) {
+      for (const entity of fileEntities) {
+        this._eventBus.emit(
+          new FileUploadedEvent(entity.id, userId, entity.type),
+        );
+      }
+    }
 
     return fileEntities.map(file => file.toDTO());
   }

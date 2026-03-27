@@ -29,6 +29,7 @@ export const koaAuthentication = async (
     // The bot controller will resolve the bot itself from the token
     return {
       userId: "bot",
+      sessionId: "",
       roles: [],
       permissions: [],
       emailVerified: true,

@@ -1,8 +1,9 @@
 import { NotFoundException } from "@force-dev/utils";
 import { inject } from "inversify";
 
-import { Injectable } from "../../core";
+import { EventBus, Injectable } from "../../core";
 import { KeyBundleDto } from "./dto/encryption.dto";
+import { DeviceRevokedEvent, PrekeysLowEvent } from "./events";
 import { OneTimePreKeyRepository } from "./one-time-prekey.repository";
 import { UserKeyRepository } from "./user-key.repository";
 
@@ -12,6 +13,7 @@ export class EncryptionService {
     @inject(UserKeyRepository) private _keyRepo: UserKeyRepository,
     @inject(OneTimePreKeyRepository)
     private _preKeyRepo: OneTimePreKeyRepository,
+    @inject(EventBus) private _eventBus: EventBus,
   ) {}
 
   async uploadKeys(
@@ -79,6 +81,18 @@ export class EncryptionService {
     const oneTimePreKey =
       await this._preKeyRepo.getNextAvailable(targetUserId);
 
+    // Check remaining prekeys after consuming one
+    if (oneTimePreKey) {
+      const remainingCount =
+        await this._preKeyRepo.countAvailable(targetUserId);
+
+      if (remainingCount < 10) {
+        this._eventBus.emit(
+          new PrekeysLowEvent(targetUserId, remainingCount),
+        );
+      }
+    }
+
     return {
       userId: targetUserId,
       deviceId: userKey.deviceId,
@@ -121,6 +135,8 @@ export class EncryptionService {
     if (key) {
       key.isActive = false;
       await this._keyRepo.save(key);
+
+      this._eventBus.emit(new DeviceRevokedEvent(userId, deviceId));
     }
   }
 }

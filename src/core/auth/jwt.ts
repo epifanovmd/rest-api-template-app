@@ -9,6 +9,7 @@ export type { SecurityScopes } from "./token.service";
 
 export type TokenPayload = {
   userId: string;
+  sessionId: string;
   roles: ERole[];
   permissions: EPermissions[];
   emailVerified: boolean;

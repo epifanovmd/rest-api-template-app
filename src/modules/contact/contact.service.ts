@@ -12,7 +12,12 @@ import { Contact } from "./contact.entity";
 import { ContactRepository } from "./contact.repository";
 import { EContactStatus } from "./contact.types";
 import { ContactDto } from "./dto";
-import { ContactAcceptedEvent, ContactRequestEvent } from "./events";
+import {
+  ContactAcceptedEvent,
+  ContactBlockedEvent,
+  ContactRemovedEvent,
+  ContactRequestEvent,
+} from "./events";
 
 @Injectable()
 export class ContactService {
@@ -108,19 +113,25 @@ export class ContactService {
       throw new NotFoundException("Контакт не найден");
     }
 
+    const contactUserId = contact.contactUserId;
+
     // Удаляем обе стороны связи в транзакции
     await this._dataSource.transaction(async manager => {
       const contactRepo = manager.getRepository(Contact);
 
       await contactRepo.delete({
         userId,
-        contactUserId: contact.contactUserId,
+        contactUserId,
       });
       await contactRepo.delete({
-        userId: contact.contactUserId,
+        userId: contactUserId,
         contactUserId: userId,
       });
     });
+
+    this._eventBus.emit(
+      new ContactRemovedEvent(userId, contactUserId, contactId),
+    );
 
     return contactId;
   }
@@ -135,7 +146,13 @@ export class ContactService {
     contact.status = EContactStatus.BLOCKED;
     await this._contactRepo.save(contact);
 
-    return ContactDto.fromEntity(contact);
+    const dto = ContactDto.fromEntity(contact);
+
+    this._eventBus.emit(
+      new ContactBlockedEvent(dto, contact.contactUserId),
+    );
+
+    return dto;
   }
 
   async getContacts(userId: string, status?: EContactStatus) {

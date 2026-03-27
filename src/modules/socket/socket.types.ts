@@ -132,6 +132,10 @@ export interface ISocketEmitEvents {
   "chat:archived": (
     ...args: [{ chatId: string; isArchived: boolean }]
   ) => void;
+  /** Роль участника чата изменена */
+  "chat:member:role-changed": (
+    ...args: [{ chatId: string; userId: string; role: string }]
+  ) => void;
 
   // ─── Poll events ──────────────────────────────────────────────────────
   /** Голос в опросе */
@@ -177,6 +181,10 @@ export interface ISocketEmitEvents {
     ...args: [{ callId: string; fromUserId: string; candidate: unknown }]
   ) => void;
 
+  // ─── User events ──────────────────────────────────────────────────────
+  /** Email пользователя подтверждён */
+  "user:email-verified": (...args: [{ verified: boolean }]) => void;
+
   // ─── E2E Encryption events ─────────────────────────────────────────────
   /** Relay key exchange от другого участника */
   "e2e:key-exchange": (
@@ -194,6 +202,8 @@ export interface ISocketEmitEvents {
   ) => void;
   /** Предупреждение о малом количестве prekeys */
   "e2e:prekeys-low": (...args: [{ count: number }]) => void;
+  /** Устройство отозвано */
+  "e2e:device-revoked": (...args: [{ deviceId: string }]) => void;
 
   // ─── Sync events ───────────────────────────────────────────────────────
   /** Уведомление о наличии новых изменений для sync */
@@ -204,8 +214,42 @@ export interface ISocketEmitEvents {
   "contact:request": (...args: [ContactDto]) => void;
   /** Контакт принят */
   "contact:accepted": (...args: [ContactDto]) => void;
+  /** Контакт удалён */
+  "contact:removed": (...args: [{ contactId: string }]) => void;
+  /** Контакт заблокирован */
+  "contact:blocked": (...args: [ContactDto]) => void;
+  /** Контакт разблокирован */
+  "contact:unblocked": (...args: [ContactDto]) => void;
+
+  // ─── User events ─────────────────────────────────────────────────────
+  /** Пароль изменён */
+  "user:password-changed": (
+    ...args: [{ userId: string; method: "change" | "reset" }]
+  ) => void;
+  /** Привилегии пользователя изменены */
+  "user:privileges-changed": (
+    ...args: [{ roles: string[]; permissions: string[] }]
+  ) => void;
+  /** Username пользователя изменён */
+  "user:username-changed": (
+    ...args: [{ userId: string; username: string | null }]
+  ) => void;
+
+  // ─── Push events ──────────────────────────────────────────────────────
+  /** Настройки уведомлений изменены */
+  "push:settings-changed": (...args: [Record<string, never>]) => void;
+
+  // ─── Profile privacy events ───────────────────────────────────────────
+  /** Настройки приватности изменены */
+  "profile:privacy-changed": (...args: [Record<string, never>]) => void;
+
+  // ─── Auth events ──────────────────────────────────────────────────────
+  /** Изменение статуса 2FA */
+  "auth:2fa-changed": (...args: [{ enabled: boolean }]) => void;
 
   // ─── Session events ─────────────────────────────────────────────────────
+  /** Новая сессия авторизована */
+  "session:new": (...args: [{ sessionId: string }]) => void;
   /** Сессия завершена */
   "session:terminated": (
     ...args: [{ sessionId: string }]

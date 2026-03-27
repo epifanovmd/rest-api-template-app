@@ -5,7 +5,6 @@ export enum EMessageType {
   VOICE = "voice",
   SYSTEM = "system",
   POLL = "poll",
-  STICKER = "sticker",
 }
 
 export enum EMessageStatus {

@@ -4,9 +4,12 @@ import { EventBus, Injectable } from "../../core";
 import { ISocketEventListener, SocketEmitterService } from "../socket";
 import { ChatDto } from "./dto";
 import {
+  ChatArchivedEvent,
   ChatCreatedEvent,
   ChatMemberJoinedEvent,
   ChatMemberLeftEvent,
+  ChatMemberRoleChangedEvent,
+  ChatPinnedEvent,
   ChatUpdatedEvent,
 } from "./events";
 
@@ -53,5 +56,30 @@ export class ChatListener implements ISocketEventListener {
         });
       }
     });
+
+    this._eventBus.on(ChatPinnedEvent, (event: ChatPinnedEvent) => {
+      this._emitter.toUser(event.userId, "chat:pinned", {
+        chatId: event.chatId,
+        isPinned: event.isPinned,
+      });
+    });
+
+    this._eventBus.on(ChatArchivedEvent, (event: ChatArchivedEvent) => {
+      this._emitter.toUser(event.userId, "chat:archived", {
+        chatId: event.chatId,
+        isArchived: event.isArchived,
+      });
+    });
+
+    this._eventBus.on(
+      ChatMemberRoleChangedEvent,
+      (event: ChatMemberRoleChangedEvent) => {
+        this._emitter.toRoom(`chat_${event.chatId}`, "chat:member:role-changed", {
+          chatId: event.chatId,
+          userId: event.userId,
+          role: event.role,
+        });
+      },
+    );
   }
 }

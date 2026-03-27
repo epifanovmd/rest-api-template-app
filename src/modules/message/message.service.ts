@@ -19,6 +19,7 @@ import {
   MessagePinnedEvent,
   MessageReactionEvent,
   MessageReadEvent,
+  MessageSelfDestructStartedEvent,
   MessageUnpinnedEvent,
   MessageUpdatedEvent,
 } from "./events";
@@ -636,6 +637,14 @@ export class MessageService {
         Date.now() + message.selfDestructSeconds * 1000,
       );
       await this._messageRepo.save(message);
+
+      this._eventBus.emit(
+        new MessageSelfDestructStartedEvent(
+          messageId,
+          message.chatId,
+          message.selfDestructAt,
+        ),
+      );
     }
 
     const updated = await this._messageRepo.findById(messageId);

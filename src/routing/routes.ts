@@ -3,6 +3,8 @@
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
   import { Controller, ValidationService, FieldErrors, ValidateError, TsoaRoute, HttpStatusCodeLiteral, TsoaResponse, fetchMiddlewares } from '@tsoa/runtime';
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+import { SessionController } from './../modules/session/session.controller';
+// WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 import { ProfileController } from './../modules/profile/profile.controller';
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 import { RoleController } from './../modules/role/role.controller';
@@ -43,10 +45,6 @@ import { DeviceController } from './../modules/push/device.controller';
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 import { NotificationSettingsController } from './../modules/push/notification-settings.controller';
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-import { SessionController } from './../modules/session/session.controller';
-// WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-import { StickerController } from './../modules/sticker/sticker.controller';
-// WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 import { SyncController } from './../modules/sync/sync.controller';
 import { koaAuthentication } from './../core/auth/koa-authentication';
 // @ts-ignore - no great way to install types from subpackage
@@ -62,6 +60,21 @@ const upload = multer(multerOpts);
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 
 const models: TsoaRoute.Models = {
+    "SessionDto": {
+        "dataType": "refObject",
+        "properties": {
+            "id": {"dataType":"string","required":true},
+            "userId": {"dataType":"string","required":true},
+            "deviceName": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
+            "deviceType": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
+            "ip": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
+            "userAgent": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
+            "lastActiveAt": {"dataType":"datetime","required":true},
+            "createdAt": {"dataType":"datetime","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "EProfileStatus": {
         "dataType": "refEnum",
         "enums": ["online","offline"],
@@ -469,7 +482,7 @@ const models: TsoaRoute.Models = {
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "EMessageType": {
         "dataType": "refEnum",
-        "enums": ["text","image","file","voice","system","poll","sticker"],
+        "enums": ["text","image","file","voice","system","poll"],
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "EMessageStatus": {
@@ -498,7 +511,6 @@ const models: TsoaRoute.Models = {
             "isPinned": {"dataType":"boolean","required":true},
             "pinnedAt": {"dataType":"union","subSchemas":[{"dataType":"datetime"},{"dataType":"enum","enums":[null]}],"required":true},
             "pinnedById": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
-            "stickerId": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
             "encryptedContent": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
             "encryptionMetadata": {"dataType":"union","subSchemas":[{"ref":"Record_string.unknown_"},{"dataType":"enum","enums":[null]}],"required":true},
             "keyboard": {"dataType":"union","subSchemas":[{"dataType":"any"},{"dataType":"enum","enums":[null]}],"required":true},
@@ -1405,79 +1417,6 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "SessionDto": {
-        "dataType": "refObject",
-        "properties": {
-            "id": {"dataType":"string","required":true},
-            "userId": {"dataType":"string","required":true},
-            "deviceName": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
-            "deviceType": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
-            "ip": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
-            "userAgent": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
-            "lastActiveAt": {"dataType":"datetime","required":true},
-            "createdAt": {"dataType":"datetime","required":true},
-        },
-        "additionalProperties": false,
-    },
-    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "StickerDto": {
-        "dataType": "refObject",
-        "properties": {
-            "id": {"dataType":"string","required":true},
-            "packId": {"dataType":"string","required":true},
-            "emoji": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
-            "fileId": {"dataType":"string","required":true},
-            "fileUrl": {"dataType":"string","required":true},
-            "position": {"dataType":"double","required":true},
-            "createdAt": {"dataType":"datetime","required":true},
-        },
-        "additionalProperties": false,
-    },
-    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "StickerPackDto": {
-        "dataType": "refObject",
-        "properties": {
-            "id": {"dataType":"string","required":true},
-            "name": {"dataType":"string","required":true},
-            "title": {"dataType":"string","required":true},
-            "creatorId": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
-            "isOfficial": {"dataType":"boolean","required":true},
-            "isAnimated": {"dataType":"boolean","required":true},
-            "stickers": {"dataType":"array","array":{"dataType":"refObject","ref":"StickerDto"},"required":true},
-            "createdAt": {"dataType":"datetime","required":true},
-            "updatedAt": {"dataType":"datetime","required":true},
-        },
-        "additionalProperties": false,
-    },
-    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "ICreateStickerPackBody": {
-        "dataType": "refObject",
-        "properties": {
-            "name": {"dataType":"string","required":true},
-            "title": {"dataType":"string","required":true},
-            "isAnimated": {"dataType":"boolean"},
-        },
-        "additionalProperties": false,
-    },
-    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "IStickerPackListDto": {
-        "dataType": "refObject",
-        "properties": {
-            "data": {"dataType":"array","array":{"dataType":"refObject","ref":"StickerPackDto"},"required":true},
-            "totalCount": {"dataType":"double","required":true},
-        },
-        "additionalProperties": false,
-    },
-    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "IAddStickerBody": {
-        "dataType": "refObject",
-        "properties": {
-            "emoji": {"dataType":"string"},
-            "fileId": {"dataType":"string","required":true},
-        },
-        "additionalProperties": false,
-    },
-    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "ESyncEntityType": {
         "dataType": "refEnum",
         "enums": ["message","chat","chat_member","contact","profile"],
@@ -1522,6 +1461,97 @@ export function RegisterRoutes(router: KoaRouter) {
     //  NOTE: If you do not see routes for all of your controllers in this file, then you might not have informed tsoa of where to look
     //      Please look into the "controllerPathGlobs" config option described in the readme: https://github.com/lukeautry/tsoa
     // ###########################################################################################################
+        router.get('/api/session',
+            authenticateMiddleware([{"jwt":[]}]),
+            ...(fetchMiddlewares<Middleware>(SessionController)),
+            ...(fetchMiddlewares<Middleware>(SessionController.prototype.getSessions)),
+
+            async function SessionController_getSessions(context: any, next: any) {
+            const args = {
+                    req: {"in":"request","name":"req","required":true,"dataType":"object"},
+            };
+
+            let validatedArgs: any[] = [];
+            try {
+              validatedArgs = getValidatedArgs(args, context, next);
+            } catch (err) {
+              const error = err as any;
+              context.status = error.status;
+              context.throw(error.status, JSON.stringify({ fields: error.fields }));
+            }
+
+            const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(context.request) : iocContainer;
+
+            const controller: any = await container.get<SessionController>(SessionController);
+            if (typeof controller['setStatus'] === 'function') {
+                controller.setStatus(undefined);
+            }
+
+            const promise = controller.getSessions.apply(controller, validatedArgs as any);
+            return promiseHandler(controller, promise, context, undefined, undefined);
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        router.delete('/api/session/:id',
+            authenticateMiddleware([{"jwt":[]}]),
+            ...(fetchMiddlewares<Middleware>(SessionController)),
+            ...(fetchMiddlewares<Middleware>(SessionController.prototype.terminateSession)),
+
+            async function SessionController_terminateSession(context: any, next: any) {
+            const args = {
+                    req: {"in":"request","name":"req","required":true,"dataType":"object"},
+                    id: {"in":"path","name":"id","required":true,"dataType":"string"},
+            };
+
+            let validatedArgs: any[] = [];
+            try {
+              validatedArgs = getValidatedArgs(args, context, next);
+            } catch (err) {
+              const error = err as any;
+              context.status = error.status;
+              context.throw(error.status, JSON.stringify({ fields: error.fields }));
+            }
+
+            const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(context.request) : iocContainer;
+
+            const controller: any = await container.get<SessionController>(SessionController);
+            if (typeof controller['setStatus'] === 'function') {
+                controller.setStatus(undefined);
+            }
+
+            const promise = controller.terminateSession.apply(controller, validatedArgs as any);
+            return promiseHandler(controller, promise, context, undefined, undefined);
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        router.post('/api/session/terminate-others',
+            authenticateMiddleware([{"jwt":[]}]),
+            ...(fetchMiddlewares<Middleware>(SessionController)),
+            ...(fetchMiddlewares<Middleware>(SessionController.prototype.terminateOtherSessions)),
+
+            async function SessionController_terminateOtherSessions(context: any, next: any) {
+            const args = {
+                    req: {"in":"request","name":"req","required":true,"dataType":"object"},
+            };
+
+            let validatedArgs: any[] = [];
+            try {
+              validatedArgs = getValidatedArgs(args, context, next);
+            } catch (err) {
+              const error = err as any;
+              context.status = error.status;
+              context.throw(error.status, JSON.stringify({ fields: error.fields }));
+            }
+
+            const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(context.request) : iocContainer;
+
+            const controller: any = await container.get<SessionController>(SessionController);
+            if (typeof controller['setStatus'] === 'function') {
+                controller.setStatus(undefined);
+            }
+
+            const promise = controller.terminateOtherSessions.apply(controller, validatedArgs as any);
+            return promiseHandler(controller, promise, context, undefined, undefined);
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         router.get('/api/profile/my',
             authenticateMiddleware([{"jwt":[]}]),
             ...(fetchMiddlewares<Middleware>(ProfileController)),
@@ -2322,6 +2352,7 @@ export function RegisterRoutes(router: KoaRouter) {
 
             async function AuthController_signUp(context: any, next: any) {
             const args = {
+                    req: {"in":"request","name":"req","required":true,"dataType":"object"},
                     body: {"in":"body","name":"body","required":true,"ref":"TSignUpRequestDto"},
             };
 
@@ -2351,6 +2382,7 @@ export function RegisterRoutes(router: KoaRouter) {
 
             async function AuthController_signIn(context: any, next: any) {
             const args = {
+                    req: {"in":"request","name":"req","required":true,"dataType":"object"},
                     body: {"in":"body","name":"body","required":true,"ref":"ISignInRequestDto"},
             };
 
@@ -2529,6 +2561,7 @@ export function RegisterRoutes(router: KoaRouter) {
 
             async function AuthController_verify2FA(context: any, next: any) {
             const args = {
+                    req: {"in":"request","name":"req","required":true,"dataType":"object"},
                     body: {"in":"body","name":"body","required":true,"ref":"IVerify2FARequestDto"},
             };
 
@@ -5642,377 +5675,6 @@ export function RegisterRoutes(router: KoaRouter) {
             }
 
             const promise = controller.updateSettings.apply(controller, validatedArgs as any);
-            return promiseHandler(controller, promise, context, undefined, undefined);
-        });
-        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-        router.get('/api/session',
-            authenticateMiddleware([{"jwt":[]}]),
-            ...(fetchMiddlewares<Middleware>(SessionController)),
-            ...(fetchMiddlewares<Middleware>(SessionController.prototype.getSessions)),
-
-            async function SessionController_getSessions(context: any, next: any) {
-            const args = {
-                    req: {"in":"request","name":"req","required":true,"dataType":"object"},
-            };
-
-            let validatedArgs: any[] = [];
-            try {
-              validatedArgs = getValidatedArgs(args, context, next);
-            } catch (err) {
-              const error = err as any;
-              context.status = error.status;
-              context.throw(error.status, JSON.stringify({ fields: error.fields }));
-            }
-
-            const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(context.request) : iocContainer;
-
-            const controller: any = await container.get<SessionController>(SessionController);
-            if (typeof controller['setStatus'] === 'function') {
-                controller.setStatus(undefined);
-            }
-
-            const promise = controller.getSessions.apply(controller, validatedArgs as any);
-            return promiseHandler(controller, promise, context, undefined, undefined);
-        });
-        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-        router.delete('/api/session/:id',
-            authenticateMiddleware([{"jwt":[]}]),
-            ...(fetchMiddlewares<Middleware>(SessionController)),
-            ...(fetchMiddlewares<Middleware>(SessionController.prototype.terminateSession)),
-
-            async function SessionController_terminateSession(context: any, next: any) {
-            const args = {
-                    req: {"in":"request","name":"req","required":true,"dataType":"object"},
-                    id: {"in":"path","name":"id","required":true,"dataType":"string"},
-            };
-
-            let validatedArgs: any[] = [];
-            try {
-              validatedArgs = getValidatedArgs(args, context, next);
-            } catch (err) {
-              const error = err as any;
-              context.status = error.status;
-              context.throw(error.status, JSON.stringify({ fields: error.fields }));
-            }
-
-            const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(context.request) : iocContainer;
-
-            const controller: any = await container.get<SessionController>(SessionController);
-            if (typeof controller['setStatus'] === 'function') {
-                controller.setStatus(undefined);
-            }
-
-            const promise = controller.terminateSession.apply(controller, validatedArgs as any);
-            return promiseHandler(controller, promise, context, undefined, undefined);
-        });
-        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-        router.post('/api/session/terminate-others',
-            authenticateMiddleware([{"jwt":[]}]),
-            ...(fetchMiddlewares<Middleware>(SessionController)),
-            ...(fetchMiddlewares<Middleware>(SessionController.prototype.terminateOtherSessions)),
-
-            async function SessionController_terminateOtherSessions(context: any, next: any) {
-            const args = {
-                    req: {"in":"request","name":"req","required":true,"dataType":"object"},
-                    body: {"in":"body","name":"body","required":true,"dataType":"nestedObjectLiteral","nestedProperties":{"currentSessionId":{"dataType":"string","required":true}}},
-            };
-
-            let validatedArgs: any[] = [];
-            try {
-              validatedArgs = getValidatedArgs(args, context, next);
-            } catch (err) {
-              const error = err as any;
-              context.status = error.status;
-              context.throw(error.status, JSON.stringify({ fields: error.fields }));
-            }
-
-            const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(context.request) : iocContainer;
-
-            const controller: any = await container.get<SessionController>(SessionController);
-            if (typeof controller['setStatus'] === 'function') {
-                controller.setStatus(undefined);
-            }
-
-            const promise = controller.terminateOtherSessions.apply(controller, validatedArgs as any);
-            return promiseHandler(controller, promise, context, undefined, undefined);
-        });
-        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-        router.post('/api/sticker/pack',
-            authenticateMiddleware([{"jwt":[]}]),
-            ...(fetchMiddlewares<Middleware>(StickerController)),
-            ...(fetchMiddlewares<Middleware>(StickerController.prototype.createPack)),
-
-            async function StickerController_createPack(context: any, next: any) {
-            const args = {
-                    req: {"in":"request","name":"req","required":true,"dataType":"object"},
-                    body: {"in":"body","name":"body","required":true,"ref":"ICreateStickerPackBody"},
-            };
-
-            let validatedArgs: any[] = [];
-            try {
-              validatedArgs = getValidatedArgs(args, context, next);
-            } catch (err) {
-              const error = err as any;
-              context.status = error.status;
-              context.throw(error.status, JSON.stringify({ fields: error.fields }));
-            }
-
-            const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(context.request) : iocContainer;
-
-            const controller: any = await container.get<StickerController>(StickerController);
-            if (typeof controller['setStatus'] === 'function') {
-                controller.setStatus(undefined);
-            }
-
-            const promise = controller.createPack.apply(controller, validatedArgs as any);
-            return promiseHandler(controller, promise, context, undefined, undefined);
-        });
-        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-        router.get('/api/sticker/pack',
-            authenticateMiddleware([{"jwt":[]}]),
-            ...(fetchMiddlewares<Middleware>(StickerController)),
-            ...(fetchMiddlewares<Middleware>(StickerController.prototype.getUserPacks)),
-
-            async function StickerController_getUserPacks(context: any, next: any) {
-            const args = {
-                    req: {"in":"request","name":"req","required":true,"dataType":"object"},
-            };
-
-            let validatedArgs: any[] = [];
-            try {
-              validatedArgs = getValidatedArgs(args, context, next);
-            } catch (err) {
-              const error = err as any;
-              context.status = error.status;
-              context.throw(error.status, JSON.stringify({ fields: error.fields }));
-            }
-
-            const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(context.request) : iocContainer;
-
-            const controller: any = await container.get<StickerController>(StickerController);
-            if (typeof controller['setStatus'] === 'function') {
-                controller.setStatus(undefined);
-            }
-
-            const promise = controller.getUserPacks.apply(controller, validatedArgs as any);
-            return promiseHandler(controller, promise, context, undefined, undefined);
-        });
-        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-        router.get('/api/sticker/pack/featured',
-            authenticateMiddleware([{"jwt":[]}]),
-            ...(fetchMiddlewares<Middleware>(StickerController)),
-            ...(fetchMiddlewares<Middleware>(StickerController.prototype.getFeaturedPacks)),
-
-            async function StickerController_getFeaturedPacks(context: any, next: any) {
-            const args = {
-                    limit: {"in":"query","name":"limit","dataType":"double"},
-                    offset: {"in":"query","name":"offset","dataType":"double"},
-            };
-
-            let validatedArgs: any[] = [];
-            try {
-              validatedArgs = getValidatedArgs(args, context, next);
-            } catch (err) {
-              const error = err as any;
-              context.status = error.status;
-              context.throw(error.status, JSON.stringify({ fields: error.fields }));
-            }
-
-            const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(context.request) : iocContainer;
-
-            const controller: any = await container.get<StickerController>(StickerController);
-            if (typeof controller['setStatus'] === 'function') {
-                controller.setStatus(undefined);
-            }
-
-            const promise = controller.getFeaturedPacks.apply(controller, validatedArgs as any);
-            return promiseHandler(controller, promise, context, undefined, undefined);
-        });
-        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-        router.get('/api/sticker/pack/search',
-            authenticateMiddleware([{"jwt":[]}]),
-            ...(fetchMiddlewares<Middleware>(StickerController)),
-            ...(fetchMiddlewares<Middleware>(StickerController.prototype.searchPacks)),
-
-            async function StickerController_searchPacks(context: any, next: any) {
-            const args = {
-                    q: {"in":"query","name":"q","required":true,"dataType":"string"},
-                    limit: {"in":"query","name":"limit","dataType":"double"},
-                    offset: {"in":"query","name":"offset","dataType":"double"},
-            };
-
-            let validatedArgs: any[] = [];
-            try {
-              validatedArgs = getValidatedArgs(args, context, next);
-            } catch (err) {
-              const error = err as any;
-              context.status = error.status;
-              context.throw(error.status, JSON.stringify({ fields: error.fields }));
-            }
-
-            const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(context.request) : iocContainer;
-
-            const controller: any = await container.get<StickerController>(StickerController);
-            if (typeof controller['setStatus'] === 'function') {
-                controller.setStatus(undefined);
-            }
-
-            const promise = controller.searchPacks.apply(controller, validatedArgs as any);
-            return promiseHandler(controller, promise, context, undefined, undefined);
-        });
-        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-        router.get('/api/sticker/pack/:id',
-            authenticateMiddleware([{"jwt":[]}]),
-            ...(fetchMiddlewares<Middleware>(StickerController)),
-            ...(fetchMiddlewares<Middleware>(StickerController.prototype.getPackById)),
-
-            async function StickerController_getPackById(context: any, next: any) {
-            const args = {
-                    id: {"in":"path","name":"id","required":true,"dataType":"string"},
-            };
-
-            let validatedArgs: any[] = [];
-            try {
-              validatedArgs = getValidatedArgs(args, context, next);
-            } catch (err) {
-              const error = err as any;
-              context.status = error.status;
-              context.throw(error.status, JSON.stringify({ fields: error.fields }));
-            }
-
-            const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(context.request) : iocContainer;
-
-            const controller: any = await container.get<StickerController>(StickerController);
-            if (typeof controller['setStatus'] === 'function') {
-                controller.setStatus(undefined);
-            }
-
-            const promise = controller.getPackById.apply(controller, validatedArgs as any);
-            return promiseHandler(controller, promise, context, undefined, undefined);
-        });
-        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-        router.post('/api/sticker/pack/:id/add',
-            authenticateMiddleware([{"jwt":[]}]),
-            ...(fetchMiddlewares<Middleware>(StickerController)),
-            ...(fetchMiddlewares<Middleware>(StickerController.prototype.addPack)),
-
-            async function StickerController_addPack(context: any, next: any) {
-            const args = {
-                    req: {"in":"request","name":"req","required":true,"dataType":"object"},
-                    id: {"in":"path","name":"id","required":true,"dataType":"string"},
-            };
-
-            let validatedArgs: any[] = [];
-            try {
-              validatedArgs = getValidatedArgs(args, context, next);
-            } catch (err) {
-              const error = err as any;
-              context.status = error.status;
-              context.throw(error.status, JSON.stringify({ fields: error.fields }));
-            }
-
-            const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(context.request) : iocContainer;
-
-            const controller: any = await container.get<StickerController>(StickerController);
-            if (typeof controller['setStatus'] === 'function') {
-                controller.setStatus(undefined);
-            }
-
-            const promise = controller.addPack.apply(controller, validatedArgs as any);
-            return promiseHandler(controller, promise, context, undefined, undefined);
-        });
-        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-        router.delete('/api/sticker/pack/:id/remove',
-            authenticateMiddleware([{"jwt":[]}]),
-            ...(fetchMiddlewares<Middleware>(StickerController)),
-            ...(fetchMiddlewares<Middleware>(StickerController.prototype.removePack)),
-
-            async function StickerController_removePack(context: any, next: any) {
-            const args = {
-                    req: {"in":"request","name":"req","required":true,"dataType":"object"},
-                    id: {"in":"path","name":"id","required":true,"dataType":"string"},
-            };
-
-            let validatedArgs: any[] = [];
-            try {
-              validatedArgs = getValidatedArgs(args, context, next);
-            } catch (err) {
-              const error = err as any;
-              context.status = error.status;
-              context.throw(error.status, JSON.stringify({ fields: error.fields }));
-            }
-
-            const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(context.request) : iocContainer;
-
-            const controller: any = await container.get<StickerController>(StickerController);
-            if (typeof controller['setStatus'] === 'function') {
-                controller.setStatus(undefined);
-            }
-
-            const promise = controller.removePack.apply(controller, validatedArgs as any);
-            return promiseHandler(controller, promise, context, undefined, undefined);
-        });
-        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-        router.post('/api/sticker/pack/:id/sticker',
-            authenticateMiddleware([{"jwt":[]}]),
-            ...(fetchMiddlewares<Middleware>(StickerController)),
-            ...(fetchMiddlewares<Middleware>(StickerController.prototype.addSticker)),
-
-            async function StickerController_addSticker(context: any, next: any) {
-            const args = {
-                    req: {"in":"request","name":"req","required":true,"dataType":"object"},
-                    id: {"in":"path","name":"id","required":true,"dataType":"string"},
-                    body: {"in":"body","name":"body","required":true,"ref":"IAddStickerBody"},
-            };
-
-            let validatedArgs: any[] = [];
-            try {
-              validatedArgs = getValidatedArgs(args, context, next);
-            } catch (err) {
-              const error = err as any;
-              context.status = error.status;
-              context.throw(error.status, JSON.stringify({ fields: error.fields }));
-            }
-
-            const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(context.request) : iocContainer;
-
-            const controller: any = await container.get<StickerController>(StickerController);
-            if (typeof controller['setStatus'] === 'function') {
-                controller.setStatus(undefined);
-            }
-
-            const promise = controller.addSticker.apply(controller, validatedArgs as any);
-            return promiseHandler(controller, promise, context, undefined, undefined);
-        });
-        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-        router.delete('/api/sticker/:id',
-            authenticateMiddleware([{"jwt":[]}]),
-            ...(fetchMiddlewares<Middleware>(StickerController)),
-            ...(fetchMiddlewares<Middleware>(StickerController.prototype.removeSticker)),
-
-            async function StickerController_removeSticker(context: any, next: any) {
-            const args = {
-                    req: {"in":"request","name":"req","required":true,"dataType":"object"},
-                    id: {"in":"path","name":"id","required":true,"dataType":"string"},
-            };
-
-            let validatedArgs: any[] = [];
-            try {
-              validatedArgs = getValidatedArgs(args, context, next);
-            } catch (err) {
-              const error = err as any;
-              context.status = error.status;
-              context.throw(error.status, JSON.stringify({ fields: error.fields }));
-            }
-
-            const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(context.request) : iocContainer;
-
-            const controller: any = await container.get<StickerController>(StickerController);
-            if (typeof controller['setStatus'] === 'function') {
-                controller.setStatus(undefined);
-            }
-
-            const promise = controller.removeSticker.apply(controller, validatedArgs as any);
             return promiseHandler(controller, promise, context, undefined, undefined);
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa

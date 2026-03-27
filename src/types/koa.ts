@@ -5,6 +5,7 @@ import { ERole } from "../modules/role/role.types";
 
 export type AuthContext = {
   userId: string;
+  sessionId: string;
   /** Все роли, назначенные этому пользователю. */
   roles: ERole[];
   /**

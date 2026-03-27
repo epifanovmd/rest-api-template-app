@@ -36,6 +36,7 @@ src/modules/message/
 │   ├── message-delivered.event.ts    # MessageDeliveredEvent
 │   ├── message-pinned.event.ts       # MessagePinnedEvent, MessageUnpinnedEvent
 │   ├── message-reaction.event.ts     # MessageReactionEvent
+│   ├── message-self-destruct.event.ts # MessageSelfDestructStartedEvent
 │   └── index.ts
 ├── validation/
 │   ├── send-message.validate.ts      # Zod-схема отправки сообщения
@@ -48,7 +49,8 @@ src/modules/message/
 ├── message.handler.test.ts           # Тесты socket-обработчика
 ├── message-scheduler.bootstrap.test.ts # Тесты планировщика
 ├── message.listener.test.ts          # Тесты слушателя событий
-└── dto/message.dto.test.ts           # Тесты DTO
+├── dto/message.dto.test.ts           # Тесты DTO
+└── validation/message.validation.test.ts # Тесты валидации
 ```
 
 ---
@@ -63,24 +65,23 @@ src/modules/message/
 |------|-----|----------|
 | `id` | `uuid` (PK) | Уникальный идентификатор |
 | `chatId` | `uuid` (FK -> chats) | ID чата |
-| `senderId` | `uuid` (FK -> users) | ID отправителя |
-| `type` | `enum EMessageType` | Тип сообщения (text, image, file, voice, system, poll, sticker) |
+| `senderId` | `uuid` (FK -> users), nullable | ID отправителя |
+| `type` | `enum EMessageType` | Тип сообщения (text, image, file, voice, system, poll) |
 | `content` | `text`, nullable | Текстовое содержимое |
 | `replyToId` | `uuid`, nullable (FK -> messages) | ID сообщения, на которое отвечают |
 | `forwardedFromId` | `uuid`, nullable (FK -> messages) | ID пересланного сообщения |
 | `status` | `enum EMessageStatus` | Статус (sent, delivered, read) |
-| `isEdited` | `boolean` | Было ли отредактировано |
-| `isDeleted` | `boolean` | Soft-delete флаг |
-| `isPinned` | `boolean` | Закреплено ли |
+| `isEdited` | `boolean` | Было ли отредактировано (default: false) |
+| `isDeleted` | `boolean` | Soft-delete флаг (default: false) |
+| `isPinned` | `boolean` | Закреплено ли (default: false) |
 | `pinnedAt` | `timestamp`, nullable | Время закрепления |
 | `pinnedById` | `uuid`, nullable | Кто закрепил |
 | `encryptedContent` | `text`, nullable | Зашифрованное содержимое (E2E) |
 | `encryptionMetadata` | `jsonb`, nullable | Метаданные шифрования |
-| `stickerId` | `uuid`, nullable | ID стикера |
 | `keyboard` | `jsonb`, nullable | Inline-клавиатура (бот) |
-| `linkPreviews` | `jsonb`, nullable | Массив превью ссылок (url, title, description, imageUrl, siteName) |
+| `linkPreviews` | `jsonb`, nullable | Массив превью ссылок `{ url, title, description, imageUrl, siteName }[]` |
 | `scheduledAt` | `timestamp`, nullable | Время запланированной отправки |
-| `isScheduled` | `boolean` | Является ли запланированным |
+| `isScheduled` | `boolean` | Является ли запланированным (default: false) |
 | `selfDestructSeconds` | `integer`, nullable | Таймер самоуничтожения в секундах |
 | `selfDestructAt` | `timestamp`, nullable | Время уничтожения (устанавливается при открытии получателем) |
 | `createdAt` | `timestamp` | Дата создания |
@@ -88,7 +89,7 @@ src/modules/message/
 
 **Связи:**
 - `ManyToOne` -> `Chat` (onDelete: CASCADE)
-- `ManyToOne` -> `User` (sender, onDelete: SET NULL)
+- `ManyToOne` -> `User` (sender, onDelete: SET NULL, nullable)
 - `ManyToOne` -> `Message` (replyTo, self-reference, onDelete: SET NULL)
 - `ManyToOne` -> `Message` (forwardedFrom, self-reference, onDelete: SET NULL)
 - `OneToMany` -> `MessageAttachment[]` (cascade, eager)
@@ -96,8 +97,8 @@ src/modules/message/
 - `OneToMany` -> `MessageMention[]` (cascade, eager)
 
 **Индексы:**
-- `IDX_MESSAGES_CHAT_CREATED` — `(chatId, createdAt)` — быстрая загрузка сообщений чата
-- `IDX_MESSAGES_SENDER` — `(senderId)`
+- `IDX_MESSAGES_CHAT_CREATED` -- `(chatId, createdAt)` -- быстрая загрузка сообщений чата
+- `IDX_MESSAGES_SENDER` -- `(senderId)`
 
 ---
 
@@ -117,7 +118,7 @@ src/modules/message/
 - `ManyToOne` -> `File` (onDelete: CASCADE, eager)
 
 **Индексы:**
-- `IDX_MSG_ATTACHMENTS_MESSAGE` — `(messageId)`
+- `IDX_MSG_ATTACHMENTS_MESSAGE` -- `(messageId)`
 
 ---
 
@@ -138,8 +139,8 @@ src/modules/message/
 - `ManyToOne` -> `User` (onDelete: CASCADE)
 
 **Индексы:**
-- `IDX_REACTIONS_MESSAGE` — `(messageId)`
-- `IDX_REACTIONS_MESSAGE_USER` — `(messageId, userId)` UNIQUE — один пользователь = одна реакция на сообщение
+- `IDX_REACTIONS_MESSAGE` -- `(messageId)`
+- `IDX_REACTIONS_MESSAGE_USER` -- `(messageId, userId)` UNIQUE -- один пользователь = одна реакция на сообщение
 
 ---
 
@@ -152,14 +153,14 @@ src/modules/message/
 | `id` | `uuid` (PK) | Уникальный идентификатор |
 | `messageId` | `uuid` (FK -> messages) | ID сообщения |
 | `userId` | `uuid`, nullable | ID упомянутого пользователя (null если `isAll`) |
-| `isAll` | `boolean` | Упоминание всех участников (@all) |
+| `isAll` | `boolean` | Упоминание всех участников (@all), default: false |
 
 **Связи:**
 - `ManyToOne` -> `Message` (onDelete: CASCADE)
 
 **Индексы:**
-- `IDX_MENTIONS_MESSAGE` — `(messageId)`
-- `IDX_MENTIONS_USER` — `(userId)`
+- `IDX_MENTIONS_MESSAGE` -- `(messageId)`
+- `IDX_MENTIONS_USER` -- `(userId)`
 
 ---
 
@@ -174,7 +175,6 @@ src/modules/message/
 | `voice` | Голосовое сообщение |
 | `system` | Системное сообщение |
 | `poll` | Опрос |
-| `sticker` | Стикер |
 
 ### EMessageStatus
 | Значение | Описание |
@@ -220,29 +220,79 @@ src/modules/message/
 
 Основной бизнес-сервис модуля. Внедряет зависимости через inversify.
 
-### Основные методы
+### Зависимости конструктора
+
+- `MessageRepository`
+- `MessageAttachmentRepository`
+- `MessageReactionRepository`
+- `MessageMentionRepository`
+- `ChatRepository`
+- `ChatMemberRepository`
+- `ChatService`
+- `EventBus`
+- `LinkPreviewService`
+
+### Методы
+
+| Метод | Сигнатура | Описание |
+|-------|-----------|----------|
+| `sendMessage` | `(chatId: string, senderId: string, data: {...}): Promise<MessageDto>` | Отправка сообщения. Проверяет право на отправку через `ChatService.canSendMessage()`. Создает сообщение, вложения и упоминания в транзакции. Обновляет `lastMessageAt` чата. Для незапланированных -- эмитит `MessageCreatedEvent` и асинхронно запрашивает link previews. |
+| `getMessages` | `(chatId: string, userId: string, before?: string, limit?: number): Promise<IMessageListDto>` | Получение сообщений с cursor-based пагинацией. Проверяет членство в чате. По умолчанию limit=50. |
+| `editMessage` | `(messageId: string, userId: string, content: string): Promise<MessageDto>` | Редактирование. Только автор может редактировать. Нельзя редактировать удаленные. Устанавливает `isEdited=true`. Эмитит `MessageUpdatedEvent`. |
+| `deleteMessage` | `(messageId: string, userId: string): Promise<void>` | Soft-delete. Автор может удалить свое, admin/owner чата -- любое. Обнуляет content. Эмитит `MessageDeletedEvent`. |
+| `pinMessage` | `(messageId: string, userId: string): Promise<MessageDto>` | Закрепление. Только admin/owner чата. Эмитит `MessagePinnedEvent`. |
+| `unpinMessage` | `(messageId: string, userId: string): Promise<void>` | Открепление. Только admin/owner чата. Эмитит `MessageUnpinnedEvent`. |
+| `getPinnedMessages` | `(chatId: string, userId: string): Promise<MessageDto[]>` | Получение закрепленных сообщений. Проверяет членство. |
+| `markAsDelivered` | `(chatId: string, userId: string, messageIds: string[]): Promise<void>` | Массовая отметка доставки (статус DELIVERED). Только для чужих сообщений со статусом SENT. Эмитит `MessageDeliveredEvent`. |
+| `markAsRead` | `(chatId: string, userId: string, messageId: string): Promise<void>` | Отметка прочтения. Обновляет `lastReadMessageId` в membership и статус всех предшествующих сообщений на READ. Эмитит `MessageReadEvent`. |
+| `addReaction` | `(messageId: string, userId: string, emoji: string): Promise<void>` | Добавление/обновление реакции. Один пользователь -- одна реакция на сообщение (обновляется emoji). Эмитит `MessageReactionEvent`. |
+| `removeReaction` | `(messageId: string, userId: string): Promise<void>` | Удаление реакции. Эмитит `MessageReactionEvent` с `emoji=null`. |
+| `searchMessages` | `(chatId: string, userId: string, query: string, limit?: number, offset?: number): Promise<IMessageSearchDto>` | Поиск в чате (ILIKE по content). Проверяет членство. |
+| `searchGlobalMessages` | `(userId: string, query: string, limit?: number, offset?: number): Promise<IMessageSearchDto>` | Глобальный поиск по всем чатам пользователя. |
+| `getChatMedia` | `(chatId: string, userId: string, type?: string, limit?: number, offset?: number): Promise<IMediaGalleryDto>` | Медиа-галерея: сообщения с вложениями, фильтр по MIME-типу. |
+| `getChatMediaStats` | `(chatId: string, userId: string): Promise<IMediaStatsDto>` | Статистика медиа: количество images, videos, audio, documents, total. |
+| `getUnreadCount` | `(chatId: string, userId: string): Promise<number>` | Подсчет непрочитанных сообщений (используется другими модулями). |
+| `getScheduledMessages` | `(chatId: string, userId: string): Promise<MessageDto[]>` | Запланированные сообщения пользователя в чате. |
+| `cancelScheduledMessage` | `(messageId: string, userId: string): Promise<void>` | Отмена запланированного сообщения (hard delete). Только автор. |
+| `markMessageOpened` | `(messageId: string, userId: string): Promise<MessageDto>` | Запуск таймера самоуничтожения. Только получатель (не отправитель) может активировать. Устанавливает `selfDestructAt`. Эмитит `MessageSelfDestructStartedEvent`. |
+
+---
+
+## Репозитории
+
+### MessageRepository
+
+Расширяет `BaseRepository<Message>`. Методы:
 
 | Метод | Описание |
 |-------|----------|
-| `sendMessage(chatId, senderId, data)` | Отправка сообщения. Проверяет право на отправку через `ChatService.canSendMessage()`. Создает сообщение, вложения и упоминания в транзакции. Обновляет `lastMessageAt` чата. Для незапланированных сообщений эмитит `MessageCreatedEvent` и асинхронно запрашивает link previews. |
-| `getMessages(chatId, userId, before?, limit?)` | Получение сообщений с cursor-based пагинацией. Проверяет членство в чате. По умолчанию limit=50. |
-| `editMessage(messageId, userId, content)` | Редактирование. Только автор может редактировать. Нельзя редактировать удаленные. Устанавливает `isEdited=true`. Эмитит `MessageUpdatedEvent`. |
-| `deleteMessage(messageId, userId)` | Soft-delete. Автор может удалить свое, admin/owner чата — любое. Обнуляет content. Эмитит `MessageDeletedEvent`. |
-| `pinMessage(messageId, userId)` | Закрепление. Только admin/owner чата. Эмитит `MessagePinnedEvent`. |
-| `unpinMessage(messageId, userId)` | Открепление. Только admin/owner чата. Эмитит `MessageUnpinnedEvent`. |
-| `getPinnedMessages(chatId, userId)` | Получение закрепленных сообщений. Проверяет членство. |
-| `markAsDelivered(chatId, userId, messageIds)` | Массовая отметка доставки (статус DELIVERED). Только для чужих сообщений со статусом SENT. Эмитит `MessageDeliveredEvent`. |
-| `markAsRead(chatId, userId, messageId)` | Отметка прочтения. Обновляет `lastReadMessageId` в membership и статус всех предшествующих сообщений на READ. Эмитит `MessageReadEvent`. |
-| `addReaction(messageId, userId, emoji)` | Добавление/обновление реакции. Один пользователь — одна реакция на сообщение (обновляется emoji). Эмитит `MessageReactionEvent`. |
-| `removeReaction(messageId, userId)` | Удаление реакции. Эмитит `MessageReactionEvent` с `emoji=null`. |
-| `searchMessages(chatId, userId, query, limit?, offset?)` | Поиск в чате (ILIKE по content). Проверяет членство. |
-| `searchGlobalMessages(userId, query, limit?, offset?)` | Глобальный поиск по всем чатам пользователя. |
-| `getChatMedia(chatId, userId, type?, limit?, offset?)` | Медиа-галерея: сообщения с вложениями, фильтр по MIME-типу. |
-| `getChatMediaStats(chatId, userId)` | Статистика медиа: количество images, videos, audio, documents, total. |
-| `getUnreadCount(chatId, userId)` | Подсчет непрочитанных сообщений (используется другими модулями). |
-| `getScheduledMessages(chatId, userId)` | Запланированные сообщения пользователя в чате. |
-| `cancelScheduledMessage(messageId, userId)` | Отмена запланированного сообщения (hard delete). Только автор. |
-| `markMessageOpened(messageId, userId)` | Запуск таймера самоуничтожения. Только получатель (не отправитель) может активировать. Устанавливает `selfDestructAt`. |
+| `findById(id: string)` | Находит сообщение с relations: sender.profile, replyTo.sender.profile, attachments.file, reactions |
+| `findByChatCursor(chatId, before?, limit?)` | Cursor-based пагинация по `createdAt DESC`. Возвращает `{ messages, hasMore }` |
+| `searchInChat(chatId, query, limit?, offset?)` | ILIKE-поиск по `content` в чате. Возвращает `[messages, count]` |
+| `searchGlobal(chatIds, query, limit?, offset?)` | ILIKE-поиск по `content` во всех указанных чатах. Возвращает `[messages, count]` |
+| `findMediaByChatId(chatId, type?, limit?, offset?)` | Сообщения с вложениями, опциональный фильтр по MIME-типу файла. Возвращает `[messages, count]` |
+| `getMediaStats(chatId)` | Агрегация количества медиафайлов по типам: images, videos, audio, documents, total |
+| `findLastForChat(chatId)` | Последнее сообщение чата по `createdAt DESC` |
+
+### MessageAttachmentRepository
+
+| Метод | Описание |
+|-------|----------|
+| `findByMessageId(messageId: string)` | Все вложения сообщения с relation `file` |
+
+### MessageReactionRepository
+
+| Метод | Описание |
+|-------|----------|
+| `findByMessageId(messageId: string)` | Все реакции на сообщение с relation `user.profile` |
+| `findByUserAndMessage(userId, messageId)` | Реакция конкретного пользователя на сообщение |
+| `getReactionsSummary(messageId)` | Сводка реакций: `{ emoji, count, userIds }[]` |
+
+### MessageMentionRepository
+
+| Метод | Описание |
+|-------|----------|
+| `findByMessageId(messageId: string)` | Все упоминания в сообщении |
 
 ---
 
@@ -253,12 +303,12 @@ src/modules/message/
 Основной DTO сообщения. Создается через `MessageDto.fromEntity(entity)`.
 
 **Поля:**
-- Все поля entity: `id`, `chatId`, `senderId`, `type`, `status`, `content`, `replyToId`, `forwardedFromId`, `isEdited`, `isDeleted`, `isPinned`, `pinnedAt`, `pinnedById`, `stickerId`, `encryptedContent`, `encryptionMetadata`, `keyboard`, `linkPreviews`, `scheduledAt`, `isScheduled`, `selfDestructSeconds`, `selfDestructAt`, `createdAt`, `updatedAt`
-- `sender` — объект `{ id, firstName, lastName, avatarUrl }` (из User + Profile)
-- `replyTo` — вложенный `MessageDto` (если есть ответ)
-- `attachments` — массив `MessageAttachmentDto[]`
-- `reactions` — сводка реакций `{ emoji, count, userIds }[]`
-- `mentions` — массив `{ userId, isAll }[]`
+- Все поля entity: `id`, `chatId`, `senderId`, `type`, `status`, `content`, `replyToId`, `forwardedFromId`, `isEdited`, `isDeleted`, `isPinned`, `pinnedAt`, `pinnedById`, `encryptedContent`, `encryptionMetadata`, `keyboard`, `linkPreviews`, `scheduledAt`, `isScheduled`, `selfDestructSeconds`, `selfDestructAt`, `createdAt`, `updatedAt`
+- `sender` -- объект `{ id, firstName, lastName, avatarUrl }` (из User + Profile)
+- `replyTo` -- вложенный `MessageDto` (если есть ответ)
+- `attachments` -- массив `MessageAttachmentDto[]`
+- `reactions` -- сводка реакций `{ emoji, count, userIds }[]`
+- `mentions` -- массив `{ userId, isAll }[]`
 
 Для удаленных сообщений `content` всегда возвращается как `null`.
 
@@ -270,16 +320,17 @@ src/modules/message/
 
 Упрощенный DTO для медиа-галереи.
 
-**Поля:** `id`, `messageId`, `chatId`, `senderId`, `attachments[]`, `createdAt`, `sender`
+**Поля:** `id`, `messageId`, `chatId`, `senderId`, `attachments: MessageAttachmentDto[]`, `createdAt`, `sender: { id, firstName, lastName, avatarUrl }`
 
 ### Интерфейсы
 
 | Интерфейс | Описание |
 |-----------|----------|
-| `IMessageListDto` | `{ data: MessageDto[], hasMore: boolean }` — cursor-пагинация |
-| `IMessageSearchDto` | `{ data: MessageDto[], totalCount: number }` — результат поиска |
-| `IMediaGalleryDto` | `{ data: MediaItemDto[], totalCount: number }` — медиа-галерея |
-| `IMediaStatsDto` | `{ images, videos, audio, documents, total }` — статистика медиа |
+| `IMessageListDto` | `{ data: MessageDto[], hasMore: boolean }` -- cursor-пагинация |
+| `IMessageSearchDto` | `{ data: MessageDto[], totalCount: number }` -- результат поиска |
+| `IMediaGalleryDto` | `{ data: MediaItemDto[], totalCount: number }` -- медиа-галерея |
+| `IMediaStatsDto` | `{ images, videos, audio, documents, total }` -- статистика медиа |
+| `IMessageListResponseDto` | Расширяет `IListResponseDto<MessageDto[]>` |
 
 ---
 
@@ -290,19 +341,18 @@ src/modules/message/
 | Поле | Тип | Ограничения |
 |------|-----|-------------|
 | `type` | `EMessageType` | По умолчанию `TEXT` |
-| `content` | `string`, optional | Макс. 4000 символов |
+| `content` | `string`, optional | Trim, мин. 1, макс. 4000 символов |
 | `replyToId` | `uuid`, optional | UUID |
 | `forwardedFromId` | `uuid`, optional | UUID |
 | `fileIds` | `uuid[]`, optional | Макс. 10 вложений |
 | `mentionedUserIds` | `uuid[]`, optional | Макс. 50 упоминаний |
 | `mentionAll` | `boolean`, optional | -- |
-| `stickerId` | `uuid`, optional | UUID |
 | `encryptedContent` | `string`, optional | -- |
 | `encryptionMetadata` | `Record<string, unknown>`, optional | -- |
 | `scheduledAt` | `datetime string`, optional | ISO datetime |
 | `selfDestructSeconds` | `integer`, optional | Мин. 1, макс. 604800 (7 дней) |
 
-**Refinement:** Обязательно указать `content`, `fileIds` (непустой) или `stickerId`.
+**Refinement:** Обязательно указать `content` или `fileIds` (непустой массив).
 
 ### EditMessageSchema
 - `content`: `string`, мин. 1, макс. 4000 символов
@@ -321,14 +371,15 @@ src/modules/message/
 
 | Событие | Данные | Когда эмитится |
 |---------|--------|----------------|
-| `MessageCreatedEvent` | `message`, `chatId`, `memberUserIds`, `mentionedUserIds`, `mentionAll` | Отправка нового сообщения (в т.ч. при срабатывании планировщика) |
-| `MessageUpdatedEvent` | `message`, `chatId` | Редактирование сообщения |
-| `MessageDeletedEvent` | `messageId`, `chatId` | Удаление сообщения (soft-delete, включая самоуничтожение) |
-| `MessageDeliveredEvent` | `messageIds[]`, `chatId`, `userId` | Отметка доставки |
-| `MessageReadEvent` | `chatId`, `userId`, `messageId` | Отметка прочтения |
-| `MessagePinnedEvent` | `message`, `chatId`, `pinnedByUserId` | Закрепление сообщения |
-| `MessageUnpinnedEvent` | `messageId`, `chatId` | Открепление сообщения |
-| `MessageReactionEvent` | `messageId`, `chatId`, `userId`, `emoji` (null при удалении) | Добавление/удаление реакции |
+| `MessageCreatedEvent` | `message: Message`, `chatId: string`, `memberUserIds: string[]`, `mentionedUserIds: string[]`, `mentionAll: boolean` | Отправка нового сообщения (в т.ч. при срабатывании планировщика) |
+| `MessageUpdatedEvent` | `message: Message`, `chatId: string` | Редактирование сообщения |
+| `MessageDeletedEvent` | `messageId: string`, `chatId: string` | Удаление сообщения (soft-delete, включая самоуничтожение) |
+| `MessageDeliveredEvent` | `messageIds: string[]`, `chatId: string`, `userId: string` | Отметка доставки |
+| `MessageReadEvent` | `chatId: string`, `userId: string`, `messageId: string` | Отметка прочтения |
+| `MessagePinnedEvent` | `message: Message`, `chatId: string`, `pinnedByUserId: string` | Закрепление сообщения |
+| `MessageUnpinnedEvent` | `messageId: string`, `chatId: string` | Открепление сообщения |
+| `MessageReactionEvent` | `messageId: string`, `chatId: string`, `userId: string`, `emoji: string \| null` | Добавление/удаление реакции (null при удалении) |
+| `MessageSelfDestructStartedEvent` | `messageId: string`, `chatId: string`, `selfDestructAt: Date` | Запуск таймера самоуничтожения (при открытии получателем) |
 
 ---
 
@@ -340,8 +391,8 @@ src/modules/message/
 
 | Входящее событие | Данные | Действие |
 |------------------|--------|----------|
-| `message:read` | `{ chatId, messageId }` | Вызывает `MessageService.markAsRead()` |
-| `message:delivered` | `{ chatId, messageIds }` | Вызывает `MessageService.markAsDelivered()` |
+| `message:read` | `{ chatId: string, messageId: string }` | Вызывает `MessageService.markAsRead()` |
+| `message:delivered` | `{ chatId: string, messageIds: string[] }` | Вызывает `MessageService.markAsDelivered()` |
 
 Ошибки в socket-обработчиках молча игнорируются (пользователь может не быть участником чата).
 
@@ -351,21 +402,24 @@ src/modules/message/
 
 | Доменное событие | Socket-событие | Комната/адресат | Payload |
 |------------------|---------------|-----------------|---------|
-| `MessageCreatedEvent` | `message:new` | `chat_{chatId}` | `MessageDto` |
-| `MessageCreatedEvent` | `chat:unread` | Каждый участник (кроме отправителя) | `{ chatId, unreadCount: -1 }` |
-| `MessageUpdatedEvent` | `message:updated` | `chat_{chatId}` | `MessageDto` |
-| `MessageDeletedEvent` | `message:deleted` | `chat_{chatId}` | `{ messageId, chatId }` |
-| `MessagePinnedEvent` | `message:pinned` | `chat_{chatId}` | `MessageDto` |
-| `MessageUnpinnedEvent` | `message:unpinned` | `chat_{chatId}` | `{ messageId, chatId }` |
-| `MessageReactionEvent` | `message:reaction` | `chat_{chatId}` | `{ messageId, chatId, userId, emoji }` |
-| `MessageDeliveredEvent` | `message:status` | `chat_{chatId}` | `{ messageId, chatId, status: "delivered" }` (для каждого messageId) |
-| `MessageReadEvent` | `chat:unread` | `chat_{chatId}` | `{ chatId, unreadCount: 0 }` |
+| `MessageCreatedEvent` | `message:new` | `chat_{chatId}` (toRoom) | `MessageDto` |
+| `MessageCreatedEvent` | `chat:unread` | Каждый участник кроме отправителя (toUser) | `{ chatId, unreadCount: -1 }` |
+| `MessageUpdatedEvent` | `message:updated` | `chat_{chatId}` (toRoom) | `MessageDto` |
+| `MessageDeletedEvent` | `message:deleted` | `chat_{chatId}` (toRoom) | `{ messageId, chatId }` |
+| `MessagePinnedEvent` | `message:pinned` | `chat_{chatId}` (toRoom) | `MessageDto` |
+| `MessageUnpinnedEvent` | `message:unpinned` | `chat_{chatId}` (toRoom) | `{ messageId, chatId }` |
+| `MessageReactionEvent` | `message:reaction` | `chat_{chatId}` (toRoom) | `{ messageId, chatId, userId, emoji }` |
+| `MessageDeliveredEvent` | `message:status` | `chat_{chatId}` (toRoom) | `{ messageId, chatId, status: "delivered" }` (для каждого messageId) |
+| `MessageReadEvent` | `chat:unread` | Пользователю, прочитавшему (toUser) | `{ chatId, unreadCount: 0 }` |
+| `MessageSelfDestructStartedEvent` | `message:self-destructed` | `chat_{chatId}` (toRoom) | `{ messageId, chatId }` |
 
 ---
 
 ## Bootstrap (MessageSchedulerBootstrap)
 
-Фоновый планировщик, запускаемый при старте приложения. Выполняет две задачи с интервалом **10 секунд**:
+Фоновый планировщик, запускаемый при старте приложения. Реализует `IBootstrap` с методами `initialize()` и `destroy()` (graceful shutdown через `clearInterval`).
+
+Выполняет две задачи с интервалом **10 секунд** (`CHECK_INTERVAL_MS = 10_000`):
 
 1. **Обработка запланированных сообщений** (`_processScheduledMessages`):
    - Ищет сообщения с `isScheduled=true` и `scheduledAt <= now`
@@ -375,9 +429,29 @@ src/modules/message/
 2. **Обработка самоуничтожающихся сообщений** (`_processSelfDestructMessages`):
    - Ищет сообщения с `selfDestructAt <= now` и `isDeleted=false`
    - Выполняет soft-delete (обнуляет content, устанавливает `isDeleted=true`)
-   - Эмитит `MessageDeletedEvent`
+   - Эмитит `MessageDeletedEvent` и `MessageSelfDestructStartedEvent`
 
-Реализует `IBootstrap` с методами `initialize()` и `destroy()` (graceful shutdown через `clearInterval`).
+---
+
+## Регистрация модуля
+
+```typescript
+@Module({
+  providers: [
+    MessageRepository,
+    MessageAttachmentRepository,
+    MessageReactionRepository,
+    MessageMentionRepository,
+    MessageService,
+    ChatMessageController,
+    MessageController,
+    asSocketHandler(MessageHandler),
+    asSocketListener(MessageListener),
+  ],
+  bootstrappers: [MessageSchedulerBootstrap],
+})
+export class MessageModule {}
+```
 
 ---
 
@@ -397,48 +471,48 @@ src/modules/message/
 ### Кто использует этот модуль
 
 Модуль экспортирует через `index.ts`:
-- `MessageService` — может использоваться другими модулями для получения данных о сообщениях (например, `getUnreadCount`)
-- `MessageDto`, `MessageCreatedEvent` и другие события — для подписки внешних слушателей
-- `Message`, `MessageAttachment` entities — для TypeORM relations
+- `MessageService` -- может использоваться другими модулями для получения данных о сообщениях (например, `getUnreadCount`)
+- `MessageDto`, события -- для подписки внешних слушателей
+- `Message`, `MessageAttachment` entities -- для TypeORM relations
 
 ---
 
 ## Взаимодействие с другими модулями
 
 ```
-┌─────────────┐     canSendMessage()      ┌─────────────┐
-│   Message    │ ──────────────────────── > │    Chat      │
-│   Module     │     isMember()            │   Module     │
-│              │     getMemberUserIds()     │              │
-│              │     findMembership()       │              │
-└──────┬───────┘                           └──────────────┘
-       │
-       │  EventBus.emit()
-       ▼
-┌──────────────┐    toRoom() / toUser()   ┌──────────────┐
-│   Message    │ ──────────────────────── >│   Socket     │
-│   Listener   │                          │   Module     │
-└──────────────┘                          └──────────────┘
-       ▲
-       │  EventBus.on()
-       │
-┌──────────────┐
-│   Message    │  socket.on("message:read")
-│   Handler    │  socket.on("message:delivered")
-└──────────────┘
+                      canSendMessage()
+ +--------------+     isMember()          +--------------+
+ |   Message    | ----------------------> |    Chat      |
+ |   Module     |     getMemberUserIds()  |   Module     |
+ |              |     findMembership()    |              |
+ +--------------+                         +--------------+
+       |
+       |  EventBus.emit()
+       v
+ +--------------+    toRoom() / toUser()  +--------------+
+ |   Message    | ----------------------> |   Socket     |
+ |   Listener   |                         |   Module     |
+ +--------------+                         +--------------+
+       ^
+       |  EventBus.on()
+       |
+ +--------------+
+ |   Message    |  socket.on("message:read")
+ |   Handler    |  socket.on("message:delivered")
+ +--------------+
 
-┌─────────────┐   getPreviewsForContent() ┌──────────────┐
-│   Message    │ ──────────────────────── >│ LinkPreview  │
-│   Service    │                          │   Module     │
-└──────────────┘                          └──────────────┘
+ +--------------+  getPreviewsForContent() +--------------+
+ |   Message    | -----------------------> | LinkPreview  |
+ |   Service    |                          |   Module     |
+ +--------------+                          +--------------+
 
-┌─────────────┐   File entity relation    ┌──────────────┐
-│ Attachment   │ ──────────────────────── >│    File      │
-│   Entity     │                          │   Module     │
-└──────────────┘                          └──────────────┘
+ +--------------+  File entity relation    +--------------+
+ | Attachment   | -----------------------> |    File      |
+ |   Entity     |                          |   Module     |
+ +--------------+                          +--------------+
 
-┌─────────────┐   User entity relation    ┌──────────────┐
-│  Message /   │ ──────────────────────── >│    User      │
-│  Reaction    │                          │   Module     │
-└──────────────┘                          └──────────────┘
+ +--------------+  User entity relation    +--------------+
+ |  Message /   | -----------------------> |    User      |
+ |  Reaction    |                          |   Module     |
+ +--------------+                          +--------------+
 ```

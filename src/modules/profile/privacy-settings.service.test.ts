@@ -3,7 +3,7 @@ import "reflect-metadata";
 import { expect } from "chai";
 import sinon from "sinon";
 
-import { createMockRepository, uuid, uuid2 } from "../../test/helpers";
+import { createMockEventBus, createMockRepository, uuid, uuid2 } from "../../test/helpers";
 import { EContactStatus } from "../contact/contact.types";
 import { EPrivacyLevel } from "./privacy-settings.entity";
 import { PrivacySettingsService } from "./privacy-settings.service";
@@ -40,6 +40,7 @@ describe("PrivacySettingsService", () => {
     service = new PrivacySettingsService(
       mockRepo as any,
       mockContactRepo as any,
+      createMockEventBus() as any,
     );
   });
 

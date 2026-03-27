@@ -51,7 +51,6 @@ describe("MessageService", () => {
     isPinned: false,
     pinnedAt: null,
     pinnedById: null,
-    stickerId: null,
     encryptedContent: null,
     encryptionMetadata: null,
     keyboard: null,

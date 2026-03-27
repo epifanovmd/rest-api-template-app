@@ -13,6 +13,7 @@ import { inject } from "inversify";
 
 import { config } from "../../config";
 import { Injectable, TokenService } from "../../core";
+import { SessionService } from "../session/session.service";
 import { UserService } from "../user";
 import { PasskeysRepository } from "./passkeys.repository";
 
@@ -29,6 +30,7 @@ export class PasskeysService {
     @inject(UserService) private _userService: UserService,
     @inject(TokenService) private _tokenService: TokenService,
     @inject(PasskeysRepository) private _passkeysRepository: PasskeysRepository,
+    @inject(SessionService) private _sessionService: SessionService,
   ) {}
 
   /**
@@ -215,11 +217,22 @@ export class PasskeysService {
       await this._userService.setChallenge(user.id, null);
     }
 
+    let tokens;
+
+    if (verifyData.verified) {
+      const session = await this._sessionService.createSession({
+        userId: user.id,
+        refreshToken: "pending",
+        deviceName: "passkey",
+      });
+
+      tokens = await this._tokenService.issue(user, session.id);
+      await this._sessionService.updateRefreshToken(session.id, tokens.refreshToken);
+    }
+
     return {
       verified: verifyData.verified,
-      tokens: verifyData.verified
-        ? await this._tokenService.issue(user)
-        : undefined,
+      tokens,
     };
   }
 }

@@ -48,7 +48,6 @@ export class MessageDto extends BaseDto {
   isPinned: boolean;
   pinnedAt: Date | null;
   pinnedById: string | null;
-  stickerId: string | null;
   encryptedContent: string | null;
   encryptionMetadata: Record<string, unknown> | null;
   keyboard: unknown | null;
@@ -92,7 +91,6 @@ export class MessageDto extends BaseDto {
     this.isPinned = entity.isPinned;
     this.pinnedAt = entity.pinnedAt;
     this.pinnedById = entity.pinnedById;
-    this.stickerId = entity.stickerId ?? null;
     this.encryptedContent = entity.encryptedContent;
     this.encryptionMetadata = entity.encryptionMetadata;
     this.keyboard = entity.keyboard;

@@ -3,7 +3,13 @@ import { inject } from "inversify";
 import { EventBus, Injectable } from "../../core";
 import { ISocketEventListener } from "../socket";
 import { SocketEmitterService } from "../socket/socket-emitter.service";
-import { ContactAcceptedEvent, ContactRequestEvent } from "./events";
+import {
+  ContactAcceptedEvent,
+  ContactBlockedEvent,
+  ContactRemovedEvent,
+  ContactRequestEvent,
+  ContactUnblockedEvent,
+} from "./events";
 
 @Injectable()
 export class ContactListener implements ISocketEventListener {
@@ -31,6 +37,40 @@ export class ContactListener implements ISocketEventListener {
         this._emitter.toUser(
           event.requesterId,
           "contact:accepted",
+          event.contact,
+        );
+      },
+    );
+
+    this._eventBus.on(
+      ContactRemovedEvent,
+      (event: ContactRemovedEvent) => {
+        this._emitter.toUser(event.userId, "contact:removed", {
+          contactId: event.contactId,
+        });
+        this._emitter.toUser(event.contactUserId, "contact:removed", {
+          contactId: event.contactId,
+        });
+      },
+    );
+
+    this._eventBus.on(
+      ContactBlockedEvent,
+      (event: ContactBlockedEvent) => {
+        this._emitter.toUser(
+          event.blockedUserId,
+          "contact:blocked",
+          event.contact,
+        );
+      },
+    );
+
+    this._eventBus.on(
+      ContactUnblockedEvent,
+      (event: ContactUnblockedEvent) => {
+        this._emitter.toUser(
+          event.unblockedUserId,
+          "contact:unblocked",
           event.contact,
         );
       },

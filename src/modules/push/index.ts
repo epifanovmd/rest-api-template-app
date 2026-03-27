@@ -3,6 +3,7 @@ export * from "./device-token.entity";
 export * from "./device-token.repository";
 export * from "./device-token.service";
 export * from "./dto";
+export * from "./events";
 export * from "./notification-settings.controller";
 export * from "./notification-settings.entity";
 export * from "./notification-settings.repository";

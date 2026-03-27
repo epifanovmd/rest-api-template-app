@@ -7,10 +7,11 @@ import crypto from "crypto";
 import { inject } from "inversify";
 import { DataSource } from "typeorm";
 
-import { Injectable } from "../../core";
+import { EventBus, Injectable } from "../../core";
 import { BotRepository } from "./bot.repository";
 import { BotCommand } from "./bot-command.entity";
 import { BotCommandRepository } from "./bot-command.repository";
+import { BotCreatedEvent, BotDeletedEvent, BotUpdatedEvent } from "./events";
 
 @Injectable()
 export class BotService {
@@ -18,6 +19,7 @@ export class BotService {
     @inject(BotRepository) private _botRepo: BotRepository,
     @inject(BotCommandRepository) private _cmdRepo: BotCommandRepository,
     @inject(DataSource) private _dataSource: DataSource,
+    @inject(EventBus) private _eventBus: EventBus,
   ) {}
 
   async createBot(
@@ -32,13 +34,17 @@ export class BotService {
 
     const token = crypto.randomBytes(64).toString("hex");
 
-    return this._botRepo.createAndSave({
+    const bot = await this._botRepo.createAndSave({
       ownerId,
       username: data.username,
       displayName: data.displayName,
       description: data.description ?? null,
       token,
     });
+
+    this._eventBus.emit(new BotCreatedEvent(bot.id, ownerId));
+
+    return bot;
   }
 
   async getMyBots(ownerId: string) {
@@ -73,6 +79,8 @@ export class BotService {
 
     await this._botRepo.save(bot);
 
+    this._eventBus.emit(new BotUpdatedEvent(botId, ownerId));
+
     return this._botRepo.findByIdWithDetails(botId);
   }
 
@@ -80,6 +88,8 @@ export class BotService {
     const bot = await this.getBotById(botId, ownerId);
 
     await this._botRepo.delete({ id: bot.id });
+
+    this._eventBus.emit(new BotDeletedEvent(botId, ownerId));
   }
 
   async regenerateToken(botId: string, ownerId: string) {

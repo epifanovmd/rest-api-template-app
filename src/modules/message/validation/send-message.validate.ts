@@ -22,7 +22,6 @@ export const SendMessageSchema = z
       .max(50, "Максимум 50 упоминаний")
       .optional(),
     mentionAll: z.boolean().optional(),
-    stickerId: z.string().uuid("Некорректный UUID").optional(),
     encryptedContent: z.string().optional(),
     encryptionMetadata: z.record(z.string(), z.unknown()).optional(),
     scheduledAt: z.string().datetime("Некорректная дата").optional(),
@@ -36,8 +35,7 @@ export const SendMessageSchema = z
   .refine(
     data =>
       data.content ||
-      (data.fileIds && data.fileIds.length > 0) ||
-      data.stickerId,
+      (data.fileIds && data.fileIds.length > 0),
     {
     message: "Необходимо указать текст или прикрепить файл",
     path: ["content"],

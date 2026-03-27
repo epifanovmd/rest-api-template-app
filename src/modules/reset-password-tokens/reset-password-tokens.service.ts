@@ -20,7 +20,7 @@ export class ResetPasswordTokensService {
   /** Создать или обновить JWT-токен сброса пароля для пользователя. */
   async create(userId: string) {
     const token = await createToken(
-      { userId, roles: [], permissions: [], emailVerified: false },
+      { userId, sessionId: "", roles: [], permissions: [], emailVerified: false },
       { expiresIn: `${resetPassword.expireMinutes}m` },
     );
 

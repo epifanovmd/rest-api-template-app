@@ -4,7 +4,8 @@ import { EventBus, Injectable } from "../../core";
 import { ChatMemberRepository } from "../chat/chat-member.repository";
 import { ContactRequestEvent } from "../contact/events";
 import { MessageCreatedEvent } from "../message/events";
-import { ISocketEventListener, SocketClientRegistry } from "../socket";
+import { ISocketEventListener, SocketClientRegistry, SocketEmitterService } from "../socket";
+import { NotificationSettingsChangedEvent } from "./events";
 import { PushService } from "./push.service";
 
 @Injectable()
@@ -16,6 +17,8 @@ export class PushListener implements ISocketEventListener {
     private readonly _clientRegistry: SocketClientRegistry,
     @inject(ChatMemberRepository)
     private readonly _memberRepo: ChatMemberRepository,
+    @inject(SocketEmitterService)
+    private readonly _emitter: SocketEmitterService,
   ) {}
 
   register(): void {
@@ -110,6 +113,18 @@ export class PushListener implements ISocketEventListener {
             contactId: event.contact.id,
           },
         });
+      },
+    );
+
+    // Настройки уведомлений изменены → socket
+    this._eventBus.on(
+      NotificationSettingsChangedEvent,
+      (event: NotificationSettingsChangedEvent) => {
+        this._emitter.toUser(
+          event.userId,
+          "push:settings-changed",
+          {} as Record<string, never>,
+        );
       },
     );
   }

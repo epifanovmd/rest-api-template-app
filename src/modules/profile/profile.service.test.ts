@@ -4,6 +4,7 @@ import { expect } from "chai";
 import sinon from "sinon";
 
 import {
+  createMockEventBus,
   createMockQueryBuilder,
   createMockRepository,
   uuid,
@@ -36,7 +37,7 @@ describe("ProfileService", () => {
       findByUserId: sandbox.stub(),
     } as any;
 
-    service = new ProfileService(mockProfileRepo as any);
+    service = new ProfileService(mockProfileRepo as any, createMockEventBus() as any);
   });
 
   afterEach(() => sandbox.restore());

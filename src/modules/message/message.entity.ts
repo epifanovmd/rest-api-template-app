@@ -74,9 +74,6 @@ export class Message {
   @Column({ name: "encryption_metadata", type: "jsonb", nullable: true })
   encryptionMetadata: Record<string, unknown> | null;
 
-  @Column({ name: "sticker_id", type: "uuid", nullable: true })
-  stickerId: string | null;
-
   @Column({ type: "jsonb", nullable: true })
   keyboard: unknown | null;
 

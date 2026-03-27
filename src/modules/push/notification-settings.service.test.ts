@@ -3,7 +3,7 @@ import "reflect-metadata";
 import { expect } from "chai";
 import sinon from "sinon";
 
-import { createMockRepository, uuid } from "../../test/helpers";
+import { createMockEventBus, createMockRepository, uuid } from "../../test/helpers";
 import { NotificationSettingsService } from "./notification-settings.service";
 
 describe("NotificationSettingsService", () => {
@@ -20,7 +20,7 @@ describe("NotificationSettingsService", () => {
     (settingsRepo as any).findByUserId = sinon.stub().resolves(null);
     (settingsRepo as any).upsertSettings = sinon.stub().resolves(null);
 
-    service = new NotificationSettingsService(settingsRepo as any);
+    service = new NotificationSettingsService(settingsRepo as any, createMockEventBus() as any);
   });
 
   afterEach(() => sandbox.restore());

@@ -65,6 +65,7 @@ describe("PollService", () => {
 
     // Custom repo methods
     (pollRepo as any).findById = sinon.stub().resolves(null);
+    (messageRepo as any).findById = sinon.stub().resolves(null);
     (voteRepo as any).deleteByPollAndUser = sinon.stub().resolves({ affected: 1 });
 
     const mockTxRepo = {

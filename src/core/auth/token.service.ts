@@ -27,7 +27,7 @@ export class TokenService {
    * Эффективные разрешения = объединение(role.permissions для каждой роли) ∪ directPermissions.
    * Вычисляется один раз при выдаче — без обращения к БД при аутентификации запроса.
    */
-  async issue(user: User): Promise<ITokensDto> {
+  async issue(user: User, sessionId: string): Promise<ITokensDto> {
     const rolePermissions =
       user.roles?.flatMap(r => r.permissions?.map(p => p.name) ?? []) ?? [];
     const directPermissions = user.directPermissions?.map(p => p.name) ?? [];
@@ -38,6 +38,7 @@ export class TokenService {
 
     const payload = {
       userId: user.id,
+      sessionId,
       roles: user.roles?.map(r => r.name) ?? [],
       permissions: effectivePermissions,
       emailVerified: user.emailVerified,
@@ -88,6 +89,7 @@ export class TokenService {
 
     return {
       userId: decoded.userId,
+      sessionId: decoded.sessionId,
       roles: decoded.roles ?? [],
       permissions: decoded.permissions ?? [],
       emailVerified: decoded.emailVerified ?? false,

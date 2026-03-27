@@ -1,319 +1,130 @@
-# Модуль Call (Звонки)
+# Модуль Call
 
-Модуль управления голосовыми и видеозвонками между пользователями. Поддерживает полный жизненный цикл звонка: инициация, ответ, отклонение, завершение. Включает WebRTC-сигнализацию через Socket.IO и доменные события для реактивного уведомления участников.
-
----
+Модуль аудио- и видеозвонков с WebRTC-сигнализацией через WebSocket. Управляет жизненным циклом звонка (initiate -> answer/decline -> end), историей звонков и relay SDP/ICE-кандидатов.
 
 ## Структура файлов
 
 ```
 src/modules/call/
-├── call.entity.ts            # TypeORM-сущность звонка
-├── call.types.ts             # Перечисления ECallType и ECallStatus
-├── call.repository.ts        # Репозиторий с кастомными запросами
-├── call.service.ts           # Бизнес-логика звонков
-├── call.controller.ts        # REST-контроллер (tsoa)
-├── call.handler.ts           # Socket-обработчик WebRTC-сигнализации
-├── call.listener.ts          # Слушатель доменных событий -> Socket-уведомления
-├── call.module.ts            # Объявление модуля
-├── call.service.test.ts      # Unit-тесты сервиса
-├── index.ts                  # Публичный реэкспорт
+├── call.module.ts             # Объявление модуля (@Module)
+├── call.entity.ts             # Entity звонка (таблица calls)
+├── call.repository.ts         # Репозиторий звонков
+├── call.service.ts            # Сервис управления звонками
+├── call.controller.ts         # REST-контроллер (tsoa)
+├── call.types.ts              # Перечисления (ECallType, ECallStatus)
+├── call.handler.ts            # Socket-обработчик (WebRTC signaling)
+├── call.listener.ts           # Слушатель событий EventBus -> Socket
 ├── dto/
-│   ├── call.dto.ts           # DTO звонка и интерфейс истории
-│   └── index.ts
+│   ├── call.dto.ts            # CallDto, ICallHistoryDto
+│   └── index.ts               # Реэкспорт DTO
 ├── events/
-│   ├── call.event.ts         # Доменные события (5 классов)
-│   └── index.ts
-└── validation/
-    ├── call.validate.ts      # Zod-схема валидации инициации звонка
-    └── index.ts
+│   ├── call.event.ts          # CallInitiatedEvent, CallAnsweredEvent, CallDeclinedEvent, CallEndedEvent, CallMissedEvent
+│   └── index.ts               # Реэкспорт событий
+├── validation/
+│   ├── call.validate.ts       # InitiateCallSchema
+│   └── index.ts               # Реэкспорт валидаций
+├── call.service.test.ts       # Тесты
+└── index.ts                   # Публичный API модуля
 ```
 
----
+## Entity
 
-## Entity: `Call`
+### Call (таблица `calls`)
 
-Таблица: `calls`
+| Поле | Тип | Описание |
+|------|-----|----------|
+| `id` | `uuid` (PK) | Уникальный идентификатор |
+| `callerId` | `uuid` | ID инициатора |
+| `calleeId` | `uuid` | ID вызываемого |
+| `chatId` | `uuid`, nullable | Связанный чат |
+| `type` | `enum(ECallType)`, default `VOICE` | Тип звонка |
+| `status` | `enum(ECallStatus)`, default `RINGING` | Статус звонка |
+| `startedAt` | `timestamp`, nullable | Время начала разговора |
+| `endedAt` | `timestamp`, nullable | Время завершения |
+| `duration` | `int`, nullable | Длительность в секундах |
+| `createdAt` / `updatedAt` | `timestamp` | Временные метки |
 
-### Поля
+**Связи:**
+- `ManyToOne` -> `User` (caller, `onDelete: CASCADE`)
+- `ManyToOne` -> `User` (callee, `onDelete: CASCADE`)
+- `ManyToOne` -> `Chat` (`onDelete: SET NULL`, nullable)
 
-| Поле         | Тип БД            | TypeScript-тип       | Описание                                |
-|--------------|--------------------|-----------------------|-----------------------------------------|
-| `id`         | `uuid` (PK)       | `string`              | Уникальный идентификатор звонка         |
-| `callerId`   | `uuid`             | `string`              | ID инициатора звонка                    |
-| `calleeId`   | `uuid`             | `string`              | ID вызываемого пользователя             |
-| `chatId`     | `uuid`, nullable   | `string \| null`      | ID чата, из которого инициирован звонок |
-| `type`       | `enum(ECallType)`  | `ECallType`           | Тип звонка: `voice` или `video`         |
-| `status`     | `enum(ECallStatus)`| `ECallStatus`         | Статус звонка (см. ниже)                |
-| `startedAt`  | `timestamp`, nullable | `Date \| null`     | Время начала разговора (после ответа)   |
-| `endedAt`    | `timestamp`, nullable | `Date \| null`     | Время завершения звонка                 |
-| `duration`   | `int`, nullable    | `number \| null`      | Длительность в секундах                 |
-| `createdAt`  | `timestamp`        | `Date`                | Дата создания записи                    |
-| `updatedAt`  | `timestamp`        | `Date`                | Дата последнего обновления              |
-
-### Перечисления
-
-**`ECallType`**:
-- `VOICE` = `"voice"` -- голосовой звонок
-- `VIDEO` = `"video"` -- видеозвонок
-
-**`ECallStatus`**:
-- `RINGING` = `"ringing"` -- вызов, ожидание ответа
-- `ACTIVE` = `"active"` -- разговор идёт
-- `ENDED` = `"ended"` -- звонок завершён
-- `MISSED` = `"missed"` -- звонок пропущен (инициатор отменил)
-- `DECLINED` = `"declined"` -- звонок отклонён вызываемым
-
-### Связи с другими Entity
-
-| Связь     | Тип        | Целевая Entity | FK-колонка   | Поведение при удалении |
-|-----------|------------|----------------|--------------|------------------------|
-| `caller`  | `ManyToOne`| `User`         | `caller_id`  | `CASCADE`              |
-| `callee`  | `ManyToOne`| `User`         | `callee_id`  | `CASCADE`              |
-| `chat`    | `ManyToOne`| `Chat`         | `chat_id`    | `SET NULL`             |
-
----
-
-## Endpoints (REST API)
+## Endpoints
 
 Базовый путь: `/api/call`
-Тег Swagger: `Call`
 
-| Метод  | Путь                  | Описание                           | Security    | Тело запроса             | Ответ                |
-|--------|-----------------------|------------------------------------|-------------|--------------------------|----------------------|
-| `POST` | `/api/call`           | Инициировать звонок                | `jwt`       | `IInitiateCallBody`      | `CallDto`            |
-| `POST` | `/api/call/{id}/answer`  | Ответить на входящий звонок     | `jwt`       | --                       | `CallDto`            |
-| `POST` | `/api/call/{id}/decline` | Отклонить звонок                | `jwt`       | --                       | `CallDto`            |
-| `POST` | `/api/call/{id}/end`     | Завершить активный звонок       | `jwt`       | --                       | `CallDto`            |
-| `GET`  | `/api/call/history`   | Получить историю звонков           | `jwt`       | Query: `limit?`, `offset?` | `ICallHistoryDto`  |
-| `GET`  | `/api/call/active`    | Получить текущий активный звонок   | `jwt`       | --                       | `CallDto \| null`    |
+| Метод | Путь | Security | Описание |
+|-------|------|----------|----------|
+| `POST` | `/api/call` | `@Security("jwt")` + `@ValidateBody(InitiateCallSchema)` | Инициировать звонок. Транзакция с pessimistic lock. |
+| `POST` | `/api/call/{id}/answer` | `@Security("jwt")` | Ответить на звонок (callee). |
+| `POST` | `/api/call/{id}/decline` | `@Security("jwt")` | Отклонить звонок. Callee -> DECLINED, caller -> MISSED. |
+| `POST` | `/api/call/{id}/end` | `@Security("jwt")` | Завершить звонок. Вычисляет duration. |
+| `GET` | `/api/call/history` | `@Security("jwt")` | История звонков с пагинацией (`limit`, `offset`). |
+| `GET` | `/api/call/active` | `@Security("jwt")` | Активный звонок текущего пользователя. |
 
-Все эндпоинты требуют JWT-аутентификации (`@Security("jwt")`), без дополнительных permission-требований.
+## Сервисы
 
-### Тело запроса инициации звонка (`IInitiateCallBody`)
+### CallService
 
-```typescript
-{
-  calleeId: string;    // UUID вызываемого пользователя (обязательное)
-  chatId?: string;     // UUID чата (необязательное)
-  type?: ECallType;    // "voice" | "video", по умолчанию "voice"
-}
-```
-
-Валидация выполняется Zod-схемой `InitiateCallSchema`.
-
----
-
-## Сервис: `CallService`
-
-Инжектирует: `CallRepository`, `EventBus`.
-
-### Методы
-
-#### `initiateCall(callerId, data)`
-- Проверяет, что пользователь не звонит сам себе
-- Проверяет, что у caller нет активных звонков
-- Проверяет, что у callee нет активных звонков
-- Создаёт запись со статусом `RINGING`
-- Эмитит `CallInitiatedEvent`
-- Возвращает `CallDto`
-
-#### `answerCall(callId, userId)`
-- Только callee может ответить
-- Звонок должен быть в статусе `RINGING`
-- Устанавливает статус `ACTIVE`, записывает `startedAt`
-- Эмитит `CallAnsweredEvent`
-
-#### `declineCall(callId, userId)`
-- Могут вызвать оба участника
-- Звонок должен быть в статусе `RINGING`
-- Если отклоняет callee -- статус `DECLINED`, если caller отменяет -- статус `MISSED`
-- Записывает `endedAt`
-- Эмитит `CallDeclinedEvent` или `CallMissedEvent` соответственно
-
-#### `endCall(callId, userId)`
-- Могут вызвать оба участника
-- Звонок должен быть `ACTIVE` или `RINGING`
-- Устанавливает статус `ENDED`, записывает `endedAt`
-- Если был `startedAt`, вычисляет `duration` в секундах
-- Эмитит `CallEndedEvent`
-
-#### `getCallHistory(userId, limit?, offset?)`
-- Возвращает пагинированный список звонков пользователя (как caller или callee)
-- По умолчанию: `limit=50`, `offset=0`
-- Возвращает `{ data: CallDto[], totalCount: number }`
-
-#### `getActiveCall(userId)`
-- Возвращает первый активный звонок пользователя или `null`
-
----
+| Метод | Описание |
+|-------|----------|
+| `initiateCall(callerId, data)` | Создание звонка в транзакции с pessimistic_write lock. Проверяет отсутствие активных звонков у обоих участников. |
+| `answerCall(callId, userId)` | Ответ на звонок. Только callee, статус RINGING. |
+| `declineCall(callId, userId)` | Отклонение. Callee -> DECLINED, caller -> MISSED. |
+| `endCall(callId, userId)` | Завершение. Вычисляет duration. |
+| `getCallHistory(userId, limit?, offset?)` | История с пагинацией. |
+| `getActiveCall(userId)` | Текущий активный звонок. |
 
 ## DTO
 
-### `CallDto`
-
-Наследуется от `BaseDto`. Содержит все поля entity, а также вложенные объекты участников:
-
-```typescript
-{
-  id: string;
-  callerId: string;
-  calleeId: string;
-  chatId: string | null;
-  type: ECallType;
-  status: ECallStatus;
-  startedAt: Date | null;
-  endedAt: Date | null;
-  duration: number | null;
-  createdAt: Date;
-  updatedAt: Date;
-  caller?: { id: string; firstName?: string; lastName?: string; avatarUrl?: string; };
-  callee?: { id: string; firstName?: string; lastName?: string; avatarUrl?: string; };
-}
-```
-
-Данные `caller` и `callee` заполняются из связанных User-сущностей и их профилей (profile.firstName, profile.lastName, profile.avatar.url).
-
-### `ICallHistoryDto`
-
-```typescript
-{
-  data: CallDto[];
-  totalCount: number;
-}
-```
-
----
+- **CallDto** — id, callerId, calleeId, chatId, type, status, startedAt, endedAt, duration, caller/callee (id, firstName, lastName, avatarUrl)
+- **ICallHistoryDto** — `{ data: CallDto[], totalCount: number }`
 
 ## События (Events)
 
-Все события содержат полную сущность `Call` (с подгруженными relations).
-
-| Класс события        | Когда эмитится                                   |
-|-----------------------|--------------------------------------------------|
-| `CallInitiatedEvent`  | Звонок создан, статус `RINGING`                  |
-| `CallAnsweredEvent`   | Callee ответил, статус `ACTIVE`                  |
-| `CallDeclinedEvent`   | Callee отклонил, статус `DECLINED`               |
-| `CallEndedEvent`      | Участник завершил, статус `ENDED`                |
-| `CallMissedEvent`     | Caller отменил вызов, статус `MISSED`            |
-
-Все события эмитятся синхронно через `EventBus.emit()`.
-
----
+| Событие | Данные | Когда |
+|---------|--------|-------|
+| `CallInitiatedEvent` | `Call` entity | Звонок инициирован |
+| `CallAnsweredEvent` | `Call` entity | Звонок принят |
+| `CallDeclinedEvent` | `Call` entity | Звонок отклонён |
+| `CallEndedEvent` | `Call` entity | Звонок завершён |
+| `CallMissedEvent` | `Call` entity | Пропущенный звонок |
 
 ## Socket-интеграция
 
-Модуль интегрируется с Socket.IO двумя способами:
+### CallHandler (ISocketHandler) — WebRTC signaling
 
-### 1. CallListener (доменные события -> Socket-уведомления)
+| Событие (входящее) | Описание |
+|--------------------|----------|
+| `call:offer` | Relay SDP offer целевому пользователю. Проверка участия в звонке. |
+| `call:answer` | Relay SDP answer. |
+| `call:ice-candidate` | Relay ICE candidate. |
+| `call:hangup` | Сигнал завершения. |
 
-Реализует `ISocketEventListener`. Подписывается на доменные события и отправляет Socket-сообщения участникам через `SocketEmitterService.toUser()`.
+### CallListener (ISocketEventListener)
 
-| Доменное событие      | Socket-событие    | Получатель          |
-|-----------------------|-------------------|---------------------|
-| `CallInitiatedEvent`  | `call:incoming`   | callee              |
-| `CallAnsweredEvent`   | `call:answered`   | caller              |
-| `CallDeclinedEvent`   | `call:declined`   | caller              |
-| `CallEndedEvent`      | `call:ended`      | caller и callee     |
-| `CallMissedEvent`     | `call:missed`     | callee              |
+| Событие EventBus | Socket-событие | Получатель | Данные |
+|------------------|----------------|------------|--------|
+| `CallInitiatedEvent` | `call:incoming` | callee | `CallDto` |
+| `CallAnsweredEvent` | `call:answered` | caller | `CallDto` |
+| `CallDeclinedEvent` | `call:declined` | caller | `CallDto` |
+| `CallEndedEvent` | `call:ended` | caller + callee | `CallDto` |
+| `CallMissedEvent` | `call:missed` | callee | `CallDto` |
 
-Payload всех Socket-событий -- `CallDto`.
-
-### 2. CallHandler (WebRTC-сигнализация)
-
-Реализует `ISocketHandler`. Обрабатывает входящие Socket-события для WebRTC peer-to-peer соединения и пересылает их целевому пользователю.
-
-| Входящее событие       | Исходящее событие     | Данные                                              |
-|------------------------|-----------------------|-----------------------------------------------------|
-| `call:offer`           | `call:offer`          | `{ callId, fromUserId, sdp }`                       |
-| `call:answer`          | `call:answer`         | `{ callId, fromUserId, sdp }`                       |
-| `call:ice-candidate`   | `call:ice-candidate`  | `{ callId, fromUserId, candidate }`                 |
-| `call:hangup`          | `call:ended`          | `{ callId, endedBy }`                               |
-
-Все сообщения пересылаются целевому пользователю (`targetUserId`) через `SocketEmitterService.toUser()`.
-
----
-
-## Репозиторий: `CallRepository`
-
-Наследуется от `BaseRepository<Call>`. Декорирован `@InjectableRepository(Call)` (автоматическая регистрация в IoC).
-
-### Кастомные методы
-
-| Метод                | Описание                                                                 |
-|----------------------|--------------------------------------------------------------------------|
-| `findById(id)`       | Поиск звонка по ID с загрузкой caller/callee и их профилей               |
-| `findActiveCalls(userId)` | Поиск звонков со статусом RINGING/ACTIVE, где пользователь -- участник |
-| `findCallHistory(userId, limit, offset)` | Пагинированная история звонков с подгрузкой профилей       |
-
----
-
-## Валидация
-
-### `InitiateCallSchema` (Zod)
+## Перечисления
 
 ```typescript
-z.object({
-  calleeId: z.string().uuid("Некорректный UUID"),
-  chatId: z.string().uuid("Некорректный UUID").optional(),
-  type: z.nativeEnum(ECallType).default(ECallType.VOICE),
-})
+enum ECallType { VOICE = "voice", VIDEO = "video" }
+enum ECallStatus { RINGING = "ringing", ACTIVE = "active", ENDED = "ended", MISSED = "missed", DECLINED = "declined" }
 ```
-
-Применяется через декоратор `@ValidateBody(InitiateCallSchema)` на эндпоинте `POST /api/call`.
-
----
 
 ## Зависимости
 
-### Импортируемые модули и сервисы
-
-| Зависимость            | Модуль     | Использование                              |
-|------------------------|------------|--------------------------------------------|
-| `EventBus`             | Core       | Публикация доменных событий из сервиса     |
-| `SocketEmitterService` | Socket     | Отправка Socket-сообщений из listener/handler |
-| `User` entity          | User       | Связь caller/callee (ManyToOne)            |
-| `Chat` entity          | Chat       | Связь с чатом (ManyToOne, nullable)        |
-| `BaseRepository`       | Core       | Базовый класс репозитория                  |
-| `BaseDto`              | Core       | Базовый класс DTO                          |
-
-### Регистрация в модуле
-
-```typescript
-@Module({
-  providers: [
-    CallRepository,
-    CallService,
-    CallController,
-    asSocketHandler(CallHandler),
-    asSocketListener(CallListener),
-  ],
-})
-export class CallModule {}
-```
-
-`CallHandler` регистрируется через `asSocketHandler()`, `CallListener` -- через `asSocketListener()` для автоматической интеграции с Socket-инфраструктурой.
-
----
-
-## Взаимодействие с другими модулями
-
-- **User** -- caller и callee являются пользователями. Entity `Call` имеет ManyToOne связи с `User`. При удалении пользователя все его звонки каскадно удаляются.
-- **Chat** -- звонок может быть привязан к чату (необязательно). При удалении чата поле `chatId` обнуляется (`SET NULL`).
-- **Socket** -- модуль использует `SocketEmitterService` для отправки уведомлений и WebRTC-сигналов. `CallHandler` обрабатывает входящие Socket-события, `CallListener` транслирует доменные события в Socket-уведомления.
-- **Core (EventBus)** -- `CallService` эмитит доменные события, которые подхватываются `CallListener` и могут быть подхвачены другими модулями.
-
----
-
-## Тесты
-
-Файл: `call.service.test.ts`
-
-Покрытие: unit-тесты `CallService` с mock-репозиторием и mock-EventBus (sinon). Тестируются:
-
-- **initiateCall** -- создание звонка, проверка запрета звонить себе, проверка конфликта активных звонков (caller и callee)
-- **answerCall** -- ответ на звонок, проверка прав (только callee), проверка статуса, обработка несуществующего звонка
-- **declineCall** -- отклонение callee (DECLINED) и отмена caller (MISSED), проверка прав участника
-- **endCall** -- завершение звонка, вычисление duration, проверка статуса, проверка прав, обработка несуществующего звонка
-- **getCallHistory** -- пагинация, значения по умолчанию
-- **getActiveCall** -- наличие/отсутствие активного звонка
+| Зависимость | Откуда | Использование |
+|-------------|--------|---------------|
+| `User` entity | `modules/user` | Связь в entity |
+| `Chat` entity | `modules/chat` | Связь в entity |
+| `DataSource` | `typeorm` | Транзакции с pessimistic lock |
+| `EventBus` | `core` | Публикация и подписка на события |
+| `SocketEmitterService` | `modules/socket` | Отправка socket-событий |
+| `CallRepository` | self | Проверка участия в handler |

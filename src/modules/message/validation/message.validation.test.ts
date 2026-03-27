@@ -35,15 +35,7 @@ describe("Message Validation Schemas", () => {
       expect(result.success).to.be.true;
     });
 
-    it("should accept message with stickerId only", () => {
-      const result = SendMessageSchema.safeParse({
-        stickerId: validUuid,
-      });
-
-      expect(result.success).to.be.true;
-    });
-
-    it("should reject when neither content nor fileIds nor stickerId", () => {
+    it("should reject when neither content nor fileIds", () => {
       const result = SendMessageSchema.safeParse({});
 
       expect(result.success).to.be.false;

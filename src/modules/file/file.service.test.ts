@@ -4,7 +4,7 @@ import { NotFoundException } from "@force-dev/utils";
 import { expect } from "chai";
 import sinon from "sinon";
 
-import { createMockRepository, uuid, uuid2 } from "../../test/helpers";
+import { createMockEventBus, createMockRepository, uuid, uuid2 } from "../../test/helpers";
 import { FileService } from "./file.service";
 
 describe("FileService", () => {
@@ -48,7 +48,7 @@ describe("FileService", () => {
 
     (fileRepo as any).findById = sinon.stub().resolves(null);
 
-    service = new FileService(fileRepo as any);
+    service = new FileService(fileRepo as any, createMockEventBus() as any);
   });
 
   afterEach(() => sandbox.restore());

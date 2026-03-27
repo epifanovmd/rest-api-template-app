@@ -4,7 +4,7 @@ import { BadRequestException, ForbiddenException, NotFoundException } from "@for
 import { expect } from "chai";
 import sinon from "sinon";
 
-import { createMockRepository, uuid, uuid2 } from "../../test/helpers";
+import { createMockEventBus, createMockRepository, uuid, uuid2 } from "../../test/helpers";
 import { BotService } from "./bot.service";
 
 describe("BotService", () => {
@@ -34,7 +34,7 @@ describe("BotService", () => {
       save: sinon.stub().callsFake((data: any) => Promise.resolve(data)),
     };
 
-    service = new BotService(botRepo as any, cmdRepo as any, { transaction: sinon.stub().callsFake((cb: any) => cb({ getRepository: sinon.stub().returns(mockTxRepo) })) } as any);
+    service = new BotService(botRepo as any, cmdRepo as any, { transaction: sinon.stub().callsFake((cb: any) => cb({ getRepository: sinon.stub().returns(mockTxRepo) })) } as any, createMockEventBus() as any);
   });
 
   afterEach(() => sandbox.restore());

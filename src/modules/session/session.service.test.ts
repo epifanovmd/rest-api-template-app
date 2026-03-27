@@ -4,7 +4,7 @@ import { ForbiddenException, NotFoundException } from "@force-dev/utils";
 import { expect } from "chai";
 import sinon from "sinon";
 
-import { createMockRepository, uuid, uuid2 } from "../../test/helpers";
+import { createMockEventBus, createMockRepository, uuid, uuid2 } from "../../test/helpers";
 import { SessionService } from "./session.service";
 
 describe("SessionService", () => {
@@ -35,7 +35,7 @@ describe("SessionService", () => {
     (sessionRepo as any).findByUserId = sinon.stub().resolves([]);
     (sessionRepo as any).findByRefreshToken = sinon.stub().resolves(null);
 
-    service = new SessionService(sessionRepo as any);
+    service = new SessionService(sessionRepo as any, createMockEventBus() as any);
   });
 
   afterEach(() => sandbox.restore());

@@ -20,6 +20,7 @@ import {
 } from "../../core";
 import { KoaRequest } from "../../types/koa";
 import {
+  IDeviceInfo,
   IDisable2FARequestDto,
   IEnable2FARequestDto,
   ISignInRequestDto,
@@ -67,8 +68,11 @@ export class AuthController extends Controller {
   @UseGuards(ThrottleGuard(5, 60_000))
   @Post("/sign-up")
   @ValidateBody(SignUpSchema)
-  signUp(@Body() body: TSignUpRequestDto): Promise<IUserWithTokensDto> {
-    return this._authService.signUp(body);
+  signUp(
+    @Request() req: KoaRequest,
+    @Body() body: TSignUpRequestDto,
+  ): Promise<IUserWithTokensDto> {
+    return this._authService.signUp(body, this._extractDeviceInfo(req));
   }
 
   /**
@@ -86,8 +90,11 @@ export class AuthController extends Controller {
   @UseGuards(ThrottleGuard(10, 60_000))
   @Post("/sign-in")
   @ValidateBody(SignInSchema)
-  signIn(@Body() body: ISignInRequestDto): Promise<ISignInResponseDto> {
-    return this._authService.signIn(body);
+  signIn(
+    @Request() req: KoaRequest,
+    @Body() body: ISignInRequestDto,
+  ): Promise<ISignInResponseDto> {
+    return this._authService.signIn(body, this._extractDeviceInfo(req));
   }
 
   /**
@@ -185,7 +192,27 @@ export class AuthController extends Controller {
    */
   @Post("/verify-2fa")
   @ValidateBody(Verify2FASchema)
-  verify2FA(@Body() body: IVerify2FARequestDto): Promise<IUserWithTokensDto> {
-    return this._authService.verify2FA(body.twoFactorToken, body.password);
+  verify2FA(
+    @Request() req: KoaRequest,
+    @Body() body: IVerify2FARequestDto,
+  ): Promise<IUserWithTokensDto> {
+    return this._authService.verify2FA(
+      body.twoFactorToken,
+      body.password,
+      this._extractDeviceInfo(req),
+    );
+  }
+
+  private _extractDeviceInfo(req: KoaRequest): IDeviceInfo {
+    return {
+      ip: req.ctx?.request?.ip,
+      userAgent: req.ctx?.request?.headers?.["user-agent"] as string | undefined,
+      deviceName: req.ctx?.request?.headers?.["x-device-name"] as
+        | string
+        | undefined,
+      deviceType: req.ctx?.request?.headers?.["x-device-type"] as
+        | string
+        | undefined,
+    };
   }
 }

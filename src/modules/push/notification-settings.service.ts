@@ -1,7 +1,8 @@
 import { inject } from "inversify";
 
-import { Injectable } from "../../core";
+import { EventBus, Injectable } from "../../core";
 import { NotificationSettingsDto } from "./dto";
+import { NotificationSettingsChangedEvent } from "./events";
 import { NotificationSettingsRepository } from "./notification-settings.repository";
 
 @Injectable()
@@ -9,6 +10,7 @@ export class NotificationSettingsService {
   constructor(
     @inject(NotificationSettingsRepository)
     private _settingsRepo: NotificationSettingsRepository,
+    @inject(EventBus) private _eventBus: EventBus,
   ) {}
 
   async getSettings(userId: string) {
@@ -30,6 +32,8 @@ export class NotificationSettingsService {
     },
   ) {
     const settings = await this._settingsRepo.upsertSettings(userId, data);
+
+    this._eventBus.emit(new NotificationSettingsChangedEvent(userId));
 
     return NotificationSettingsDto.fromEntity(settings);
   }

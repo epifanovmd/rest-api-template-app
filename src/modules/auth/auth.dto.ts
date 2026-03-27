@@ -42,6 +42,13 @@ export interface IDisable2FARequestDto {
   password: string;
 }
 
+export interface IDeviceInfo {
+  ip?: string;
+  userAgent?: string;
+  deviceName?: string;
+  deviceType?: string;
+}
+
 export type ISignInResponseDto = IUserWithTokensDto | I2FARequiredDto;
 
 export type TSignUpRequestDto =

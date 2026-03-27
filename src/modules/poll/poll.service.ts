@@ -11,7 +11,7 @@ import { ChatService } from "../chat/chat.service";
 import { MessageRepository } from "../message/message.repository";
 import { EMessageType } from "../message/message.types";
 import { PollDto } from "./dto";
-import { PollClosedEvent, PollVotedEvent } from "./events";
+import { PollClosedEvent, PollCreatedEvent, PollVotedEvent } from "./events";
 import { PollRepository } from "./poll.repository";
 import { PollOptionRepository } from "./poll-option.repository";
 import { PollVote } from "./poll-vote.entity";
@@ -87,6 +87,18 @@ export class PollService {
     });
 
     const fullPoll = await this._pollRepo.findById(poll.id);
+    const fullMessage = fullPoll?.message
+      ? await this._messageRepo.findById(fullPoll.message.id)
+      : null;
+
+    if (fullPoll && fullMessage) {
+      const memberUserIds =
+        await this._chatService.getMemberUserIds(chatId);
+
+      this._eventBus.emit(
+        new PollCreatedEvent(fullPoll, fullMessage, chatId, memberUserIds),
+      );
+    }
 
     return new PollDto(fullPoll!, senderId);
   }

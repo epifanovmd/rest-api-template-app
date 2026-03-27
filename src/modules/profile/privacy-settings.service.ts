@@ -1,8 +1,9 @@
 import { inject } from "inversify";
 
-import { Injectable } from "../../core";
+import { EventBus, Injectable } from "../../core";
 import { ContactRepository } from "../contact/contact.repository";
 import { EContactStatus } from "../contact/contact.types";
+import { PrivacySettingsUpdatedEvent } from "./events";
 import {
   EPrivacyLevel,
   PrivacySettings,
@@ -16,6 +17,7 @@ export class PrivacySettingsService {
     private _repo: PrivacySettingsRepository,
     @inject(ContactRepository)
     private _contactRepo: ContactRepository,
+    @inject(EventBus) private _eventBus: EventBus,
   ) {}
 
   async getSettings(userId: string): Promise<PrivacySettings> {
@@ -53,6 +55,8 @@ export class PrivacySettingsService {
 
       await this._repo.save(settings);
     }
+
+    this._eventBus.emit(new PrivacySettingsUpdatedEvent(userId));
 
     return settings;
   }

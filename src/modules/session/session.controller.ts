@@ -1,6 +1,5 @@
 import { inject } from "inversify";
 import {
-  Body,
   Controller,
   Delete,
   Get,
@@ -60,15 +59,9 @@ export class SessionController extends Controller {
    */
   @Security("jwt")
   @Post("terminate-others")
-  async terminateOtherSessions(
-    @Request() req: KoaRequest,
-    @Body() body: { currentSessionId: string },
-  ): Promise<void> {
+  async terminateOtherSessions(@Request() req: KoaRequest): Promise<void> {
     const user = getContextUser(req);
 
-    await this._sessionService.terminateAllOther(
-      user.userId,
-      body.currentSessionId,
-    );
+    await this._sessionService.terminateAllOther(user.userId, user.sessionId);
   }
 }

@@ -2,8 +2,10 @@ import { NotFoundException } from "@force-dev/utils";
 import { inject } from "inversify";
 import { FindOptionsWhere } from "typeorm";
 
-import { Injectable } from "../../core";
+import { EventBus, Injectable } from "../../core";
+import { PublicProfileDto } from "./dto";
 import { IProfileUpdateRequestDto } from "./dto";
+import { ProfileUpdatedEvent } from "./events";
 import { Profile } from "./profile.entity";
 import { ProfileRepository } from "./profile.repository";
 
@@ -12,6 +14,7 @@ import { ProfileRepository } from "./profile.repository";
 export class ProfileService {
   constructor(
     @inject(ProfileRepository) private _profileRepository: ProfileRepository,
+    @inject(EventBus) private _eventBus: EventBus,
   ) {}
 
   /** Получить список всех профилей с пагинацией, отсортированный по дате создания по убыванию. */
@@ -65,6 +68,10 @@ export class ProfileService {
     if (!profile) {
       throw new NotFoundException("Пользователь не найден");
     }
+
+    this._eventBus.emit(
+      new ProfileUpdatedEvent(PublicProfileDto.fromEntity(profile)),
+    );
 
     return profile;
   }

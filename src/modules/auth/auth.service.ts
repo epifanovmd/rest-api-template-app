@@ -11,6 +11,7 @@ import jwt from "jsonwebtoken";
 import { config } from "../../config";
 import {
   ApiResponseDto,
+  EventBus,
   Injectable,
   ITokensDto,
   logger,
@@ -19,15 +20,23 @@ import {
 } from "../../core";
 import { MailerService } from "../mailer";
 import { ResetPasswordTokensService } from "../reset-password-tokens";
+import { SessionService } from "../session";
 import { UserService } from "../user";
 import { UserDto } from "../user/dto";
+import { PasswordChangedEvent } from "../user/events";
 import { UserRepository } from "../user/user.repository";
 import {
+  IDeviceInfo,
   ISignInRequestDto,
   ISignInResponseDto,
   IUserWithTokensDto,
   TSignUpRequestDto,
 } from "./auth.dto";
+import {
+  TwoFactorDisabledEvent,
+  TwoFactorEnabledEvent,
+  UserLoggedInEvent,
+} from "./events";
 
 /** Сервис аутентификации: регистрация, вход, сброс пароля и обновление токенов. */
 @Injectable()
@@ -39,15 +48,15 @@ export class AuthService {
     private _resetPasswordTokensService: ResetPasswordTokensService,
     @inject(TokenService) private _tokenService: TokenService,
     @inject(UserRepository) private _userRepository: UserRepository,
+    @inject(EventBus) private _eventBus: EventBus,
+    @inject(SessionService) private _sessionService: SessionService,
   ) {}
 
   /** Зарегистрировать нового пользователя и сразу выдать токены. */
-  async signUp({
-    email,
-    phone,
-    password,
-    ...rest
-  }: TSignUpRequestDto): Promise<IUserWithTokensDto> {
+  async signUp(
+    { email, phone, password, ...rest }: TSignUpRequestDto,
+    deviceInfo: IDeviceInfo = {},
+  ): Promise<IUserWithTokensDto> {
     const login = email || phone;
 
     if (!login) {
@@ -77,11 +86,17 @@ export class AuthService {
       passwordHash: await bcrypt.hash(password, 12),
     });
 
-    return this.signIn({ login, password }) as Promise<IUserWithTokensDto>;
+    return this.signIn(
+      { login, password },
+      deviceInfo,
+    ) as Promise<IUserWithTokensDto>;
   }
 
   /** Аутентифицировать пользователя по логину (email/телефон) и паролю. */
-  async signIn(body: ISignInRequestDto): Promise<ISignInResponseDto> {
+  async signIn(
+    body: ISignInRequestDto,
+    deviceInfo: IDeviceInfo = {},
+  ): Promise<ISignInResponseDto> {
     const { login, password } = body;
 
     try {
@@ -127,9 +142,26 @@ export class AuthService {
 
         const fullUser = await this._userService.getUser(user.id);
 
+        const session = await this._sessionService.createSession({
+          userId: fullUser.id,
+          refreshToken: "pending",
+          ip: deviceInfo.ip,
+          userAgent: deviceInfo.userAgent,
+          deviceName: deviceInfo.deviceName,
+          deviceType: deviceInfo.deviceType,
+        });
+        const tokens = await this._tokenService.issue(fullUser, session.id);
+
+        await this._sessionService.updateRefreshToken(
+          session.id,
+          tokens.refreshToken,
+        );
+
+        this._eventBus.emit(new UserLoggedInEvent(fullUser.id, session.id));
+
         return {
           ...UserDto.fromEntity(fullUser),
-          tokens: await this._tokenService.issue(fullUser),
+          tokens,
         };
       }
     } catch (error) {
@@ -194,6 +226,9 @@ export class AuthService {
     const { userId } = await this._resetPasswordTokensService.check(token);
 
     await this._userService.changePassword(userId, password);
+    await this._sessionService.terminateAllByUser(userId);
+
+    this._eventBus.emit(new PasswordChangedEvent(userId, "reset"));
 
     return new ApiResponseDto({ message: "Пароль успешно сброшен." });
   }
@@ -204,10 +239,26 @@ export class AuthService {
       throw new UnauthorizedException("Токен отсутствует");
     }
 
-    const { userId } = await verifyToken(token);
-    const user = await this._userService.getUser(userId);
+    const decoded = await verifyToken(token);
+    const session = await this._sessionService.findByRefreshToken(token);
 
-    return this._tokenService.issue(user);
+    if (!session) {
+      throw new UnauthorizedException("Сессия не найдена или завершена");
+    }
+
+    if (session.userId !== decoded.userId) {
+      throw new UnauthorizedException("Сессия не найдена или завершена");
+    }
+
+    const user = await this._userService.getUser(decoded.userId);
+    const tokens = await this._tokenService.issue(user, session.id);
+
+    await this._sessionService.updateRefreshToken(
+      session.id,
+      tokens.refreshToken,
+    );
+
+    return tokens;
   }
 
   /** Включить 2FA для пользователя. */
@@ -224,6 +275,8 @@ export class AuthService {
       twoFactorHash,
       twoFactorHint: hint ?? null,
     });
+
+    this._eventBus.emit(new TwoFactorEnabledEvent(userId));
 
     return new ApiResponseDto({ message: "2FA успешно включена." });
   }
@@ -247,6 +300,8 @@ export class AuthService {
       twoFactorHint: null as any,
     });
 
+    this._eventBus.emit(new TwoFactorDisabledEvent(userId));
+
     return new ApiResponseDto({ message: "2FA успешно отключена." });
   }
 
@@ -254,6 +309,7 @@ export class AuthService {
   async verify2FA(
     twoFactorToken: string,
     password: string,
+    deviceInfo: IDeviceInfo = {},
   ): Promise<IUserWithTokensDto> {
     const decoded = await verifyToken(twoFactorToken);
 
@@ -271,9 +327,26 @@ export class AuthService {
       throw new UnauthorizedException("Неверный пароль 2FA");
     }
 
+    const session = await this._sessionService.createSession({
+      userId: user.id,
+      refreshToken: "pending",
+      ip: deviceInfo.ip,
+      userAgent: deviceInfo.userAgent,
+      deviceName: deviceInfo.deviceName,
+      deviceType: deviceInfo.deviceType,
+    });
+    const tokens = await this._tokenService.issue(user, session.id);
+
+    await this._sessionService.updateRefreshToken(
+      session.id,
+      tokens.refreshToken,
+    );
+
+    this._eventBus.emit(new UserLoggedInEvent(user.id, session.id));
+
     return {
       ...UserDto.fromEntity(user),
-      tokens: await this._tokenService.issue(user),
+      tokens,
     };
   }
 }

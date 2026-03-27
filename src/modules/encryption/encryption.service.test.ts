@@ -4,7 +4,7 @@ import { NotFoundException } from "@force-dev/utils";
 import { expect } from "chai";
 import sinon from "sinon";
 
-import { createMockRepository, uuid, uuid2 } from "../../test/helpers";
+import { createMockEventBus, createMockRepository, uuid, uuid2 } from "../../test/helpers";
 import { EncryptionService } from "./encryption.service";
 
 describe("EncryptionService", () => {
@@ -38,7 +38,7 @@ describe("EncryptionService", () => {
     (preKeyRepo as any).getNextAvailable = sinon.stub().resolves(null);
     (preKeyRepo as any).countAvailable = sinon.stub().resolves(0);
 
-    service = new EncryptionService(keyRepo as any, preKeyRepo as any);
+    service = new EncryptionService(keyRepo as any, preKeyRepo as any, createMockEventBus() as any);
   });
 
   afterEach(() => sandbox.restore());

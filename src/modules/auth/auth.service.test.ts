@@ -11,7 +11,7 @@ import jwt from "jsonwebtoken";
 import sinon from "sinon";
 
 import { config } from "../../config";
-import { uuid } from "../../test/helpers";
+import { createMockEventBus, uuid } from "../../test/helpers";
 import { AuthService } from "./auth.service";
 
 describe("AuthService", () => {
@@ -21,6 +21,8 @@ describe("AuthService", () => {
   let mockResetPasswordTokensService: any;
   let mockTokenService: any;
   let mockUserRepository: any;
+  let mockEventBus: ReturnType<typeof createMockEventBus>;
+  let mockSessionService: any;
   let sandbox: sinon.SinonSandbox;
 
   // Pre-computed bcrypt hash for "password123"
@@ -82,12 +84,23 @@ describe("AuthService", () => {
       update: sandbox.stub().resolves({ affected: 1 }),
     };
 
+    mockEventBus = createMockEventBus();
+
+    mockSessionService = {
+      createSession: sandbox.stub().resolves({ id: "session-123" }),
+      findByRefreshToken: sandbox.stub().resolves({ id: "session-123", userId: uuid() }),
+      updateRefreshToken: sandbox.stub().resolves(),
+      terminateAllByUser: sandbox.stub().resolves(),
+    };
+
     service = new AuthService(
       mockUserService,
       mockMailerService,
       mockResetPasswordTokensService,
       mockTokenService,
       mockUserRepository,
+      mockEventBus as any,
+      mockSessionService,
     );
   });
 

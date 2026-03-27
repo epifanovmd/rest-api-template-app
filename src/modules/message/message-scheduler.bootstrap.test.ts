@@ -137,7 +137,7 @@ describe("MessageSchedulerBootstrap", () => {
 
       expect(savedMessage.isDeleted).to.be.true;
       expect(savedMessage.content).to.be.null;
-      expect(eventBus.emit.calledOnce).to.be.true;
+      expect(eventBus.emit.calledTwice).to.be.true;
 
       await bootstrap.destroy();
     });

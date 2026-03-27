@@ -3,7 +3,7 @@ import "reflect-metadata";
 import { expect } from "chai";
 import sinon from "sinon";
 
-import { createMockRepository, uuid, uuid2 } from "../../test/helpers";
+import { createMockEventBus, createMockRepository, uuid, uuid2 } from "../../test/helpers";
 import { UserService } from "./user.service";
 
 describe("UserService", () => {
@@ -88,6 +88,7 @@ describe("UserService", () => {
         create: sinon.stub().callsFake((data: any) => ({ id: uuid(), ...data })),
         save: sinon.stub().callsFake((data: any) => Promise.resolve({ id: uuid(), ...data })),
       }) })) } as any,
+      createMockEventBus() as any,
     );
   });
 

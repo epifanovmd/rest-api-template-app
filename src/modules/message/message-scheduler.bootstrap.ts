@@ -5,7 +5,7 @@ import { EventBus, Injectable, logger } from "../../core";
 import { IBootstrap } from "../../core/bootstrap";
 import { ChatService } from "../chat/chat.service";
 import { MessageDto } from "./dto";
-import { MessageCreatedEvent, MessageDeletedEvent } from "./events";
+import { MessageCreatedEvent, MessageDeletedEvent, MessageSelfDestructStartedEvent } from "./events";
 import { MessageRepository } from "./message.repository";
 
 @Injectable()
@@ -91,6 +91,14 @@ export class MessageSchedulerBootstrap implements IBootstrap {
 
       this._eventBus.emit(
         new MessageDeletedEvent(message.id, message.chatId),
+      );
+
+      this._eventBus.emit(
+        new MessageSelfDestructStartedEvent(
+          message.id,
+          message.chatId,
+          message.selfDestructAt!,
+        ),
       );
 
       logger.info(

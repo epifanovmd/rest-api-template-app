@@ -2,7 +2,7 @@ import { inject } from "inversify";
 
 import { EventBus, Injectable } from "../../core";
 import { ISocketEventListener, SocketEmitterService } from "../socket";
-import { ProfileUpdatedEvent } from "./events";
+import { PrivacySettingsUpdatedEvent, ProfileUpdatedEvent } from "./events";
 
 @Injectable()
 export class ProfileListener implements ISocketEventListener {
@@ -16,5 +16,16 @@ export class ProfileListener implements ISocketEventListener {
     this.eventBus.on(ProfileUpdatedEvent, (event: ProfileUpdatedEvent) => {
       this.emitter.toRoom("profile", "profile:updated", event.profile);
     });
+
+    this.eventBus.on(
+      PrivacySettingsUpdatedEvent,
+      (event: PrivacySettingsUpdatedEvent) => {
+        this.emitter.toUser(
+          event.userId,
+          "profile:privacy-changed",
+          {} as Record<string, never>,
+        );
+      },
+    );
   }
 }

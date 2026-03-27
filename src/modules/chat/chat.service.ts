@@ -18,9 +18,12 @@ import { ChatMember } from "./chat-member.entity";
 import { ChatMemberRepository } from "./chat-member.repository";
 import { ChatDto, ChatFolderDto, ChatInviteDto } from "./dto";
 import {
+  ChatArchivedEvent,
   ChatCreatedEvent,
   ChatMemberJoinedEvent,
   ChatMemberLeftEvent,
+  ChatMemberRoleChangedEvent,
+  ChatPinnedEvent,
   ChatUpdatedEvent,
 } from "./events";
 
@@ -339,6 +342,10 @@ export class ChatService {
 
     targetMembership.role = role;
     await this._memberRepo.save(targetMembership);
+
+    this._eventBus.emit(
+      new ChatMemberRoleChangedEvent(chatId, targetUserId, role, userId),
+    );
 
     const members = await this._memberRepo.findChatMembers(chatId);
     const member = members.find(m => m.userId === targetUserId);
@@ -681,6 +688,8 @@ export class ChatService {
     membership.pinnedChatAt = new Date();
     await this._memberRepo.save(membership);
 
+    this._eventBus.emit(new ChatPinnedEvent(chatId, userId, true));
+
     return membership;
   }
 
@@ -691,6 +700,8 @@ export class ChatService {
     membership.pinnedChatAt = null;
     await this._memberRepo.save(membership);
 
+    this._eventBus.emit(new ChatPinnedEvent(chatId, userId, false));
+
     return membership;
   }
 
@@ -700,6 +711,8 @@ export class ChatService {
     membership.isArchived = true;
     await this._memberRepo.save(membership);
 
+    this._eventBus.emit(new ChatArchivedEvent(chatId, userId, true));
+
     return membership;
   }
 
@@ -708,6 +721,8 @@ export class ChatService {
 
     membership.isArchived = false;
     await this._memberRepo.save(membership);
+
+    this._eventBus.emit(new ChatArchivedEvent(chatId, userId, false));
 
     return membership;
   }

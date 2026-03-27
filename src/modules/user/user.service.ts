@@ -7,7 +7,7 @@ import bcrypt from "bcrypt";
 import { inject } from "inversify";
 import { DataSource, FindOptionsRelations, FindOptionsWhere, ILike } from "typeorm";
 
-import { ApiResponseDto, Injectable } from "../../core";
+import { ApiResponseDto, EventBus, Injectable } from "../../core";
 import { MailerService } from "../mailer";
 import { OtpService } from "../otp";
 import { PermissionRepository } from "../permission";
@@ -21,6 +21,7 @@ import {
   IUserPrivilegesRequestDto,
   IUserUpdateRequestDto,
 } from "./dto";
+import { EmailVerifiedEvent, PasswordChangedEvent, UserDeletedEvent, UsernameChangedEvent, UserPrivilegesChangedEvent } from "./events";
 import { User } from "./user.entity";
 import { UserRepository } from "./user.repository";
 
@@ -36,6 +37,7 @@ export class UserService {
     private permissionRepository: PermissionRepository,
     @inject(ProfileRepository) private _profileRepository: ProfileRepository,
     @inject(DataSource) private _dataSource: DataSource,
+    @inject(EventBus) private _eventBus: EventBus,
   ) {}
 
   /** Получить список пользователей с пагинацией и опциональной фильтрацией по email. */
@@ -200,6 +202,14 @@ export class UserService {
 
     await this._userRepository.save(user);
 
+    this._eventBus.emit(
+      new UserPrivilegesChangedEvent(
+        userId,
+        body.roles,
+        body.permissions,
+      ),
+    );
+
     return this.getUser(userId);
   }
 
@@ -233,6 +243,8 @@ export class UserService {
 
     if (await this._otpService.check(userId, code)) {
       await this._userRepository.update(userId, { emailVerified: true });
+
+      this._eventBus.emit(new EmailVerifiedEvent(userId));
     }
 
     return new ApiResponseDto({
@@ -246,11 +258,15 @@ export class UserService {
       passwordHash: await bcrypt.hash(password, 12),
     });
 
+    this._eventBus.emit(new PasswordChangedEvent(userId, "change"));
+
     return new ApiResponseDto({ message: "Пароль успешно изменен." });
   }
 
   /** Удалить пользователя по ID; возвращает true если запись была удалена. */
   async deleteUser(userId: string) {
+    this._eventBus.emit(new UserDeletedEvent(userId));
+
     const deleted = await this._userRepository.delete(userId);
 
     return !!deleted.affected;
@@ -271,6 +287,8 @@ export class UserService {
     }
 
     await this._userRepository.update(userId, { username });
+
+    this._eventBus.emit(new UsernameChangedEvent(userId, username));
 
     return this.getUser(userId);
   }
