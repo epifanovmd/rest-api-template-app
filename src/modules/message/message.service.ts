@@ -60,7 +60,6 @@ export class MessageService {
       mentionAll?: boolean;
       encryptedContent?: string;
       encryptionMetadata?: Record<string, unknown>;
-      scheduledAt?: string;
       selfDestructSeconds?: number;
     },
   ) {
@@ -71,8 +70,6 @@ export class MessageService {
         "Вы не можете отправлять сообщения в этот чат",
       );
     }
-
-    const isScheduled = !!data.scheduledAt;
 
     const message = await this._messageRepo.withTransaction(
       async (repo, em) => {
@@ -85,8 +82,6 @@ export class MessageService {
           forwardedFromId: data.forwardedFromId ?? null,
           encryptedContent: data.encryptedContent ?? null,
           encryptionMetadata: data.encryptionMetadata ?? null,
-          isScheduled,
-          scheduledAt: data.scheduledAt ? new Date(data.scheduledAt) : null,
           selfDestructSeconds: data.selfDestructSeconds ?? null,
         });
 
@@ -128,10 +123,9 @@ export class MessageService {
         }
 
         // Обновляем lastMessageAt чата
-        await em.getRepository("chats").update(
-          { id: chatId },
-          { lastMessageAt: new Date() },
-        );
+        await em
+          .getRepository("chats")
+          .update({ id: chatId }, { lastMessageAt: new Date() });
 
         return saved;
       },
@@ -139,26 +133,23 @@ export class MessageService {
 
     const fullMessage = await this._messageRepo.findById(message.id);
 
-    // Don't emit event for scheduled messages
-    if (!isScheduled) {
-      const memberUserIds = await this._chatService.getMemberUserIds(chatId);
+    const memberUserIds = await this._chatService.getMemberUserIds(chatId);
 
-      this._eventBus.emit(
-        new MessageCreatedEvent(
-          fullMessage!,
-          chatId,
-          memberUserIds,
-          data.mentionedUserIds ?? [],
-          data.mentionAll ?? false,
-        ),
-      );
+    this._eventBus.emit(
+      new MessageCreatedEvent(
+        fullMessage!,
+        chatId,
+        memberUserIds,
+        data.mentionedUserIds ?? [],
+        data.mentionAll ?? false,
+      ),
+    );
 
-      // Fetch link previews asynchronously
-      if (data.content) {
-        this._fetchAndSaveLinkPreviews(message.id, data.content).catch(err => {
-          logger.warn({ err }, "Failed to fetch link previews");
-        });
-      }
+    // Fetch link previews asynchronously
+    if (data.content) {
+      this._fetchAndSaveLinkPreviews(message.id, data.content).catch(err => {
+        logger.warn({ err }, "Failed to fetch link previews");
+      });
     }
 
     return MessageDto.fromEntity(fullMessage!);
@@ -209,9 +200,7 @@ export class MessageService {
 
     const updated = await this._messageRepo.findById(messageId);
 
-    this._eventBus.emit(
-      new MessageUpdatedEvent(updated!, message.chatId),
-    );
+    this._eventBus.emit(new MessageUpdatedEvent(updated!, message.chatId));
 
     return MessageDto.fromEntity(updated!);
   }
@@ -242,9 +231,7 @@ export class MessageService {
     message.content = null;
     await this._messageRepo.save(message);
 
-    this._eventBus.emit(
-      new MessageDeletedEvent(messageId, message.chatId),
-    );
+    this._eventBus.emit(new MessageDeletedEvent(messageId, message.chatId));
   }
 
   async pinMessage(messageId: string, userId: string) {
@@ -307,9 +294,7 @@ export class MessageService {
     message.pinnedById = null;
     await this._messageRepo.save(message);
 
-    this._eventBus.emit(
-      new MessageUnpinnedEvent(messageId, message.chatId),
-    );
+    this._eventBus.emit(new MessageUnpinnedEvent(messageId, message.chatId));
   }
 
   async getPinnedMessages(chatId: string, userId: string) {
@@ -332,11 +317,7 @@ export class MessageService {
     return messages.map(MessageDto.fromEntity);
   }
 
-  async markAsDelivered(
-    chatId: string,
-    userId: string,
-    messageIds: string[],
-  ) {
+  async markAsDelivered(chatId: string, userId: string, messageIds: string[]) {
     const isMember = await this._chatService.isMember(chatId, userId);
 
     if (!isMember) return;
@@ -351,9 +332,7 @@ export class MessageService {
       .andWhere("status = :status", { status: EMessageStatus.SENT })
       .execute();
 
-    this._eventBus.emit(
-      new MessageDeliveredEvent(messageIds, chatId, userId),
-    );
+    this._eventBus.emit(new MessageDeliveredEvent(messageIds, chatId, userId));
   }
 
   async markAsRead(chatId: string, userId: string, messageId: string) {
@@ -398,10 +377,7 @@ export class MessageService {
       throw new NotFoundException("Сообщение не найдено");
     }
 
-    const isMember = await this._chatService.isMember(
-      message.chatId,
-      userId,
-    );
+    const isMember = await this._chatService.isMember(message.chatId, userId);
 
     if (!isMember) {
       throw new ForbiddenException("Вы не являетесь участником этого чата");
@@ -570,49 +546,6 @@ export class MessageService {
     return qb.getCount();
   }
 
-  /** Получить запланированные сообщения в чате. */
-  async getScheduledMessages(chatId: string, userId: string) {
-    const isMember = await this._chatService.isMember(chatId, userId);
-
-    if (!isMember) {
-      throw new ForbiddenException("Вы не являетесь участником этого чата");
-    }
-
-    const messages = await this._messageRepo.find({
-      where: { chatId, senderId: userId, isScheduled: true },
-      relations: {
-        sender: { profile: true },
-        replyTo: { sender: { profile: true } },
-        attachments: { file: true },
-        reactions: true,
-      },
-      order: { scheduledAt: "ASC" },
-    });
-
-    return messages.map(MessageDto.fromEntity);
-  }
-
-  /** Отменить запланированное сообщение. */
-  async cancelScheduledMessage(messageId: string, userId: string) {
-    const message = await this._messageRepo.findById(messageId);
-
-    if (!message) {
-      throw new NotFoundException("Сообщение не найдено");
-    }
-
-    if (message.senderId !== userId) {
-      throw new ForbiddenException(
-        "Можно отменять только свои запланированные сообщения",
-      );
-    }
-
-    if (!message.isScheduled) {
-      throw new BadRequestException("Сообщение не является запланированным");
-    }
-
-    await this._messageRepo.delete({ id: messageId });
-  }
-
   /** Отметить сообщение как открытое (для самоуничтожения). */
   async markMessageOpened(messageId: string, userId: string) {
     const message = await this._messageRepo.findById(messageId);
@@ -622,9 +555,7 @@ export class MessageService {
     }
 
     if (!message.selfDestructSeconds) {
-      throw new BadRequestException(
-        "Сообщение не является самоуничтожаемым",
-      );
+      throw new BadRequestException("Сообщение не является самоуничтожаемым");
     }
 
     // Only the recipient (non-sender) can trigger the self-destruct timer
@@ -654,8 +585,9 @@ export class MessageService {
 
   /** Внутренний метод: получить и сохранить link previews для сообщения. */
   private async _fetchAndSaveLinkPreviews(messageId: string, content: string) {
-    const previews =
-      await this._linkPreviewService.getPreviewsForContent(content);
+    const previews = await this._linkPreviewService.getPreviewsForContent(
+      content,
+    );
 
     if (previews.length > 0) {
       await this._messageRepo.update(messageId, {

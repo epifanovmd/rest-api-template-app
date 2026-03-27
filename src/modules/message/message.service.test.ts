@@ -1,10 +1,21 @@
 import "reflect-metadata";
 
-import { BadRequestException, ForbiddenException, NotFoundException } from "@force-dev/utils";
+import {
+  BadRequestException,
+  ForbiddenException,
+  NotFoundException,
+} from "@force-dev/utils";
 import { expect } from "chai";
 import sinon from "sinon";
 
-import { createMockEventBus, createMockQueryBuilder, createMockRepository, uuid, uuid2, uuid3 } from "../../test/helpers";
+import {
+  createMockEventBus,
+  createMockQueryBuilder,
+  createMockRepository,
+  uuid,
+  uuid2,
+  uuid3,
+} from "../../test/helpers";
 import { EChatMemberRole } from "../chat/chat.types";
 import {
   MessageCreatedEvent,
@@ -55,8 +66,6 @@ describe("MessageService", () => {
     encryptionMetadata: null,
     keyboard: null,
     linkPreviews: null,
-    scheduledAt: null,
-    isScheduled: false,
     selfDestructSeconds: null,
     selfDestructAt: null,
     createdAt: new Date(),
@@ -102,11 +111,15 @@ describe("MessageService", () => {
 
     // Default repo stubs
     (messageRepo as any).findById = sinon.stub().resolves(makeMessageEntity());
-    (messageRepo as any).findByChatCursor = sinon.stub().resolves({ messages: [], hasMore: false });
+    (messageRepo as any).findByChatCursor = sinon
+      .stub()
+      .resolves({ messages: [], hasMore: false });
     (messageRepo as any).searchInChat = sinon.stub().resolves([[], 0]);
     (messageRepo as any).searchGlobal = sinon.stub().resolves([[], 0]);
     (messageRepo as any).findMediaByChatId = sinon.stub().resolves([[], 0]);
-    (messageRepo as any).getMediaStats = sinon.stub().resolves({ images: 0, videos: 0, audio: 0, documents: 0, total: 0 });
+    (messageRepo as any).getMediaStats = sinon
+      .stub()
+      .resolves({ images: 0, videos: 0, audio: 0, documents: 0, total: 0 });
     (reactionRepo as any).findByUserAndMessage = sinon.stub().resolves(null);
     (memberRepo as any).findMembership = sinon.stub().resolves({
       id: "mem-1",
@@ -142,11 +155,15 @@ describe("MessageService", () => {
 
       (messageRepo as any).findById.resolves(savedMsg);
 
-      const result = await service.sendMessage(chatId, userId, { content: "Hello" });
+      const result = await service.sendMessage(chatId, userId, {
+        content: "Hello",
+      });
 
       expect(result).to.have.property("id", messageId);
       expect(eventBus.emit.calledOnce).to.be.true;
-      expect(eventBus.emit.firstCall.args[0]).to.be.instanceOf(MessageCreatedEvent);
+      expect(eventBus.emit.firstCall.args[0]).to.be.instanceOf(
+        MessageCreatedEvent,
+      );
     });
 
     it("should throw ForbiddenException when user cannot send (non-member)", async () => {
@@ -170,35 +187,6 @@ describe("MessageService", () => {
         expect(err).to.be.instanceOf(ForbiddenException);
       }
     });
-
-    it("should set isScheduled=true and NOT emit event for scheduled messages", async () => {
-      const scheduledMsg = makeMessageEntity({ isScheduled: true, scheduledAt: new Date(Date.now() + 60000) });
-
-      messageRepo.withTransaction.callsFake(async (cb: any) => {
-        const mockRepo = {
-          create: sinon.stub().returns(scheduledMsg),
-          save: sinon.stub().resolves(scheduledMsg),
-        };
-        const mockEm = {
-          getRepository: sinon.stub().returns({
-            save: sinon.stub().resolves(),
-            update: sinon.stub().resolves(),
-          }),
-        };
-
-        return cb(mockRepo, mockEm);
-      });
-
-      (messageRepo as any).findById.resolves(scheduledMsg);
-
-      const result = await service.sendMessage(chatId, userId, {
-        content: "Later",
-        scheduledAt: new Date(Date.now() + 60000).toISOString(),
-      });
-
-      expect(result).to.have.property("isScheduled", true);
-      expect(eventBus.emit.called).to.be.false;
-    });
   });
 
   // ───── getMessages ─────
@@ -207,7 +195,10 @@ describe("MessageService", () => {
     it("should return cursor-based paginated list for a member", async () => {
       const msgs = [makeMessageEntity(), makeMessageEntity({ id: "msg-002" })];
 
-      (messageRepo as any).findByChatCursor.resolves({ messages: msgs, hasMore: true });
+      (messageRepo as any).findByChatCursor.resolves({
+        messages: msgs,
+        hasMore: true,
+      });
 
       const result = await service.getMessages(chatId, userId);
 
@@ -234,8 +225,10 @@ describe("MessageService", () => {
       const msg = makeMessageEntity();
 
       (messageRepo as any).findById
-        .onFirstCall().resolves(msg)
-        .onSecondCall().resolves({ ...msg, content: "Updated", isEdited: true });
+        .onFirstCall()
+        .resolves(msg)
+        .onSecondCall()
+        .resolves({ ...msg, content: "Updated", isEdited: true });
 
       const result = await service.editMessage(messageId, userId, "Updated");
 
@@ -243,11 +236,15 @@ describe("MessageService", () => {
       expect(msg.content).to.equal("Updated");
       expect(msg.isEdited).to.be.true;
       expect(eventBus.emit.calledOnce).to.be.true;
-      expect(eventBus.emit.firstCall.args[0]).to.be.instanceOf(MessageUpdatedEvent);
+      expect(eventBus.emit.firstCall.args[0]).to.be.instanceOf(
+        MessageUpdatedEvent,
+      );
     });
 
     it("should throw ForbiddenException when editing other's message", async () => {
-      (messageRepo as any).findById.resolves(makeMessageEntity({ senderId: otherUserId }));
+      (messageRepo as any).findById.resolves(
+        makeMessageEntity({ senderId: otherUserId }),
+      );
 
       try {
         await service.editMessage(messageId, userId, "Updated");
@@ -258,7 +255,9 @@ describe("MessageService", () => {
     });
 
     it("should throw BadRequestException when editing deleted message", async () => {
-      (messageRepo as any).findById.resolves(makeMessageEntity({ isDeleted: true }));
+      (messageRepo as any).findById.resolves(
+        makeMessageEntity({ isDeleted: true }),
+      );
 
       try {
         await service.editMessage(messageId, userId, "Updated");
@@ -294,7 +293,9 @@ describe("MessageService", () => {
       expect(msg.content).to.be.null;
       expect(messageRepo.save.calledOnce).to.be.true;
       expect(eventBus.emit.calledOnce).to.be.true;
-      expect(eventBus.emit.firstCall.args[0]).to.be.instanceOf(MessageDeletedEvent);
+      expect(eventBus.emit.firstCall.args[0]).to.be.instanceOf(
+        MessageDeletedEvent,
+      );
     });
 
     it("should allow admin to delete others' messages", async () => {
@@ -366,8 +367,15 @@ describe("MessageService", () => {
       const msg = makeMessageEntity();
 
       (messageRepo as any).findById
-        .onFirstCall().resolves(msg)
-        .onSecondCall().resolves({ ...msg, isPinned: true, pinnedAt: new Date(), pinnedById: userId });
+        .onFirstCall()
+        .resolves(msg)
+        .onSecondCall()
+        .resolves({
+          ...msg,
+          isPinned: true,
+          pinnedAt: new Date(),
+          pinnedById: userId,
+        });
       (memberRepo as any).findMembership.resolves({
         id: "mem-1",
         chatId,
@@ -381,7 +389,9 @@ describe("MessageService", () => {
       expect(msg.pinnedById).to.equal(userId);
       expect(messageRepo.save.calledOnce).to.be.true;
       expect(eventBus.emit.calledOnce).to.be.true;
-      expect(eventBus.emit.firstCall.args[0]).to.be.instanceOf(MessagePinnedEvent);
+      expect(eventBus.emit.firstCall.args[0]).to.be.instanceOf(
+        MessagePinnedEvent,
+      );
     });
 
     it("should throw ForbiddenException when regular member tries to pin", async () => {
@@ -429,7 +439,11 @@ describe("MessageService", () => {
 
   describe("unpinMessage", () => {
     it("should unpin message when user is admin/owner", async () => {
-      const msg = makeMessageEntity({ isPinned: true, pinnedAt: new Date(), pinnedById: userId });
+      const msg = makeMessageEntity({
+        isPinned: true,
+        pinnedAt: new Date(),
+        pinnedById: userId,
+      });
 
       (messageRepo as any).findById.resolves(msg);
       (memberRepo as any).findMembership.resolves({
@@ -446,7 +460,9 @@ describe("MessageService", () => {
       expect(msg.pinnedById).to.be.null;
       expect(messageRepo.save.calledOnce).to.be.true;
       expect(eventBus.emit.calledOnce).to.be.true;
-      expect(eventBus.emit.firstCall.args[0]).to.be.instanceOf(MessageUnpinnedEvent);
+      expect(eventBus.emit.firstCall.args[0]).to.be.instanceOf(
+        MessageUnpinnedEvent,
+      );
     });
 
     it("should throw ForbiddenException for regular member", async () => {
@@ -479,11 +495,18 @@ describe("MessageService", () => {
 
       expect(reactionRepo.createAndSave.calledOnce).to.be.true;
       expect(eventBus.emit.calledOnce).to.be.true;
-      expect(eventBus.emit.firstCall.args[0]).to.be.instanceOf(MessageReactionEvent);
+      expect(eventBus.emit.firstCall.args[0]).to.be.instanceOf(
+        MessageReactionEvent,
+      );
     });
 
     it("should update existing reaction", async () => {
-      const existingReaction = { id: "react-1", messageId, userId, emoji: "thumbsup" };
+      const existingReaction = {
+        id: "react-1",
+        messageId,
+        userId,
+        emoji: "thumbsup",
+      };
 
       (messageRepo as any).findById.resolves(makeMessageEntity());
       chatService.isMember.resolves(true);
@@ -524,7 +547,12 @@ describe("MessageService", () => {
 
   describe("removeReaction", () => {
     it("should remove existing reaction and emit event", async () => {
-      const existingReaction = { id: "react-1", messageId, userId, emoji: "thumbsup" };
+      const existingReaction = {
+        id: "react-1",
+        messageId,
+        userId,
+        emoji: "thumbsup",
+      };
 
       (messageRepo as any).findById.resolves(makeMessageEntity());
       (reactionRepo as any).findByUserAndMessage.resolves(existingReaction);
@@ -573,7 +601,9 @@ describe("MessageService", () => {
 
       expect(messageRepo.createQueryBuilder.calledOnce).to.be.true;
       expect(eventBus.emit.calledOnce).to.be.true;
-      expect(eventBus.emit.firstCall.args[0]).to.be.instanceOf(MessageDeliveredEvent);
+      expect(eventBus.emit.firstCall.args[0]).to.be.instanceOf(
+        MessageDeliveredEvent,
+      );
     });
 
     it("should do nothing when user is not a member", async () => {
@@ -590,7 +620,13 @@ describe("MessageService", () => {
 
   describe("markAsRead", () => {
     it("should update lastReadMessageId and status to READ", async () => {
-      const membership = { id: "mem-1", chatId, userId, role: EChatMemberRole.MEMBER, lastReadMessageId: null };
+      const membership = {
+        id: "mem-1",
+        chatId,
+        userId,
+        role: EChatMemberRole.MEMBER,
+        lastReadMessageId: null,
+      };
       const readMsg = { id: messageId, createdAt: new Date() };
       const qb = createMockQueryBuilder();
 
@@ -603,7 +639,9 @@ describe("MessageService", () => {
       expect(membership.lastReadMessageId).to.equal(messageId);
       expect(memberRepo.save.calledOnce).to.be.true;
       expect(eventBus.emit.calledOnce).to.be.true;
-      expect(eventBus.emit.firstCall.args[0]).to.be.instanceOf(MessageReadEvent);
+      expect(eventBus.emit.firstCall.args[0]).to.be.instanceOf(
+        MessageReadEvent,
+      );
     });
 
     it("should throw ForbiddenException when user is not a member", async () => {
@@ -696,86 +734,21 @@ describe("MessageService", () => {
     });
   });
 
-  // ───── getScheduledMessages ─────
-
-  describe("getScheduledMessages", () => {
-    it("should return scheduled messages for a member", async () => {
-      chatService.isMember.resolves(true);
-      const msgs = [makeMessageEntity({ isScheduled: true, scheduledAt: new Date() })];
-
-      messageRepo.find.resolves(msgs);
-
-      const result = await service.getScheduledMessages(chatId, userId);
-
-      expect(result).to.have.length(1);
-    });
-
-    it("should throw ForbiddenException for non-member", async () => {
-      chatService.isMember.resolves(false);
-
-      try {
-        await service.getScheduledMessages(chatId, userId);
-        expect.fail("Should have thrown");
-      } catch (err) {
-        expect(err).to.be.instanceOf(ForbiddenException);
-      }
-    });
-  });
-
-  // ───── cancelScheduledMessage ─────
-
-  describe("cancelScheduledMessage", () => {
-    it("should delete own scheduled message", async () => {
-      (messageRepo as any).findById.resolves(makeMessageEntity({ isScheduled: true }));
-
-      await service.cancelScheduledMessage(messageId, userId);
-
-      expect(messageRepo.delete.calledOnce).to.be.true;
-    });
-
-    it("should throw ForbiddenException when cancelling other's message", async () => {
-      (messageRepo as any).findById.resolves(makeMessageEntity({ senderId: otherUserId, isScheduled: true }));
-
-      try {
-        await service.cancelScheduledMessage(messageId, userId);
-        expect.fail("Should have thrown");
-      } catch (err) {
-        expect(err).to.be.instanceOf(ForbiddenException);
-      }
-    });
-
-    it("should throw BadRequestException when message is not scheduled", async () => {
-      (messageRepo as any).findById.resolves(makeMessageEntity({ isScheduled: false }));
-
-      try {
-        await service.cancelScheduledMessage(messageId, userId);
-        expect.fail("Should have thrown");
-      } catch (err) {
-        expect(err).to.be.instanceOf(BadRequestException);
-      }
-    });
-
-    it("should throw NotFoundException when message does not exist", async () => {
-      (messageRepo as any).findById.resolves(null);
-
-      try {
-        await service.cancelScheduledMessage(messageId, userId);
-        expect.fail("Should have thrown");
-      } catch (err) {
-        expect(err).to.be.instanceOf(NotFoundException);
-      }
-    });
-  });
-
   // ───── markMessageOpened ─────
 
   describe("markMessageOpened", () => {
     it("should set selfDestructAt for self-destruct message when recipient opens", async () => {
-      const msg = makeMessageEntity({ senderId: otherUserId, selfDestructSeconds: 30, selfDestructAt: null });
+      const msg = makeMessageEntity({
+        senderId: otherUserId,
+        selfDestructSeconds: 30,
+        selfDestructAt: null,
+      });
 
       (messageRepo as any).findById
-        .onFirstCall().resolves(msg)
-        .onSecondCall().resolves({ ...msg, selfDestructAt: new Date() });
+        .onFirstCall()
+        .resolves(msg)
+        .onSecondCall()
+        .resolves({ ...msg, selfDestructAt: new Date() });
 
       const result = await service.markMessageOpened(messageId, userId);
 
@@ -784,7 +757,10 @@ describe("MessageService", () => {
     });
 
     it("should return message without setting timer when sender opens their own", async () => {
-      const msg = makeMessageEntity({ selfDestructSeconds: 30, selfDestructAt: null });
+      const msg = makeMessageEntity({
+        selfDestructSeconds: 30,
+        selfDestructAt: null,
+      });
 
       (messageRepo as any).findById.resolves(msg);
 
@@ -795,7 +771,9 @@ describe("MessageService", () => {
     });
 
     it("should throw BadRequestException when message is not self-destruct", async () => {
-      (messageRepo as any).findById.resolves(makeMessageEntity({ selfDestructSeconds: null }));
+      (messageRepo as any).findById.resolves(
+        makeMessageEntity({ selfDestructSeconds: null }),
+      );
 
       try {
         await service.markMessageOpened(messageId, userId);

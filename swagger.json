@@ -1131,14 +1131,6 @@
 						"type": "array",
 						"nullable": true
 					},
-					"scheduledAt": {
-						"type": "string",
-						"format": "date-time",
-						"nullable": true
-					},
-					"isScheduled": {
-						"type": "boolean"
-					},
 					"selfDestructSeconds": {
 						"type": "number",
 						"format": "double",
@@ -1258,8 +1250,6 @@
 					"encryptionMetadata",
 					"keyboard",
 					"linkPreviews",
-					"scheduledAt",
-					"isScheduled",
 					"selfDestructSeconds",
 					"selfDestructAt",
 					"createdAt",
@@ -2470,9 +2460,6 @@
 					},
 					"encryptionMetadata": {
 						"$ref": "#/components/schemas/Record_string.unknown_"
-					},
-					"scheduledAt": {
-						"type": "string"
 					},
 					"selfDestructSeconds": {
 						"type": "number",
@@ -7976,84 +7963,6 @@
 						}
 					}
 				}
-			}
-		},
-		"/api/chat/{chatId}/message/scheduled": {
-			"get": {
-				"operationId": "GetScheduledMessages",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"items": {
-										"$ref": "#/components/schemas/MessageDto"
-									},
-									"type": "array"
-								}
-							}
-						}
-					}
-				},
-				"description": "Получить запланированные сообщения чата.",
-				"summary": "Запланированные сообщения",
-				"tags": [
-					"Message"
-				],
-				"security": [
-					{
-						"jwt": []
-					}
-				],
-				"parameters": [
-					{
-						"in": "path",
-						"name": "chatId",
-						"required": true,
-						"schema": {
-							"type": "string"
-						}
-					}
-				]
-			}
-		},
-		"/api/chat/{chatId}/message/scheduled/{messageId}": {
-			"delete": {
-				"operationId": "CancelScheduledMessage",
-				"responses": {
-					"204": {
-						"description": "No content"
-					}
-				},
-				"description": "Отменить запланированное сообщение.",
-				"summary": "Отмена запланированного сообщения",
-				"tags": [
-					"Message"
-				],
-				"security": [
-					{
-						"jwt": []
-					}
-				],
-				"parameters": [
-					{
-						"in": "path",
-						"name": "chatId",
-						"required": true,
-						"schema": {
-							"type": "string"
-						}
-					},
-					{
-						"in": "path",
-						"name": "messageId",
-						"required": true,
-						"schema": {
-							"type": "string"
-						}
-					}
-				]
 			}
 		},
 		"/api/message/search": {

@@ -58,8 +58,6 @@ export class MessageDto extends BaseDto {
     imageUrl: string | null;
     siteName: string | null;
   }> | null;
-  scheduledAt: Date | null;
-  isScheduled: boolean;
   selfDestructSeconds: number | null;
   selfDestructAt: Date | null;
   createdAt: Date;
@@ -95,8 +93,6 @@ export class MessageDto extends BaseDto {
     this.encryptionMetadata = entity.encryptionMetadata;
     this.keyboard = entity.keyboard;
     this.linkPreviews = entity.linkPreviews ?? null;
-    this.scheduledAt = entity.scheduledAt ?? null;
-    this.isScheduled = entity.isScheduled ?? false;
     this.selfDestructSeconds = entity.selfDestructSeconds ?? null;
     this.selfDestructAt = entity.selfDestructAt ?? null;
     this.createdAt = entity.createdAt;

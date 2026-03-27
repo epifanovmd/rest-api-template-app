@@ -24,8 +24,6 @@ const createEntity = (overrides: Record<string, any> = {}) =>
     encryptionMetadata: null,
     keyboard: null,
     linkPreviews: null,
-    scheduledAt: null,
-    isScheduled: false,
     selfDestructSeconds: null,
     selfDestructAt: null,
     createdAt: new Date("2025-01-01"),
@@ -36,7 +34,7 @@ const createEntity = (overrides: Record<string, any> = {}) =>
     reactions: [],
     mentions: [],
     ...overrides,
-  }) as any;
+  } as any);
 
 describe("MessageDto", () => {
   it("basic fields mapped correctly", () => {

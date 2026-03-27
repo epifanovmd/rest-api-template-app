@@ -17,7 +17,6 @@ src/modules/message/
 ├── message.types.ts                  # Перечисления EMessageType, EMessageStatus
 ├── message.handler.ts                # Socket-обработчик входящих событий
 ├── message.listener.ts               # Socket-слушатель доменных событий (EventBus -> Socket)
-├── message-scheduler.bootstrap.ts    # Bootstrap: планировщик отложенных и самоуничтожающихся сообщений
 ├── message-attachment.entity.ts      # Entity: MessageAttachment
 ├── message-attachment.repository.ts  # Репозиторий вложений
 ├── message-reaction.entity.ts        # Entity: MessageReaction
@@ -47,7 +46,6 @@ src/modules/message/
 ├── index.ts                          # Реэкспорт публичного API модуля
 ├── message.service.test.ts           # Тесты сервиса
 ├── message.handler.test.ts           # Тесты socket-обработчика
-├── message-scheduler.bootstrap.test.ts # Тесты планировщика
 ├── message.listener.test.ts          # Тесты слушателя событий
 ├── dto/message.dto.test.ts           # Тесты DTO
 └── validation/message.validation.test.ts # Тесты валидации
@@ -80,8 +78,6 @@ src/modules/message/
 | `encryptionMetadata` | `jsonb`, nullable | Метаданные шифрования |
 | `keyboard` | `jsonb`, nullable | Inline-клавиатура (бот) |
 | `linkPreviews` | `jsonb`, nullable | Массив превью ссылок `{ url, title, description, imageUrl, siteName }[]` |
-| `scheduledAt` | `timestamp`, nullable | Время запланированной отправки |
-| `isScheduled` | `boolean` | Является ли запланированным (default: false) |
 | `selfDestructSeconds` | `integer`, nullable | Таймер самоуничтожения в секундах |
 | `selfDestructAt` | `timestamp`, nullable | Время уничтожения (устанавливается при открытии получателем) |
 | `createdAt` | `timestamp` | Дата создания |
@@ -211,8 +207,6 @@ src/modules/message/
 | `GET` | `api/chat/{chatId}/media?type=&limit=&offset=` | Медиа-галерея чата (фильтр по MIME: image, video, audio) | `@Security("jwt")` | -- |
 | `GET` | `api/chat/{chatId}/media/stats` | Статистика медиафайлов чата (количество по типам) | `@Security("jwt")` | -- |
 | `POST` | `api/chat/{chatId}/message/read` | Отметить сообщения как прочитанные до указанного messageId | `@Security("jwt")` | `MarkReadSchema` |
-| `GET` | `api/chat/{chatId}/message/scheduled` | Получение запланированных сообщений пользователя в чате | `@Security("jwt")` | -- |
-| `DELETE` | `api/chat/{chatId}/message/scheduled/{messageId}` | Отмена запланированного сообщения (только автор) | `@Security("jwt")` | -- |
 
 ---
 
@@ -252,8 +246,6 @@ src/modules/message/
 | `getChatMedia` | `(chatId: string, userId: string, type?: string, limit?: number, offset?: number): Promise<IMediaGalleryDto>` | Медиа-галерея: сообщения с вложениями, фильтр по MIME-типу. |
 | `getChatMediaStats` | `(chatId: string, userId: string): Promise<IMediaStatsDto>` | Статистика медиа: количество images, videos, audio, documents, total. |
 | `getUnreadCount` | `(chatId: string, userId: string): Promise<number>` | Подсчет непрочитанных сообщений (используется другими модулями). |
-| `getScheduledMessages` | `(chatId: string, userId: string): Promise<MessageDto[]>` | Запланированные сообщения пользователя в чате. |
-| `cancelScheduledMessage` | `(messageId: string, userId: string): Promise<void>` | Отмена запланированного сообщения (hard delete). Только автор. |
 | `markMessageOpened` | `(messageId: string, userId: string): Promise<MessageDto>` | Запуск таймера самоуничтожения. Только получатель (не отправитель) может активировать. Устанавливает `selfDestructAt`. Эмитит `MessageSelfDestructStartedEvent`. |
 
 ---
@@ -303,7 +295,7 @@ src/modules/message/
 Основной DTO сообщения. Создается через `MessageDto.fromEntity(entity)`.
 
 **Поля:**
-- Все поля entity: `id`, `chatId`, `senderId`, `type`, `status`, `content`, `replyToId`, `forwardedFromId`, `isEdited`, `isDeleted`, `isPinned`, `pinnedAt`, `pinnedById`, `encryptedContent`, `encryptionMetadata`, `keyboard`, `linkPreviews`, `scheduledAt`, `isScheduled`, `selfDestructSeconds`, `selfDestructAt`, `createdAt`, `updatedAt`
+- Все поля entity: `id`, `chatId`, `senderId`, `type`, `status`, `content`, `replyToId`, `forwardedFromId`, `isEdited`, `isDeleted`, `isPinned`, `pinnedAt`, `pinnedById`, `encryptedContent`, `encryptionMetadata`, `keyboard`, `linkPreviews`, `selfDestructSeconds`, `selfDestructAt`, `createdAt`, `updatedAt`
 - `sender` -- объект `{ id, firstName, lastName, avatarUrl }` (из User + Profile)
 - `replyTo` -- вложенный `MessageDto` (если есть ответ)
 - `attachments` -- массив `MessageAttachmentDto[]`
@@ -349,7 +341,6 @@ src/modules/message/
 | `mentionAll` | `boolean`, optional | -- |
 | `encryptedContent` | `string`, optional | -- |
 | `encryptionMetadata` | `Record<string, unknown>`, optional | -- |
-| `scheduledAt` | `datetime string`, optional | ISO datetime |
 | `selfDestructSeconds` | `integer`, optional | Мин. 1, макс. 604800 (7 дней) |
 
 **Refinement:** Обязательно указать `content` или `fileIds` (непустой массив).
@@ -415,24 +406,6 @@ src/modules/message/
 
 ---
 
-## Bootstrap (MessageSchedulerBootstrap)
-
-Фоновый планировщик, запускаемый при старте приложения. Реализует `IBootstrap` с методами `initialize()` и `destroy()` (graceful shutdown через `clearInterval`).
-
-Выполняет две задачи с интервалом **10 секунд** (`CHECK_INTERVAL_MS = 10_000`):
-
-1. **Обработка запланированных сообщений** (`_processScheduledMessages`):
-   - Ищет сообщения с `isScheduled=true` и `scheduledAt <= now`
-   - Снимает флаг `isScheduled`
-   - Эмитит `MessageCreatedEvent` (как обычная отправка)
-
-2. **Обработка самоуничтожающихся сообщений** (`_processSelfDestructMessages`):
-   - Ищет сообщения с `selfDestructAt <= now` и `isDeleted=false`
-   - Выполняет soft-delete (обнуляет content, устанавливает `isDeleted=true`)
-   - Эмитит `MessageDeletedEvent` и `MessageSelfDestructStartedEvent`
-
----
-
 ## Регистрация модуля
 
 ```typescript
@@ -448,7 +421,6 @@ src/modules/message/
     asSocketHandler(MessageHandler),
     asSocketListener(MessageListener),
   ],
-  bootstrappers: [MessageSchedulerBootstrap],
 })
 export class MessageModule {}
 ```

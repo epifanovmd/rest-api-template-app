@@ -13,7 +13,7 @@ type: project
 3. `loadModules()` — ModuleLoader обходит дерево @Module, регистрирует providers/bootstrappers
 4. `configureMiddleware()` — 9 middleware по порядку
 5. `configureRoutes()` — tsoa routes + swagger UI + system routes
-6. `runBootstrappers()` — AdminBootstrap → MessageSchedulerBootstrap → SocketBootstrap
+6. `runBootstrappers()` — AdminBootstrap → SocketBootstrap
 7. `listen()` — HTTP server на config.server.port
 
 Graceful shutdown: SIGTERM/SIGINT → 30s timeout → process.exit
@@ -96,7 +96,6 @@ Socket handlers: `ISocketHandler.onConnection(socket)` → socket.on() для cl
 ## Bootstrap Tasks
 
 1. **AdminBootstrap** (user) — seed admin user + default role permissions
-2. **MessageSchedulerBootstrap** (message) — setInterval 10s: scheduled messages + self-destruct
 3. **SocketBootstrap** (socket) — auth middleware → on(connection) → handlers → listeners
 
 ## Config (src/config.ts)

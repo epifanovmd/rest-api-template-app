@@ -36,7 +36,6 @@ interface ISendMessageBody {
   mentionAll?: boolean;
   encryptedContent?: string;
   encryptionMetadata?: Record<string, unknown>;
-  scheduledAt?: string;
   selfDestructSeconds?: number;
 }
 
@@ -48,9 +47,7 @@ interface IMarkReadBody {
 @Tags("Message")
 @Route("api/chat")
 export class ChatMessageController extends Controller {
-  constructor(
-    @inject(MessageService) private _messageService: MessageService,
-  ) {
+  constructor(@inject(MessageService) private _messageService: MessageService) {
     super();
   }
 
@@ -88,12 +85,7 @@ export class ChatMessageController extends Controller {
   ): Promise<IMessageListDto> {
     const user = getContextUser(req);
 
-    return this._messageService.getMessages(
-      chatId,
-      user.userId,
-      before,
-      limit,
-    );
+    return this._messageService.getMessages(chatId, user.userId, before, limit);
   }
 
   /**
@@ -192,41 +184,6 @@ export class ChatMessageController extends Controller {
   ): Promise<void> {
     const user = getContextUser(req);
 
-    await this._messageService.markAsRead(
-      chatId,
-      user.userId,
-      body.messageId,
-    );
-  }
-
-  /**
-   * Получить запланированные сообщения чата.
-   * @summary Запланированные сообщения
-   */
-  @Security("jwt")
-  @Get("{chatId}/message/scheduled")
-  getScheduledMessages(
-    @Request() req: KoaRequest,
-    @Path() chatId: string,
-  ): Promise<MessageDto[]> {
-    const user = getContextUser(req);
-
-    return this._messageService.getScheduledMessages(chatId, user.userId);
-  }
-
-  /**
-   * Отменить запланированное сообщение.
-   * @summary Отмена запланированного сообщения
-   */
-  @Security("jwt")
-  @Delete("{chatId}/message/scheduled/{messageId}")
-  async cancelScheduledMessage(
-    @Request() req: KoaRequest,
-    @Path() chatId: string,
-    @Path() messageId: string,
-  ): Promise<void> {
-    const user = getContextUser(req);
-
-    await this._messageService.cancelScheduledMessage(messageId, user.userId);
+    await this._messageService.markAsRead(chatId, user.userId, body.messageId);
   }
 }

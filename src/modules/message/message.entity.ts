@@ -86,12 +86,6 @@ export class Message {
     siteName: string | null;
   }> | null;
 
-  @Column({ name: "scheduled_at", type: "timestamp", nullable: true })
-  scheduledAt: Date | null;
-
-  @Column({ name: "is_scheduled", type: "boolean", default: false })
-  isScheduled: boolean;
-
   @Column({ name: "self_destruct_seconds", type: "integer", nullable: true })
   selfDestructSeconds: number | null;
 

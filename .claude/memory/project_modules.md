@@ -115,14 +115,12 @@ src/modules/feature/
 
 ## Message Module
 
-**Entity Message:** chatId, senderId, type(text/image/file/voice/system/poll/sticker), content, status(sent/delivered/read), replyToId, forwardedFromId, isEdited, isDeleted, isPinned, pinnedAt, pinnedById, stickerId, encryptedContent, encryptionMetadata(jsonb), keyboard(jsonb), linkPreviews(jsonb), scheduledAt, isScheduled, selfDestructSeconds, selfDestructAt
+**Entity Message:** chatId, senderId, type(text/image/file/voice/system/poll/sticker), content, status(sent/delivered/read), replyToId, forwardedFromId, isEdited, isDeleted, isPinned, pinnedAt, pinnedById, stickerId, encryptedContent, encryptionMetadata(jsonb), keyboard(jsonb), linkPreviews(jsonb), selfDestructSeconds, selfDestructAt
 **Entity MessageAttachment:** messageId, fileId → file(eager)
 **Entity MessageReaction:** messageId+userId(unique), emoji
 **Entity MessageMention:** messageId, userId(nullable), isAll
 
-**Endpoints (17):** send, list(cursor), search(in chat), pinned, media, media/stats, read, scheduled, cancel scheduled, global search, edit, delete, pin/unpin, reaction add/remove, open(self-destruct)
-
-**Bootstrap:** MessageSchedulerBootstrap — 10s interval: scheduled send + self-destruct cleanup
+**Endpoints (17):** send, list(cursor), search(in chat), pinned, media, media/stats, global search, edit, delete, pin/unpin, reaction add/remove, open(self-destruct)
 
 **Socket (10):** message:read/delivered (client) + new/updated/deleted/reaction/pinned/unpinned/status/self-destructed (server)
 

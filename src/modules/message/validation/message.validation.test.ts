@@ -67,15 +67,6 @@ describe("Message Validation Schemas", () => {
       expect(result.success).to.be.false;
     });
 
-    it("should accept valid scheduledAt", () => {
-      const result = SendMessageSchema.safeParse({
-        content: "scheduled",
-        scheduledAt: "2025-12-31T23:59:59Z",
-      });
-
-      expect(result.success).to.be.true;
-    });
-
     it("should reject selfDestructSeconds below 1", () => {
       const result = SendMessageSchema.safeParse({
         content: "text",
