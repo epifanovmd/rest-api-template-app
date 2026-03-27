@@ -1,9 +1,9 @@
 import { IListResponseDto } from "../../core";
-import { EPermissions } from "./permission.types";
+import { TPermission } from "./permission.types";
 
 export interface IPermissionDto {
   id: string;
-  name: EPermissions;
+  name: TPermission;
   createdAt: Date;
   updatedAt: Date;
 }

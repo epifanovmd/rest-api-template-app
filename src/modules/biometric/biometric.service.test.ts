@@ -56,6 +56,7 @@ describe("BiometricService", () => {
       userService as any,
       tokenService as any,
       biometricRepo as any,
+      { create: sinon.stub().resolves({ id: "session-1" }) } as any,
     );
   });
 

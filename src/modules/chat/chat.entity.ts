@@ -11,6 +11,8 @@ import {
 } from "typeorm";
 
 import { File } from "../file/file.entity";
+import { Message } from "../message/message.entity";
+import { EMessageType } from "../message/message.types";
 import { User } from "../user/user.entity";
 import { EChatType } from "./chat.types";
 import { ChatMember } from "./chat-member.entity";
@@ -53,6 +55,23 @@ export class Chat {
   })
   lastMessageAt: Date | null;
 
+  @Column({ name: "last_message_id", type: "uuid", nullable: true })
+  lastMessageId: string | null;
+
+  @Column({ name: "last_message_content", type: "varchar", length: 200, nullable: true })
+  lastMessageContent: string | null;
+
+  @Column({
+    name: "last_message_type",
+    type: "enum",
+    enum: EMessageType,
+    nullable: true,
+  })
+  lastMessageType: EMessageType | null;
+
+  @Column({ name: "last_message_sender_id", type: "uuid", nullable: true })
+  lastMessageSenderId: string | null;
+
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 
@@ -66,6 +85,14 @@ export class Chat {
   @ManyToOne(() => User, { onDelete: "SET NULL", nullable: true })
   @JoinColumn({ name: "created_by_id" })
   createdBy: User | null;
+
+  @ManyToOne(() => Message, { onDelete: "SET NULL", nullable: true })
+  @JoinColumn({ name: "last_message_id" })
+  lastMessage: Message | null;
+
+  @ManyToOne(() => User, { onDelete: "SET NULL", nullable: true })
+  @JoinColumn({ name: "last_message_sender_id" })
+  lastMessageSender: User | null;
 
   @OneToMany(() => ChatMember, member => member.chat, { cascade: true })
   members: ChatMember[];

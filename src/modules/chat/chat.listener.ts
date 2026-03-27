@@ -2,10 +2,11 @@ import { inject } from "inversify";
 
 import { EventBus, Injectable } from "../../core";
 import { ISocketEventListener, SocketEmitterService } from "../socket";
-import { ChatDto } from "./dto";
+import { ChatDto, ChatLastMessageDto } from "./dto";
 import {
   ChatArchivedEvent,
   ChatCreatedEvent,
+  ChatLastMessageUpdatedEvent,
   ChatMemberJoinedEvent,
   ChatMemberLeftEvent,
   ChatMemberRoleChangedEvent,
@@ -79,6 +80,20 @@ export class ChatListener implements ISocketEventListener {
           userId: event.userId,
           role: event.role,
         });
+      },
+    );
+
+    this._eventBus.on(
+      ChatLastMessageUpdatedEvent,
+      (event: ChatLastMessageUpdatedEvent) => {
+        const lastMessage = ChatLastMessageDto.fromEntity(event.chat);
+
+        for (const userId of event.memberUserIds) {
+          this._emitter.toUser(userId, "chat:last-message", {
+            chatId: event.chat.id,
+            lastMessage,
+          });
+        }
       },
     );
   }

@@ -10,6 +10,7 @@ import { ChatRepository } from "../chat/chat.repository";
 import { ChatService } from "../chat/chat.service";
 import { EChatMemberRole } from "../chat/chat.types";
 import { ChatMemberRepository } from "../chat/chat-member.repository";
+import { ChatLastMessageUpdatedEvent } from "../chat/events";
 import { LinkPreviewService } from "../link-preview/link-preview.service";
 import { IMediaStatsDto, MediaItemDto, MessageDto } from "./dto";
 import {
@@ -122,10 +123,17 @@ export class MessageService {
           }
         }
 
-        // Обновляем lastMessageAt чата
-        await em
-          .getRepository("chats")
-          .update({ id: chatId }, { lastMessageAt: new Date() });
+        // Обновляем lastMessage чата
+        await em.getRepository("chats").update(
+          { id: chatId },
+          {
+            lastMessageAt: saved.createdAt,
+            lastMessageId: saved.id,
+            lastMessageContent: (saved.content ?? "").slice(0, 200) || null,
+            lastMessageType: saved.type,
+            lastMessageSenderId: saved.senderId,
+          },
+        );
 
         return saved;
       },
@@ -144,6 +152,18 @@ export class MessageService {
         data.mentionAll ?? false,
       ),
     );
+
+    // Emit last message update for chat list
+    const updatedChat = await this._chatRepo.findOne({
+      where: { id: chatId },
+      relations: { lastMessageSender: { profile: true } },
+    });
+
+    if (updatedChat) {
+      this._eventBus.emit(
+        new ChatLastMessageUpdatedEvent(updatedChat, memberUserIds),
+      );
+    }
 
     // Fetch link previews asynchronously
     if (data.content) {
@@ -198,9 +218,22 @@ export class MessageService {
     message.isEdited = true;
     await this._messageRepo.save(message);
 
+    // Sync denormalized lastMessage content if this is the last message
+    const editResult = await this._chatRepo
+      .createQueryBuilder()
+      .update()
+      .set({ lastMessageContent: content.slice(0, 200) || null })
+      .where("id = :chatId", { chatId: message.chatId })
+      .andWhere("lastMessageId = :messageId", { messageId })
+      .execute();
+
     const updated = await this._messageRepo.findById(messageId);
 
     this._eventBus.emit(new MessageUpdatedEvent(updated!, message.chatId));
+
+    if (editResult.affected && editResult.affected > 0) {
+      await this._emitLastMessageUpdated(message.chatId);
+    }
 
     return MessageDto.fromEntity(updated!);
   }
@@ -231,7 +264,14 @@ export class MessageService {
     message.content = null;
     await this._messageRepo.save(message);
 
+    // Recalculate lastMessage if this was the last message in chat
+    const wasLastMessage = await this._recalcLastMessage(message.chatId, messageId);
+
     this._eventBus.emit(new MessageDeletedEvent(messageId, message.chatId));
+
+    if (wasLastMessage) {
+      await this._emitLastMessageUpdated(message.chatId);
+    }
   }
 
   async pinMessage(messageId: string, userId: string) {
@@ -581,6 +621,59 @@ export class MessageService {
     const updated = await this._messageRepo.findById(messageId);
 
     return MessageDto.fromEntity(updated!);
+  }
+
+  /** Отправить событие обновления lastMessage для чата. */
+  private async _emitLastMessageUpdated(chatId: string) {
+    const chat = await this._chatRepo.findOne({
+      where: { id: chatId },
+      relations: { lastMessageSender: { profile: true } },
+    });
+
+    if (!chat) return;
+
+    const memberUserIds = await this._chatService.getMemberUserIds(chatId);
+
+    this._eventBus.emit(
+      new ChatLastMessageUpdatedEvent(chat, memberUserIds),
+    );
+  }
+
+  /** Пересчитать денормализованное lastMessage для чата, если удалённое сообщение было последним. */
+  private async _recalcLastMessage(chatId: string, deletedMessageId: string): Promise<boolean> {
+    const chat = await this._chatRepo.findOne({
+      where: { id: chatId },
+      select: ["id", "lastMessageId"],
+    });
+
+    if (!chat || chat.lastMessageId !== deletedMessageId) return false;
+
+    // Find previous non-deleted message
+    const prev = await this._messageRepo.findOne({
+      where: { chatId, isDeleted: false },
+      order: { createdAt: "DESC" },
+      relations: { sender: { profile: true } },
+    });
+
+    if (prev) {
+      await this._chatRepo.update(chatId, {
+        lastMessageId: prev.id,
+        lastMessageContent: (prev.content ?? "").slice(0, 200) || null,
+        lastMessageType: prev.type,
+        lastMessageSenderId: prev.senderId,
+        lastMessageAt: prev.createdAt,
+      });
+    } else {
+      await this._chatRepo.update(chatId, {
+        lastMessageId: null,
+        lastMessageContent: null,
+        lastMessageType: null,
+        lastMessageSenderId: null,
+        lastMessageAt: null,
+      });
+    }
+
+    return true;
   }
 
   /** Внутренний метод: получить и сохранить link previews для сообщения. */

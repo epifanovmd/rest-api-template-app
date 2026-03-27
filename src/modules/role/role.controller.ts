@@ -2,22 +2,30 @@ import { inject } from "inversify";
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Patch,
   Path,
+  Post,
   Route,
   Security,
   Tags,
 } from "tsoa";
 
 import { Injectable, ValidateBody } from "../../core";
-import { EPermissions } from "../permission/permission.types";
+import { TPermission } from "../permission/permission.types";
 import { IRoleDto } from "./role.dto";
 import { RoleService } from "./role.service";
+import { TRole } from "./role.types";
 import { SetRolePermissionsSchema } from "./validation";
+import { CreateRoleSchema } from "./validation/create-role.validate";
 
 interface IRolePermissionsRequestDto {
-  permissions: EPermissions[];
+  permissions: TPermission[];
+}
+
+interface ICreateRoleRequestDto {
+  name: TRole;
 }
 
 @Injectable()
@@ -34,12 +42,40 @@ export class RoleController extends Controller {
    * @summary Список ролей
    * @returns Список ролей
    */
-  @Security("jwt", ["permission:user:manage"])
+  @Security("jwt", ["permission:role:view"])
   @Get()
   getRoles(): Promise<IRoleDto[]> {
     return this._roleService
       .getRoles()
       .then(roles => roles.map(r => r.toDTO()));
+  }
+
+  /**
+   * Создать новую роль.
+   *
+   * @summary Создание роли
+   * @param body Название роли
+   * @returns Созданная роль
+   */
+  @Security("jwt", ["permission:role:manage"])
+  @Post()
+  @ValidateBody(CreateRoleSchema)
+  async createRole(@Body() body: ICreateRoleRequestDto): Promise<IRoleDto> {
+    const role = await this._roleService.createRole(body.name);
+
+    return role.toDTO();
+  }
+
+  /**
+   * Удалить роль.
+   *
+   * @summary Удаление роли
+   * @param id ID роли
+   */
+  @Security("jwt", ["permission:role:manage"])
+  @Delete("{id}")
+  async deleteRole(@Path() id: string): Promise<void> {
+    await this._roleService.deleteRole(id);
   }
 
   /**

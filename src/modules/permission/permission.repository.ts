@@ -1,12 +1,12 @@
 import { BaseRepository, InjectableRepository } from "../../core";
 import { Permission } from "./permission.entity";
-import { EPermissions } from "./permission.types";
+import { TPermission } from "./permission.types";
 
 /** Репозиторий для работы с разрешениями (permissions). */
 @InjectableRepository(Permission)
 export class PermissionRepository extends BaseRepository<Permission> {
   /** Найти разрешение по его уникальному имени. */
-  async findByName(name: EPermissions): Promise<Permission | null> {
+  async findByName(name: TPermission): Promise<Permission | null> {
     return this.findOne({ where: { name } });
   }
 

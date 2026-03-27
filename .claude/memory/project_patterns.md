@@ -1,6 +1,6 @@
 ---
 name: Code Patterns & Conventions
-description: Паттерны написания кода — модули, контроллеры, сервисы, DTOs, события, socket, тесты. Правила которые нельзя нарушать
+description: Паттерны написания кода — модули, контроллеры, сервисы, DTOs, события, транзакции, socket, тесты. Правила которые нельзя нарушать
 type: project
 ---
 
@@ -36,6 +36,8 @@ export class Feature {
 }
 ```
 
+Nullable columns MUST have `| null` TS type (не `undefined`).
+
 ## Repository
 
 ```typescript
@@ -47,23 +49,31 @@ export class FeatureRepository extends BaseRepository<Feature> {
 }
 ```
 
-## Service
+## Service (с транзакциями и EventBus)
 
 ```typescript
 @Injectable()
 export class FeatureService {
   constructor(
     @inject(FeatureRepository) private _repo: FeatureRepository,
+    @inject(DataSource) private _dataSource: DataSource,
     @inject(EventBus) private _eventBus: EventBus,
   ) {}
 
   async create(userId: string, data: {...}) {
-    const entity = await this._repo.createAndSave({ userId, ...data });
+    const entity = await this._dataSource.transaction(async (manager) => {
+      const repo = manager.getRepository(Feature);
+      return repo.save(repo.create({ userId, ...data }));
+    });
+
+    // Events emit ПОСЛЕ транзакции
     this._eventBus.emit(new FeatureCreatedEvent(entity));
     return FeatureDto.fromEntity(entity);
   }
 }
 ```
+
+**Транзакции:** используй `DataSource.transaction()` для атомарных multi-write операций. Внутри транзакции — `manager.getRepository(Entity)`, не inject-репозитории.
 
 ## Controller
 
@@ -74,7 +84,7 @@ export class FeatureService {
 export class FeatureController extends Controller {
   constructor(@inject(FeatureService) private _service: FeatureService) { super(); }
 
-  @Security("jwt")
+  @Security("jwt", ["permission:feature:view"])
   @ValidateBody(CreateFeatureSchema)
   @Post()
   create(@Request() req: KoaRequest, @Body() body: ICreateBody): Promise<FeatureDto> {
@@ -83,6 +93,8 @@ export class FeatureController extends Controller {
   }
 }
 ```
+
+Все path-параметры MUST иметь `@Path()` декоратор.
 
 ## DTO
 
@@ -99,6 +111,8 @@ export class FeatureDto extends BaseDto {
 }
 ```
 
+NEVER возвращай raw entity из controller — всегда через DTO.
+
 ## Validation (Zod)
 
 ```typescript
@@ -108,7 +122,7 @@ export const CreateFeatureSchema = z.object({
 });
 ```
 
-Export из `validation/index.ts`.
+Длины в Zod MUST совпадать с DB column length.
 
 ## Events
 
@@ -125,11 +139,18 @@ export class FeatureCreatedEvent {
 export class FeatureHandler implements ISocketHandler {
   onConnection(socket: TSocket): void {
     socket.on("feature:action", async (data) => {
-      // handle
+      try {
+        // verify auth: socket.data.userId
+        // handle
+      } catch (err) {
+        socket.emit("error", { event: "feature:action", message: err.message });
+      }
     });
   }
 }
 ```
+
+Все handlers MUST иметь try/catch и проверку авторизации.
 
 ## Socket Listener (EventBus → server → client)
 
@@ -162,26 +183,20 @@ describe("FeatureService", () => {
   let service: FeatureService;
   let mockRepo: ReturnType<typeof createMockRepository>;
   let mockEventBus: ReturnType<typeof createMockEventBus>;
-  let sandbox: sinon.SinonSandbox;
+  const mockDataSource = {
+    transaction: sinon.stub().callsFake((cb: any) =>
+      cb({ getRepository: sinon.stub().returns({ create: sinon.stub(), save: sinon.stub() }) }))
+  } as any;
 
   beforeEach(() => {
-    sandbox = sinon.createSandbox();
     mockRepo = createMockRepository();
     mockEventBus = createMockEventBus();
-    service = new FeatureService(mockRepo as any, mockEventBus as any);
-  });
-  afterEach(() => sandbox.restore());
-
-  it("should create feature", async () => {
-    mockRepo.createAndSave.resolves({ id: uuid(), name: "test" });
-    const result = await service.create(uuid(), { name: "test" });
-    expect(result).to.exist;
-    expect(mockEventBus.emit.calledOnce).to.be.true;
+    service = new FeatureService(mockRepo as any, mockDataSource, mockEventBus as any);
   });
 });
 ```
 
-Файл `.test.ts` рядом с сервисом. Test helpers: `src/test/helpers.ts`.
+Test helpers: `src/test/helpers.ts`.
 
 ## Правила
 
@@ -189,9 +204,13 @@ describe("FeatureService", () => {
 2. **@Injectable()** — НЕ регистрирует в контейнере. Только `@Module.providers`
 3. **Сервисы НЕ инжектят SocketService** — используют EventBus
 4. **Controller body interfaces** — объявляются в контроллере, НЕ экспортируются
-5. **Security scopes** — `permission:name`, НЕ `role:name` (кроме admin endpoints)
+5. **Security scopes** — `permission:name`, НЕ `role:name`
 6. **Naming:** entity singular (User), table plural (users), column snake_case, field camelCase
 7. **Soft delete** — для сообщений (isDeleted=true, content=null), НЕ hard delete
 8. **Cascades** — через TypeORM (onDelete: CASCADE/SET NULL), НЕ через код
 9. **Validation** — Zod на входе, НЕ в service layer
 10. **Enums** — в `*.types.ts`, НЕ в entity файле
+11. **Транзакции** — `DataSource.transaction()` для multi-write. Events ПОСЛЕ commit
+12. **Nullable** — DB `nullable: true` → TS `| null` (не undefined)
+13. **@Path()** — обязателен для всех path-параметров в контроллерах
+14. **Error handling** — try/catch в socket handlers, HttpException re-throw в services

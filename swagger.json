@@ -178,19 +178,44 @@
 				"type": "object",
 				"additionalProperties": false
 			},
-			"ERole": {
+			"KnownRole": {
+				"type": "string",
 				"enum": [
 					"admin",
 					"user",
 					"guest"
 				],
-				"type": "string"
+				"description": "Тип для предопределённых ролей (автодополнение в IDE)."
 			},
-			"EPermissions": {
+			"TRole": {
+				"anyOf": [
+					{
+						"$ref": "#/components/schemas/KnownRole"
+					},
+					{
+						"allOf": [
+							{
+								"type": "string"
+							},
+							{
+								"properties": {},
+								"type": "object"
+							}
+						]
+					}
+				],
+				"description": "Роль — произвольная строка; предопределённые значения дают автодополнение."
+			},
+			"KnownPermission": {
+				"type": "string",
 				"enum": [
 					"*",
 					"user:view",
 					"user:manage",
+					"role:view",
+					"role:manage",
+					"profile:view",
+					"profile:manage",
 					"contact:view",
 					"contact:manage",
 					"contact:*",
@@ -202,7 +227,26 @@
 					"message:*",
 					"push:manage"
 				],
-				"type": "string"
+				"description": "Тип для предопределённых permissions (автодополнение в IDE)."
+			},
+			"TPermission": {
+				"anyOf": [
+					{
+						"$ref": "#/components/schemas/KnownPermission"
+					},
+					{
+						"allOf": [
+							{
+								"type": "string"
+							},
+							{
+								"properties": {},
+								"type": "object"
+							}
+						]
+					}
+				],
+				"description": "Permission — произвольная строка; предопределённые значения дают автодополнение."
 			},
 			"IPermissionDto": {
 				"properties": {
@@ -210,7 +254,7 @@
 						"type": "string"
 					},
 					"name": {
-						"$ref": "#/components/schemas/EPermissions"
+						"$ref": "#/components/schemas/TPermission"
 					},
 					"createdAt": {
 						"type": "string",
@@ -236,7 +280,7 @@
 						"type": "string"
 					},
 					"name": {
-						"$ref": "#/components/schemas/ERole"
+						"$ref": "#/components/schemas/TRole"
 					},
 					"createdAt": {
 						"type": "string",
@@ -433,11 +477,23 @@
 				"type": "object",
 				"additionalProperties": false
 			},
+			"ICreateRoleRequestDto": {
+				"properties": {
+					"name": {
+						"$ref": "#/components/schemas/TRole"
+					}
+				},
+				"required": [
+					"name"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
 			"IRolePermissionsRequestDto": {
 				"properties": {
 					"permissions": {
 						"items": {
-							"$ref": "#/components/schemas/EPermissions"
+							"$ref": "#/components/schemas/TPermission"
 						},
 						"type": "array"
 					}
@@ -556,14 +612,14 @@
 				"properties": {
 					"roles": {
 						"items": {
-							"$ref": "#/components/schemas/ERole"
+							"$ref": "#/components/schemas/TRole"
 						},
 						"type": "array",
 						"description": "Роли для назначения пользователю (заменяет текущие роли)."
 					},
 					"permissions": {
 						"items": {
-							"$ref": "#/components/schemas/EPermissions"
+							"$ref": "#/components/schemas/TPermission"
 						},
 						"type": "array",
 						"description": "Прямые разрешения, выданные этому пользователю дополнительно к разрешениям ролей.\nЗаменяет текущие прямые разрешения."
@@ -1763,6 +1819,42 @@
 				],
 				"type": "string"
 			},
+			"ChatLastMessageDto": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"content": {
+						"type": "string",
+						"nullable": true
+					},
+					"type": {
+						"$ref": "#/components/schemas/EMessageType"
+					},
+					"senderId": {
+						"type": "string",
+						"nullable": true
+					},
+					"senderName": {
+						"type": "string",
+						"nullable": true
+					},
+					"createdAt": {
+						"type": "string",
+						"format": "date-time"
+					}
+				},
+				"required": [
+					"id",
+					"content",
+					"type",
+					"senderId",
+					"senderName",
+					"createdAt"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
 			"EChatMemberRole": {
 				"enum": [
 					"owner",
@@ -1870,6 +1962,14 @@
 						"format": "date-time",
 						"nullable": true
 					},
+					"lastMessage": {
+						"allOf": [
+							{
+								"$ref": "#/components/schemas/ChatLastMessageDto"
+							}
+						],
+						"nullable": true
+					},
 					"createdAt": {
 						"type": "string",
 						"format": "date-time"
@@ -1896,6 +1996,7 @@
 					"createdById",
 					"slowModeSeconds",
 					"lastMessageAt",
+					"lastMessage",
 					"createdAt",
 					"updatedAt",
 					"members"
@@ -3914,11 +4015,84 @@
 				"security": [
 					{
 						"jwt": [
-							"permission:user:manage"
+							"permission:role:view"
 						]
 					}
 				],
 				"parameters": []
+			},
+			"post": {
+				"operationId": "CreateRole",
+				"responses": {
+					"200": {
+						"description": "Созданная роль",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IRoleDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Создать новую роль.",
+				"summary": "Создание роли",
+				"tags": [
+					"Role"
+				],
+				"security": [
+					{
+						"jwt": [
+							"permission:role:manage"
+						]
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"description": "Название роли",
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/ICreateRoleRequestDto",
+								"description": "Название роли"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/roles/{id}": {
+			"delete": {
+				"operationId": "DeleteRole",
+				"responses": {
+					"204": {
+						"description": "No content"
+					}
+				},
+				"description": "Удалить роль.",
+				"summary": "Удаление роли",
+				"tags": [
+					"Role"
+				],
+				"security": [
+					{
+						"jwt": [
+							"permission:role:manage"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"description": "ID роли",
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
 			}
 		},
 		"/api/roles/{id}/permissions": {

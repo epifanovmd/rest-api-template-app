@@ -6,7 +6,7 @@ import jwt from "jsonwebtoken";
 import sinon from "sinon";
 
 import { config } from "../../config";
-import { ERole } from "../../modules/role/role.types";
+import { Roles } from "../../modules/role/role.types";
 import { TokenService } from "./token.service";
 
 describe("TokenService", () => {
@@ -27,7 +27,7 @@ describe("TokenService", () => {
       emailVerified: true,
       roles: [
         {
-          name: ERole.USER,
+          name: Roles.USER,
           permissions: [{ name: "chat:view" }, { name: "chat:manage" }],
         },
       ],
@@ -38,7 +38,7 @@ describe("TokenService", () => {
   describe("issue", () => {
     it("creates tokens with correct payload (roles, merged permissions, emailVerified)", async () => {
       const user = makeUser();
-      const result = await service.issue(user);
+      const result = await service.issue(user, "session-1");
 
       expect(result).to.have.property("accessToken").that.is.a("string");
       expect(result).to.have.property("refreshToken").that.is.a("string");
@@ -46,7 +46,7 @@ describe("TokenService", () => {
       const decoded = jwt.verify(result.accessToken, secretKey) as any;
 
       expect(decoded.userId).to.equal("user-1");
-      expect(decoded.roles).to.deep.equal([ERole.USER]);
+      expect(decoded.roles).to.deep.equal([Roles.USER]);
       expect(decoded.permissions).to.include.members([
         "chat:view",
         "chat:manage",
@@ -59,14 +59,14 @@ describe("TokenService", () => {
       const user = makeUser({
         roles: [
           {
-            name: ERole.USER,
+            name: Roles.USER,
             permissions: [{ name: "user:view" }],
           },
         ],
         directPermissions: [{ name: "user:view" }],
       });
 
-      const result = await service.issue(user);
+      const result = await service.issue(user, "session-1");
       const decoded = jwt.verify(result.accessToken, secretKey) as any;
 
       expect(decoded.permissions).to.deep.equal(["user:view"]);
@@ -78,7 +78,7 @@ describe("TokenService", () => {
         directPermissions: [],
       });
 
-      const result = await service.issue(user);
+      const result = await service.issue(user, "session-1");
       const decoded = jwt.verify(result.accessToken, secretKey) as any;
 
       expect(decoded.roles).to.deep.equal([]);
@@ -91,7 +91,7 @@ describe("TokenService", () => {
         directPermissions: undefined,
       });
 
-      const result = await service.issue(user);
+      const result = await service.issue(user, "session-1");
       const decoded = jwt.verify(result.accessToken, secretKey) as any;
 
       expect(decoded.roles).to.deep.equal([]);
@@ -106,7 +106,7 @@ describe("TokenService", () => {
     it("valid token returns AuthContext", async () => {
       const token = createToken({
         userId: "user-1",
-        roles: [ERole.USER],
+        roles: [Roles.USER],
         permissions: ["chat:view"],
         emailVerified: true,
       });
@@ -114,7 +114,7 @@ describe("TokenService", () => {
       const result = await service.verify(token);
 
       expect(result.userId).to.equal("user-1");
-      expect(result.roles).to.deep.equal([ERole.USER]);
+      expect(result.roles).to.deep.equal([Roles.USER]);
       expect(result.permissions).to.deep.equal(["chat:view"]);
       expect(result.emailVerified).to.be.true;
     });
@@ -140,7 +140,7 @@ describe("TokenService", () => {
     it("with scopes, user has required role - passes", async () => {
       const token = createToken({
         userId: "user-1",
-        roles: [ERole.USER],
+        roles: [Roles.USER],
         permissions: [],
         emailVerified: true,
       });
@@ -153,7 +153,7 @@ describe("TokenService", () => {
     it("with scopes, user missing role throws ForbiddenException", async () => {
       const token = createToken({
         userId: "user-1",
-        roles: [ERole.GUEST],
+        roles: [Roles.GUEST],
         permissions: [],
         emailVerified: true,
       });
@@ -169,7 +169,7 @@ describe("TokenService", () => {
     it("admin role bypasses all scope checks", async () => {
       const token = createToken({
         userId: "admin-1",
-        roles: [ERole.ADMIN],
+        roles: [Roles.ADMIN],
         permissions: [],
         emailVerified: true,
       });
@@ -185,7 +185,7 @@ describe("TokenService", () => {
     it("* permission bypasses all scope checks", async () => {
       const token = createToken({
         userId: "super-1",
-        roles: [ERole.USER],
+        roles: [Roles.USER],
         permissions: ["*"],
         emailVerified: true,
       });
@@ -201,7 +201,7 @@ describe("TokenService", () => {
     it("permission wildcard chat:* matches permission:chat:view", async () => {
       const token = createToken({
         userId: "user-1",
-        roles: [ERole.USER],
+        roles: [Roles.USER],
         permissions: ["chat:*"],
         emailVerified: true,
       });
@@ -214,7 +214,7 @@ describe("TokenService", () => {
     it("missing permission throws ForbiddenException", async () => {
       const token = createToken({
         userId: "user-1",
-        roles: [ERole.USER],
+        roles: [Roles.USER],
         permissions: ["chat:view"],
         emailVerified: true,
       });

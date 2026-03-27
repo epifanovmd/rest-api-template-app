@@ -1,8 +1,8 @@
 import jwt, { sign, SignOptions, VerifyErrors } from "jsonwebtoken";
 
 import { config } from "../../config";
-import { EPermissions } from "../../modules/permission/permission.types";
-import { ERole } from "../../modules/role/role.types";
+import { TPermission } from "../../modules/permission/permission.types";
+import { TRole } from "../../modules/role/role.types";
 import { JWTDecoded } from "../../types/koa";
 
 export type { SecurityScopes } from "./token.service";
@@ -10,8 +10,8 @@ export type { SecurityScopes } from "./token.service";
 export type TokenPayload = {
   userId: string;
   sessionId: string;
-  roles: ERole[];
-  permissions: EPermissions[];
+  roles: TRole[];
+  permissions: TPermission[];
   emailVerified: boolean;
 };
 

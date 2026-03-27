@@ -1,10 +1,10 @@
 import { IListResponseDto } from "../../core";
 import { IPermissionDto } from "../permission/permission.dto";
-import { ERole } from "./role.types";
+import { TRole } from "./role.types";
 
 export interface IRoleDto {
   id: string;
-  name: ERole;
+  name: TRole;
   createdAt: Date;
   updatedAt: Date;
   permissions: IPermissionDto[];

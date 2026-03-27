@@ -1,6 +1,6 @@
 ---
 name: Authentication & Access Control
-description: JWT auth flow, 2FA, RBAC+Permission модель, wildcard hierarchy, @Security syntax, bot auth, biometric, passkeys, sessions
+description: Session-bound JWT auth, 2FA, RBAC+Permission, wildcard hierarchy, @Security syntax, bot/biometric/passkey auth, session lifecycle
 type: project
 ---
 
@@ -10,6 +10,8 @@ type: project
 users ──ManyToMany──▶ roles ──ManyToMany──▶ permissions
   │                                           ▲
   └──ManyToMany──directPermissions────────────┘
+  │
+  └──OneToMany──▶ sessions (refreshToken, device info)
 ```
 
 ## Роли (ERole)
@@ -18,85 +20,120 @@ users ──ManyToMany──▶ roles ──ManyToMany──▶ permissions
 - `USER` — обычный пользователь (default)
 - `GUEST` — гостевой доступ
 
-## Permissions (EPermissions)
+## JWT Token Structure
 
-- `* (ALL)` — суперадмин
-- `user:view`, `user:manage`
-- `contact:view`, `contact:manage`, `contact:*`
-- `chat:view`, `chat:manage`, `chat:*`
-- `message:view`, `message:manage`, `message:*`
-- `push:manage`
+**TokenPayload:** `{ userId, sessionId, roles[], permissions[], emailVerified }`
 
-## Wildcards
+| Токен | Dev | Production |
+|-------|-----|-----------|
+| Access | 1 день | 15 минут |
+| Refresh | 7 дней | 7 дней |
+| 2FA temp | 5 минут | 5 минут |
+| OTP code | 10 минут | 10 минут |
+| Reset password | 60 минут | 60 минут |
 
-`hasPermission(userPerms, required)`:
-- `*` → matches everything
-- `chat:*` → matches `chat:view`, `chat:manage`
-- `wg:server:*` → matches `wg:server:view`
-- Exact match: `user:view` → `user:view`
+## Session-Bound Auth Flow
 
-## JWT Token
+```
+POST /sign-in (login, password, device headers)
+  → bcrypt verify → [2FA check]
+  → Session.create({userId, refreshToken: "pending", ip, userAgent, device})
+  → TokenService.issue(user, session.id) → access + refresh tokens
+  → Session.updateRefreshToken(session.id, refreshToken)
+  → Return tokens + user data
 
-**Payload:** `{ userId, roles[], permissions[], emailVerified }`
+POST /refresh ({ refreshToken })
+  → jwt.verify(refreshToken)
+  → Session.findByRefreshToken(token)  ← нет → 401
+  → session.userId === decoded.userId?  ← нет → 401
+  → issue new tokens (same sessionId)
+  → Session.updateRefreshToken(newRefreshToken)  ← ротация
+  → Return new tokens
 
-permissions = объединение(role.permissions) ∪ directPermissions. Вычисляется при issue, без DB hit при verify.
+DELETE /session/{id}
+  → Session.delete → refreshToken мёртв → socket: session:terminated
 
-**Сроки:** access 15min (prod) / 1d (dev), refresh 7d.
-
-## @Security syntax
-
-```typescript
-@Security("jwt")                                    // любой авторизованный
-@Security("jwt", ["role:admin"])                     // только ADMIN
-@Security("jwt", ["permission:user:view"])           // нужен user:view
-@Security("jwt", ["permission:chat:manage", "role:admin"])  // AND семантика
-@Security("bot")                                     // Bot token auth
+Password/Privileges change:
+  → EventBus → SessionListener → terminateAllByUser()
+  → все сессии удалены → все refresh tokens мертвы
 ```
 
-Bypass: role ADMIN или permission `*` → пропускает ВСЕ проверки.
+## IDeviceInfo
 
-## 2FA (Cloud Password)
+Извлекается из request headers в контроллере:
+- `ip` — req.ctx.request.ip
+- `userAgent` — User-Agent header
+- `deviceName` — X-Device-Name header
+- `deviceType` — X-Device-Type header
 
-**User entity:** twoFactorHash (bcrypt), twoFactorHint
+## 2FA Flow
 
-**Flow:**
-1. `POST enable-2fa { password, hint? }` → bcrypt hash → save
-2. `POST sign-in` → если twoFactorHash есть → return `{ require2FA: true, twoFactorToken (JWT 5min), twoFactorHint }`
-3. `POST verify-2fa { twoFactorToken, password }` → verify token + bcrypt compare → issue full tokens
-4. `POST disable-2fa { password }` → verify → clear twoFactorHash
+1. `enable2FA(userId, password, hint?)` → bcrypt hash → user.twoFactorHash + twoFactorHint
+2. `signIn` → если twoFactorHash → return `{ require2FA: true, twoFactorToken(5min), hint }`
+3. `verify2FA(twoFactorToken, password, deviceInfo)` → verify 2FA password → create session → tokens
+4. `disable2FA(userId, password)` → verify → set null
 
-## Bot Auth
+## Alternative Auth Methods
 
-**Security scheme "bot":**
-- Header: `Authorization: Bot <128-char-hex-token>` или `X-Bot-Token: <token>`
-- `koa-authentication.ts` → return minimal AuthContext `{ userId: "bot" }`
-- Controller извлекает token → `BotService.getBotByToken(token)` → использует `bot.ownerId`
+**Biometric:** challenge-response RSA SHA256. `verifySignature()` → создаёт Session → issue tokens.
+**Passkeys (WebAuthn):** FIDO2 protocol. `verifyAuthentication()` → создаёт Session → issue tokens.
+**Bot:** `Authorization: Bot <token>` → минимальный AuthContext без session.
 
-## Biometric Auth
+## Permission System
 
-**Entity Biometric:** userId+deviceId(unique), publicKey, challenge, challengeExpiresAt, lastUsedAt
+**Формат:** `module:action` — например `chat:view`, `user:manage`, `profile:view`
 
-**Flow:**
-1. `POST register` → save publicKey (max 5 devices)
-2. `POST generate-nonce` → crypto.randomBytes(32) → save challenge (TTL 5min)
-3. `POST verify-signature` → crypto.createVerify SHA256 → verify → issue tokens
+**Wildcard иерархия:**
+- `chat:message:delete` → exact match
+- `chat:message:*` → parent wildcard
+- `chat:*` → root wildcard
+- `*` → superadmin
 
-## Passkeys (WebAuthn)
+**Вычисление при выдаче токена:**
+```
+effectivePermissions = Set(
+  flatMap(user.roles → role.permissions.name) +
+  user.directPermissions.name
+)
+```
 
-**Entity Passkey:** id(credentialId), publicKey(Uint8Array), counter, deviceType, transports
+**Проверка (hasPermission):** split by `:`, try progressively shorter prefixes with `:*`.
 
-**Flow (registration):**
-1. `POST generate-registration-options` (jwt) → @simplewebauthn/server → set challenge
-2. `POST verify-registration` (jwt) → verify → save passkey → clear challenge
+**@Security синтаксис:**
+```typescript
+@Security("jwt")                                    // только авторизация
+@Security("jwt", ["permission:chat:view"])          // нужен permission
+@Security("jwt", ["permission:user:manage"])        // admin endpoints
+```
 
-**Flow (authentication):**
-1. `POST generate-authentication-options` (public) → find user by login → get passkeys → set challenge
-2. `POST verify-authentication` (public) → verify → update counter → issue tokens
+## Session Entity
 
-## Sessions
+```
+sessions {
+  id: UUID (PK)
+  userId: UUID (FK → users, CASCADE)
+  refreshToken: varchar(500) (unique index)
+  deviceName?: varchar(200)
+  deviceType?: varchar(50)
+  ip?: varchar(45)
+  userAgent?: varchar(500)
+  lastActiveAt: timestamp
+  createdAt: timestamp
+}
+```
 
-**Entity Session:** userId, refreshToken(unique), deviceName, deviceType, ip, userAgent, lastActiveAt
+## Session Events
 
-**Endpoints:** GET /api/session, DELETE /api/session/{id}, POST /api/session/terminate-others
+- `SessionTerminatedEvent(sessionId, userId)` → socket `session:terminated`
+- `PasswordChangedEvent` → SessionListener → terminateAllByUser
+- `UserPrivilegesChangedEvent` → SessionListener → terminateAllByUser
 
-**Socket:** `session:terminated` → клиент на другом устройстве разлогинивается
+## Auth Events
+
+- `UserLoggedInEvent(userId, sessionId?)` → socket `session:new`
+- `TwoFactorEnabledEvent(userId)` → socket `auth:2fa-changed { enabled: true }`
+- `TwoFactorDisabledEvent(userId)` → socket `auth:2fa-changed { enabled: false }`
+
+## AdminBootstrap
+
+На старте: проверяет наличие admin из config → если нет, создаёт user + role ADMIN + permission `*` + seed default permissions для ролей.

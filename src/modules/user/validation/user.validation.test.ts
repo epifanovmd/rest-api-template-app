@@ -2,7 +2,7 @@ import "reflect-metadata";
 
 import { expect } from "chai";
 
-import { ERole } from "../../role/role.types";
+import { Roles } from "../../role/role.types";
 import { SetUsernameSchema } from "./set-username.validate";
 import { ChangePasswordSchema } from "./user-change-password.validate";
 import { SetPrivilegesSchema } from "./user-privileges.validate";
@@ -142,7 +142,7 @@ describe("User Validation Schemas", () => {
   describe("SetPrivilegesSchema", () => {
     it("should accept valid roles and permissions", () => {
       const result = SetPrivilegesSchema.safeParse({
-        roles: [ERole.USER],
+        roles: [Roles.USER],
       });
 
       expect(result.success).to.be.true;
@@ -150,7 +150,7 @@ describe("User Validation Schemas", () => {
 
     it("should apply default empty permissions", () => {
       const result = SetPrivilegesSchema.safeParse({
-        roles: [ERole.USER],
+        roles: [Roles.USER],
       });
 
       expect(result.success).to.be.true;
@@ -165,9 +165,17 @@ describe("User Validation Schemas", () => {
       expect(result.success).to.be.false;
     });
 
-    it("should reject invalid role value", () => {
+    it("should accept any non-empty string as role", () => {
       const result = SetPrivilegesSchema.safeParse({
-        roles: ["superadmin"],
+        roles: ["custom-role"],
+      });
+
+      expect(result.success).to.be.true;
+    });
+
+    it("should reject empty string as role", () => {
+      const result = SetPrivilegesSchema.safeParse({
+        roles: [""],
       });
 
       expect(result.success).to.be.false;

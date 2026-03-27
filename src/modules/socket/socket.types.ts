@@ -3,7 +3,7 @@ import { DefaultEventsMap } from "socket.io/dist/typed-events";
 
 import { AuthContext } from "../../types/koa";
 import { CallDto } from "../call/dto/call.dto";
-import { ChatDto } from "../chat/dto/chat.dto";
+import { ChatDto, ChatLastMessageDto } from "../chat/dto/chat.dto";
 import { ContactDto } from "../contact/dto/contact.dto";
 import { MessageDto } from "../message/dto/message.dto";
 import { PollDto } from "../poll/dto/poll.dto";
@@ -135,6 +135,10 @@ export interface ISocketEmitEvents {
   /** Роль участника чата изменена */
   "chat:member:role-changed": (
     ...args: [{ chatId: string; userId: string; role: string }]
+  ) => void;
+  /** Обновление последнего сообщения чата */
+  "chat:last-message": (
+    ...args: [{ chatId: string; lastMessage: ChatLastMessageDto | null }]
   ) => void;
 
   // ─── Poll events ──────────────────────────────────────────────────────

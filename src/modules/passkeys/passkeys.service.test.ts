@@ -62,6 +62,7 @@ describe("PasskeysService", () => {
       userService as any,
       tokenService as any,
       passkeysRepo as any,
+      { create: sinon.stub().resolves({ id: "session-1" }) } as any,
     );
   });
 

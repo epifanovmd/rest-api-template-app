@@ -1,18 +1,18 @@
 import Koa from "koa";
 
-import { EPermissions } from "../modules/permission/permission.types";
-import { ERole } from "../modules/role/role.types";
+import { TPermission } from "../modules/permission/permission.types";
+import { TRole } from "../modules/role/role.types";
 
 export type AuthContext = {
   userId: string;
   sessionId: string;
   /** Все роли, назначенные этому пользователю. */
-  roles: ERole[];
+  roles: TRole[];
   /**
    * Эффективные разрешения — предварительно объединённый набор всех разрешений ролей
    * плюс directPermissions. Вычисляются при выдаче токена, без запросов к БД.
    */
-  permissions: EPermissions[];
+  permissions: TPermission[];
   emailVerified: boolean;
 };
 

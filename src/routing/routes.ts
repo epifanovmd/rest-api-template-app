@@ -116,21 +116,31 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "ERole": {
-        "dataType": "refEnum",
-        "enums": ["admin","user","guest"],
+    "KnownRole": {
+        "dataType": "refAlias",
+        "type": {"dataType":"union","subSchemas":[{"dataType":"enum","enums":["admin"]},{"dataType":"enum","enums":["user"]},{"dataType":"enum","enums":["guest"]}],"validators":{}},
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "EPermissions": {
-        "dataType": "refEnum",
-        "enums": ["*","user:view","user:manage","contact:view","contact:manage","contact:*","chat:view","chat:manage","chat:*","message:view","message:manage","message:*","push:manage"],
+    "TRole": {
+        "dataType": "refAlias",
+        "type": {"dataType":"union","subSchemas":[{"ref":"KnownRole"},{"dataType":"intersection","subSchemas":[{"dataType":"string"},{"dataType":"nestedObjectLiteral","nestedProperties":{}}]}],"validators":{}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "KnownPermission": {
+        "dataType": "refAlias",
+        "type": {"dataType":"union","subSchemas":[{"dataType":"enum","enums":["*"]},{"dataType":"enum","enums":["user:view"]},{"dataType":"enum","enums":["user:manage"]},{"dataType":"enum","enums":["role:view"]},{"dataType":"enum","enums":["role:manage"]},{"dataType":"enum","enums":["profile:view"]},{"dataType":"enum","enums":["profile:manage"]},{"dataType":"enum","enums":["contact:view"]},{"dataType":"enum","enums":["contact:manage"]},{"dataType":"enum","enums":["contact:*"]},{"dataType":"enum","enums":["chat:view"]},{"dataType":"enum","enums":["chat:manage"]},{"dataType":"enum","enums":["chat:*"]},{"dataType":"enum","enums":["message:view"]},{"dataType":"enum","enums":["message:manage"]},{"dataType":"enum","enums":["message:*"]},{"dataType":"enum","enums":["push:manage"]}],"validators":{}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "TPermission": {
+        "dataType": "refAlias",
+        "type": {"dataType":"union","subSchemas":[{"ref":"KnownPermission"},{"dataType":"intersection","subSchemas":[{"dataType":"string"},{"dataType":"nestedObjectLiteral","nestedProperties":{}}]}],"validators":{}},
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "IPermissionDto": {
         "dataType": "refObject",
         "properties": {
             "id": {"dataType":"string","required":true},
-            "name": {"ref":"EPermissions","required":true},
+            "name": {"ref":"TPermission","required":true},
             "createdAt": {"dataType":"datetime","required":true},
             "updatedAt": {"dataType":"datetime","required":true},
         },
@@ -141,7 +151,7 @@ const models: TsoaRoute.Models = {
         "dataType": "refObject",
         "properties": {
             "id": {"dataType":"string","required":true},
-            "name": {"ref":"ERole","required":true},
+            "name": {"ref":"TRole","required":true},
             "createdAt": {"dataType":"datetime","required":true},
             "updatedAt": {"dataType":"datetime","required":true},
             "permissions": {"dataType":"array","array":{"dataType":"refObject","ref":"IPermissionDto"},"required":true},
@@ -217,10 +227,18 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "ICreateRoleRequestDto": {
+        "dataType": "refObject",
+        "properties": {
+            "name": {"ref":"TRole","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "IRolePermissionsRequestDto": {
         "dataType": "refObject",
         "properties": {
-            "permissions": {"dataType":"array","array":{"dataType":"refEnum","ref":"EPermissions"},"required":true},
+            "permissions": {"dataType":"array","array":{"dataType":"refAlias","ref":"TPermission"},"required":true},
         },
         "additionalProperties": false,
     },
@@ -278,8 +296,8 @@ const models: TsoaRoute.Models = {
     "IUserPrivilegesRequestDto": {
         "dataType": "refObject",
         "properties": {
-            "roles": {"dataType":"array","array":{"dataType":"refEnum","ref":"ERole"},"required":true},
-            "permissions": {"dataType":"array","array":{"dataType":"refEnum","ref":"EPermissions"},"required":true},
+            "roles": {"dataType":"array","array":{"dataType":"refAlias","ref":"TRole"},"required":true},
+            "permissions": {"dataType":"array","array":{"dataType":"refAlias","ref":"TPermission"},"required":true},
         },
         "additionalProperties": false,
     },
@@ -724,6 +742,19 @@ const models: TsoaRoute.Models = {
         "enums": ["direct","group","channel","secret"],
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "ChatLastMessageDto": {
+        "dataType": "refObject",
+        "properties": {
+            "id": {"dataType":"string","required":true},
+            "content": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
+            "type": {"ref":"EMessageType","required":true},
+            "senderId": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
+            "senderName": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
+            "createdAt": {"dataType":"datetime","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "EChatMemberRole": {
         "dataType": "refEnum",
         "enums": ["owner","admin","member","subscriber"],
@@ -760,6 +791,7 @@ const models: TsoaRoute.Models = {
             "createdById": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
             "slowModeSeconds": {"dataType":"double","required":true},
             "lastMessageAt": {"dataType":"union","subSchemas":[{"dataType":"datetime"},{"dataType":"enum","enums":[null]}],"required":true},
+            "lastMessage": {"dataType":"union","subSchemas":[{"ref":"ChatLastMessageDto"},{"dataType":"enum","enums":[null]}],"required":true},
             "createdAt": {"dataType":"datetime","required":true},
             "updatedAt": {"dataType":"datetime","required":true},
             "members": {"dataType":"array","array":{"dataType":"refObject","ref":"ChatMemberDto"},"required":true},
@@ -1824,7 +1856,7 @@ export function RegisterRoutes(router: KoaRouter) {
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         router.get('/api/roles',
-            authenticateMiddleware([{"jwt":["permission:user:manage"]}]),
+            authenticateMiddleware([{"jwt":["permission:role:view"]}]),
             ...(fetchMiddlewares<Middleware>(RoleController)),
             ...(fetchMiddlewares<Middleware>(RoleController.prototype.getRoles)),
 
@@ -1849,6 +1881,66 @@ export function RegisterRoutes(router: KoaRouter) {
             }
 
             const promise = controller.getRoles.apply(controller, validatedArgs as any);
+            return promiseHandler(controller, promise, context, undefined, undefined);
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        router.post('/api/roles',
+            authenticateMiddleware([{"jwt":["permission:role:manage"]}]),
+            ...(fetchMiddlewares<Middleware>(RoleController)),
+            ...(fetchMiddlewares<Middleware>(RoleController.prototype.createRole)),
+
+            async function RoleController_createRole(context: any, next: any) {
+            const args = {
+                    body: {"in":"body","name":"body","required":true,"ref":"ICreateRoleRequestDto"},
+            };
+
+            let validatedArgs: any[] = [];
+            try {
+              validatedArgs = getValidatedArgs(args, context, next);
+            } catch (err) {
+              const error = err as any;
+              context.status = error.status;
+              context.throw(error.status, JSON.stringify({ fields: error.fields }));
+            }
+
+            const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(context.request) : iocContainer;
+
+            const controller: any = await container.get<RoleController>(RoleController);
+            if (typeof controller['setStatus'] === 'function') {
+                controller.setStatus(undefined);
+            }
+
+            const promise = controller.createRole.apply(controller, validatedArgs as any);
+            return promiseHandler(controller, promise, context, undefined, undefined);
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        router.delete('/api/roles/:id',
+            authenticateMiddleware([{"jwt":["permission:role:manage"]}]),
+            ...(fetchMiddlewares<Middleware>(RoleController)),
+            ...(fetchMiddlewares<Middleware>(RoleController.prototype.deleteRole)),
+
+            async function RoleController_deleteRole(context: any, next: any) {
+            const args = {
+                    id: {"in":"path","name":"id","required":true,"dataType":"string"},
+            };
+
+            let validatedArgs: any[] = [];
+            try {
+              validatedArgs = getValidatedArgs(args, context, next);
+            } catch (err) {
+              const error = err as any;
+              context.status = error.status;
+              context.throw(error.status, JSON.stringify({ fields: error.fields }));
+            }
+
+            const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(context.request) : iocContainer;
+
+            const controller: any = await container.get<RoleController>(RoleController);
+            if (typeof controller['setStatus'] === 'function') {
+                controller.setStatus(undefined);
+            }
+
+            const promise = controller.deleteRole.apply(controller, validatedArgs as any);
             return promiseHandler(controller, promise, context, undefined, undefined);
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa

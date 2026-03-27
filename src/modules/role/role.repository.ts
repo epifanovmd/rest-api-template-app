@@ -1,6 +1,6 @@
 import { BaseRepository, InjectableRepository } from "../../core";
 import { Role } from "./role.entity";
-import { ERole } from "./role.types";
+import { TRole } from "./role.types";
 
 /** Репозиторий для работы с ролями. */
 @InjectableRepository(Role)
@@ -14,7 +14,7 @@ export class RoleRepository extends BaseRepository<Role> {
   }
 
   /** Найти роль по имени, включая связанные разрешения. */
-  async findByName(name: ERole): Promise<Role | null> {
+  async findByName(name: TRole): Promise<Role | null> {
     return this.findOne({
       where: { name },
       relations: { permissions: true },

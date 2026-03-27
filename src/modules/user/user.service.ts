@@ -15,7 +15,7 @@ import { ProfileRepository } from "../profile";
 import { Profile } from "../profile/profile.entity";
 import { EProfileStatus } from "../profile/profile.types";
 import { RoleRepository } from "../role";
-import { ERole } from "../role/role.types";
+import { Roles } from "../role/role.types";
 import {
   IUserOptionDto,
   IUserPrivilegesRequestDto,
@@ -104,7 +104,7 @@ export class UserService {
     });
 
     return this.setPrivileges(userId, {
-      roles: [ERole.USER],
+      roles: [Roles.USER],
       permissions: [],
     });
   }
@@ -124,7 +124,7 @@ export class UserService {
 
     if (user) {
       return this.setPrivileges(user.id, {
-        roles: [ERole.ADMIN],
+        roles: [Roles.ADMIN],
         permissions: [],
       });
     }

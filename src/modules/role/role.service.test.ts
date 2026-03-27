@@ -5,9 +5,9 @@ import { expect } from "chai";
 import sinon from "sinon";
 
 import { createMockRepository, uuid, uuid2 } from "../../test/helpers";
-import { EPermissions } from "../permission/permission.types";
+import { Permissions } from "../permission/permission.types";
 import { RoleService } from "./role.service";
-import { ERole } from "./role.types";
+import { Roles } from "./role.types";
 
 describe("RoleService", () => {
   let service: RoleService;
@@ -37,8 +37,8 @@ describe("RoleService", () => {
   describe("getRoles", () => {
     it("should return list of roles", async () => {
       const roles = [
-        { id: roleId, name: ERole.ADMIN, permissions: [] },
-        { id: uuid2(), name: ERole.USER, permissions: [] },
+        { id: roleId, name: Roles.ADMIN, permissions: [] },
+        { id: uuid2(), name: Roles.USER, permissions: [] },
       ];
 
       (roleRepo as any).findAll.resolves(roles);
@@ -52,8 +52,8 @@ describe("RoleService", () => {
 
   describe("setRolePermissions", () => {
     it("should update role permissions when role is found", async () => {
-      const role: any = { id: roleId, name: ERole.USER, permissions: [] };
-      const perm = { id: permissionId, name: EPermissions.USER_VIEW };
+      const role: any = { id: roleId, name: Roles.USER, permissions: [] };
+      const perm = { id: permissionId, name: Permissions.USER_VIEW };
       const updatedRole = { ...role, permissions: [perm] };
 
       (roleRepo as any).findById
@@ -62,7 +62,7 @@ describe("RoleService", () => {
       (permissionRepo as any).findByName.resolves(perm);
       roleRepo.save.resolves(role);
 
-      const result = await service.setRolePermissions(roleId, [EPermissions.USER_VIEW]);
+      const result = await service.setRolePermissions(roleId, [Permissions.USER_VIEW]);
 
       expect((roleRepo as any).findById.calledTwice).to.be.true;
       expect(roleRepo.save.calledOnce).to.be.true;
@@ -70,8 +70,8 @@ describe("RoleService", () => {
     });
 
     it("should create permission if it does not exist", async () => {
-      const role: any = { id: roleId, name: ERole.USER, permissions: [] };
-      const newPerm = { id: permissionId, name: EPermissions.USER_MANAGE };
+      const role: any = { id: roleId, name: Roles.USER, permissions: [] };
+      const newPerm = { id: permissionId, name: Permissions.USER_MANAGE };
 
       (roleRepo as any).findById
         .onFirstCall().resolves(role)
@@ -80,16 +80,16 @@ describe("RoleService", () => {
       permissionRepo.createAndSave.resolves(newPerm);
       roleRepo.save.resolves(role);
 
-      await service.setRolePermissions(roleId, [EPermissions.USER_MANAGE]);
+      await service.setRolePermissions(roleId, [Permissions.USER_MANAGE]);
 
-      expect(permissionRepo.createAndSave.calledOnceWith({ name: EPermissions.USER_MANAGE })).to.be.true;
+      expect(permissionRepo.createAndSave.calledOnceWith({ name: Permissions.USER_MANAGE })).to.be.true;
     });
 
     it("should throw NotFoundException when role is not found", async () => {
       (roleRepo as any).findById.resolves(null);
 
       try {
-        await service.setRolePermissions(roleId, [EPermissions.USER_VIEW]);
+        await service.setRolePermissions(roleId, [Permissions.USER_VIEW]);
         expect.fail("Should have thrown");
       } catch (err) {
         expect(err).to.be.instanceOf(NotFoundException);
@@ -101,7 +101,7 @@ describe("RoleService", () => {
     it("should create roles with default permissions when they do not exist", async () => {
       const createdRoles: Record<string, any> = {};
 
-      (roleRepo as any).findByName.callsFake(async (name: ERole) => {
+      (roleRepo as any).findByName.callsFake(async (name: string) => {
         return createdRoles[name] || null;
       });
 
@@ -136,12 +136,12 @@ describe("RoleService", () => {
     it("should not overwrite existing role permissions", async () => {
       const existingRole = {
         id: roleId,
-        name: ERole.ADMIN,
-        permissions: [{ id: permissionId, name: EPermissions.ALL }],
+        name: Roles.ADMIN,
+        permissions: [{ id: permissionId, name: Permissions.ALL }],
       };
 
-      (roleRepo as any).findByName.callsFake(async (name: ERole) => {
-        if (name === ERole.ADMIN) return existingRole;
+      (roleRepo as any).findByName.callsFake(async (name: string) => {
+        if (name === Roles.ADMIN) return existingRole;
 
         return null;
       });
@@ -155,7 +155,7 @@ describe("RoleService", () => {
       (roleRepo as any).findById.callsFake(async (id: string) => {
         if (id === roleId) return existingRole;
 
-        return { id, permissions: [], name: ERole.USER };
+        return { id, permissions: [], name: Roles.USER };
       });
 
       (permissionRepo as any).findByName.resolves(null);

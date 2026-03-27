@@ -49,6 +49,7 @@ describe("PushListener", () => {
       pushService as any,
       clientRegistry as any,
       memberRepo as any,
+      { emitToUser: sinon.stub() } as any,
     );
     listener.register();
   });

@@ -1,11 +1,11 @@
-import { EPermissions } from "../../modules/permission/permission.types";
+import { Permissions } from "../../modules/permission/permission.types";
 
 /**
  * Проверяет, удовлетворяет ли набор разрешений пользователя требуемому разрешению,
  * включая разрешение wildcards.
  */
 export function hasPermission(userPerms: string[], required: string): boolean {
-  if (userPerms.includes(EPermissions.ALL)) return true;
+  if (userPerms.includes(Permissions.ALL)) return true;
   if (userPerms.includes(required)) return true;
 
   const parts = required.split(":");

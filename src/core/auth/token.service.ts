@@ -2,8 +2,8 @@ import { ForbiddenException, UnauthorizedException } from "@force-dev/utils";
 import jwt, { VerifyErrors } from "jsonwebtoken";
 
 import { config, isDevelopment } from "../../config";
-import { EPermissions } from "../../modules/permission/permission.types";
-import { ERole } from "../../modules/role/role.types";
+import { Permissions, TPermission } from "../../modules/permission/permission.types";
+import { Roles, TRole } from "../../modules/role/role.types";
 import { User } from "../../modules/user/user.entity";
 import { AuthContext, JWTDecoded } from "../../types/koa";
 import { Injectable } from "../decorators";
@@ -15,9 +15,7 @@ export interface ITokensDto {
   refreshToken: string;
 }
 
-type RoleStrings = `role:${ERole}`;
-type PermissionStrings = `permission:${EPermissions}`;
-export type SecurityScopes = (RoleStrings | PermissionStrings)[];
+export type SecurityScopes = string[];
 
 @Injectable()
 export class TokenService {
@@ -104,20 +102,20 @@ export class TokenService {
    *   - разрешение "*" → пропускает все проверки
    */
   private checkScopes(decoded: JWTDecoded, scopes: SecurityScopes): void {
-    const roles = decoded.roles ?? [];
-    const permissions = decoded.permissions ?? [];
+    const roles: TRole[] = decoded.roles ?? [];
+    const permissions: TPermission[] = decoded.permissions ?? [];
 
     // Обход суперадмина
     if (
-      roles.includes(ERole.ADMIN) ||
-      this.hasPermission(permissions, EPermissions.ALL)
+      roles.includes(Roles.ADMIN) ||
+      this.hasPermission(permissions, Permissions.ALL)
     ) {
       return;
     }
 
     for (const scope of scopes) {
       if (scope.startsWith("role:")) {
-        const required = scope.slice(5) as ERole;
+        const required = scope.slice(5);
 
         if (!roles.includes(required)) {
           throw new ForbiddenException("Access denied: insufficient role.");

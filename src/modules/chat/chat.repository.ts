@@ -11,6 +11,7 @@ export class ChatRepository extends BaseRepository<Chat> {
       relations: {
         members: { user: { profile: true } },
         avatar: true,
+        lastMessageSender: { profile: true },
       },
     });
   }
@@ -32,6 +33,8 @@ export class ChatRepository extends BaseRepository<Chat> {
       .leftJoinAndSelect("members.user", "user")
       .leftJoinAndSelect("user.profile", "profile")
       .leftJoinAndSelect("chat.avatar", "avatar")
+      .leftJoinAndSelect("chat.lastMessageSender", "lastMsgSender")
+      .leftJoinAndSelect("lastMsgSender.profile", "lastMsgSenderProfile")
       .orderBy("chat.lastMessageAt", "DESC", "NULLS LAST")
       .addOrderBy("chat.createdAt", "DESC");
 
@@ -71,6 +74,7 @@ export class ChatRepository extends BaseRepository<Chat> {
       relations: {
         members: { user: { profile: true } },
         avatar: true,
+        lastMessageSender: { profile: true },
       },
     });
   }

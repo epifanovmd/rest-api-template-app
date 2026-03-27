@@ -3,15 +3,15 @@ import { inject } from "inversify";
 
 import { Injectable } from "../../core";
 import { PermissionRepository } from "../permission";
-import { EPermissions } from "../permission/permission.types";
+import { Permissions, TPermission } from "../permission/permission.types";
 import { Role } from "./role.entity";
 import { RoleRepository } from "./role.repository";
-import { ERole } from "./role.types";
+import { Roles, TRole } from "./role.types";
 
-const ROLE_DEFAULT_PERMISSIONS: Record<ERole, EPermissions[]> = {
-  [ERole.ADMIN]: [EPermissions.ALL],
-  [ERole.USER]: [EPermissions.USER_VIEW, EPermissions.USER_MANAGE],
-  [ERole.GUEST]: [EPermissions.USER_VIEW],
+const ROLE_DEFAULT_PERMISSIONS: Record<string, TPermission[]> = {
+  [Roles.ADMIN]: [Permissions.ALL],
+  [Roles.USER]: [Permissions.USER_VIEW, Permissions.USER_MANAGE],
+  [Roles.GUEST]: [Permissions.USER_VIEW],
 };
 
 /** Сервис для управления ролями и их разрешениями. */
@@ -28,10 +28,32 @@ export class RoleService {
     return this._roleRepository.findAll();
   }
 
+  /** Создать новую роль. */
+  async createRole(name: TRole): Promise<Role> {
+    const existing = await this._roleRepository.findByName(name);
+
+    if (existing) {
+      return existing;
+    }
+
+    return this._roleRepository.createAndSave({ name });
+  }
+
+  /** Удалить роль по ID. */
+  async deleteRole(roleId: string): Promise<void> {
+    const role = await this._roleRepository.findById(roleId);
+
+    if (!role) {
+      throw new NotFoundException("Роль не найдена");
+    }
+
+    await this._roleRepository.delete({ id: roleId });
+  }
+
   /** Заменить набор разрешений роли на переданный список (upsert по имени). */
   async setRolePermissions(
     roleId: string,
-    permissions: EPermissions[],
+    permissions: TPermission[],
   ): Promise<Role> {
     const role = await this._roleRepository.findById(roleId);
 
@@ -66,11 +88,11 @@ export class RoleService {
     for (const [roleName, permissions] of Object.entries(
       ROLE_DEFAULT_PERMISSIONS,
     )) {
-      let role = await this._roleRepository.findByName(roleName as ERole);
+      let role = await this._roleRepository.findByName(roleName);
 
       if (!role) {
         role = await this._roleRepository.createAndSave({
-          name: roleName as ERole,
+          name: roleName,
         });
       }
 

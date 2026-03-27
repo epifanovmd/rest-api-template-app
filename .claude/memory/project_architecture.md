@@ -13,7 +13,7 @@ type: project
 3. `loadModules()` — ModuleLoader обходит дерево @Module, регистрирует providers/bootstrappers
 4. `configureMiddleware()` — 9 middleware по порядку
 5. `configureRoutes()` — tsoa routes + swagger UI + system routes
-6. `runBootstrappers()` — AdminBootstrap → SocketBootstrap
+6. `runBootstrappers()` — AdminBootstrap → MessageSchedulerBootstrap → SocketBootstrap
 7. `listen()` — HTTP server на config.server.port
 
 Graceful shutdown: SIGTERM/SIGINT → 30s timeout → process.exit
@@ -23,7 +23,8 @@ Graceful shutdown: SIGTERM/SIGINT → 30s timeout → process.exit
 ```typescript
 @Module({
   imports: [OtherModule],
-  providers: [Repository, Service, Controller],
+  providers: [Repository, Service, Controller,
+              asSocketHandler(Handler), asSocketListener(Listener)],
   bootstrappers: [SomeBootstrap],
 })
 export class FeatureModule {}
@@ -32,9 +33,9 @@ export class FeatureModule {}
 `@Injectable()` — только маркер (reflect-metadata). Регистрация ТОЛЬКО через `@Module.providers`.
 `@InjectableRepository(Entity)` — auto-bind через `toDynamicValue(DataSource.getRepository(Entity))`.
 
-## Порядок модулей (src/app.module.ts)
+## 23 модуля (src/app.module.ts)
 
-CoreModule → MailerModule → OtpModule → ResetPasswordTokensModule → UserModule → ProfileModule → FileModule → AuthModule → BiometricModule → PasskeysModule → EncryptionModule → LinkPreviewModule → ContactModule → ChatModule → ChatModerationModule → MessageModule → PollModule → StickerModule → CallModule → BotModule → PushModule → SessionModule → SyncModule → SocketModule (последний)
+CoreModule → MailerModule → OtpModule → ResetPasswordTokensModule → UserModule → ProfileModule → FileModule → AuthModule → BiometricModule → PasskeysModule → EncryptionModule → LinkPreviewModule → ContactModule → ChatModule → ChatModerationModule → MessageModule → PollModule → CallModule → BotModule → PushModule → SessionModule → SyncModule → SocketModule (последний)
 
 ## Middleware Stack (src/middleware/)
 
@@ -64,53 +65,79 @@ CoreModule → MailerModule → OtpModule → ResetPasswordTokensModule → User
 - Auth: `src/core/auth/koa-authentication.ts` — поддержка "jwt" и "bot" security schemes
 - IoC container: `src/app.container.ts`
 
-## Authentication
+## Authentication (Session-Bound JWT)
 
-**JWT flow:** signIn → TokenService.issue(user) → accessToken + refreshToken. Access: 15min (prod) / 1d (dev). Refresh: 7d.
+**JWT Payload:** `{ userId, sessionId, roles[], permissions[], emailVerified }`
 
-**Payload:** `{ userId, roles[], permissions[], emailVerified }`
+**Login flow:**
+1. signIn → bcrypt verify → [2FA?]
+2. SessionService.createSession({userId, refreshToken, ip, userAgent, device})
+3. TokenService.issue(user, sessionId) → accessToken(15m prod/1d dev) + refreshToken(7d)
+4. SessionService.updateRefreshToken(sessionId, refreshToken)
 
-**2FA flow:** signIn → если twoFactorHash → return `{ require2FA, twoFactorToken, hint }` → verify-2fa → tokens
+**Refresh flow:**
+1. verifyToken(refreshToken) → extract userId
+2. SessionService.findByRefreshToken(token) → если нет → 401
+3. issue new tokens с тем же sessionId
+4. updateRefreshToken (ротация — старый токен мёртв)
+
+**Session termination:** delete session → refreshToken мёртв при следующем refresh.
+**Password change / privileges change:** → PasswordChangedEvent/UserPrivilegesChangedEvent → SessionListener → terminateAllByUser() → все сессии удалены.
+
+**IDeviceInfo:** ip, userAgent, deviceName, deviceType — извлекается из request headers в контроллере.
+
+**2FA flow:** signIn → если twoFactorHash → return `{ require2FA, twoFactorToken(5min), hint }` → verify-2fa(+deviceInfo) → create session → tokens
 
 **Security schemes:**
 - `@Security("jwt")` — Bearer token из Authorization header
-- `@Security("jwt", ["role:admin"])` — role check
 - `@Security("jwt", ["permission:chat:view"])` — permission check
 - `@Security("bot")` — Bot token из `Authorization: Bot <token>` или `X-Bot-Token`
 
 **Permission wildcards:** `*` → all, `chat:*` → `chat:view` + `chat:manage`. Superadmin bypass: role ADMIN или permission `*`.
 
-**AuthContext:** `{ userId, roles: ERole[], permissions: string[], emailVerified: boolean }`
+**AuthContext:** `{ userId, sessionId, roles: ERole[], permissions: string[], emailVerified: boolean }`
 
-## EventBus
+## EventBus (~50 событий)
 
 ```typescript
-this.eventBus.emit(new UserCreatedEvent(user));       // sync
-this.eventBus.emitAsync(new MessageSentEvent(msg));   // async Promise.allSettled
+this.eventBus.emit(new SomeEvent(data));       // sync
+this.eventBus.emitAsync(new SomeEvent(data));   // async Promise.allSettled
 ```
 
-Socket listeners: `ISocketEventListener.register()` → подписка на EventBus → emit через SocketEmitterService.
-Socket handlers: `ISocketHandler.onConnection(socket)` → socket.on() для client events.
+Паттерн: Service emits EventBus event → Listener subscribes → emits socket event via SocketEmitterService.
 Регистрация: `asSocketHandler(cls)` / `asSocketListener(cls)` в @Module.
+
+Модули с событиями: auth (3), user (5), contact (5), chat (10), message (9), call (5), poll (3), profile (2), encryption (2), session (1), bot (3), file (1), push (1), sync (подписка на ~10 событий).
 
 ## Bootstrap Tasks
 
 1. **AdminBootstrap** (user) — seed admin user + default role permissions
+2. **MessageSchedulerBootstrap** (message) — scheduled messages + self-destruct timer
 3. **SocketBootstrap** (socket) — auth middleware → on(connection) → handlers → listeners
+
+## Transactions
+
+Сервисы используют `DataSource.transaction()` для атомарных операций:
+- ContactService: addContact, removeContact
+- ChatService: createDirectChat, createGroupChat, joinByInvite
+- CallService: initiateCall (с pessimistic locks)
+- UserService: createUser
+- PollService: vote
+- BotService: setCommands
+
+Паттерн: `this._dataSource.transaction(async (manager) => { manager.getRepository(Entity)... })`. Events emit ПОСЛЕ транзакции.
 
 ## Config (src/config.ts)
 
 Zod validated. Reads `.env.{NODE_ENV}` or `.env`.
 
-Ключевые переменные: SERVER_PORT/HOST, JWT_SECRET_KEY, ADMIN_EMAIL/PASSWORD, POSTGRES_*, SMTP_*, FIREBASE_SERVICE_ACCOUNT_PATH, WEB_AUTHN_*, CORS_ALLOW_IPS, RATE_LIMIT_*
-
 ## Build
 
-Rollup с `preserveModules` (TypeORM entity discovery). Без минификации (class/function names preserved).
+Rollup с `preserveModules` (TypeORM entity discovery). Без минификации (class/function names preserved). tsconfig.production.json excludes tests.
 
 ## Тестирование
 
-738 тестов, Mocha + Chai + Sinon, tsx loader. Команда: `yarn test`. Config: `.mocharc.yml`.
+718 тестов, Mocha + Chai + Sinon, tsx loader. Команда: `yarn test`. Config: `.mocharc.yml`.
 
 ## Health Endpoints
 

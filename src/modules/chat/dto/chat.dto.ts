@@ -1,5 +1,6 @@
 import { IListResponseDto } from "../../../core";
 import { BaseDto } from "../../../core/dto/BaseDto";
+import { EMessageType } from "../../message/message.types";
 import { PublicProfileDto } from "../../profile/dto";
 import { Chat } from "../chat.entity";
 import { EChatMemberRole, EChatType } from "../chat.types";
@@ -42,6 +43,37 @@ export class ChatMemberDto extends BaseDto {
   }
 }
 
+export class ChatLastMessageDto {
+  id: string;
+  content: string | null;
+  type: EMessageType;
+  senderId: string | null;
+  senderName: string | null;
+  createdAt: Date;
+
+  constructor(entity: Chat) {
+    this.id = entity.lastMessageId!;
+    this.content = entity.lastMessageContent;
+    this.type = entity.lastMessageType!;
+    this.senderId = entity.lastMessageSenderId;
+
+    const sender = entity.lastMessageSender;
+
+    this.senderName = sender?.profile
+      ? [sender.profile.firstName, sender.profile.lastName]
+          .filter(Boolean)
+          .join(" ") || null
+      : null;
+    this.createdAt = entity.lastMessageAt!;
+  }
+
+  static fromEntity(entity: Chat): ChatLastMessageDto | null {
+    if (!entity.lastMessageId) return null;
+
+    return new ChatLastMessageDto(entity);
+  }
+}
+
 export class ChatDto extends BaseDto {
   id: string;
   type: EChatType;
@@ -53,6 +85,7 @@ export class ChatDto extends BaseDto {
   createdById: string | null;
   slowModeSeconds: number;
   lastMessageAt: Date | null;
+  lastMessage: ChatLastMessageDto | null;
   createdAt: Date;
   updatedAt: Date;
   members: ChatMemberDto[];
@@ -70,6 +103,7 @@ export class ChatDto extends BaseDto {
     this.createdById = entity.createdById;
     this.slowModeSeconds = entity.slowModeSeconds;
     this.lastMessageAt = entity.lastMessageAt;
+    this.lastMessage = ChatLastMessageDto.fromEntity(entity);
     this.createdAt = entity.createdAt;
     this.updatedAt = entity.updatedAt;
     this.members = entity.members?.map(ChatMemberDto.fromEntity) ?? [];

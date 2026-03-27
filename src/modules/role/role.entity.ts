@@ -9,7 +9,7 @@ import {
 } from "typeorm";
 
 import { Permission } from "../permission/permission.entity";
-import { ERole } from "./role.types";
+import { TRole } from "./role.types";
 
 /** Сущность роли пользователя. Содержит набор разрешений, выданных всем пользователям этой роли. */
 @Entity("roles")
@@ -17,9 +17,8 @@ export class Role {
   @PrimaryGeneratedColumn("uuid")
   id: string;
 
-  // Уникальное название роли из перечисления ERole
-  @Column({ type: "enum", enum: ERole, unique: true })
-  name: ERole;
+  @Column({ type: "varchar", length: 100, unique: true })
+  name: TRole;
 
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
