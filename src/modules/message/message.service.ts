@@ -445,7 +445,6 @@ export class MessageService {
     // Update status to READ for all messages up to this one
     const readMessage = await this._messageRepo.findOne({
       where: { id: messageId },
-      select: ["createdAt"],
     });
 
     if (readMessage) {

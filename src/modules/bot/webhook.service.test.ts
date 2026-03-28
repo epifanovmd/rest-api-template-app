@@ -2,6 +2,7 @@ import "reflect-metadata";
 
 import { expect } from "chai";
 import crypto from "crypto";
+import dns from "dns";
 import http from "http";
 import https from "https";
 import sinon from "sinon";
@@ -14,6 +15,10 @@ describe("WebhookService", () => {
   let httpRequestStub: sinon.SinonStub;
   let httpsRequestStub: sinon.SinonStub;
   let clock: sinon.SinonFakeTimers;
+  let mockLogRepo: {
+    createAndSave: sinon.SinonStub;
+    findByBotId: sinon.SinonStub;
+  };
 
   const createBot = (overrides: Record<string, any> = {}) =>
     ({
@@ -21,7 +26,7 @@ describe("WebhookService", () => {
       webhookUrl: "http://example.com/webhook",
       webhookSecret: "test-secret",
       ...overrides,
-    }) as any;
+    } as any);
 
   const createMockRequest = (statusCode = 200) => {
     const req: any = {
@@ -41,10 +46,23 @@ describe("WebhookService", () => {
   beforeEach(() => {
     sandbox = sinon.createSandbox();
     clock = sinon.useFakeTimers();
-    service = new WebhookService();
+
+    mockLogRepo = {
+      createAndSave: sandbox.stub().resolves(),
+      findByBotId: sandbox.stub().resolves({ data: [], totalCount: 0 }),
+    };
+
+    service = new WebhookService(mockLogRepo as any);
 
     httpRequestStub = sandbox.stub(http, "request");
     httpsRequestStub = sandbox.stub(https, "request");
+
+    // Stub DNS lookup to return a public IP for all hostnames
+    (sandbox.stub(dns, "lookup") as sinon.SinonStub).callsFake(
+      (_hostname: any, _opts: any, cb: any) => {
+        cb(null, [{ address: "93.184.216.34", family: 4 }]);
+      },
+    );
   });
 
   afterEach(() => {
@@ -52,10 +70,7 @@ describe("WebhookService", () => {
     sandbox.restore();
   });
 
-  const setupSuccessfulRequest = (
-    stub: sinon.SinonStub,
-    statusCode = 200,
-  ) => {
+  const setupSuccessfulRequest = (stub: sinon.SinonStub, statusCode = 200) => {
     stub.callsFake((_opts: any, callback: any) => {
       const req: any = {
         on: sinon.stub().returnsThis(),
@@ -72,7 +87,11 @@ describe("WebhookService", () => {
     });
   };
 
-  const setupFailingRequest = (stub: sinon.SinonStub, failCount: number, finalStatus = 200) => {
+  const setupFailingRequest = (
+    stub: sinon.SinonStub,
+    failCount: number,
+    finalStatus = 200,
+  ) => {
     let callCount = 0;
 
     stub.callsFake((_opts: any, callback: any) => {
@@ -111,7 +130,9 @@ describe("WebhookService", () => {
     setupSuccessfulRequest(httpRequestStub);
     const bot = createBot();
 
-    const deliverPromise = service.deliverEvent(bot, "message.new", { text: "hi" });
+    const deliverPromise = service.deliverEvent(bot, "message.new", {
+      text: "hi",
+    });
 
     await deliverPromise;
 
@@ -119,7 +140,7 @@ describe("WebhookService", () => {
     const callArgs = httpRequestStub.firstCall.args[0];
 
     expect(callArgs.method).to.equal("POST");
-    expect(callArgs.hostname).to.equal("example.com");
+    expect(callArgs.hostname).to.equal("93.184.216.34");
     expect(callArgs.headers["Content-Type"]).to.equal("application/json");
     expect(callArgs.headers["X-Bot-Event"]).to.equal("message.new");
     expect(callArgs.headers["X-Bot-Signature"]).to.be.a("string").and.not.empty;
@@ -132,7 +153,8 @@ describe("WebhookService", () => {
     await service.deliverEvent(bot, "test", { data: 1 });
 
     const callArgs = httpRequestStub.firstCall.args[0];
-    const writtenBody = httpRequestStub.firstCall.returnValue.write.firstCall.args[0];
+    const writtenBody =
+      httpRequestStub.firstCall.returnValue.write.firstCall.args[0];
     const expectedSignature = crypto
       .createHmac("sha256", "my-secret")
       .update(writtenBody)
