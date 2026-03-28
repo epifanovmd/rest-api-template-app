@@ -8,7 +8,7 @@ import { inject } from "inversify";
 import { EventBus, Injectable, logger } from "../../core";
 import { ChatRepository } from "../chat/chat.repository";
 import { ChatService } from "../chat/chat.service";
-import { EChatMemberRole } from "../chat/chat.types";
+import { EChatMemberRole, EChatType } from "../chat/chat.types";
 import { ChatMemberRepository } from "../chat/chat-member.repository";
 import { ChatLastMessageUpdatedEvent } from "../chat/events";
 import { LinkPreviewService } from "../link-preview/link-preview.service";
@@ -72,6 +72,23 @@ export class MessageService {
       );
     }
 
+    // Enforce encryption in secret chats
+    const chat = await this._chatRepo.findOne({
+      where: { id: chatId },
+      select: ["id", "type"],
+    });
+
+    if (chat?.type === EChatType.SECRET) {
+      if (!data.encryptedContent) {
+        throw new BadRequestException(
+          "Секретные чаты требуют шифрования. Передайте encryptedContent.",
+        );
+      }
+
+      // Strip plaintext — never store it in secret chats
+      data.content = undefined;
+    }
+
     const message = await this._messageRepo.withTransaction(
       async (repo, em) => {
         const msg = repo.create({
@@ -123,13 +140,19 @@ export class MessageService {
           }
         }
 
-        // Обновляем lastMessage чата
+        // Обновляем lastMessage чата.
+        // В секретных чатах не сохраняем plaintext в превью.
+        const isSecretChat = chat?.type === EChatType.SECRET;
+        const previewContent = isSecretChat
+          ? null
+          : (saved.content ?? "").slice(0, 200) || null;
+
         await em.getRepository("chats").update(
           { id: chatId },
           {
             lastMessageAt: saved.createdAt,
             lastMessageId: saved.id,
-            lastMessageContent: (saved.content ?? "").slice(0, 200) || null,
+            lastMessageContent: previewContent,
             lastMessageType: saved.type,
             lastMessageSenderId: saved.senderId,
           },
@@ -199,7 +222,13 @@ export class MessageService {
     };
   }
 
-  async editMessage(messageId: string, userId: string, content: string) {
+  async editMessage(
+    messageId: string,
+    userId: string,
+    content: string,
+    encryptedContent?: string,
+    encryptionMetadata?: Record<string, unknown>,
+  ) {
     const message = await this._messageRepo.findById(messageId);
 
     if (!message) {
@@ -214,15 +243,41 @@ export class MessageService {
       throw new BadRequestException("Сообщение удалено");
     }
 
-    message.content = content;
+    // Check if this is a secret chat
+    const chat = await this._chatRepo.findOne({
+      where: { id: message.chatId },
+      select: ["id", "type"],
+    });
+
+    const isSecretChat = chat?.type === EChatType.SECRET;
+
+    if (isSecretChat) {
+      // In secret chats — only encrypted edits allowed
+      if (!encryptedContent) {
+        throw new BadRequestException(
+          "Редактирование в секретном чате требует encryptedContent",
+        );
+      }
+
+      message.encryptedContent = encryptedContent;
+      message.encryptionMetadata = encryptionMetadata ?? message.encryptionMetadata;
+      message.content = null; // Never store plaintext
+    } else {
+      message.content = content;
+    }
+
     message.isEdited = true;
     await this._messageRepo.save(message);
 
-    // Sync denormalized lastMessage content if this is the last message
+    // Sync denormalized lastMessage content (null for secret chats)
+    const previewContent = isSecretChat
+      ? null
+      : content.slice(0, 200) || null;
+
     const editResult = await this._chatRepo
       .createQueryBuilder()
       .update()
-      .set({ lastMessageContent: content.slice(0, 200) || null })
+      .set({ lastMessageContent: previewContent })
       .where("id = :chatId", { chatId: message.chatId })
       .andWhere("lastMessageId = :messageId", { messageId })
       .execute();
@@ -259,9 +314,11 @@ export class MessageService {
       }
     }
 
-    // Soft delete
+    // Soft delete — clear both plaintext and ciphertext
     message.isDeleted = true;
     message.content = null;
+    message.encryptedContent = null;
+    message.encryptionMetadata = null;
     await this._messageRepo.save(message);
 
     // Recalculate lastMessage if this was the last message in chat
@@ -643,7 +700,7 @@ export class MessageService {
   private async _recalcLastMessage(chatId: string, deletedMessageId: string): Promise<boolean> {
     const chat = await this._chatRepo.findOne({
       where: { id: chatId },
-      select: ["id", "lastMessageId"],
+      select: ["id", "type", "lastMessageId"],
     });
 
     if (!chat || chat.lastMessageId !== deletedMessageId) return false;
@@ -656,9 +713,13 @@ export class MessageService {
     });
 
     if (prev) {
+      const isSecret = chat?.type === EChatType.SECRET;
+
       await this._chatRepo.update(chatId, {
         lastMessageId: prev.id,
-        lastMessageContent: (prev.content ?? "").slice(0, 200) || null,
+        lastMessageContent: isSecret
+          ? null
+          : (prev.content ?? "").slice(0, 200) || null,
         lastMessageType: prev.type,
         lastMessageSenderId: prev.senderId,
         lastMessageAt: prev.createdAt,

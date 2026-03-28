@@ -1063,6 +1063,13 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "JsonObject": {
+        "dataType": "refObject",
+        "properties": {
+        },
+        "additionalProperties": {"dataType":"any"},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "ISendMessageBody": {
         "dataType": "refObject",
         "properties": {
@@ -1074,7 +1081,7 @@ const models: TsoaRoute.Models = {
             "mentionedUserIds": {"dataType":"array","array":{"dataType":"string"}},
             "mentionAll": {"dataType":"boolean"},
             "encryptedContent": {"dataType":"string"},
-            "encryptionMetadata": {"ref":"Record_string.unknown_"},
+            "encryptionMetadata": {"ref":"JsonObject"},
             "selfDestructSeconds": {"dataType":"double"},
         },
         "additionalProperties": false,
@@ -1145,6 +1152,8 @@ const models: TsoaRoute.Models = {
         "dataType": "refObject",
         "properties": {
             "content": {"dataType":"string","required":true},
+            "encryptedContent": {"dataType":"string"},
+            "encryptionMetadata": {"ref":"JsonObject"},
         },
         "additionalProperties": false,
     },

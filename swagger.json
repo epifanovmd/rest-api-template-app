@@ -2658,6 +2658,12 @@
 				"type": "object",
 				"additionalProperties": false
 			},
+			"JsonObject": {
+				"description": "Object with arbitrary keys — tsoa treats `[key: string]` as additionalProperties.",
+				"properties": {},
+				"type": "object",
+				"additionalProperties": {}
+			},
 			"ISendMessageBody": {
 				"properties": {
 					"type": {
@@ -2691,7 +2697,7 @@
 						"type": "string"
 					},
 					"encryptionMetadata": {
-						"$ref": "#/components/schemas/Record_string.unknown_"
+						"$ref": "#/components/schemas/JsonObject"
 					},
 					"selfDestructSeconds": {
 						"type": "number",
@@ -2869,6 +2875,12 @@
 				"properties": {
 					"content": {
 						"type": "string"
+					},
+					"encryptedContent": {
+						"type": "string"
+					},
+					"encryptionMetadata": {
+						"$ref": "#/components/schemas/JsonObject"
 					}
 				},
 				"required": [

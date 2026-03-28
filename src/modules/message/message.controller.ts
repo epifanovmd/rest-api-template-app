@@ -20,8 +20,15 @@ import { IMessageSearchDto, MessageDto } from "./dto";
 import { MessageService } from "./message.service";
 import { AddReactionSchema, EditMessageSchema } from "./validation";
 
+/** Object with arbitrary keys — tsoa treats `[key: string]` as additionalProperties. */
+interface JsonObject {
+  [key: string]: any;
+}
+
 interface IEditMessageBody {
   content: string;
+  encryptedContent?: string;
+  encryptionMetadata?: JsonObject;
 }
 
 interface IAddReactionBody {
@@ -74,7 +81,13 @@ export class MessageController extends Controller {
   ): Promise<MessageDto> {
     const user = getContextUser(req);
 
-    return this._messageService.editMessage(id, user.userId, body.content);
+    return this._messageService.editMessage(
+      id,
+      user.userId,
+      body.content,
+      body.encryptedContent,
+      body.encryptionMetadata,
+    );
   }
 
   /**
