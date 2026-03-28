@@ -45,16 +45,50 @@ export class BotDto extends BaseDto {
 export class BotDetailDto extends BotDto {
   token: string;
   webhookUrl: string | null;
+  webhookSecret: string | null;
+  webhookEvents: string[];
   commands: BotCommandDto[];
 
   constructor(entity: Bot) {
     super(entity);
     this.token = entity.token;
     this.webhookUrl = entity.webhookUrl;
+    this.webhookSecret = entity.webhookSecret
+      ? entity.webhookSecret.slice(0, 8) + "••••••••"
+      : null;
+    this.webhookEvents = entity.webhookEvents ?? [];
     this.commands = entity.commands?.map(BotCommandDto.fromEntity) ?? [];
   }
 
   static fromEntity(entity: Bot) {
     return new BotDetailDto(entity);
+  }
+}
+
+export class WebhookLogDto {
+  id: string;
+  eventType: string;
+  payload: Record<string, unknown> | null;
+  statusCode: number | null;
+  success: boolean;
+  errorMessage: string | null;
+  attempts: number;
+  durationMs: number | null;
+  createdAt: Date;
+
+  static fromEntity(entity: any) {
+    const dto = new WebhookLogDto();
+
+    dto.id = entity.id;
+    dto.eventType = entity.eventType;
+    dto.payload = entity.payload;
+    dto.statusCode = entity.statusCode;
+    dto.success = entity.success;
+    dto.errorMessage = entity.errorMessage;
+    dto.attempts = entity.attempts;
+    dto.durationMs = entity.durationMs;
+    dto.createdAt = entity.createdAt;
+
+    return dto;
   }
 }

@@ -7,6 +7,7 @@ import {
   Patch,
   Path,
   Post,
+  Query,
   Request,
   Route,
   Security,
@@ -16,12 +17,19 @@ import {
 import { getContextUser, Injectable, ValidateBody } from "../../core";
 import { KoaRequest } from "../../types/koa";
 import { BotService } from "./bot.service";
-import { BotCommandDto, BotDetailDto, BotDto } from "./dto/bot.dto";
+import {
+  BotCommandDto,
+  BotDetailDto,
+  BotDto,
+  WebhookLogDto,
+} from "./dto/bot.dto";
 import {
   CreateBotSchema,
   SetCommandsSchema,
+  SetWebhookEventsSchema,
   SetWebhookSchema,
 } from "./validation";
+import { WebhookService } from "./webhook.service";
 
 interface ICreateBotBody {
   username: string;
@@ -40,15 +48,34 @@ interface ISetWebhookBody {
   secret?: string;
 }
 
+interface ISetWebhookEventsBody {
+  events: string[];
+}
+
 interface ISetCommandsBody {
   commands: { command: string; description: string }[];
+}
+
+interface IWebhookLogsResponse {
+  data: WebhookLogDto[];
+  totalCount: number;
+}
+
+interface IWebhookTestResponse {
+  success: boolean;
+  statusCode: number | null;
+  errorMessage: string | null;
+  durationMs: number;
 }
 
 @Injectable()
 @Tags("Bot")
 @Route("api/bot")
 export class BotController extends Controller {
-  constructor(@inject(BotService) private _botService: BotService) {
+  constructor(
+    @inject(BotService) private _botService: BotService,
+    @inject(WebhookService) private _webhookService: WebhookService,
+  ) {
     super();
   }
 
@@ -186,5 +213,61 @@ export class BotController extends Controller {
     const commands = await this._botService.getCommands(id);
 
     return commands.map(BotCommandDto.fromEntity);
+  }
+
+  /** @summary Тестировать webhook (отправляет ping) */
+  @Security("jwt")
+  @Post("{id}/webhook/test")
+  async testWebhook(
+    @Request() req: KoaRequest,
+    @Path() id: string,
+  ): Promise<IWebhookTestResponse> {
+    const user = getContextUser(req);
+    const bot = await this._botService.getBotById(id, user.userId);
+
+    return this._webhookService.testWebhook(bot);
+  }
+
+  /** @summary Получить логи доставки webhook */
+  @Security("jwt")
+  @Get("{id}/webhook/logs")
+  async getWebhookLogs(
+    @Request() req: KoaRequest,
+    @Path() id: string,
+    @Query() offset?: number,
+    @Query() limit?: number,
+  ): Promise<IWebhookLogsResponse> {
+    const user = getContextUser(req);
+
+    await this._botService.getBotById(id, user.userId); // ownership check
+
+    const result = await this._webhookService.getLogs(id, {
+      offset: offset ?? 0,
+      limit: limit ?? 50,
+    });
+
+    return {
+      data: result.data.map(WebhookLogDto.fromEntity),
+      totalCount: result.totalCount,
+    };
+  }
+
+  /** @summary Обновить фильтр событий webhook */
+  @Security("jwt")
+  @ValidateBody(SetWebhookEventsSchema)
+  @Post("{id}/webhook/events")
+  async setWebhookEvents(
+    @Request() req: KoaRequest,
+    @Path() id: string,
+    @Body() body: ISetWebhookEventsBody,
+  ): Promise<BotDetailDto> {
+    const user = getContextUser(req);
+    const bot = await this._botService.updateWebhookEvents(
+      id,
+      user.userId,
+      body.events,
+    );
+
+    return BotDetailDto.fromEntity(bot!);
   }
 }

@@ -25,6 +25,7 @@ describe("SyncService", () => {
       changes: [],
       hasMore: false,
     });
+    (syncLogRepo as any).getLatestVersion = sinon.stub().resolves("100");
 
     service = new SyncService(syncLogRepo as any, memberRepo as any);
   });
@@ -74,7 +75,7 @@ describe("SyncService", () => {
       const result = await service.getChanges(userId);
 
       expect(result.changes).to.have.length(0);
-      expect(result.currentVersion).to.equal("0");
+      expect(result.currentVersion).to.equal("100"); // latest version from DB
       expect(result.hasMore).to.be.false;
     });
 

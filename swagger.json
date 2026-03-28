@@ -1455,6 +1455,16 @@
 						"type": "string",
 						"nullable": true
 					},
+					"webhookSecret": {
+						"type": "string",
+						"nullable": true
+					},
+					"webhookEvents": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					},
 					"commands": {
 						"items": {
 							"$ref": "#/components/schemas/BotCommandDto"
@@ -1472,6 +1482,8 @@
 					"createdAt",
 					"token",
 					"webhookUrl",
+					"webhookSecret",
+					"webhookEvents",
 					"commands"
 				],
 				"type": "object",
@@ -1590,6 +1602,125 @@
 				},
 				"required": [
 					"commands"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IWebhookTestResponse": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"statusCode": {
+						"type": "number",
+						"format": "double",
+						"nullable": true
+					},
+					"errorMessage": {
+						"type": "string",
+						"nullable": true
+					},
+					"durationMs": {
+						"type": "number",
+						"format": "double"
+					}
+				},
+				"required": [
+					"success",
+					"statusCode",
+					"errorMessage",
+					"durationMs"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"WebhookLogDto": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"eventType": {
+						"type": "string"
+					},
+					"payload": {
+						"allOf": [
+							{
+								"$ref": "#/components/schemas/Record_string.unknown_"
+							}
+						],
+						"nullable": true
+					},
+					"statusCode": {
+						"type": "number",
+						"format": "double",
+						"nullable": true
+					},
+					"success": {
+						"type": "boolean"
+					},
+					"errorMessage": {
+						"type": "string",
+						"nullable": true
+					},
+					"attempts": {
+						"type": "number",
+						"format": "double"
+					},
+					"durationMs": {
+						"type": "number",
+						"format": "double",
+						"nullable": true
+					},
+					"createdAt": {
+						"type": "string",
+						"format": "date-time"
+					}
+				},
+				"required": [
+					"id",
+					"eventType",
+					"payload",
+					"statusCode",
+					"success",
+					"errorMessage",
+					"attempts",
+					"durationMs",
+					"createdAt"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IWebhookLogsResponse": {
+				"properties": {
+					"data": {
+						"items": {
+							"$ref": "#/components/schemas/WebhookLogDto"
+						},
+						"type": "array"
+					},
+					"totalCount": {
+						"type": "number",
+						"format": "double"
+					}
+				},
+				"required": [
+					"data",
+					"totalCount"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"ISetWebhookEventsBody": {
+				"properties": {
+					"events": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"events"
 				],
 				"type": "object",
 				"additionalProperties": false
@@ -5738,6 +5869,142 @@
 						}
 					}
 				]
+			}
+		},
+		"/api/bot/{id}/webhook/test": {
+			"post": {
+				"operationId": "TestWebhook",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IWebhookTestResponse"
+								}
+							}
+						}
+					}
+				},
+				"summary": "Тестировать webhook (отправляет ping)",
+				"tags": [
+					"Bot"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/bot/{id}/webhook/logs": {
+			"get": {
+				"operationId": "GetWebhookLogs",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IWebhookLogsResponse"
+								}
+							}
+						}
+					}
+				},
+				"summary": "Получить логи доставки webhook",
+				"tags": [
+					"Bot"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "offset",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					},
+					{
+						"in": "query",
+						"name": "limit",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					}
+				]
+			}
+		},
+		"/api/bot/{id}/webhook/events": {
+			"post": {
+				"operationId": "SetWebhookEvents",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/BotDetailDto"
+								}
+							}
+						}
+					}
+				},
+				"summary": "Обновить фильтр событий webhook",
+				"tags": [
+					"Bot"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/ISetWebhookEventsBody"
+							}
+						}
+					}
+				}
 			}
 		},
 		"/api/call": {

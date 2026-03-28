@@ -15,8 +15,8 @@ export const UploadKeysSchema = z.object({
         publicKey: z.string().min(1),
       }),
     )
-    .min(1)
-    .max(100),
+    .max(100)
+    .default([]),
 });
 
 export const UploadPreKeysSchema = z.object({

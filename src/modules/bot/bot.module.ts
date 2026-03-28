@@ -7,11 +7,13 @@ import { BotService } from "./bot.service";
 import { BotApiController } from "./bot-api.controller";
 import { BotCommandRepository } from "./bot-command.repository";
 import { WebhookService } from "./webhook.service";
+import { WebhookLogRepository } from "./webhook-log.repository";
 
 @Module({
   providers: [
     BotRepository,
     BotCommandRepository,
+    WebhookLogRepository,
     BotService,
     WebhookService,
     BotController,

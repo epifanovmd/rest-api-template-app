@@ -31,7 +31,14 @@ export const SendMessageSchema = z
       .max(604800, "Максимум 7 дней")
       .optional(),
   })
-  .refine(data => data.content || (data.fileIds && data.fileIds.length > 0), {
-    message: "Необходимо указать текст или прикрепить файл",
-    path: ["content"],
-  });
+  .refine(
+    data =>
+      data.content ||
+      (data.fileIds && data.fileIds.length > 0) ||
+      data.encryptedContent,
+    {
+      message:
+        "Необходимо указать текст, прикрепить файл или передать зашифрованное содержимое",
+      path: ["content"],
+    },
+  );

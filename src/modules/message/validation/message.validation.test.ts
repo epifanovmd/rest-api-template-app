@@ -35,7 +35,16 @@ describe("Message Validation Schemas", () => {
       expect(result.success).to.be.true;
     });
 
-    it("should reject when neither content nor fileIds", () => {
+    it("should accept message with encryptedContent only (E2E)", () => {
+      const result = SendMessageSchema.safeParse({
+        encryptedContent: "base64ciphertext",
+        encryptionMetadata: { header: { publicKey: "abc" } },
+      });
+
+      expect(result.success).to.be.true;
+    });
+
+    it("should reject when neither content nor fileIds nor encryptedContent", () => {
       const result = SendMessageSchema.safeParse({});
 
       expect(result.success).to.be.false;

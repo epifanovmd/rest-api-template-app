@@ -49,6 +49,14 @@ export class Bot {
   })
   webhookSecret: string | null;
 
+  /** Which event types this bot subscribes to. Empty array = all events. */
+  @Column({
+    name: "webhook_events",
+    type: "jsonb",
+    default: "[]",
+  })
+  webhookEvents: string[];
+
   @Column({ name: "is_active", type: "boolean", default: true })
   isActive: boolean;
 

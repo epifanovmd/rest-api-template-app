@@ -1,6 +1,7 @@
 import { inject } from "inversify";
 
 import { EventBus, Injectable } from "../../core";
+import { ChatDto } from "../chat/dto";
 import {
   ChatCreatedEvent,
   ChatMemberJoinedEvent,
@@ -8,6 +9,7 @@ import {
   ChatUpdatedEvent,
 } from "../chat/events";
 import { ContactAcceptedEvent, ContactRequestEvent } from "../contact/events";
+import { MessageDto } from "../message/dto/message.dto";
 import {
   MessageCreatedEvent,
   MessageDeletedEvent,
@@ -28,6 +30,8 @@ export class SyncListener implements ISocketEventListener {
   ) {}
 
   register(): void {
+    // ── Messages ──────────────────────────────────────────────────
+
     this._eventBus.on(
       MessageCreatedEvent,
       async (event: MessageCreatedEvent) => {
@@ -35,7 +39,10 @@ export class SyncListener implements ISocketEventListener {
           ESyncEntityType.MESSAGE,
           event.message.id,
           ESyncAction.CREATE,
-          { chatId: event.chatId },
+          {
+            chatId: event.chatId,
+            payload: MessageDto.fromEntity(event.message) as unknown as Record<string, unknown>,
+          },
         );
         this._notifyUsers(event.memberUserIds);
       },
@@ -48,7 +55,10 @@ export class SyncListener implements ISocketEventListener {
           ESyncEntityType.MESSAGE,
           event.message.id,
           ESyncAction.UPDATE,
-          { chatId: event.chatId },
+          {
+            chatId: event.chatId,
+            payload: MessageDto.fromEntity(event.message) as unknown as Record<string, unknown>,
+          },
         );
       },
     );
@@ -65,6 +75,8 @@ export class SyncListener implements ISocketEventListener {
       },
     );
 
+    // ── Chats ─────────────────────────────────────────────────────
+
     this._eventBus.on(
       ChatCreatedEvent,
       async (event: ChatCreatedEvent) => {
@@ -72,7 +84,10 @@ export class SyncListener implements ISocketEventListener {
           ESyncEntityType.CHAT,
           event.chat.id,
           ESyncAction.CREATE,
-          { chatId: event.chat.id },
+          {
+            chatId: event.chat.id,
+            payload: ChatDto.fromEntity(event.chat) as unknown as Record<string, unknown>,
+          },
         );
         this._notifyUsers(event.memberUserIds);
       },
@@ -85,10 +100,15 @@ export class SyncListener implements ISocketEventListener {
           ESyncEntityType.CHAT,
           event.chat.id,
           ESyncAction.UPDATE,
-          { chatId: event.chat.id },
+          {
+            chatId: event.chat.id,
+            payload: ChatDto.fromEntity(event.chat) as unknown as Record<string, unknown>,
+          },
         );
       },
     );
+
+    // ── Chat Members ──────────────────────────────────────────────
 
     this._eventBus.on(
       ChatMemberJoinedEvent,
@@ -114,6 +134,8 @@ export class SyncListener implements ISocketEventListener {
       },
     );
 
+    // ── Contacts ──────────────────────────────────────────────────
+
     this._eventBus.on(
       ContactRequestEvent,
       async (event: ContactRequestEvent) => {
@@ -121,7 +143,10 @@ export class SyncListener implements ISocketEventListener {
           ESyncEntityType.CONTACT,
           event.contact.id,
           ESyncAction.CREATE,
-          { userId: event.targetUserId },
+          {
+            userId: event.targetUserId,
+            payload: event.contact as unknown as Record<string, unknown>,
+          },
         );
         this._notifyUsers([event.targetUserId]);
       },
@@ -134,11 +159,16 @@ export class SyncListener implements ISocketEventListener {
           ESyncEntityType.CONTACT,
           event.contact.id,
           ESyncAction.UPDATE,
-          { userId: event.requesterId },
+          {
+            userId: event.requesterId,
+            payload: event.contact as unknown as Record<string, unknown>,
+          },
         );
         this._notifyUsers([event.requesterId]);
       },
     );
+
+    // ── Profile ───────────────────────────────────────────────────
 
     this._eventBus.on(
       ProfileUpdatedEvent,
@@ -147,6 +177,7 @@ export class SyncListener implements ISocketEventListener {
           ESyncEntityType.PROFILE,
           event.profile.id,
           ESyncAction.UPDATE,
+          { payload: event.profile as unknown as Record<string, unknown> },
         );
       },
     );

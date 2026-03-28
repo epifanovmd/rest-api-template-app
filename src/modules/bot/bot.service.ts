@@ -121,7 +121,21 @@ export class BotService {
 
     bot.webhookUrl = null;
     bot.webhookSecret = null;
+    bot.webhookEvents = [];
     await this._botRepo.save(bot);
+  }
+
+  async updateWebhookEvents(
+    botId: string,
+    ownerId: string,
+    events: string[],
+  ) {
+    const bot = await this.getBotById(botId, ownerId);
+
+    bot.webhookEvents = events;
+    await this._botRepo.save(bot);
+
+    return this._botRepo.findByIdWithDetails(botId);
   }
 
   async setCommands(

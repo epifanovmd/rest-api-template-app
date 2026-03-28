@@ -21,6 +21,16 @@ export class SyncService {
 
     const chatIds = memberships.map(m => m.chatId);
 
+    // If sinceVersion is ahead of the actual max version (e.g. DB was reset),
+    // reset to fetch from the beginning
+    if (sinceVersion) {
+      const maxVersion = await this._syncLogRepo.getLatestVersion();
+
+      if (BigInt(sinceVersion) > BigInt(maxVersion || "0")) {
+        sinceVersion = undefined;
+      }
+    }
+
     const { changes, hasMore } = await this._syncLogRepo.getChangesSince(
       userId,
       chatIds,
@@ -28,9 +38,10 @@ export class SyncService {
       limit ?? 100,
     );
 
+    // Always return the real latest version, not the client's stale cursor
     const currentVersion = changes.length > 0
       ? changes[changes.length - 1].version
-      : sinceVersion ?? "0";
+      : await this._syncLogRepo.getLatestVersion();
 
     return {
       changes: changes.map(SyncLogDto.fromEntity),
