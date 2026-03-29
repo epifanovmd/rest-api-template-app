@@ -1084,11 +1084,6 @@
 				],
 				"type": "string"
 			},
-			"Record_string.unknown_": {
-				"properties": {},
-				"type": "object",
-				"description": "Construct a type with a set of properties K of type T"
-			},
 			"MessageDto": {
 				"properties": {
 					"id": {
@@ -1137,64 +1132,7 @@
 						"type": "string",
 						"nullable": true
 					},
-					"encryptedContent": {
-						"type": "string",
-						"nullable": true
-					},
-					"encryptionMetadata": {
-						"allOf": [
-							{
-								"$ref": "#/components/schemas/Record_string.unknown_"
-							}
-						],
-						"nullable": true
-					},
 					"keyboard": {
-						"nullable": true
-					},
-					"linkPreviews": {
-						"items": {
-							"properties": {
-								"siteName": {
-									"type": "string",
-									"nullable": true
-								},
-								"imageUrl": {
-									"type": "string",
-									"nullable": true
-								},
-								"description": {
-									"type": "string",
-									"nullable": true
-								},
-								"title": {
-									"type": "string",
-									"nullable": true
-								},
-								"url": {
-									"type": "string"
-								}
-							},
-							"required": [
-								"siteName",
-								"imageUrl",
-								"description",
-								"title",
-								"url"
-							],
-							"type": "object"
-						},
-						"type": "array",
-						"nullable": true
-					},
-					"selfDestructSeconds": {
-						"type": "number",
-						"format": "double",
-						"nullable": true
-					},
-					"selfDestructAt": {
-						"type": "string",
-						"format": "date-time",
 						"nullable": true
 					},
 					"createdAt": {
@@ -1302,12 +1240,7 @@
 					"isPinned",
 					"pinnedAt",
 					"pinnedById",
-					"encryptedContent",
-					"encryptionMetadata",
 					"keyboard",
-					"linkPreviews",
-					"selfDestructSeconds",
-					"selfDestructAt",
 					"createdAt",
 					"updatedAt",
 					"attachments",
@@ -1634,6 +1567,11 @@
 				"type": "object",
 				"additionalProperties": false
 			},
+			"Record_string.unknown_": {
+				"properties": {},
+				"type": "object",
+				"description": "Construct a type with a set of properties K of type T"
+			},
 			"WebhookLogDto": {
 				"properties": {
 					"id": {
@@ -1945,8 +1883,7 @@
 				"enum": [
 					"direct",
 					"group",
-					"channel",
-					"secret"
+					"channel"
 				],
 				"type": "string"
 			},
@@ -2027,9 +1964,6 @@
 						"format": "date-time",
 						"nullable": true
 					},
-					"isArchived": {
-						"type": "boolean"
-					},
 					"folderId": {
 						"type": "string",
 						"nullable": true
@@ -2047,7 +1981,6 @@
 					"lastReadMessageId",
 					"isPinnedChat",
 					"pinnedChatAt",
-					"isArchived",
 					"folderId"
 				],
 				"type": "object",
@@ -2244,18 +2177,6 @@
 				},
 				"required": [
 					"data"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"ICreateSecretChatBody": {
-				"properties": {
-					"targetUserId": {
-						"type": "string"
-					}
-				},
-				"required": [
-					"targetUserId"
 				],
 				"type": "object",
 				"additionalProperties": false
@@ -2514,156 +2435,6 @@
 				"type": "object",
 				"additionalProperties": false
 			},
-			"IUploadKeysBody": {
-				"properties": {
-					"deviceId": {
-						"type": "string"
-					},
-					"identityKey": {
-						"type": "string"
-					},
-					"signedPreKey": {
-						"properties": {
-							"signature": {
-								"type": "string"
-							},
-							"publicKey": {
-								"type": "string"
-							},
-							"id": {
-								"type": "number",
-								"format": "double"
-							}
-						},
-						"required": [
-							"signature",
-							"publicKey",
-							"id"
-						],
-						"type": "object"
-					},
-					"oneTimePreKeys": {
-						"items": {
-							"properties": {
-								"publicKey": {
-									"type": "string"
-								},
-								"id": {
-									"type": "number",
-									"format": "double"
-								}
-							},
-							"required": [
-								"publicKey",
-								"id"
-							],
-							"type": "object"
-						},
-						"type": "array"
-					}
-				},
-				"required": [
-					"deviceId",
-					"identityKey",
-					"signedPreKey",
-					"oneTimePreKeys"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"KeyBundleDto": {
-				"properties": {
-					"userId": {
-						"type": "string"
-					},
-					"deviceId": {
-						"type": "string"
-					},
-					"identityKey": {
-						"type": "string"
-					},
-					"signedPreKey": {
-						"properties": {
-							"signature": {
-								"type": "string"
-							},
-							"publicKey": {
-								"type": "string"
-							},
-							"id": {
-								"type": "number",
-								"format": "double"
-							}
-						},
-						"required": [
-							"signature",
-							"publicKey",
-							"id"
-						],
-						"type": "object"
-					},
-					"oneTimePreKey": {
-						"properties": {
-							"publicKey": {
-								"type": "string"
-							},
-							"id": {
-								"type": "number",
-								"format": "double"
-							}
-						},
-						"required": [
-							"publicKey",
-							"id"
-						],
-						"type": "object",
-						"nullable": true
-					}
-				},
-				"required": [
-					"userId",
-					"deviceId",
-					"identityKey",
-					"signedPreKey",
-					"oneTimePreKey"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"IUploadPreKeysBody": {
-				"properties": {
-					"keys": {
-						"items": {
-							"properties": {
-								"publicKey": {
-									"type": "string"
-								},
-								"id": {
-									"type": "number",
-									"format": "double"
-								}
-							},
-							"required": [
-								"publicKey",
-								"id"
-							],
-							"type": "object"
-						},
-						"type": "array"
-					}
-				},
-				"required": [
-					"keys"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"JsonObject": {
-				"description": "Object with arbitrary keys — tsoa treats `[key: string]` as additionalProperties.",
-				"properties": {},
-				"type": "object",
-				"additionalProperties": {}
-			},
 			"ISendMessageBody": {
 				"properties": {
 					"type": {
@@ -2692,16 +2463,6 @@
 					},
 					"mentionAll": {
 						"type": "boolean"
-					},
-					"encryptedContent": {
-						"type": "string"
-					},
-					"encryptionMetadata": {
-						"$ref": "#/components/schemas/JsonObject"
-					},
-					"selfDestructSeconds": {
-						"type": "number",
-						"format": "double"
 					}
 				},
 				"type": "object",
@@ -2875,12 +2636,6 @@
 				"properties": {
 					"content": {
 						"type": "string"
-					},
-					"encryptedContent": {
-						"type": "string"
-					},
-					"encryptionMetadata": {
-						"$ref": "#/components/schemas/JsonObject"
 					}
 				},
 				"required": [
@@ -6720,44 +6475,6 @@
 				]
 			}
 		},
-		"/api/chat/secret": {
-			"post": {
-				"operationId": "CreateSecretChat",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/ChatDto"
-								}
-							}
-						}
-					}
-				},
-				"description": "Создать секретный (E2E encrypted) чат.",
-				"summary": "Создание секретного чата",
-				"tags": [
-					"Chat"
-				],
-				"security": [
-					{
-						"jwt": []
-					}
-				],
-				"parameters": [],
-				"requestBody": {
-					"required": true,
-					"content": {
-						"application/json": {
-							"schema": {
-								"$ref": "#/components/schemas/ICreateSecretChatBody"
-							}
-						}
-					}
-				}
-			}
-		},
 		"/api/chat": {
 			"get": {
 				"operationId": "GetUserChats",
@@ -7349,78 +7066,6 @@
 				]
 			}
 		},
-		"/api/chat/{id}/archive": {
-			"post": {
-				"operationId": "ArchiveChat",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/ChatMemberDto"
-								}
-							}
-						}
-					}
-				},
-				"description": "Архивировать чат.",
-				"summary": "Архивация чата",
-				"tags": [
-					"Chat"
-				],
-				"security": [
-					{
-						"jwt": []
-					}
-				],
-				"parameters": [
-					{
-						"in": "path",
-						"name": "id",
-						"required": true,
-						"schema": {
-							"type": "string"
-						}
-					}
-				]
-			},
-			"delete": {
-				"operationId": "UnarchiveChat",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/ChatMemberDto"
-								}
-							}
-						}
-					}
-				},
-				"description": "Разархивировать чат.",
-				"summary": "Разархивация чата",
-				"tags": [
-					"Chat"
-				],
-				"security": [
-					{
-						"jwt": []
-					}
-				],
-				"parameters": [
-					{
-						"in": "path",
-						"name": "id",
-						"required": true,
-						"schema": {
-							"type": "string"
-						}
-					}
-				]
-			}
-		},
 		"/api/chat/{id}/folder": {
 			"patch": {
 				"operationId": "MoveChatToFolder",
@@ -7791,151 +7436,6 @@
 					{
 						"in": "path",
 						"name": "id",
-						"required": true,
-						"schema": {
-							"type": "string"
-						}
-					}
-				]
-			}
-		},
-		"/api/encryption/keys": {
-			"post": {
-				"operationId": "UploadKeys",
-				"responses": {
-					"204": {
-						"description": "No content"
-					}
-				},
-				"description": "Загрузить ключи устройства (identity + signed prekey + one-time prekeys).",
-				"summary": "Загрузка ключей",
-				"tags": [
-					"Encryption"
-				],
-				"security": [
-					{
-						"jwt": []
-					}
-				],
-				"parameters": [],
-				"requestBody": {
-					"required": true,
-					"content": {
-						"application/json": {
-							"schema": {
-								"$ref": "#/components/schemas/IUploadKeysBody"
-							}
-						}
-					}
-				}
-			}
-		},
-		"/api/encryption/keys/{userId}": {
-			"get": {
-				"operationId": "GetKeyBundle",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/KeyBundleDto"
-								}
-							}
-						}
-					}
-				},
-				"description": "Получить key bundle пользователя для установки E2E сессии.",
-				"summary": "Получение key bundle",
-				"tags": [
-					"Encryption"
-				],
-				"security": [
-					{
-						"jwt": []
-					}
-				],
-				"parameters": [
-					{
-						"in": "path",
-						"name": "userId",
-						"required": true,
-						"schema": {
-							"type": "string"
-						}
-					}
-				]
-			}
-		},
-		"/api/encryption/keys/prekeys": {
-			"post": {
-				"operationId": "UploadPreKeys",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"properties": {
-										"availableCount": {
-											"type": "number",
-											"format": "double"
-										}
-									},
-									"required": [
-										"availableCount"
-									],
-									"type": "object"
-								}
-							}
-						}
-					}
-				},
-				"description": "Загрузить дополнительные one-time prekeys.",
-				"summary": "Загрузка prekeys",
-				"tags": [
-					"Encryption"
-				],
-				"security": [
-					{
-						"jwt": []
-					}
-				],
-				"parameters": [],
-				"requestBody": {
-					"required": true,
-					"content": {
-						"application/json": {
-							"schema": {
-								"$ref": "#/components/schemas/IUploadPreKeysBody"
-							}
-						}
-					}
-				}
-			}
-		},
-		"/api/encryption/keys/{deviceId}": {
-			"delete": {
-				"operationId": "RevokeDevice",
-				"responses": {
-					"204": {
-						"description": "No content"
-					}
-				},
-				"description": "Отозвать ключи устройства.",
-				"summary": "Отзыв ключей устройства",
-				"tags": [
-					"Encryption"
-				],
-				"security": [
-					{
-						"jwt": []
-					}
-				],
-				"parameters": [
-					{
-						"in": "path",
-						"name": "deviceId",
 						"required": true,
 						"schema": {
 							"type": "string"
@@ -8661,43 +8161,6 @@
 				},
 				"description": "Открепить сообщение.",
 				"summary": "Открепление сообщения",
-				"tags": [
-					"Message"
-				],
-				"security": [
-					{
-						"jwt": []
-					}
-				],
-				"parameters": [
-					{
-						"in": "path",
-						"name": "id",
-						"required": true,
-						"schema": {
-							"type": "string"
-						}
-					}
-				]
-			}
-		},
-		"/api/message/{id}/open": {
-			"post": {
-				"operationId": "MarkMessageOpened",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/MessageDto"
-								}
-							}
-						}
-					}
-				},
-				"description": "Отметить сообщение как открытое (запускает таймер самоуничтожения).",
-				"summary": "Открытие сообщения",
 				"tags": [
 					"Message"
 				],

@@ -26,11 +26,6 @@ import { MessageService } from "./message.service";
 import { EMessageType } from "./message.types";
 import { MarkReadSchema, SendMessageSchema } from "./validation";
 
-/** Object with arbitrary keys — tsoa treats `[key: string]` as additionalProperties. */
-interface JsonObject {
-  [key: string]: any;
-}
-
 interface ISendMessageBody {
   type?: EMessageType;
   content?: string;
@@ -39,9 +34,6 @@ interface ISendMessageBody {
   fileIds?: string[];
   mentionedUserIds?: string[];
   mentionAll?: boolean;
-  encryptedContent?: string;
-  encryptionMetadata?: JsonObject;
-  selfDestructSeconds?: number;
 }
 
 interface IMarkReadBody {

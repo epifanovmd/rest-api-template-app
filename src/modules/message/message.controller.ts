@@ -20,15 +20,8 @@ import { IMessageSearchDto, MessageDto } from "./dto";
 import { MessageService } from "./message.service";
 import { AddReactionSchema, EditMessageSchema } from "./validation";
 
-/** Object with arbitrary keys — tsoa treats `[key: string]` as additionalProperties. */
-interface JsonObject {
-  [key: string]: any;
-}
-
 interface IEditMessageBody {
   content: string;
-  encryptedContent?: string;
-  encryptionMetadata?: JsonObject;
 }
 
 interface IAddReactionBody {
@@ -81,13 +74,7 @@ export class MessageController extends Controller {
   ): Promise<MessageDto> {
     const user = getContextUser(req);
 
-    return this._messageService.editMessage(
-      id,
-      user.userId,
-      body.content,
-      body.encryptedContent,
-      body.encryptionMetadata,
-    );
+    return this._messageService.editMessage(id, user.userId, body.content);
   }
 
   /**
@@ -167,18 +154,4 @@ export class MessageController extends Controller {
     await this._messageService.deleteMessage(id, user.userId);
   }
 
-  /**
-   * Отметить сообщение как открытое (запускает таймер самоуничтожения).
-   * @summary Открытие сообщения
-   */
-  @Security("jwt")
-  @Post("{id}/open")
-  markMessageOpened(
-    @Request() req: KoaRequest,
-    @Path() id: string,
-  ): Promise<MessageDto> {
-    const user = getContextUser(req);
-
-    return this._messageService.markMessageOpened(id, user.userId);
-  }
 }

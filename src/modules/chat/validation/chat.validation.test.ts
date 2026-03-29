@@ -9,7 +9,6 @@ import { CreateDirectChatSchema } from "./create-direct-chat.validate";
 import { CreateFolderSchema } from "./create-folder.validate";
 import { CreateGroupChatSchema } from "./create-group-chat.validate";
 import { CreateInviteSchema } from "./create-invite.validate";
-import { CreateSecretChatSchema } from "./create-secret-chat.validate";
 import { MoveChatToFolderSchema } from "./move-chat-to-folder.validate";
 import { MuteChatSchema } from "./mute-chat.validate";
 import { UpdateChannelSchema } from "./update-channel.validate";
@@ -201,24 +200,6 @@ describe("Chat Validation Schemas", () => {
 
     it("should reject invalid username", () => {
       const result = UpdateChannelSchema.safeParse({ username: "a" });
-
-      expect(result.success).to.be.false;
-    });
-  });
-
-  describe("CreateSecretChatSchema", () => {
-    it("should accept valid UUID", () => {
-      const result = CreateSecretChatSchema.safeParse({
-        targetUserId: validUuid,
-      });
-
-      expect(result.success).to.be.true;
-    });
-
-    it("should reject invalid UUID", () => {
-      const result = CreateSecretChatSchema.safeParse({
-        targetUserId: "bad",
-      });
 
       expect(result.success).to.be.false;
     });

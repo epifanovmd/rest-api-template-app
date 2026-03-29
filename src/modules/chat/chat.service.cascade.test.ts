@@ -50,7 +50,6 @@ describe("ChatService — cascade & additional methods", () => {
     joinedAt: new Date(),
     mutedUntil: null,
     isPinnedChat: false,
-    isArchived: false,
     folderId: null,
     pinnedChatAt: null,
     ...overrides,

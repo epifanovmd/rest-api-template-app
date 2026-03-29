@@ -8,9 +8,7 @@ import { CallModule } from "./modules/call/call.module";
 import { ChatModule } from "./modules/chat";
 import { ChatModerationModule } from "./modules/chat/chat-moderation.module";
 import { ContactModule } from "./modules/contact";
-import { EncryptionModule } from "./modules/encryption/encryption.module";
 import { FileModule } from "./modules/file";
-import { LinkPreviewModule } from "./modules/link-preview/link-preview.module";
 import { MailerModule } from "./modules/mailer";
 import { MessageModule } from "./modules/message";
 import { OtpModule } from "./modules/otp";
@@ -44,10 +42,7 @@ import { UserModule } from "./modules/user";
     AuthModule,
     BiometricModule,
     PasskeysModule,
-    EncryptionModule,
-
     // Мессенджер
-    LinkPreviewModule,
     ContactModule,
     ChatModule,
     ChatModerationModule,

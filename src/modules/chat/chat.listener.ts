@@ -4,7 +4,6 @@ import { EventBus, Injectable } from "../../core";
 import { ISocketEventListener, SocketEmitterService } from "../socket";
 import { ChatDto, ChatLastMessageDto } from "./dto";
 import {
-  ChatArchivedEvent,
   ChatCreatedEvent,
   ChatLastMessageUpdatedEvent,
   ChatMemberJoinedEvent,
@@ -62,13 +61,6 @@ export class ChatListener implements ISocketEventListener {
       this._emitter.toUser(event.userId, "chat:pinned", {
         chatId: event.chatId,
         isPinned: event.isPinned,
-      });
-    });
-
-    this._eventBus.on(ChatArchivedEvent, (event: ChatArchivedEvent) => {
-      this._emitter.toUser(event.userId, "chat:archived", {
-        chatId: event.chatId,
-        isArchived: event.isArchived,
       });
     });
 

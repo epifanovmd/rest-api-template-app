@@ -68,29 +68,8 @@ export class Message {
   @Column({ name: "pinned_by_id", type: "uuid", nullable: true })
   pinnedById: string | null;
 
-  @Column({ name: "encrypted_content", type: "text", nullable: true })
-  encryptedContent: string | null;
-
-  @Column({ name: "encryption_metadata", type: "jsonb", nullable: true })
-  encryptionMetadata: Record<string, unknown> | null;
-
   @Column({ type: "jsonb", nullable: true })
   keyboard: unknown | null;
-
-  @Column({ name: "link_previews", type: "jsonb", nullable: true })
-  linkPreviews: Array<{
-    url: string;
-    title: string | null;
-    description: string | null;
-    imageUrl: string | null;
-    siteName: string | null;
-  }> | null;
-
-  @Column({ name: "self_destruct_seconds", type: "integer", nullable: true })
-  selfDestructSeconds: number | null;
-
-  @Column({ name: "self_destruct_at", type: "timestamp", nullable: true })
-  selfDestructAt: Date | null;
 
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;

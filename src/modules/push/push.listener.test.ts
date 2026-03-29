@@ -159,29 +159,6 @@ describe("PushListener", () => {
       );
     });
 
-    it("should hide content for encrypted messages", async () => {
-      const message = {
-        id: "msg-1",
-        senderId,
-        content: "secret text",
-        encryptedContent: "encrypted-payload",
-        sender: { profile: { firstName: "Alice" } },
-      } as any;
-      const memberUserIds = [senderId, offlineUserId];
-
-      clientRegistry.isOnline.withArgs(senderId).returns(true);
-      clientRegistry.isOnline.withArgs(offlineUserId).returns(false);
-      memberRepo.findMembership.resolves({ mutedUntil: null });
-
-      const event = new MessageCreatedEvent(message, chatId, memberUserIds);
-
-      await eventHandlers["MessageCreatedEvent"](event);
-
-      expect(pushService.sendToUsers.calledOnce).to.be.true;
-      expect(pushService.sendToUsers.firstCall.args[1].body).to.equal(
-        "Зашифрованное сообщение",
-      );
-    });
   });
 
   describe("ContactRequestEvent", () => {

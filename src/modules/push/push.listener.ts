@@ -53,11 +53,7 @@ export class PushListener implements ISocketEventListener {
 
         const senderName =
           event.message.sender?.profile?.firstName ?? "Новое сообщение";
-        // Hide content preview for encrypted messages
-        const isEncrypted = !!event.message.encryptedContent;
-        const body = isEncrypted
-          ? "Зашифрованное сообщение"
-          : event.message.content?.slice(0, 100) ?? "Медиа-сообщение";
+        const body = event.message.content?.slice(0, 100) ?? "Медиа-сообщение";
 
         await this._pushService.sendToUsers(offlineUserIds, {
           title: senderName,

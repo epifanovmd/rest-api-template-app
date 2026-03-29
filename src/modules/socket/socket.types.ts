@@ -25,19 +25,6 @@ export interface ISocketEvents {
   /** Подтвердить доставку сообщений */
   "message:delivered": (data: { chatId: string; messageIds: string[] }) => void;
 
-  // ─── E2E Encryption ───────────────────────────────────────────────────
-  /** Отправить key exchange для секретного чата */
-  "e2e:key-exchange": (data: {
-    chatId: string;
-    targetUserId: string;
-    keyBundle: Record<string, unknown>;
-  }) => void;
-  /** Ratchet step */
-  "e2e:ratchet": (data: {
-    chatId: string;
-    newPublicKey: string;
-  }) => void;
-
   // ─── Call (WebRTC signaling) ──────────────────────────────────────────
   /** Relay SDP offer */
   "call:offer": (data: {
@@ -103,11 +90,6 @@ export interface ISocketEmitEvents {
   "message:status": (
     ...args: [{ messageId: string; chatId: string; status: string }]
   ) => void;
-  /** Сообщение самоуничтожено */
-  "message:self-destructed": (
-    ...args: [{ messageId: string; chatId: string }]
-  ) => void;
-
   /** Новый чат создан */
   "chat:created": (...args: [ChatDto]) => void;
   /** Чат обновлён */
@@ -127,10 +109,6 @@ export interface ISocketEmitEvents {
   /** Чат закреплён/откреплён */
   "chat:pinned": (
     ...args: [{ chatId: string; isPinned: boolean }]
-  ) => void;
-  /** Чат архивирован/разархивирован */
-  "chat:archived": (
-    ...args: [{ chatId: string; isArchived: boolean }]
   ) => void;
   /** Роль участника чата изменена */
   "chat:member:role-changed": (
@@ -188,26 +166,6 @@ export interface ISocketEmitEvents {
   // ─── User events ──────────────────────────────────────────────────────
   /** Email пользователя подтверждён */
   "user:email-verified": (...args: [{ verified: boolean }]) => void;
-
-  // ─── E2E Encryption events ─────────────────────────────────────────────
-  /** Relay key exchange от другого участника */
-  "e2e:key-exchange": (
-    ...args: [
-      {
-        chatId: string;
-        fromUserId: string;
-        keyBundle: Record<string, unknown>;
-      },
-    ]
-  ) => void;
-  /** Relay ratchet step */
-  "e2e:ratchet": (
-    ...args: [{ chatId: string; fromUserId: string; newPublicKey: string }]
-  ) => void;
-  /** Предупреждение о малом количестве prekeys */
-  "e2e:prekeys-low": (...args: [{ count: number }]) => void;
-  /** Устройство отозвано */
-  "e2e:device-revoked": (...args: [{ deviceId: string }]) => void;
 
   // ─── Sync events ───────────────────────────────────────────────────────
   /** Уведомление о наличии новых изменений для sync */

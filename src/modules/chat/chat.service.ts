@@ -18,7 +18,6 @@ import { ChatMember } from "./chat-member.entity";
 import { ChatMemberRepository } from "./chat-member.repository";
 import { ChatDto, ChatFolderDto, ChatInviteDto } from "./dto";
 import {
-  ChatArchivedEvent,
   ChatCreatedEvent,
   ChatMemberJoinedEvent,
   ChatMemberLeftEvent,
@@ -504,37 +503,6 @@ export class ChatService {
     return this._chatRepo.findPublicChannels(query, offset, limit);
   }
 
-  async createSecretChat(userId: string, targetUserId: string) {
-    if (userId === targetUserId) {
-      throw new BadRequestException("Нельзя создать чат с самим собой");
-    }
-
-    const chat = await this._chatRepo.createAndSave({
-      type: EChatType.SECRET,
-      name: null,
-      createdById: userId,
-    });
-
-    await this._memberRepo.createAndSave({
-      chatId: chat.id,
-      userId,
-      role: EChatMemberRole.MEMBER,
-    });
-
-    await this._memberRepo.createAndSave({
-      chatId: chat.id,
-      userId: targetUserId,
-      role: EChatMemberRole.MEMBER,
-    });
-
-    const fullChat = await this._chatRepo.findById(chat.id);
-    const memberUserIds = [userId, targetUserId];
-
-    this._eventBus.emit(new ChatCreatedEvent(fullChat!, memberUserIds));
-
-    return ChatDto.fromEntity(fullChat!);
-  }
-
   async canSendMessage(chatId: string, userId: string): Promise<boolean> {
     const chat = await this._chatRepo.findOne({
       where: { id: chatId },
@@ -701,28 +669,6 @@ export class ChatService {
     await this._memberRepo.save(membership);
 
     this._eventBus.emit(new ChatPinnedEvent(chatId, userId, false));
-
-    return membership;
-  }
-
-  async archiveChat(chatId: string, userId: string) {
-    const membership = await this.assertMembership(chatId, userId);
-
-    membership.isArchived = true;
-    await this._memberRepo.save(membership);
-
-    this._eventBus.emit(new ChatArchivedEvent(chatId, userId, true));
-
-    return membership;
-  }
-
-  async unarchiveChat(chatId: string, userId: string) {
-    const membership = await this.assertMembership(chatId, userId);
-
-    membership.isArchived = false;
-    await this._memberRepo.save(membership);
-
-    this._eventBus.emit(new ChatArchivedEvent(chatId, userId, false));
 
     return membership;
   }

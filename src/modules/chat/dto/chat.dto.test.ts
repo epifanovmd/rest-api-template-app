@@ -13,7 +13,6 @@ const createMemberEntity = (overrides: Record<string, any> = {}) =>
     joinedAt: new Date("2025-01-01"),
     mutedUntil: null,
     isPinnedChat: false,
-    isArchived: false,
     folderId: null,
     user: null,
     ...overrides,
@@ -101,7 +100,6 @@ describe("ChatMemberDto", () => {
   it("fields mapped correctly", () => {
     const entity = createMemberEntity({
       isPinnedChat: true,
-      isArchived: true,
       folderId: "folder-1",
     });
     const dto = ChatMemberDto.fromEntity(entity);
@@ -110,7 +108,6 @@ describe("ChatMemberDto", () => {
     expect(dto.userId).to.equal("user-1");
     expect(dto.role).to.equal(EChatMemberRole.MEMBER);
     expect(dto.isPinnedChat).to.be.true;
-    expect(dto.isArchived).to.be.true;
     expect(dto.folderId).to.equal("folder-1");
   });
 

@@ -2,7 +2,6 @@ export enum EChatType {
   DIRECT = "direct",
   GROUP = "group",
   CHANNEL = "channel",
-  SECRET = "secret",
 }
 
 export enum EChatMemberRole {

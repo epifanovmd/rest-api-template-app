@@ -4,7 +4,6 @@ export * from "./create-direct-chat.validate";
 export * from "./create-folder.validate";
 export * from "./create-group-chat.validate";
 export * from "./create-invite.validate";
-export * from "./create-secret-chat.validate";
 export * from "./move-chat-to-folder.validate";
 export * from "./mute-chat.validate";
 export * from "./update-channel.validate";

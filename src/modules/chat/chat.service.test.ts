@@ -47,7 +47,7 @@ describe("ChatService", () => {
     joinedAt: new Date(),
     mutedUntil: null,
     isPinnedChat: false,
-    isArchived: false,
+
     folderId: null,
     pinnedChatAt: null,
     ...overrides,
@@ -585,35 +585,6 @@ describe("ChatService", () => {
     });
   });
 
-  // ───── createSecretChat ─────
-
-  describe("createSecretChat", () => {
-    it("should create a chat with SECRET type and 2 members", async () => {
-      const fullChat = makeChatEntity({ type: EChatType.SECRET });
-
-      chatRepo.createAndSave.resolves({ id: chatId });
-      (chatRepo as any).findById.resolves(fullChat);
-
-      const result = await service.createSecretChat(userId, targetUserId);
-
-      expect(chatRepo.createAndSave.calledOnce).to.be.true;
-      expect(chatRepo.createAndSave.firstCall.args[0].type).to.equal(EChatType.SECRET);
-      expect(memberRepo.createAndSave.calledTwice).to.be.true;
-      expect(eventBus.emit.calledOnce).to.be.true;
-      expect(eventBus.emit.firstCall.args[0]).to.be.instanceOf(ChatCreatedEvent);
-      expect(result).to.have.property("id", chatId);
-    });
-
-    it("should throw BadRequestException when creating with self", async () => {
-      try {
-        await service.createSecretChat(userId, userId);
-        expect.fail("Should have thrown");
-      } catch (err) {
-        expect(err).to.be.instanceOf(BadRequestException);
-      }
-    });
-  });
-
   // ───── canSendMessage ─────
 
   describe("canSendMessage", () => {
@@ -860,34 +831,6 @@ describe("ChatService", () => {
 
       expect(result.isPinnedChat).to.be.false;
       expect(result.pinnedChatAt).to.be.null;
-      expect(memberRepo.save.calledOnce).to.be.true;
-    });
-  });
-
-  // ───── archiveChat / unarchiveChat ─────
-
-  describe("archiveChat", () => {
-    it("should set isArchived to true", async () => {
-      const membership = makeMembership();
-
-      (memberRepo as any).findMembership.resolves(membership);
-
-      const result = await service.archiveChat(chatId, userId);
-
-      expect(result.isArchived).to.be.true;
-      expect(memberRepo.save.calledOnce).to.be.true;
-    });
-  });
-
-  describe("unarchiveChat", () => {
-    it("should set isArchived to false", async () => {
-      const membership = makeMembership({ isArchived: true });
-
-      (memberRepo as any).findMembership.resolves(membership);
-
-      const result = await service.unarchiveChat(chatId, userId);
-
-      expect(result.isArchived).to.be.false;
       expect(memberRepo.save.calledOnce).to.be.true;
     });
   });

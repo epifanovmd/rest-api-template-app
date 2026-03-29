@@ -35,16 +35,7 @@ describe("Message Validation Schemas", () => {
       expect(result.success).to.be.true;
     });
 
-    it("should accept message with encryptedContent only (E2E)", () => {
-      const result = SendMessageSchema.safeParse({
-        encryptedContent: "base64ciphertext",
-        encryptionMetadata: { header: { publicKey: "abc" } },
-      });
-
-      expect(result.success).to.be.true;
-    });
-
-    it("should reject when neither content nor fileIds nor encryptedContent", () => {
+    it("should reject when neither content nor fileIds", () => {
       const result = SendMessageSchema.safeParse({});
 
       expect(result.success).to.be.false;
@@ -71,24 +62,6 @@ describe("Message Validation Schemas", () => {
       const result = SendMessageSchema.safeParse({
         content: "text",
         replyToId: "not-uuid",
-      });
-
-      expect(result.success).to.be.false;
-    });
-
-    it("should reject selfDestructSeconds below 1", () => {
-      const result = SendMessageSchema.safeParse({
-        content: "text",
-        selfDestructSeconds: 0,
-      });
-
-      expect(result.success).to.be.false;
-    });
-
-    it("should reject selfDestructSeconds above 604800", () => {
-      const result = SendMessageSchema.safeParse({
-        content: "text",
-        selfDestructSeconds: 604801,
       });
 
       expect(result.success).to.be.false;

@@ -27,7 +27,6 @@ import {
   CreateFolderSchema,
   CreateGroupChatSchema,
   CreateInviteSchema,
-  CreateSecretChatSchema,
   MoveChatToFolderSchema,
   MuteChatSchema,
   UpdateChannelSchema,
@@ -72,10 +71,6 @@ interface IUpdateChannelBody {
   username?: string | null;
   avatarId?: string | null;
   isPublic?: boolean;
-}
-
-interface ICreateSecretChatBody {
-  targetUserId: string;
 }
 
 interface ICreateInviteBody {
@@ -232,22 +227,6 @@ export class ChatController extends Controller {
       totalCount,
       data: chats.map(ChatDto.fromEntity),
     };
-  }
-
-  /**
-   * Создать секретный (E2E encrypted) чат.
-   * @summary Создание секретного чата
-   */
-  @Security("jwt")
-  @ValidateBody(CreateSecretChatSchema)
-  @Post("secret")
-  createSecretChat(
-    @Request() req: KoaRequest,
-    @Body() body: ICreateSecretChatBody,
-  ): Promise<ChatDto> {
-    const user = getContextUser(req);
-
-    return this._chatService.createSecretChat(user.userId, body.targetUserId);
   }
 
   /**
@@ -499,38 +478,6 @@ export class ChatController extends Controller {
   ): Promise<ChatMemberDto> {
     const user = getContextUser(req);
     const member = await this._chatService.unpinChat(id, user.userId);
-
-    return ChatMemberDto.fromEntity(member);
-  }
-
-  /**
-   * Архивировать чат.
-   * @summary Архивация чата
-   */
-  @Security("jwt")
-  @Post("{id}/archive")
-  async archiveChat(
-    @Request() req: KoaRequest,
-    @Path() id: string,
-  ): Promise<ChatMemberDto> {
-    const user = getContextUser(req);
-    const member = await this._chatService.archiveChat(id, user.userId);
-
-    return ChatMemberDto.fromEntity(member);
-  }
-
-  /**
-   * Разархивировать чат.
-   * @summary Разархивация чата
-   */
-  @Security("jwt")
-  @Delete("{id}/archive")
-  async unarchiveChat(
-    @Request() req: KoaRequest,
-    @Path() id: string,
-  ): Promise<ChatMemberDto> {
-    const user = getContextUser(req);
-    const member = await this._chatService.unarchiveChat(id, user.userId);
 
     return ChatMemberDto.fromEntity(member);
   }

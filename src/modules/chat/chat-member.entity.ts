@@ -50,9 +50,6 @@ export class ChatMember {
   @Column({ name: "pinned_chat_at", type: "timestamp", nullable: true })
   pinnedChatAt: Date | null;
 
-  @Column({ name: "is_archived", type: "boolean", default: false })
-  isArchived: boolean;
-
   @Column({ name: "folder_id", type: "uuid", nullable: true })
   folderId: string | null;
 

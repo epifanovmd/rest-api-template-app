@@ -40,7 +40,6 @@ describe("MessageService", () => {
   let memberRepo: ReturnType<typeof createMockRepository>;
   let chatService: Record<string, sinon.SinonStub>;
   let eventBus: ReturnType<typeof createMockEventBus>;
-  let linkPreviewService: Record<string, sinon.SinonStub>;
   let sandbox: sinon.SinonSandbox;
 
   const userId = uuid();
@@ -62,12 +61,7 @@ describe("MessageService", () => {
     isPinned: false,
     pinnedAt: null,
     pinnedById: null,
-    encryptedContent: null,
-    encryptionMetadata: null,
     keyboard: null,
-    linkPreviews: null,
-    selfDestructSeconds: null,
-    selfDestructAt: null,
     createdAt: new Date(),
     updatedAt: new Date(),
     sender: null,
@@ -87,9 +81,6 @@ describe("MessageService", () => {
     chatRepo = createMockRepository();
     memberRepo = createMockRepository();
     eventBus = createMockEventBus();
-    linkPreviewService = {
-      getPreviewsForContent: sinon.stub().resolves([]),
-    };
 
     chatService = {
       canSendMessage: sinon.stub().resolves(true),
@@ -106,10 +97,12 @@ describe("MessageService", () => {
       memberRepo as any,
       chatService as any,
       eventBus as any,
-      linkPreviewService as any,
     );
 
     // Default repo stubs
+    (chatRepo as any).findOne = sinon
+      .stub()
+      .resolves({ id: chatId, type: "direct" });
     (messageRepo as any).findById = sinon.stub().resolves(makeMessageEntity());
     (messageRepo as any).findByChatCursor = sinon
       .stub()
@@ -160,14 +153,18 @@ describe("MessageService", () => {
       });
 
       expect(result).to.have.property("id", messageId);
-      expect(eventBus.emit.calledOnce).to.be.true;
+
+      // Ждём fire-and-forget эмиссию событий
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      expect(eventBus.emit.called).to.be.true;
       expect(eventBus.emit.firstCall.args[0]).to.be.instanceOf(
         MessageCreatedEvent,
       );
     });
 
     it("should throw ForbiddenException when user cannot send (non-member)", async () => {
-      chatService.canSendMessage.resolves(false);
+      (memberRepo as any).findMembership.resolves(null);
 
       try {
         await service.sendMessage(chatId, userId, { content: "Hello" });
@@ -178,7 +175,13 @@ describe("MessageService", () => {
     });
 
     it("should throw ForbiddenException for channel subscriber", async () => {
-      chatService.canSendMessage.resolves(false);
+      (chatRepo as any).findOne.resolves({ id: chatId, type: "channel" });
+      (memberRepo as any).findMembership.resolves({
+        id: "mem-1",
+        chatId,
+        userId,
+        role: EChatMemberRole.SUBSCRIBER,
+      });
 
       try {
         await service.sendMessage(chatId, userId, { content: "Hello" });
@@ -235,7 +238,7 @@ describe("MessageService", () => {
       expect(messageRepo.save.calledOnce).to.be.true;
       expect(msg.content).to.equal("Updated");
       expect(msg.isEdited).to.be.true;
-      expect(eventBus.emit.calledOnce).to.be.true;
+      expect(eventBus.emit.called).to.be.true;
       expect(eventBus.emit.firstCall.args[0]).to.be.instanceOf(
         MessageUpdatedEvent,
       );
@@ -730,83 +733,6 @@ describe("MessageService", () => {
         expect.fail("Should have thrown");
       } catch (err) {
         expect(err).to.be.instanceOf(ForbiddenException);
-      }
-    });
-  });
-
-  // ───── markMessageOpened ─────
-
-  describe("markMessageOpened", () => {
-    it("should set selfDestructAt for self-destruct message when recipient opens", async () => {
-      const msg = makeMessageEntity({
-        senderId: otherUserId,
-        selfDestructSeconds: 30,
-        selfDestructAt: null,
-      });
-
-      (messageRepo as any).findById
-        .onFirstCall()
-        .resolves(msg)
-        .onSecondCall()
-        .resolves({ ...msg, selfDestructAt: new Date() });
-
-      const result = await service.markMessageOpened(messageId, userId);
-
-      expect(msg.selfDestructAt).to.be.instanceOf(Date);
-      expect(messageRepo.save.calledOnce).to.be.true;
-    });
-
-    it("should return message without setting timer when sender opens their own", async () => {
-      const msg = makeMessageEntity({
-        selfDestructSeconds: 30,
-        selfDestructAt: null,
-      });
-
-      (messageRepo as any).findById.resolves(msg);
-
-      const result = await service.markMessageOpened(messageId, userId);
-
-      expect(msg.selfDestructAt).to.be.null;
-      expect(messageRepo.save.called).to.be.false;
-    });
-
-    it("should throw BadRequestException when message is not self-destruct", async () => {
-      (messageRepo as any).findById.resolves(
-        makeMessageEntity({ selfDestructSeconds: null }),
-      );
-
-      try {
-        await service.markMessageOpened(messageId, userId);
-        expect.fail("Should have thrown");
-      } catch (err) {
-        expect(err).to.be.instanceOf(BadRequestException);
-      }
-    });
-
-    it("should not reset timer if selfDestructAt is already set", async () => {
-      const existingDate = new Date(Date.now() + 10000);
-      const msg = makeMessageEntity({
-        senderId: otherUserId,
-        selfDestructSeconds: 30,
-        selfDestructAt: existingDate,
-      });
-
-      (messageRepo as any).findById.resolves(msg);
-
-      await service.markMessageOpened(messageId, userId);
-
-      expect(msg.selfDestructAt).to.equal(existingDate);
-      expect(messageRepo.save.called).to.be.false;
-    });
-
-    it("should throw NotFoundException when message does not exist", async () => {
-      (messageRepo as any).findById.resolves(null);
-
-      try {
-        await service.markMessageOpened(messageId, userId);
-        expect.fail("Should have thrown");
-      } catch (err) {
-        expect(err).to.be.instanceOf(NotFoundException);
       }
     });
   });

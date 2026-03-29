@@ -10,7 +10,6 @@ import {
   MessagePinnedEvent,
   MessageReactionEvent,
   MessageReadEvent,
-  MessageSelfDestructStartedEvent,
   MessageUnpinnedEvent,
   MessageUpdatedEvent,
 } from "./events";
@@ -126,18 +125,5 @@ export class MessageListener implements ISocketEventListener {
       });
     });
 
-    this._eventBus.on(
-      MessageSelfDestructStartedEvent,
-      (event: MessageSelfDestructStartedEvent) => {
-        this._emitter.toRoom(
-          `chat_${event.chatId}`,
-          "message:self-destructed",
-          {
-            messageId: event.messageId,
-            chatId: event.chatId,
-          },
-        );
-      },
-    );
   }
 }

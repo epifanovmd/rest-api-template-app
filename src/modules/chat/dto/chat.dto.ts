@@ -15,7 +15,6 @@ export class ChatMemberDto extends BaseDto {
   lastReadMessageId: string | null;
   isPinnedChat: boolean;
   pinnedChatAt: Date | null;
-  isArchived: boolean;
   folderId: string | null;
   profile?: PublicProfileDto;
 
@@ -30,7 +29,6 @@ export class ChatMemberDto extends BaseDto {
     this.lastReadMessageId = entity.lastReadMessageId;
     this.isPinnedChat = entity.isPinnedChat;
     this.pinnedChatAt = entity.pinnedChatAt;
-    this.isArchived = entity.isArchived;
     this.folderId = entity.folderId;
 
     if (entity.user?.profile) {

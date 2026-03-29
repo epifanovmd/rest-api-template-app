@@ -22,23 +22,11 @@ export const SendMessageSchema = z
       .max(50, "Максимум 50 упоминаний")
       .optional(),
     mentionAll: z.boolean().optional(),
-    encryptedContent: z.string().optional(),
-    encryptionMetadata: z.record(z.string(), z.unknown()).optional(),
-    selfDestructSeconds: z
-      .number()
-      .int()
-      .min(1, "Минимум 1 секунда")
-      .max(604800, "Максимум 7 дней")
-      .optional(),
   })
   .refine(
-    data =>
-      data.content ||
-      (data.fileIds && data.fileIds.length > 0) ||
-      data.encryptedContent,
+    data => data.content || (data.fileIds && data.fileIds.length > 0),
     {
-      message:
-        "Необходимо указать текст, прикрепить файл или передать зашифрованное содержимое",
+      message: "Необходимо указать текст или прикрепить файл",
       path: ["content"],
     },
   );

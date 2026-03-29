@@ -48,18 +48,7 @@ export class MessageDto extends BaseDto {
   isPinned: boolean;
   pinnedAt: Date | null;
   pinnedById: string | null;
-  encryptedContent: string | null;
-  encryptionMetadata: Record<string, unknown> | null;
   keyboard: unknown | null;
-  linkPreviews: Array<{
-    url: string;
-    title: string | null;
-    description: string | null;
-    imageUrl: string | null;
-    siteName: string | null;
-  }> | null;
-  selfDestructSeconds: number | null;
-  selfDestructAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
   sender?: {
@@ -89,12 +78,7 @@ export class MessageDto extends BaseDto {
     this.isPinned = entity.isPinned;
     this.pinnedAt = entity.pinnedAt;
     this.pinnedById = entity.pinnedById;
-    this.encryptedContent = entity.encryptedContent;
-    this.encryptionMetadata = entity.encryptionMetadata;
     this.keyboard = entity.keyboard;
-    this.linkPreviews = entity.linkPreviews ?? null;
-    this.selfDestructSeconds = entity.selfDestructSeconds ?? null;
-    this.selfDestructAt = entity.selfDestructAt ?? null;
     this.createdAt = entity.createdAt;
     this.updatedAt = entity.updatedAt;
 

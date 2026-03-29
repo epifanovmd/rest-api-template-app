@@ -11,7 +11,6 @@ import { ChatService } from "../chat/chat.service";
 import { EChatMemberRole, EChatType } from "../chat/chat.types";
 import { ChatMemberRepository } from "../chat/chat-member.repository";
 import { ChatLastMessageUpdatedEvent } from "../chat/events";
-import { LinkPreviewService } from "../link-preview/link-preview.service";
 import { IMediaStatsDto, MediaItemDto, MessageDto } from "./dto";
 import {
   MessageCreatedEvent,
@@ -20,10 +19,10 @@ import {
   MessagePinnedEvent,
   MessageReactionEvent,
   MessageReadEvent,
-  MessageSelfDestructStartedEvent,
   MessageUnpinnedEvent,
   MessageUpdatedEvent,
 } from "./events";
+import { Message } from "./message.entity";
 import { MessageRepository } from "./message.repository";
 import { EMessageStatus, EMessageType } from "./message.types";
 import { MessageAttachmentRepository } from "./message-attachment.repository";
@@ -44,8 +43,6 @@ export class MessageService {
     @inject(ChatMemberRepository) private _memberRepo: ChatMemberRepository,
     @inject(ChatService) private _chatService: ChatService,
     @inject(EventBus) private _eventBus: EventBus,
-    @inject(LinkPreviewService)
-    private _linkPreviewService: LinkPreviewService,
   ) {}
 
   async sendMessage(
@@ -59,34 +56,36 @@ export class MessageService {
       fileIds?: string[];
       mentionedUserIds?: string[];
       mentionAll?: boolean;
-      encryptedContent?: string;
-      encryptionMetadata?: Record<string, unknown>;
-      selfDestructSeconds?: number;
     },
   ) {
-    const canSend = await this._chatService.canSendMessage(chatId, senderId);
+    // Параллельная загрузка чата и членства (вместо canSendMessage + повторного fetch)
+    const [chat, membership] = await Promise.all([
+      this._chatRepo.findOne({
+        where: { id: chatId },
+        select: ["id", "type"],
+      }),
+      this._memberRepo.findMembership(chatId, senderId),
+    ]);
 
-    if (!canSend) {
+    if (!chat) {
+      throw new NotFoundException("Чат не найден");
+    }
+
+    // Проверка прав на отправку
+    if (chat.type === EChatType.CHANNEL) {
+      if (
+        !membership ||
+        (membership.role !== EChatMemberRole.OWNER &&
+          membership.role !== EChatMemberRole.ADMIN)
+      ) {
+        throw new ForbiddenException(
+          "Вы не можете отправлять сообщения в этот чат",
+        );
+      }
+    } else if (!membership) {
       throw new ForbiddenException(
         "Вы не можете отправлять сообщения в этот чат",
       );
-    }
-
-    // Enforce encryption in secret chats
-    const chat = await this._chatRepo.findOne({
-      where: { id: chatId },
-      select: ["id", "type"],
-    });
-
-    if (chat?.type === EChatType.SECRET) {
-      if (!data.encryptedContent) {
-        throw new BadRequestException(
-          "Секретные чаты требуют шифрования. Передайте encryptedContent.",
-        );
-      }
-
-      // Strip plaintext — never store it in secret chats
-      data.content = undefined;
     }
 
     const message = await this._messageRepo.withTransaction(
@@ -98,31 +97,33 @@ export class MessageService {
           content: data.content ?? null,
           replyToId: data.replyToId ?? null,
           forwardedFromId: data.forwardedFromId ?? null,
-          encryptedContent: data.encryptedContent ?? null,
-          encryptionMetadata: data.encryptionMetadata ?? null,
-          selfDestructSeconds: data.selfDestructSeconds ?? null,
         });
 
         const saved = await repo.save(msg);
 
-        // Создаём вложения
-        if (data.fileIds && data.fileIds.length > 0) {
-          const attachmentRepo = em.getRepository("message_attachments");
+        // Вложения и упоминания — параллельно (оба зависят только от saved.id)
+        const batchOps: Promise<unknown>[] = [];
 
-          for (const fileId of data.fileIds) {
-            await attachmentRepo.save({
-              messageId: saved.id,
-              fileId,
-            });
-          }
+        if (data.fileIds && data.fileIds.length > 0) {
+          batchOps.push(
+            em.getRepository("message_attachments").save(
+              data.fileIds.map(fileId => ({
+                messageId: saved.id,
+                fileId,
+              })),
+            ),
+          );
         }
 
-        // Create mentions
         if (data.mentionedUserIds || data.mentionAll) {
-          const mentionRepo = em.getRepository("message_mentions");
+          const mentions: {
+            messageId: string;
+            userId: string | null;
+            isAll: boolean;
+          }[] = [];
 
           if (data.mentionAll) {
-            await mentionRepo.save({
+            mentions.push({
               messageId: saved.id,
               userId: null,
               isAll: true,
@@ -131,69 +132,53 @@ export class MessageService {
 
           if (data.mentionedUserIds) {
             for (const uid of data.mentionedUserIds) {
-              await mentionRepo.save({
+              mentions.push({
                 messageId: saved.id,
                 userId: uid,
                 isAll: false,
               });
             }
           }
+
+          batchOps.push(em.getRepository("message_mentions").save(mentions));
         }
 
-        // Обновляем lastMessage чата.
-        // В секретных чатах не сохраняем plaintext в превью.
-        const isSecretChat = chat?.type === EChatType.SECRET;
-        const previewContent = isSecretChat
-          ? null
-          : (saved.content ?? "").slice(0, 200) || null;
-
-        await em.getRepository("chats").update(
-          { id: chatId },
-          {
-            lastMessageAt: saved.createdAt,
-            lastMessageId: saved.id,
-            lastMessageContent: previewContent,
-            lastMessageType: saved.type,
-            lastMessageSenderId: saved.senderId,
-          },
-        );
+        if (batchOps.length > 0) {
+          await Promise.all(batchOps);
+        }
 
         return saved;
       },
     );
 
+    // Chat lastMessage update — вне транзакции, fire-and-forget
+    // Денормализованный кэш, не требует атомарности с INSERT сообщения
+    const previewContent = (message.content ?? "").slice(0, 200) || null;
+
+    this._chatRepo
+      .update(chatId, {
+        lastMessageAt: message.createdAt,
+        lastMessageId: message.id,
+        lastMessageContent: previewContent,
+        lastMessageType: message.type,
+        lastMessageSenderId: message.senderId,
+      })
+      .catch(err => {
+        logger.warn({ err }, "Failed to update chat lastMessage");
+      });
+
+    // Загрузка сообщения для ответа клиенту
     const fullMessage = await this._messageRepo.findById(message.id);
 
-    const memberUserIds = await this._chatService.getMemberUserIds(chatId);
-
-    this._eventBus.emit(
-      new MessageCreatedEvent(
-        fullMessage!,
-        chatId,
-        memberUserIds,
-        data.mentionedUserIds ?? [],
-        data.mentionAll ?? false,
-      ),
-    );
-
-    // Emit last message update for chat list
-    const updatedChat = await this._chatRepo.findOne({
-      where: { id: chatId },
-      relations: { lastMessageSender: { profile: true } },
+    // Эмиссия событий — fire-and-forget (клиент не ждёт)
+    this._emitSendMessageEvents(
+      chatId,
+      fullMessage!,
+      data.mentionedUserIds ?? [],
+      data.mentionAll ?? false,
+    ).catch(err => {
+      logger.warn({ err }, "Failed to emit message events");
     });
-
-    if (updatedChat) {
-      this._eventBus.emit(
-        new ChatLastMessageUpdatedEvent(updatedChat, memberUserIds),
-      );
-    }
-
-    // Fetch link previews asynchronously
-    if (data.content) {
-      this._fetchAndSaveLinkPreviews(message.id, data.content).catch(err => {
-        logger.warn({ err }, "Failed to fetch link previews");
-      });
-    }
 
     return MessageDto.fromEntity(fullMessage!);
   }
@@ -222,13 +207,7 @@ export class MessageService {
     };
   }
 
-  async editMessage(
-    messageId: string,
-    userId: string,
-    content: string,
-    encryptedContent?: string,
-    encryptionMetadata?: Record<string, unknown>,
-  ) {
+  async editMessage(messageId: string, userId: string, content: string) {
     const message = await this._messageRepo.findById(messageId);
 
     if (!message) {
@@ -243,36 +222,11 @@ export class MessageService {
       throw new BadRequestException("Сообщение удалено");
     }
 
-    // Check if this is a secret chat
-    const chat = await this._chatRepo.findOne({
-      where: { id: message.chatId },
-      select: ["id", "type"],
-    });
-
-    const isSecretChat = chat?.type === EChatType.SECRET;
-
-    if (isSecretChat) {
-      // In secret chats — only encrypted edits allowed
-      if (!encryptedContent) {
-        throw new BadRequestException(
-          "Редактирование в секретном чате требует encryptedContent",
-        );
-      }
-
-      message.encryptedContent = encryptedContent;
-      message.encryptionMetadata = encryptionMetadata ?? message.encryptionMetadata;
-      message.content = null; // Never store plaintext
-    } else {
-      message.content = content;
-    }
-
+    message.content = content;
     message.isEdited = true;
     await this._messageRepo.save(message);
 
-    // Sync denormalized lastMessage content (null for secret chats)
-    const previewContent = isSecretChat
-      ? null
-      : content.slice(0, 200) || null;
+    const previewContent = content.slice(0, 200) || null;
 
     const editResult = await this._chatRepo
       .createQueryBuilder()
@@ -314,15 +268,16 @@ export class MessageService {
       }
     }
 
-    // Soft delete — clear both plaintext and ciphertext
+    // Soft delete
     message.isDeleted = true;
     message.content = null;
-    message.encryptedContent = null;
-    message.encryptionMetadata = null;
     await this._messageRepo.save(message);
 
     // Recalculate lastMessage if this was the last message in chat
-    const wasLastMessage = await this._recalcLastMessage(message.chatId, messageId);
+    const wasLastMessage = await this._recalcLastMessage(
+      message.chatId,
+      messageId,
+    );
 
     this._eventBus.emit(new MessageDeletedEvent(messageId, message.chatId));
 
@@ -642,41 +597,36 @@ export class MessageService {
     return qb.getCount();
   }
 
-  /** Отметить сообщение как открытое (для самоуничтожения). */
-  async markMessageOpened(messageId: string, userId: string) {
-    const message = await this._messageRepo.findById(messageId);
+  /** Эмиссия событий после отправки сообщения (fire-and-forget). */
+  private async _emitSendMessageEvents(
+    chatId: string,
+    message: Message,
+    mentionedUserIds: string[],
+    mentionAll: boolean,
+  ) {
+    const [memberUserIds, updatedChat] = await Promise.all([
+      this._chatService.getMemberUserIds(chatId),
+      this._chatRepo.findOne({
+        where: { id: chatId },
+        relations: { lastMessageSender: { profile: true } },
+      }),
+    ]);
 
-    if (!message) {
-      throw new NotFoundException("Сообщение не найдено");
-    }
+    this._eventBus.emit(
+      new MessageCreatedEvent(
+        message,
+        chatId,
+        memberUserIds,
+        mentionedUserIds,
+        mentionAll,
+      ),
+    );
 
-    if (!message.selfDestructSeconds) {
-      throw new BadRequestException("Сообщение не является самоуничтожаемым");
-    }
-
-    // Only the recipient (non-sender) can trigger the self-destruct timer
-    if (message.senderId === userId) {
-      return MessageDto.fromEntity(message);
-    }
-
-    if (!message.selfDestructAt) {
-      message.selfDestructAt = new Date(
-        Date.now() + message.selfDestructSeconds * 1000,
-      );
-      await this._messageRepo.save(message);
-
+    if (updatedChat) {
       this._eventBus.emit(
-        new MessageSelfDestructStartedEvent(
-          messageId,
-          message.chatId,
-          message.selfDestructAt,
-        ),
+        new ChatLastMessageUpdatedEvent(updatedChat, memberUserIds),
       );
     }
-
-    const updated = await this._messageRepo.findById(messageId);
-
-    return MessageDto.fromEntity(updated!);
   }
 
   /** Отправить событие обновления lastMessage для чата. */
@@ -690,13 +640,14 @@ export class MessageService {
 
     const memberUserIds = await this._chatService.getMemberUserIds(chatId);
 
-    this._eventBus.emit(
-      new ChatLastMessageUpdatedEvent(chat, memberUserIds),
-    );
+    this._eventBus.emit(new ChatLastMessageUpdatedEvent(chat, memberUserIds));
   }
 
   /** Пересчитать денормализованное lastMessage для чата, если удалённое сообщение было последним. */
-  private async _recalcLastMessage(chatId: string, deletedMessageId: string): Promise<boolean> {
+  private async _recalcLastMessage(
+    chatId: string,
+    deletedMessageId: string,
+  ): Promise<boolean> {
     const chat = await this._chatRepo.findOne({
       where: { id: chatId },
       select: ["id", "type", "lastMessageId"],
@@ -712,13 +663,9 @@ export class MessageService {
     });
 
     if (prev) {
-      const isSecret = chat?.type === EChatType.SECRET;
-
       await this._chatRepo.update(chatId, {
         lastMessageId: prev.id,
-        lastMessageContent: isSecret
-          ? null
-          : (prev.content ?? "").slice(0, 200) || null,
+        lastMessageContent: (prev.content ?? "").slice(0, 200) || null,
         lastMessageType: prev.type,
         lastMessageSenderId: prev.senderId,
         lastMessageAt: prev.createdAt,
@@ -734,18 +681,5 @@ export class MessageService {
     }
 
     return true;
-  }
-
-  /** Внутренний метод: получить и сохранить link previews для сообщения. */
-  private async _fetchAndSaveLinkPreviews(messageId: string, content: string) {
-    const previews = await this._linkPreviewService.getPreviewsForContent(
-      content,
-    );
-
-    if (previews.length > 0) {
-      await this._messageRepo.update(messageId, {
-        linkPreviews: previews,
-      });
-    }
   }
 }
