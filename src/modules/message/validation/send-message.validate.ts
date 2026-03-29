@@ -8,8 +8,8 @@ export const SendMessageSchema = z
     content: z
       .string()
       .trim()
-      .min(1, "Сообщение не должно быть пустым")
       .max(4000, "Сообщение не должно превышать 4000 символов")
+      .transform(v => (v === "" ? undefined : v))
       .optional(),
     replyToId: z.string().uuid("Некорректный UUID").optional(),
     forwardedFromId: z.string().uuid("Некорректный UUID").optional(),

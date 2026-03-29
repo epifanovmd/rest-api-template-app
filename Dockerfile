@@ -29,7 +29,7 @@ COPY package*.json yarn.lock ./
 COPY ./patches ./patches
 
 RUN apk update && \
-    apk add --no-cache curl && \
+    apk add --no-cache curl ffmpeg && \
     mkdir -p /app/files && \
     chown -R node:node /app
 

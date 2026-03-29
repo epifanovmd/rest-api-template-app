@@ -81,12 +81,25 @@
 						"type": "string",
 						"nullable": true
 					},
+					"mediumUrl": {
+						"type": "string",
+						"nullable": true
+					},
+					"blurhash": {
+						"type": "string",
+						"nullable": true
+					},
 					"width": {
 						"type": "number",
 						"format": "double",
 						"nullable": true
 					},
 					"height": {
+						"type": "number",
+						"format": "double",
+						"nullable": true
+					},
+					"duration": {
 						"type": "number",
 						"format": "double",
 						"nullable": true
@@ -107,8 +120,11 @@
 					"url",
 					"size",
 					"thumbnailUrl",
+					"mediumUrl",
+					"blurhash",
 					"width",
 					"height",
+					"duration",
 					"createdAt",
 					"updatedAt"
 				],

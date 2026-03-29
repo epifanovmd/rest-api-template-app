@@ -2,7 +2,6 @@ import { NotFoundException } from "@force-dev/utils";
 import fs from "fs/promises";
 import { inject } from "inversify";
 import path from "path";
-import sharp from "sharp";
 import { File } from "tsoa";
 import { v4 } from "uuid";
 
@@ -10,11 +9,13 @@ import { config } from "../../config";
 import { EventBus, Injectable, logger } from "../../core";
 import { FileUploadedEvent } from "./events";
 import { FileRepository } from "./file.repository";
+import { MediaProcessorService } from "./media-processor.service";
 
 @Injectable()
 export class FileService {
   constructor(
     @inject(FileRepository) private _fileRepository: FileRepository,
+    @inject(MediaProcessorService) private _mediaProcessor: MediaProcessorService,
     @inject(EventBus) private _eventBus: EventBus,
   ) {}
 
@@ -33,51 +34,51 @@ export class FileService {
       files.map(async file => {
         const id = v4();
 
-        let thumbnailUrl: string | null = null;
+        let url = file.path;
+        let size = file.size;
         let width: number | null = null;
         let height: number | null = null;
+        let thumbnailUrl: string | null = null;
+        let mediumUrl: string | null = null;
+        let blurhash: string | null = null;
+        let duration: number | null = null;
 
-        // Generate thumbnail for images
         if (file.mimetype.startsWith("image/")) {
-          try {
-            const image = sharp(file.path);
-            const metadata = await image.metadata();
+          const result = await this._mediaProcessor.processImage(file.path, id);
 
-            width = metadata.width ?? null;
-            height = metadata.height ?? null;
+          url = result.url;
+          size = result.size;
+          width = result.width;
+          height = result.height;
+          thumbnailUrl = result.thumbnailUrl;
+          mediumUrl = result.mediumUrl;
+          blurhash = result.blurhash;
+        } else if (file.mimetype.startsWith("video/")) {
+          const result = await this._mediaProcessor.processVideo(file.path, id);
 
-            const thumbFilename = `${id}_thumb.webp`;
-            const thumbPath = path.join(
-              path.dirname(file.path),
-              thumbFilename,
-            );
+          thumbnailUrl = result.thumbnailUrl;
+          mediumUrl = result.mediumUrl;
+          width = result.width;
+          height = result.height;
+          duration = result.duration;
+        } else if (file.mimetype.startsWith("audio/")) {
+          const result = await this._mediaProcessor.processAudio(file.path);
 
-            await image
-              .resize(200, 200, { fit: "inside", withoutEnlargement: true })
-              .webp({ quality: 70 })
-              .toFile(thumbPath);
-
-            const urlDir = path.dirname(file.path);
-            const relThumbUrl = path.join(
-              path.basename(urlDir),
-              thumbFilename,
-            );
-
-            thumbnailUrl = `/${relThumbUrl}`;
-          } catch (err) {
-            logger.error({ err }, "Failed to generate thumbnail");
-          }
+          duration = result.duration;
         }
 
         return this._fileRepository.createAndSave({
           id,
           name: file.originalname,
           type: file.mimetype,
-          url: file.path,
-          size: file.size,
+          url,
+          size,
           thumbnailUrl,
+          mediumUrl,
+          blurhash,
           width,
           height,
+          duration,
         });
       }),
     );

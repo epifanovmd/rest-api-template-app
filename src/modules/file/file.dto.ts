@@ -5,8 +5,11 @@ export interface IFileDto {
   url: string;
   size: number;
   thumbnailUrl: string | null;
+  mediumUrl: string | null;
+  blurhash: string | null;
   width: number | null;
   height: number | null;
+  duration: number | null;
   createdAt: Date;
   updatedAt: Date;
 }

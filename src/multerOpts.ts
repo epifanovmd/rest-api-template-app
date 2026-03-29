@@ -10,7 +10,21 @@ const ALLOWED_MIME_TYPES = new Set([
   "image/png",
   "image/gif",
   "image/webp",
-  "image/svg+xml",
+  "image/heic",
+  "image/heif",
+  // Видео
+  "video/mp4",
+  "video/quicktime",
+  "video/webm",
+  "video/x-matroska",
+  // Аудио
+  "audio/mpeg",
+  "audio/mp4",
+  "audio/ogg",
+  "audio/webm",
+  "audio/wav",
+  "audio/x-m4a",
+  "audio/aac",
   // Документы
   "application/pdf",
   "application/msword",
@@ -25,6 +39,8 @@ const ALLOWED_MIME_TYPES = new Set([
   "text/csv",
 ]);
 
+const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100 MB
+
 const multerOpts: multer.Options = {
   storage: multer.diskStorage({
     destination(_req, _file, cb) {
@@ -36,6 +52,9 @@ const multerOpts: multer.Options = {
       cb(null, `${v4()}${ext}`);
     },
   }),
+  limits: {
+    fileSize: MAX_FILE_SIZE,
+  },
   fileFilter(_req, file, cb) {
     if (ALLOWED_MIME_TYPES.has(file.mimetype)) {
       cb(null, true);

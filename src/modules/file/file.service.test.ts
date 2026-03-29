@@ -48,7 +48,31 @@ describe("FileService", () => {
 
     (fileRepo as any).findById = sinon.stub().resolves(null);
 
-    service = new FileService(fileRepo as any, createMockEventBus() as any);
+    const mockMediaProcessor = {
+      processImage: sinon.stub().resolves({
+        url: "/tmp/processed.webp",
+        size: 512,
+        width: 800,
+        height: 600,
+        thumbnailUrl: "/uploads/thumb.webp",
+        mediumUrl: "/uploads/medium.webp",
+        blurhash: "LEHV6nWB2yk8",
+      }),
+      processVideo: sinon.stub().resolves({
+        thumbnailUrl: "/uploads/thumb.webp",
+        mediumUrl: "/uploads/medium.webp",
+        width: 1920,
+        height: 1080,
+        duration: 30.5,
+      }),
+      processAudio: sinon.stub().resolves({ duration: 120.0 }),
+    };
+
+    service = new FileService(
+      fileRepo as any,
+      mockMediaProcessor as any,
+      createMockEventBus() as any,
+    );
   });
 
   afterEach(() => sandbox.restore());

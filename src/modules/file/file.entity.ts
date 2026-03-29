@@ -32,6 +32,15 @@ export class File {
   @Column({ type: "int", nullable: true })
   height: number | null;
 
+  @Column({ name: "medium_url", type: "varchar", length: 2048, nullable: true })
+  mediumUrl: string | null;
+
+  @Column({ type: "varchar", length: 100, nullable: true })
+  blurhash: string | null;
+
+  @Column({ type: "float", nullable: true })
+  duration: number | null;
+
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 
@@ -46,8 +55,11 @@ export class File {
       url: this.url,
       size: this.size,
       thumbnailUrl: this.thumbnailUrl,
+      mediumUrl: this.mediumUrl,
+      blurhash: this.blurhash,
       width: this.width,
       height: this.height,
+      duration: this.duration,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
     };
