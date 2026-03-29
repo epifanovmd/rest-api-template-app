@@ -12,9 +12,10 @@ import type {
 import { inject } from "inversify";
 
 import { config } from "../../config";
-import { Injectable, TokenService } from "../../core";
+import { Injectable } from "../../core";
 import { SessionService } from "../session/session.service";
 import { UserService } from "../user";
+import { PasskeyChallengeRepository } from "./passkey-challenge.repository";
 import { PasskeysRepository } from "./passkeys.repository";
 
 const { webAuthn } = config.auth;
@@ -28,8 +29,8 @@ const origin = `${webAuthn.rpSchema}://${rpID}${port}`;
 export class PasskeysService {
   constructor(
     @inject(UserService) private _userService: UserService,
-    @inject(TokenService) private _tokenService: TokenService,
     @inject(PasskeysRepository) private _passkeysRepository: PasskeysRepository,
+    @inject(PasskeyChallengeRepository) private _challengeRepo: PasskeyChallengeRepository,
     @inject(SessionService) private _sessionService: SessionService,
   ) {}
 
@@ -69,7 +70,7 @@ export class PasskeysService {
       timeout: 60000,
     });
 
-    await this._userService.setChallenge(user.id, options.challenge);
+    await this._challengeRepo.createChallenge(user.id, options.challenge);
 
     return options;
   }
@@ -79,17 +80,12 @@ export class PasskeysService {
    * Вызывается авторизованным пользователем.
    */
   async verifyRegistration(userId: string, data: RegistrationResponseJSON) {
-    const user = await this._userService.getUser(userId);
+    const challengeRecord = await this._challengeRepo.findValidChallenge(userId);
 
-    if (!user.challenge) {
+    if (!challengeRecord) {
       throw new InternalServerErrorException(
-        "Challenge не найден. Сначала вызовите generate-registration-options.",
+        "Challenge не найден или истёк. Сначала вызовите generate-registration-options.",
       );
-    }
-
-    if (!user.challengeExpiresAt || user.challengeExpiresAt < new Date()) {
-      await this._userService.setChallenge(userId, null);
-      throw new InternalServerErrorException("Challenge истёк");
     }
 
     let verification;
@@ -97,7 +93,7 @@ export class PasskeysService {
     try {
       verification = await verifyRegistrationResponse({
         response: data,
-        expectedChallenge: user.challenge,
+        expectedChallenge: challengeRecord.challenge,
         expectedOrigin: origin,
         expectedRPID: rpID,
       });
@@ -117,8 +113,7 @@ export class PasskeysService {
         transports: credential.transports,
       });
 
-      // Сбрасываем challenge после успешной регистрации
-      await this._userService.setChallenge(userId, null);
+      await this._challengeRepo.deleteByUserId(userId);
     }
 
     return { verified: verification.verified };
@@ -160,7 +155,7 @@ export class PasskeysService {
       timeout: 60000,
     });
 
-    await this._userService.setChallenge(user.id, options.challenge);
+    await this._challengeRepo.createChallenge(user.id, options.challenge);
 
     return options;
   }
@@ -177,16 +172,12 @@ export class PasskeysService {
     }
 
     const user = await this._userService.getUser(passkey.userId);
+    const challengeRecord = await this._challengeRepo.findValidChallenge(user.id);
 
-    if (!user.challenge) {
+    if (!challengeRecord) {
       throw new InternalServerErrorException(
-        "Challenge не найден. Сначала вызовите generate-authentication-options.",
+        "Challenge не найден или истёк. Сначала вызовите generate-authentication-options.",
       );
-    }
-
-    if (!user.challengeExpiresAt || user.challengeExpiresAt < new Date()) {
-      await this._userService.setChallenge(user.id, null);
-      throw new InternalServerErrorException("Challenge истёк");
     }
 
     let verifyData;
@@ -194,7 +185,7 @@ export class PasskeysService {
     try {
       verifyData = await verifyAuthenticationResponse({
         response: data,
-        expectedChallenge: user.challenge,
+        expectedChallenge: challengeRecord.challenge,
         expectedOrigin: origin,
         expectedRPID: rpID,
         credential: {
@@ -213,21 +204,18 @@ export class PasskeysService {
       passkey.lastUsed = new Date();
       await this._passkeysRepository.save(passkey);
 
-      // Сбрасываем challenge после успешной аутентификации
-      await this._userService.setChallenge(user.id, null);
+      await this._challengeRepo.deleteByUserId(user.id);
     }
 
     let tokens;
 
     if (verifyData.verified) {
-      const session = await this._sessionService.createSession({
-        userId: user.id,
-        refreshToken: "pending",
-        deviceName: "passkey",
-      });
+      const result = await this._sessionService.createAuthenticatedSession(
+        user,
+        { deviceName: "passkey" },
+      );
 
-      tokens = await this._tokenService.issue(user, session.id);
-      await this._sessionService.updateRefreshToken(session.id, tokens.refreshToken);
+      tokens = result.tokens;
     }
 
     return {

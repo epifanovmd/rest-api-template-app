@@ -30,7 +30,7 @@ export class MessageAttachment {
   @JoinColumn({ name: "message_id" })
   message: Message;
 
-  @ManyToOne(() => File, { onDelete: "CASCADE", eager: true })
+  @ManyToOne(() => File, { onDelete: "CASCADE" })
   @JoinColumn({ name: "file_id" })
   file: File;
 }

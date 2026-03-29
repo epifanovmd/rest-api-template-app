@@ -32,6 +32,7 @@ describe("PushListener", () => {
 
     memberRepo = {
       findMembership: sinon.stub().resolves(null),
+      findMembershipsByChat: sinon.stub().resolves([]),
     };
 
     eventHandlers = {};
@@ -71,8 +72,10 @@ describe("PushListener", () => {
       // sender is online, offlineUserId is offline
       clientRegistry.isOnline.withArgs(senderId).returns(true);
       clientRegistry.isOnline.withArgs(offlineUserId).returns(false);
-      // Not muted
-      memberRepo.findMembership.resolves({ mutedUntil: null });
+      // Not muted — batch returns memberships without active mute
+      memberRepo.findMembershipsByChat.resolves([
+        { userId: offlineUserId, mutedUntil: null },
+      ]);
 
       const event = new MessageCreatedEvent(message, chatId, memberUserIds);
 
@@ -103,7 +106,9 @@ describe("PushListener", () => {
       // mutedUserId is muted until far future
       const future = new Date(Date.now() + 100000000);
 
-      memberRepo.findMembership.resolves({ mutedUntil: future });
+      memberRepo.findMembershipsByChat.resolves([
+        { userId: mutedUserId, mutedUntil: future },
+      ]);
 
       const event = new MessageCreatedEvent(message, chatId, memberUserIds);
 
@@ -126,13 +131,11 @@ describe("PushListener", () => {
 
       const future = new Date(Date.now() + 100000000);
 
-      // offlineUserId not muted, mutedUserId is muted
-      memberRepo.findMembership.withArgs(chatId, offlineUserId).resolves({
-        mutedUntil: null,
-      });
-      memberRepo.findMembership.withArgs(chatId, mutedUserId).resolves({
-        mutedUntil: future,
-      });
+      // offlineUserId not muted, mutedUserId is muted — batch response
+      memberRepo.findMembershipsByChat.resolves([
+        { userId: offlineUserId, mutedUntil: null },
+        { userId: mutedUserId, mutedUntil: future },
+      ]);
 
       const event = new MessageCreatedEvent(
         message,

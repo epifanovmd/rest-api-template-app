@@ -15,14 +15,8 @@ import { getContextUser, Injectable, ValidateBody } from "../../core";
 import { KoaRequest } from "../../types/koa";
 import { DeviceTokenService } from "./device-token.service";
 import { DeviceTokenDto } from "./dto";
-import { EDevicePlatform } from "./push.types";
+import { IRegisterDeviceBody } from "./dto/push-request.dto";
 import { RegisterDeviceSchema } from "./validation";
-
-interface IRegisterDeviceBody {
-  token: string;
-  platform: EDevicePlatform;
-  deviceName?: string;
-}
 
 @Injectable()
 @Tags("Push")

@@ -2,6 +2,7 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  Index,
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
@@ -13,6 +14,10 @@ import { User } from "../user/user.entity";
 import { ECallStatus, ECallType } from "./call.types";
 
 @Entity("calls")
+@Index("IDX_CALLS_CALLER", ["callerId"])
+@Index("IDX_CALLS_CALLEE", ["calleeId"])
+@Index("IDX_CALLS_CHAT", ["chatId"])
+@Index("IDX_CALLS_STATUS", ["status"])
 export class Call {
   @PrimaryGeneratedColumn("uuid")
   id: string;

@@ -6,12 +6,7 @@ import { Injectable } from "../../core";
 import { logger } from "../../core/logger";
 import { DeviceTokenRepository } from "./device-token.repository";
 import { NotificationSettingsRepository } from "./notification-settings.repository";
-
-interface IPushPayload {
-  title: string;
-  body: string;
-  data?: Record<string, string>;
-}
+import { IPushPayload } from "./push.types";
 
 @Injectable()
 export class PushService {
@@ -73,19 +68,16 @@ export class PushService {
 
     if (tokens.length === 0) return;
 
-    // Фильтруем пользователей с mute_all
-    const userIdsSet = new Set(userIds);
-    const filteredTokens: string[] = [];
+    // Batch-загрузка настроек уведомлений (вместо N+1 цикла)
+    const uniqueUserIds = [...new Set(tokens.map(t => t.userId))];
+    const allSettings = await this._settingsRepo.findByUserIds(uniqueUserIds);
+    const mutedUserIds = new Set(
+      allSettings.filter(s => s.muteAll).map(s => s.userId),
+    );
 
-    for (const token of tokens) {
-      if (!userIdsSet.has(token.userId)) continue;
-
-      const settings = await this._settingsRepo.findByUserId(token.userId);
-
-      if (!settings?.muteAll) {
-        filteredTokens.push(token.token);
-      }
-    }
+    const filteredTokens = tokens
+      .filter(t => !mutedUserIds.has(t.userId))
+      .map(t => t.token);
 
     if (filteredTokens.length === 0) return;
 
@@ -127,9 +119,9 @@ export class PushService {
           }
         });
 
-        for (const token of invalidTokens) {
-          await this._tokenRepo.deleteByToken(token);
-          logger.info({ token: token.slice(0, 10) + "..." }, "Removed invalid FCM token");
+        if (invalidTokens.length > 0) {
+          await this._tokenRepo.deleteByTokens(invalidTokens);
+          logger.info({ count: invalidTokens.length }, "Removed invalid FCM tokens");
         }
       }
     } catch (err) {

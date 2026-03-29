@@ -27,7 +27,7 @@ export class Role {
   updatedAt: Date;
 
   // Связи
-  @ManyToMany(() => Permission, permission => permission.roles, { eager: true })
+  @ManyToMany(() => Permission, permission => permission.roles)
   @JoinTable({
     name: "role_permissions",
     joinColumn: { name: "role_id" },

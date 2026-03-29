@@ -134,7 +134,11 @@ export class UserService {
 
   /** Обновить данные пользователя и вернуть обновлённую запись. */
   async updateUser(id: string, body: IUserUpdateRequestDto) {
-    const user = await this._userRepository.updateWithResponse(id, body);
+    const user = await this._userRepository.updateWithResponse(
+      id,
+      body,
+      UserService.relations,
+    );
 
     if (!user) {
       throw new NotFoundException("Пользователь не найден");
@@ -143,13 +147,15 @@ export class UserService {
     return user;
   }
 
-  /** Установить или сбросить WebAuthn challenge для пользователя (TTL 5 минут). */
-  async setChallenge(id: string, challenge: string | null) {
-    await this._userRepository.update(id, {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      challenge: challenge as any,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      challengeExpiresAt: challenge ? new Date(Date.now() + 5 * 60 * 1000) as any : null,
+  /** Обновить 2FA credentials пользователя. */
+  async update2FA(
+    userId: string,
+    twoFactorHash: string | null,
+    twoFactorHint: string | null,
+  ): Promise<void> {
+    await this._userRepository.update(userId, {
+      twoFactorHash: twoFactorHash as string,
+      twoFactorHint: twoFactorHint as string,
     });
   }
 

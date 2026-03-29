@@ -12,6 +12,7 @@ export class MessageRepository extends BaseRepository<Message> {
         replyTo: { sender: { profile: true } },
         attachments: { file: true },
         reactions: true,
+        mentions: true,
       },
     });
   }
@@ -30,6 +31,7 @@ export class MessageRepository extends BaseRepository<Message> {
       .leftJoinAndSelect("message.attachments", "attachments")
       .leftJoinAndSelect("attachments.file", "file")
       .leftJoinAndSelect("message.reactions", "reactions")
+      .leftJoinAndSelect("message.mentions", "mentions")
       .where("message.chatId = :chatId", { chatId })
       .orderBy("message.createdAt", "DESC")
       .take(limit + 1); // +1 для определения hasMore

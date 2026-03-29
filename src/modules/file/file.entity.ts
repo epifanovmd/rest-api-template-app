@@ -2,12 +2,9 @@ import {
   Column,
   CreateDateColumn,
   Entity,
-  OneToMany,
   PrimaryColumn,
   UpdateDateColumn,
 } from "typeorm";
-
-import { Profile } from "../profile/profile.entity";
 
 @Entity("files")
 export class File {
@@ -40,10 +37,6 @@ export class File {
 
   @UpdateDateColumn({ name: "updated_at" })
   updatedAt: Date;
-
-  // Relations
-  @OneToMany(() => Profile, profile => profile.avatar)
-  avatarProfiles: Profile[];
 
   toDTO() {
     return {

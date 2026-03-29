@@ -1,3 +1,5 @@
+import { In } from "typeorm";
+
 import { InjectableRepository } from "../../core";
 import { BaseRepository } from "../../core/repository/repository";
 import { ChatMember } from "./chat-member.entity";
@@ -7,6 +9,14 @@ export class ChatMemberRepository extends BaseRepository<ChatMember> {
   async findMembership(chatId: string, userId: string) {
     return this.findOne({
       where: { chatId, userId },
+    });
+  }
+
+  async findMembershipsByChat(chatId: string, userIds: string[]): Promise<ChatMember[]> {
+    if (userIds.length === 0) return [];
+
+    return this.find({
+      where: { chatId, userId: In(userIds) },
     });
   }
 

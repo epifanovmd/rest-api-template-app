@@ -13,8 +13,8 @@ import { PasskeysService } from "./passkeys.service";
 describe("PasskeysService", () => {
   let service: PasskeysService;
   let userService: Record<string, sinon.SinonStub>;
-  let tokenService: Record<string, sinon.SinonStub>;
   let passkeysRepo: ReturnType<typeof createMockRepository> & Record<string, sinon.SinonStub>;
+  let sessionService: Record<string, sinon.SinonStub>;
   let sandbox: sinon.SinonSandbox;
 
   const userId = uuid();
@@ -47,10 +47,12 @@ describe("PasskeysService", () => {
     userService = {
       getUser: sinon.stub().resolves(makeUser()),
       getUserByAttr: sinon.stub().resolves(makeUser()),
-      setChallenge: sinon.stub().resolves(),
     };
-    tokenService = {
-      issue: sinon.stub().resolves({ accessToken: "at", refreshToken: "rt" }),
+    sessionService = {
+      createAuthenticatedSession: sinon.stub().resolves({
+        sessionId: "session-1",
+        tokens: { accessToken: "at", refreshToken: "rt" },
+      }),
     };
 
     // Custom repo methods
@@ -58,11 +60,17 @@ describe("PasskeysService", () => {
     passkeysRepo.findByUserId = sinon.stub().resolves([]);
     passkeysRepo.findByUserIdAndId = sinon.stub().resolves(null);
 
+    const challengeRepo = {
+      createChallenge: sinon.stub().resolves({ id: "ch-1", challenge: "test-challenge" }),
+      findValidChallenge: sinon.stub().resolves({ challenge: "test-challenge" }),
+      deleteByUserId: sinon.stub().resolves(),
+    };
+
     service = new PasskeysService(
       userService as any,
-      tokenService as any,
       passkeysRepo as any,
-      { create: sinon.stub().resolves({ id: "session-1" }) } as any,
+      challengeRepo as any,
+      sessionService as any,
     );
   });
 
@@ -90,45 +98,22 @@ describe("PasskeysService", () => {
   // ───── verifyRegistration ─────
 
   describe("verifyRegistration", () => {
-    it("should throw InternalServerErrorException when no challenge", async () => {
-      userService.getUser.resolves(makeUser({ challenge: null }));
+    it("should throw InternalServerErrorException when no valid challenge", async () => {
+      // challengeRepo.findValidChallenge returns null by default in beforeEach override
+      const challengeRepo = (service as any)._challengeRepo;
+
+      challengeRepo.findValidChallenge = sinon.stub().resolves(null);
 
       try {
         await service.verifyRegistration(userId, {} as any);
         expect.fail("Should have thrown");
       } catch (err) {
         expect(err).to.be.instanceOf(InternalServerErrorException);
-        expect((err as any).message).to.include("Challenge не найден");
-      }
-    });
-
-    it("should clear challenge and throw when expired", async () => {
-      userService.getUser.resolves(
-        makeUser({
-          challenge: "old-challenge",
-          challengeExpiresAt: new Date(Date.now() - 10000),
-        }),
-      );
-
-      try {
-        await service.verifyRegistration(userId, {} as any);
-        expect.fail("Should have thrown");
-      } catch (err) {
-        expect(err).to.be.instanceOf(InternalServerErrorException);
-        expect((err as any).message).to.include("Challenge истёк");
-        expect(userService.setChallenge.calledOnceWith(userId, null)).to.be.true;
+        expect((err as any).message).to.include("Challenge не найден или истёк");
       }
     });
 
     it("should throw InternalServerErrorException when verification fails", async () => {
-      // Provide valid challenge but the actual verifyRegistrationResponse will fail
-      // because we pass empty data
-      userService.getUser.resolves(
-        makeUser({
-          challenge: "valid-challenge",
-          challengeExpiresAt: new Date(Date.now() + 300000),
-        }),
-      );
 
       try {
         await service.verifyRegistration(userId, {} as any);
@@ -209,46 +194,26 @@ describe("PasskeysService", () => {
       }
     });
 
-    it("should throw InternalServerErrorException when no challenge", async () => {
+    it("should throw InternalServerErrorException when no valid challenge", async () => {
       passkeysRepo.findById.resolves(makePasskey());
-      userService.getUser.resolves(makeUser({ challenge: null }));
+      userService.getUser.resolves(makeUser());
+
+      const challengeRepo = (service as any)._challengeRepo;
+
+      challengeRepo.findValidChallenge = sinon.stub().resolves(null);
 
       try {
         await service.verifyAuthentication({ id: passkeyId } as any);
         expect.fail("Should have thrown");
       } catch (err) {
         expect(err).to.be.instanceOf(InternalServerErrorException);
-        expect((err as any).message).to.include("Challenge не найден");
-      }
-    });
-
-    it("should clear challenge and throw when expired", async () => {
-      passkeysRepo.findById.resolves(makePasskey());
-      userService.getUser.resolves(
-        makeUser({
-          challenge: "old-challenge",
-          challengeExpiresAt: new Date(Date.now() - 10000),
-        }),
-      );
-
-      try {
-        await service.verifyAuthentication({ id: passkeyId } as any);
-        expect.fail("Should have thrown");
-      } catch (err) {
-        expect(err).to.be.instanceOf(InternalServerErrorException);
-        expect((err as any).message).to.include("Challenge истёк");
-        expect(userService.setChallenge.calledOnceWith(userId, null)).to.be.true;
+        expect((err as any).message).to.include("Challenge не найден или истёк");
       }
     });
 
     it("should throw InternalServerErrorException when verification fails", async () => {
       passkeysRepo.findById.resolves(makePasskey());
-      userService.getUser.resolves(
-        makeUser({
-          challenge: "valid-challenge",
-          challengeExpiresAt: new Date(Date.now() + 300000),
-        }),
-      );
+      userService.getUser.resolves(makeUser());
 
       try {
         await service.verifyAuthentication({ id: passkeyId } as any);

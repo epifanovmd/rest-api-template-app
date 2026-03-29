@@ -29,9 +29,7 @@ export class ResetPasswordTokens {
   updatedAt: Date;
 
   // Связи
-  @OneToOne(() => User, user => user.resetPasswordTokens, {
-    onDelete: "CASCADE",
-  })
+  @OneToOne(() => User, { onDelete: "CASCADE" })
   @JoinColumn({ name: "user_id" })
   user: User;
 

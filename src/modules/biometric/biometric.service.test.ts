@@ -16,7 +16,6 @@ describe("BiometricService", () => {
   let service: BiometricService;
   let biometricRepo: ReturnType<typeof createMockRepository> & Record<string, sinon.SinonStub>;
   let userService: Record<string, sinon.SinonStub>;
-  let tokenService: Record<string, sinon.SinonStub>;
   let sandbox: sinon.SinonSandbox;
 
   const userId = uuid();
@@ -42,9 +41,6 @@ describe("BiometricService", () => {
     userService = {
       getUser: sinon.stub(),
     };
-    tokenService = {
-      issue: sinon.stub().resolves({ accessToken: "at", refreshToken: "rt" }),
-    };
 
     // Custom repo methods
     biometricRepo.findByUserIdAndDeviceId = sinon.stub().resolves(null);
@@ -52,11 +48,17 @@ describe("BiometricService", () => {
     biometricRepo.findByUserId = sinon.stub().resolves([]);
     biometricRepo.deleteByUserIdAndDeviceId = sinon.stub().resolves({ affected: 1 });
 
+    const mockSessionService = {
+      createAuthenticatedSession: sinon.stub().resolves({
+        sessionId: "session-1",
+        tokens: { accessToken: "at", refreshToken: "rt" },
+      }),
+    };
+
     service = new BiometricService(
       userService as any,
-      tokenService as any,
       biometricRepo as any,
-      { create: sinon.stub().resolves({ id: "session-1" }) } as any,
+      mockSessionService as any,
     );
   });
 

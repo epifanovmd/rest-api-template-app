@@ -1,5 +1,8 @@
 import { ITokensDto } from "../../core";
+import { IDeviceInfo } from "../session/session.types";
 import { IUserChangePasswordDto, UserDto } from "../user/dto";
+
+export { IDeviceInfo };
 
 export interface IUserResetPasswordRequestDto extends IUserChangePasswordDto {
   token: string;
@@ -40,13 +43,6 @@ export interface IVerify2FARequestDto {
 
 export interface IDisable2FARequestDto {
   password: string;
-}
-
-export interface IDeviceInfo {
-  ip?: string;
-  userAgent?: string;
-  deviceName?: string;
-  deviceType?: string;
 }
 
 export type ISignInResponseDto = IUserWithTokensDto | I2FARequiredDto;

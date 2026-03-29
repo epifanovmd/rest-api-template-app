@@ -88,17 +88,23 @@ describe("AuthService", () => {
 
     mockSessionService = {
       createSession: sandbox.stub().resolves({ id: "session-123" }),
+      createAuthenticatedSession: sandbox.stub().resolves({
+        sessionId: "session-123",
+        tokens: fakeTokens,
+      }),
       findByRefreshToken: sandbox.stub().resolves({ id: "session-123", userId: uuid() }),
       updateRefreshToken: sandbox.stub().resolves(),
       terminateAllByUser: sandbox.stub().resolves(),
     };
+
+    // Add update2FA to mockUserService
+    mockUserService.update2FA = sandbox.stub().resolves();
 
     service = new AuthService(
       mockUserService,
       mockMailerService,
       mockResetPasswordTokensService,
       mockTokenService,
-      mockUserRepository,
       mockEventBus as any,
       mockSessionService,
     );
@@ -192,7 +198,7 @@ describe("AuthService", () => {
       });
 
       expect(result).to.have.property("tokens");
-      expect(mockTokenService.issue.calledOnce).to.be.true;
+      expect(mockSessionService.createAuthenticatedSession.calledOnce).to.be.true;
     });
 
     it("should throw UnauthorizedException on invalid password", async () => {
@@ -427,14 +433,13 @@ describe("AuthService", () => {
 
       expect(result).to.have.property("message");
       expect(result.message).to.include("2FA успешно включена");
-      expect(mockUserRepository.update.calledOnce).to.be.true;
+      expect(mockUserService.update2FA.calledOnce).to.be.true;
 
-      // Verify that the hash was stored
-      const updateArgs = mockUserRepository.update.firstCall.args;
+      const args = mockUserService.update2FA.firstCall.args;
 
-      expect(updateArgs[0]).to.equal(uuid());
-      expect(updateArgs[1]).to.have.property("twoFactorHash");
-      expect(updateArgs[1]).to.have.property("twoFactorHint", "my hint");
+      expect(args[0]).to.equal(uuid());
+      expect(args[1]).to.be.a("string"); // bcrypt hash
+      expect(args[2]).to.equal("my hint");
     });
 
     it("should throw BadRequestException if 2FA already enabled", async () => {
@@ -458,9 +463,9 @@ describe("AuthService", () => {
 
       await service.enable2FA(uuid(), "2fa-password");
 
-      const updateArgs = mockUserRepository.update.firstCall.args;
+      const args = mockUserService.update2FA.firstCall.args;
 
-      expect(updateArgs[1].twoFactorHint).to.be.null;
+      expect(args[2]).to.be.null;
     });
   });
 
@@ -474,11 +479,12 @@ describe("AuthService", () => {
 
       expect(result).to.have.property("message");
       expect(result.message).to.include("2FA успешно отключена");
-      expect(mockUserRepository.update.calledOnce).to.be.true;
-      const updateArgs = mockUserRepository.update.firstCall.args;
+      expect(mockUserService.update2FA.calledOnce).to.be.true;
 
-      expect(updateArgs[1].twoFactorHash).to.be.null;
-      expect(updateArgs[1].twoFactorHint).to.be.null;
+      const args = mockUserService.update2FA.firstCall.args;
+
+      expect(args[1]).to.be.null;
+      expect(args[2]).to.be.null;
     });
 
     it("should throw BadRequestException if 2FA not enabled", async () => {
@@ -526,7 +532,7 @@ describe("AuthService", () => {
       const result = await service.verify2FA(twoFactorToken, "2fa-password");
 
       expect(result).to.have.property("tokens");
-      expect(mockTokenService.issue.calledOnce).to.be.true;
+      expect(mockSessionService.createAuthenticatedSession.calledOnce).to.be.true;
     });
 
     it("should throw UnauthorizedException with wrong token type", async () => {

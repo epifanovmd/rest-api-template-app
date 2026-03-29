@@ -1,18 +1,46 @@
 import { ForbiddenException, NotFoundException } from "@force-dev/utils";
+import crypto from "crypto";
 import { inject } from "inversify";
 import { Not } from "typeorm";
 
-import { EventBus, Injectable } from "../../core";
+import { EventBus, Injectable, ITokensDto, TokenService } from "../../core";
+import { User } from "../user/user.entity";
 import { SessionTerminatedEvent } from "./events";
 import { SessionDto } from "./session.dto";
 import { SessionRepository } from "./session.repository";
+import { IDeviceInfo } from "./session.types";
 
 @Injectable()
 export class SessionService {
   constructor(
     @inject(SessionRepository) private _sessionRepo: SessionRepository,
+    @inject(TokenService) private _tokenService: TokenService,
     @inject(EventBus) private _eventBus: EventBus,
   ) {}
+
+  /**
+   * Создать аутентифицированную сессию с реальным refreshToken за одну атомарную вставку.
+   * Заменяет паттерн: createSession("pending") → issue() → updateRefreshToken().
+   */
+  async createAuthenticatedSession(
+    user: User,
+    deviceInfo: IDeviceInfo = {},
+  ): Promise<{ sessionId: string; tokens: ITokensDto }> {
+    const sessionId = crypto.randomUUID();
+    const tokens = await this._tokenService.issue(user, sessionId);
+
+    await this._sessionRepo.createAndSave({
+      id: sessionId,
+      userId: user.id,
+      refreshToken: tokens.refreshToken,
+      deviceName: deviceInfo.deviceName ?? null,
+      deviceType: deviceInfo.deviceType ?? null,
+      ip: deviceInfo.ip ?? null,
+      userAgent: deviceInfo.userAgent ?? null,
+    });
+
+    return { sessionId, tokens };
+  }
 
   /** Создать новую сессию. */
   async createSession(data: {

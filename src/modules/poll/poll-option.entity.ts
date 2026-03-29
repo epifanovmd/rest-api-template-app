@@ -1,6 +1,7 @@
 import {
   Column,
   Entity,
+  Index,
   JoinColumn,
   ManyToOne,
   OneToMany,
@@ -11,6 +12,7 @@ import { Poll } from "./poll.entity";
 import { PollVote } from "./poll-vote.entity";
 
 @Entity("poll_options")
+@Index("IDX_POLL_OPTIONS_POLL", ["pollId"])
 export class PollOption {
   @PrimaryGeneratedColumn("uuid")
   id: string;

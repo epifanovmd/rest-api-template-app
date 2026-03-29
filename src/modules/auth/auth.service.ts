@@ -24,7 +24,6 @@ import { SessionService } from "../session";
 import { UserService } from "../user";
 import { UserDto } from "../user/dto";
 import { PasswordChangedEvent } from "../user/events";
-import { UserRepository } from "../user/user.repository";
 import {
   IDeviceInfo,
   ISignInRequestDto,
@@ -47,7 +46,6 @@ export class AuthService {
     @inject(ResetPasswordTokensService)
     private _resetPasswordTokensService: ResetPasswordTokensService,
     @inject(TokenService) private _tokenService: TokenService,
-    @inject(UserRepository) private _userRepository: UserRepository,
     @inject(EventBus) private _eventBus: EventBus,
     @inject(SessionService) private _sessionService: SessionService,
   ) {}
@@ -142,22 +140,13 @@ export class AuthService {
 
         const fullUser = await this._userService.getUser(user.id);
 
-        const session = await this._sessionService.createSession({
-          userId: fullUser.id,
-          refreshToken: "pending",
-          ip: deviceInfo.ip,
-          userAgent: deviceInfo.userAgent,
-          deviceName: deviceInfo.deviceName,
-          deviceType: deviceInfo.deviceType,
-        });
-        const tokens = await this._tokenService.issue(fullUser, session.id);
+        const { sessionId, tokens } =
+          await this._sessionService.createAuthenticatedSession(
+            fullUser,
+            deviceInfo,
+          );
 
-        await this._sessionService.updateRefreshToken(
-          session.id,
-          tokens.refreshToken,
-        );
-
-        this._eventBus.emit(new UserLoggedInEvent(fullUser.id, session.id));
+        this._eventBus.emit(new UserLoggedInEvent(fullUser.id, sessionId));
 
         return {
           ...UserDto.fromEntity(fullUser),
@@ -271,10 +260,7 @@ export class AuthService {
 
     const twoFactorHash = await bcrypt.hash(password, 12);
 
-    await this._userRepository.update(userId, {
-      twoFactorHash,
-      twoFactorHint: hint ?? null,
-    });
+    await this._userService.update2FA(userId, twoFactorHash, hint ?? null);
 
     this._eventBus.emit(new TwoFactorEnabledEvent(userId));
 
@@ -293,12 +279,7 @@ export class AuthService {
       throw new UnauthorizedException("Неверный пароль 2FA");
     }
 
-    await this._userRepository.update(userId, {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      twoFactorHash: null as any,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      twoFactorHint: null as any,
-    });
+    await this._userService.update2FA(userId, null, null);
 
     this._eventBus.emit(new TwoFactorDisabledEvent(userId));
 
@@ -327,22 +308,10 @@ export class AuthService {
       throw new UnauthorizedException("Неверный пароль 2FA");
     }
 
-    const session = await this._sessionService.createSession({
-      userId: user.id,
-      refreshToken: "pending",
-      ip: deviceInfo.ip,
-      userAgent: deviceInfo.userAgent,
-      deviceName: deviceInfo.deviceName,
-      deviceType: deviceInfo.deviceType,
-    });
-    const tokens = await this._tokenService.issue(user, session.id);
+    const { sessionId, tokens } =
+      await this._sessionService.createAuthenticatedSession(user, deviceInfo);
 
-    await this._sessionService.updateRefreshToken(
-      session.id,
-      tokens.refreshToken,
-    );
-
-    this._eventBus.emit(new UserLoggedInEvent(user.id, session.id));
+    this._eventBus.emit(new UserLoggedInEvent(user.id, sessionId));
 
     return {
       ...UserDto.fromEntity(user),

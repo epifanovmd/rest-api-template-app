@@ -178,7 +178,7 @@ export class ChatService {
     userId: string,
     data: { name?: string; avatarId?: string | null },
   ) {
-    const chat = await this._chatRepo.findById(chatId);
+    const chat = await this._chatRepo.findByIdLight(chatId);
 
     if (!chat) {
       throw new NotFoundException("Чат не найден");
@@ -206,7 +206,7 @@ export class ChatService {
 
   async leaveChat(chatId: string, userId: string) {
     const membership = await this.assertMembership(chatId, userId);
-    const chat = await this._chatRepo.findById(chatId);
+    const chat = await this._chatRepo.findByIdLight(chatId);
 
     if (!chat) {
       throw new NotFoundException("Чат не найден");
@@ -240,7 +240,7 @@ export class ChatService {
   }
 
   async addMembers(chatId: string, userId: string, memberIds: string[]) {
-    const chat = await this._chatRepo.findById(chatId);
+    const chat = await this._chatRepo.findByIdLight(chatId);
 
     if (!chat) {
       throw new NotFoundException("Чат не найден");
@@ -259,12 +259,16 @@ export class ChatService {
       id => !existingMemberIds.includes(id),
     );
 
-    for (const memberId of newMemberIds) {
-      await this._memberRepo.createAndSave({
-        chatId,
-        userId: memberId,
-        role: EChatMemberRole.MEMBER,
-      });
+    if (newMemberIds.length > 0) {
+      const memberships = newMemberIds.map(memberId =>
+        this._memberRepo.create({
+          chatId,
+          userId: memberId,
+          role: EChatMemberRole.MEMBER,
+        }),
+      );
+
+      await this._memberRepo.save(memberships);
     }
 
     const allMemberIds = [
@@ -284,7 +288,7 @@ export class ChatService {
   }
 
   async removeMember(chatId: string, userId: string, targetUserId: string) {
-    const chat = await this._chatRepo.findById(chatId);
+    const chat = await this._chatRepo.findByIdLight(chatId);
 
     if (!chat) {
       throw new NotFoundException("Чат не найден");
@@ -404,7 +408,7 @@ export class ChatService {
       isPublic?: boolean;
     },
   ) {
-    const chat = await this._chatRepo.findById(chatId);
+    const chat = await this._chatRepo.findByIdLight(chatId);
 
     if (!chat) throw new NotFoundException("Канал не найден");
     if (chat.type !== EChatType.CHANNEL) {
@@ -439,7 +443,7 @@ export class ChatService {
   }
 
   async subscribeToChannel(chatId: string, userId: string) {
-    const chat = await this._chatRepo.findById(chatId);
+    const chat = await this._chatRepo.findByIdLight(chatId);
 
     if (!chat) throw new NotFoundException("Канал не найден");
     if (chat.type !== EChatType.CHANNEL) {
@@ -451,7 +455,11 @@ export class ChatService {
 
     const existing = await this._memberRepo.findMembership(chatId, userId);
 
-    if (existing) return ChatDto.fromEntity(chat);
+    if (existing) {
+      const fullChat = await this._chatRepo.findById(chatId);
+
+      return ChatDto.fromEntity(fullChat!);
+    }
 
     await this._memberRepo.createAndSave({
       chatId,
@@ -471,7 +479,7 @@ export class ChatService {
   }
 
   async unsubscribeFromChannel(chatId: string, userId: string) {
-    const chat = await this._chatRepo.findById(chatId);
+    const chat = await this._chatRepo.findByIdLight(chatId);
 
     if (!chat) throw new NotFoundException("Канал не найден");
     if (chat.type !== EChatType.CHANNEL) {
@@ -532,7 +540,7 @@ export class ChatService {
     userId: string,
     opts?: { expiresAt?: string; maxUses?: number },
   ) {
-    const chat = await this._chatRepo.findById(chatId);
+    const chat = await this._chatRepo.findByIdLight(chatId);
 
     if (!chat) {
       throw new NotFoundException("Чат не найден");
@@ -762,9 +770,11 @@ export class ChatService {
   }
 
   async isMember(chatId: string, userId: string): Promise<boolean> {
-    const membership = await this._memberRepo.findMembership(chatId, userId);
+    const count = await this._memberRepo.count({
+      where: { chatId, userId },
+    });
 
-    return !!membership;
+    return count > 0;
   }
 
   async getMemberUserIds(chatId: string): Promise<string[]> {

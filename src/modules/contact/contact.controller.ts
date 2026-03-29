@@ -19,12 +19,8 @@ import { KoaRequest } from "../../types/koa";
 import { ContactService } from "./contact.service";
 import { EContactStatus } from "./contact.types";
 import { ContactDto } from "./dto";
+import { ICreateContactBody } from "./dto/contact-request.dto";
 import { CreateContactSchema } from "./validation";
-
-interface ICreateContactBody {
-  contactUserId: string;
-  displayName?: string;
-}
 
 @Injectable()
 @Tags("Contact")

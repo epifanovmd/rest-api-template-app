@@ -64,7 +64,7 @@ export class Passkey {
   updatedAt: Date;
 
   // Связи
-  @ManyToOne(() => User, user => user.passkeys, { onDelete: "CASCADE" })
+  @ManyToOne(() => User, { onDelete: "CASCADE" })
   @JoinColumn({ name: "user_id" })
   user: User;
 }

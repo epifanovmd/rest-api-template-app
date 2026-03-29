@@ -93,20 +93,16 @@ export class Message {
   @JoinColumn({ name: "forwarded_from_id" })
   forwardedFrom: Message | null;
 
-  @OneToMany(() => MessageAttachment, attachment => attachment.message, {
-    cascade: true,
-    eager: true,
-  })
+  @ManyToOne(() => User, { onDelete: "SET NULL", nullable: true })
+  @JoinColumn({ name: "pinned_by_id" })
+  pinnedBy: User | null;
+
+  @OneToMany(() => MessageAttachment, attachment => attachment.message)
   attachments: MessageAttachment[];
 
-  @OneToMany(() => MessageReaction, reaction => reaction.message, {
-    cascade: true,
-  })
+  @OneToMany(() => MessageReaction, reaction => reaction.message)
   reactions: MessageReaction[];
 
-  @OneToMany(() => MessageMention, mention => mention.message, {
-    cascade: true,
-    eager: true,
-  })
+  @OneToMany(() => MessageMention, mention => mention.message)
   mentions: MessageMention[];
 }

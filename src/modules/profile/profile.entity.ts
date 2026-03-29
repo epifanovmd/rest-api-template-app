@@ -58,12 +58,15 @@ export class Profile {
   @UpdateDateColumn({ name: "updated_at" })
   updatedAt: Date;
 
+  @Column({ name: "avatar_id", type: "uuid", nullable: true })
+  avatarId: string | null;
+
   // Связи
   @OneToOne(() => User, user => user.profile, { onDelete: "CASCADE" })
   @JoinColumn({ name: "user_id" })
   user: User;
 
-  @ManyToOne(() => File, file => file.avatarProfiles, { onDelete: "SET NULL" })
+  @ManyToOne(() => File, { onDelete: "SET NULL" })
   @JoinColumn({ name: "avatar_id" })
   avatar: File;
 }

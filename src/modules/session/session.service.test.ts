@@ -35,7 +35,18 @@ describe("SessionService", () => {
     (sessionRepo as any).findByUserId = sinon.stub().resolves([]);
     (sessionRepo as any).findByRefreshToken = sinon.stub().resolves(null);
 
-    service = new SessionService(sessionRepo as any, createMockEventBus() as any);
+    const mockTokenService = {
+      issue: sinon.stub().resolves({
+        accessToken: "access-token",
+        refreshToken: "refresh-token",
+      }),
+    };
+
+    service = new SessionService(
+      sessionRepo as any,
+      mockTokenService as any,
+      createMockEventBus() as any,
+    );
   });
 
   afterEach(() => sandbox.restore());

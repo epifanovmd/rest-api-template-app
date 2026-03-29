@@ -31,7 +31,7 @@ export class Otp {
   updatedAt: Date;
 
   // Связи
-  @OneToOne(() => User, user => user.otps, { onDelete: "CASCADE" })
+  @OneToOne(() => User, { onDelete: "CASCADE" })
   @JoinColumn({ name: "user_id" })
   user: User;
 

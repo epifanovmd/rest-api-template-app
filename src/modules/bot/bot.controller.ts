@@ -17,12 +17,16 @@ import {
 import { getContextUser, Injectable, ValidateBody } from "../../core";
 import { KoaRequest } from "../../types/koa";
 import { BotService } from "./bot.service";
+import { BotCommandDto, BotDetailDto, BotDto, WebhookLogDto } from "./dto/bot.dto";
 import {
-  BotCommandDto,
-  BotDetailDto,
-  BotDto,
-  WebhookLogDto,
-} from "./dto/bot.dto";
+  ICreateBotBody,
+  ISetCommandsBody,
+  ISetWebhookBody,
+  ISetWebhookEventsBody,
+  IUpdateBotBody,
+  IWebhookLogsResponse,
+  IWebhookTestResponse,
+} from "./dto/bot-request.dto";
 import {
   CreateBotSchema,
   SetCommandsSchema,
@@ -30,43 +34,6 @@ import {
   SetWebhookSchema,
 } from "./validation";
 import { WebhookService } from "./webhook.service";
-
-interface ICreateBotBody {
-  username: string;
-  displayName: string;
-  description?: string;
-}
-
-interface IUpdateBotBody {
-  displayName?: string;
-  description?: string | null;
-  avatarId?: string | null;
-}
-
-interface ISetWebhookBody {
-  url: string;
-  secret?: string;
-}
-
-interface ISetWebhookEventsBody {
-  events: string[];
-}
-
-interface ISetCommandsBody {
-  commands: { command: string; description: string }[];
-}
-
-interface IWebhookLogsResponse {
-  data: WebhookLogDto[];
-  totalCount: number;
-}
-
-interface IWebhookTestResponse {
-  success: boolean;
-  statusCode: number | null;
-  errorMessage: string | null;
-  durationMs: number;
-}
 
 @Injectable()
 @Tags("Bot")

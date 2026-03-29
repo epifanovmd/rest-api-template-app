@@ -13,15 +13,9 @@ import {
 import { getContextUser, Injectable, ValidateBody } from "../../core";
 import { KoaRequest } from "../../types/koa";
 import { PollDto } from "./dto";
+import { ICreatePollBody } from "./dto/poll-request.dto";
 import { PollService } from "./poll.service";
 import { CreatePollSchema } from "./validation";
-
-interface ICreatePollBody {
-  question: string;
-  options: string[];
-  isAnonymous?: boolean;
-  isMultipleChoice?: boolean;
-}
 
 @Injectable()
 @Tags("Poll")

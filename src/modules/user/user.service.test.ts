@@ -255,27 +255,6 @@ describe("UserService", () => {
     });
   });
 
-  describe("setChallenge", () => {
-    it("should set challenge for user", async () => {
-      await service.setChallenge(uuid(), "test-challenge");
-
-      expect(mockUserRepo.update.calledOnce).to.be.true;
-      const updateArgs = mockUserRepo.update.firstCall.args;
-
-      expect(updateArgs[0]).to.equal(uuid());
-      expect(updateArgs[1]).to.have.property("challenge", "test-challenge");
-    });
-
-    it("should clear challenge when null passed", async () => {
-      await service.setChallenge(uuid(), null);
-
-      const updateArgs = mockUserRepo.update.firstCall.args;
-
-      expect(updateArgs[1].challenge).to.be.null;
-      expect(updateArgs[1].challengeExpiresAt).to.be.null;
-    });
-  });
-
   describe("setPrivileges", () => {
     it("should assign roles and permissions to user", async () => {
       mockUserRepo.findById.resolves({ ...fakeUser, roles: [], directPermissions: [] });

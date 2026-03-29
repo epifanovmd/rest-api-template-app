@@ -7,6 +7,7 @@ import {
   PrimaryGeneratedColumn,
 } from "typeorm";
 
+import { User } from "../user/user.entity";
 import { Message } from "./message.entity";
 
 @Entity("message_mentions")
@@ -30,4 +31,8 @@ export class MessageMention {
   })
   @JoinColumn({ name: "message_id" })
   message: Message;
+
+  @ManyToOne(() => User, { onDelete: "CASCADE", nullable: true })
+  @JoinColumn({ name: "user_id" })
+  user: User | null;
 }

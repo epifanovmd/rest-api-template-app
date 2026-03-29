@@ -16,29 +16,16 @@ import {
 import { getContextUser, Injectable, ValidateBody } from "../../core";
 import { KoaRequest } from "../../types/koa";
 import {
+  IMarkReadBody,
   IMediaGalleryDto,
   IMediaStatsDto,
   IMessageListDto,
   IMessageSearchDto,
+  ISendMessageBody,
   MessageDto,
 } from "./dto";
 import { MessageService } from "./message.service";
-import { EMessageType } from "./message.types";
 import { MarkReadSchema, SendMessageSchema } from "./validation";
-
-interface ISendMessageBody {
-  type?: EMessageType;
-  content?: string;
-  replyToId?: string;
-  forwardedFromId?: string;
-  fileIds?: string[];
-  mentionedUserIds?: string[];
-  mentionAll?: boolean;
-}
-
-interface IMarkReadBody {
-  messageId: string;
-}
 
 @Injectable()
 @Tags("Message")

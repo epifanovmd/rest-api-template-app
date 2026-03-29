@@ -7,7 +7,7 @@ import {
 import { createVerify, randomBytes } from "crypto";
 import { inject } from "inversify";
 
-import { Injectable, TokenService } from "../../core";
+import { Injectable } from "../../core";
 import { SessionService } from "../session/session.service";
 import { UserService } from "../user";
 import { BiometricRepository } from "./biometric.repository";
@@ -19,7 +19,6 @@ const MAX_DEVICES_PER_USER = 5;
 export class BiometricService {
   constructor(
     @inject(UserService) private _userService: UserService,
-    @inject(TokenService) private _tokenService: TokenService,
     @inject(BiometricRepository)
     private _biometricRepository: BiometricRepository,
     @inject(SessionService) private _sessionService: SessionService,
@@ -121,14 +120,10 @@ export class BiometricService {
 
     const user = await this._userService.getUser(userId);
 
-    const session = await this._sessionService.createSession({
-      userId: user.id,
-      refreshToken: "pending",
-      deviceName: deviceId,
-    });
-    const tokens = await this._tokenService.issue(user, session.id);
-
-    await this._sessionService.updateRefreshToken(session.id, tokens.refreshToken);
+    const { tokens } = await this._sessionService.createAuthenticatedSession(
+      user,
+      { deviceName: deviceId },
+    );
 
     return {
       verified: true,

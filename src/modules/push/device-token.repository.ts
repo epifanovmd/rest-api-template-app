@@ -23,4 +23,10 @@ export class DeviceTokenRepository extends BaseRepository<DeviceToken> {
   async deleteByToken(token: string) {
     return this.delete({ token });
   }
+
+  async deleteByTokens(tokens: string[]) {
+    if (tokens.length === 0) return;
+
+    return this.delete({ token: In(tokens) });
+  }
 }

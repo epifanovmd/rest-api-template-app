@@ -13,14 +13,9 @@ import {
 import { getContextUser, Injectable, ValidateBody } from "../../core";
 import { KoaRequest } from "../../types/koa";
 import { NotificationSettingsDto } from "./dto";
+import { IUpdateNotificationSettingsBody } from "./dto/push-request.dto";
 import { NotificationSettingsService } from "./notification-settings.service";
 import { UpdateNotificationSettingsSchema } from "./validation";
-
-interface IUpdateNotificationSettingsBody {
-  muteAll?: boolean;
-  soundEnabled?: boolean;
-  showPreview?: boolean;
-}
 
 @Injectable()
 @Tags("Push")

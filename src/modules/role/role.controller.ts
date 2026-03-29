@@ -13,20 +13,14 @@ import {
 } from "tsoa";
 
 import { Injectable, ValidateBody } from "../../core";
-import { TPermission } from "../permission/permission.types";
+import {
+  ICreateRoleRequestDto,
+  IRolePermissionsRequestDto,
+} from "./dto/role-request.dto";
 import { IRoleDto } from "./role.dto";
 import { RoleService } from "./role.service";
-import { TRole } from "./role.types";
 import { SetRolePermissionsSchema } from "./validation";
 import { CreateRoleSchema } from "./validation/create-role.validate";
-
-interface IRolePermissionsRequestDto {
-  permissions: TPermission[];
-}
-
-interface ICreateRoleRequestDto {
-  name: TRole;
-}
 
 @Injectable()
 @Tags("Role")

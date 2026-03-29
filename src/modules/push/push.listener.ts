@@ -34,20 +34,20 @@ export class PushListener implements ISocketEventListener {
 
         if (candidateUserIds.length === 0) return;
 
-        // Filter out muted users
+        // Batch-загрузка memberships для проверки mute (вместо N+1)
         const now = new Date();
-        const offlineUserIds: string[] = [];
-
-        for (const uid of candidateUserIds) {
-          const membership = await this._memberRepo.findMembership(
-            event.chatId,
-            uid,
-          );
-
-          if (!membership?.mutedUntil || membership.mutedUntil <= now) {
-            offlineUserIds.push(uid);
-          }
-        }
+        const memberships = await this._memberRepo.findMembershipsByChat(
+          event.chatId,
+          candidateUserIds,
+        );
+        const mutedUserIds = new Set(
+          memberships
+            .filter(m => m.mutedUntil && m.mutedUntil > now)
+            .map(m => m.userId),
+        );
+        const offlineUserIds = candidateUserIds.filter(
+          uid => !mutedUserIds.has(uid),
+        );
 
         if (offlineUserIds.length === 0) return;
 

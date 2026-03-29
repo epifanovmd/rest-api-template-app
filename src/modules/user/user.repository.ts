@@ -70,11 +70,13 @@ export class UserRepository extends BaseRepository<User> {
   async updateWithResponse(
     id: string,
     updateData: QueryDeepPartialEntity<User>,
+    relations?: FindOptionsRelations<User>,
   ): Promise<User | null> {
     await this.update(id, updateData);
 
     return this.findOne({
       where: { id },
+      relations,
     });
   }
 

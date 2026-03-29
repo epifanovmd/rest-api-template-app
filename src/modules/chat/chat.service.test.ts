@@ -85,8 +85,12 @@ describe("ChatService", () => {
       { transaction: sinon.stub().callsFake((cb: any) => cb({ getRepository: sinon.stub().returns(mockTxRepo) })) } as any,
     );
 
-    // Default: findById returns a chat entity
+    // Default: findById / findByIdLight return a chat entity
     (chatRepo as any).findById = sinon.stub().resolves(makeChatEntity());
+    // findByIdLight delegates to findById stub — so overriding findById works for both
+    (chatRepo as any).findByIdLight = sinon.stub().callsFake(
+      (id: string) => (chatRepo as any).findById(id),
+    );
     // Default: findMembership returns a membership
     (memberRepo as any).findMembership = sinon.stub().resolves(makeMembership());
     // Default: countMembers
@@ -331,8 +335,10 @@ describe("ChatService", () => {
 
       await service.addMembers(chatId, userId, [newMemberId]);
 
-      expect(memberRepo.createAndSave.calledOnce).to.be.true;
-      expect(memberRepo.createAndSave.firstCall.args[0].role).to.equal(EChatMemberRole.MEMBER);
+      // Batch create+save: create called, then save with array
+      expect(memberRepo.create.calledOnce).to.be.true;
+      expect(memberRepo.create.firstCall.args[0].role).to.equal(EChatMemberRole.MEMBER);
+      expect(memberRepo.save.called).to.be.true;
       expect(eventBus.emit.calledOnce).to.be.true;
       expect(eventBus.emit.firstCall.args[0]).to.be.instanceOf(ChatMemberJoinedEvent);
     });
@@ -617,7 +623,7 @@ describe("ChatService", () => {
 
     it("should return true for regular chat member", async () => {
       chatRepo.findOne.resolves({ id: chatId, type: EChatType.GROUP });
-      (memberRepo as any).findMembership.resolves(makeMembership());
+      memberRepo.count.resolves(1);
 
       const result = await service.canSendMessage(chatId, userId);
 

@@ -236,15 +236,15 @@ export class MessageService {
       .andWhere("lastMessageId = :messageId", { messageId })
       .execute();
 
-    const updated = await this._messageRepo.findById(messageId);
-
-    this._eventBus.emit(new MessageUpdatedEvent(updated!, message.chatId));
+    this._eventBus.emit(new MessageUpdatedEvent(message, message.chatId));
 
     if (editResult.affected && editResult.affected > 0) {
-      await this._emitLastMessageUpdated(message.chatId);
+      this._emitLastMessageUpdated(message.chatId).catch(err => {
+        logger.warn({ err }, "Failed to emit lastMessage update");
+      });
     }
 
-    return MessageDto.fromEntity(updated!);
+    return MessageDto.fromEntity(message);
   }
 
   async deleteMessage(messageId: string, userId: string) {
@@ -312,13 +312,11 @@ export class MessageService {
     message.pinnedById = userId;
     await this._messageRepo.save(message);
 
-    const updated = await this._messageRepo.findById(messageId);
-
     this._eventBus.emit(
-      new MessagePinnedEvent(updated!, message.chatId, userId),
+      new MessagePinnedEvent(message, message.chatId, userId),
     );
 
-    return MessageDto.fromEntity(updated!);
+    return MessageDto.fromEntity(message);
   }
 
   async unpinMessage(messageId: string, userId: string) {
@@ -362,6 +360,8 @@ export class MessageService {
         sender: { profile: true },
         replyTo: { sender: { profile: true } },
         attachments: { file: true },
+        reactions: true,
+        mentions: true,
       },
       order: { pinnedAt: "DESC" },
     });
@@ -573,26 +573,19 @@ export class MessageService {
   }
 
   async getUnreadCount(chatId: string, userId: string): Promise<number> {
-    const membership = await this._memberRepo.findMembership(chatId, userId);
-
-    if (!membership) return 0;
-
     const qb = this._messageRepo
       .createQueryBuilder("message")
-      .where("message.chatId = :chatId", { chatId });
-
-    if (membership.lastReadMessageId) {
-      const lastRead = await this._messageRepo.findOne({
-        where: { id: membership.lastReadMessageId },
-        select: ["createdAt"],
-      });
-
-      if (lastRead) {
-        qb.andWhere("message.createdAt > :lastReadAt", {
-          lastReadAt: lastRead.createdAt,
-        });
-      }
-    }
+      .innerJoin(
+        "chat_members",
+        "cm",
+        "cm.chat_id = message.chat_id AND cm.user_id = :userId",
+        { userId },
+      )
+      .where("message.chatId = :chatId", { chatId })
+      .andWhere(
+        "cm.last_read_message_id IS NULL OR message.created_at > " +
+          "(SELECT m2.created_at FROM messages m2 WHERE m2.id = cm.last_read_message_id)",
+      );
 
     return qb.getCount();
   }

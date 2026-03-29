@@ -5,11 +5,23 @@ import { EChatType } from "./chat.types";
 
 @InjectableRepository(Chat)
 export class ChatRepository extends BaseRepository<Chat> {
+  /** Полная загрузка чата с members, avatar, lastMessageSender — для отдачи клиенту. */
   async findById(id: string) {
     return this.findOne({
       where: { id },
       relations: {
-        members: { user: { profile: true } },
+        members: { user: { profile: { avatar: true } } },
+        avatar: true,
+        lastMessageSender: { profile: true },
+      },
+    });
+  }
+
+  /** Лёгкая загрузка чата без members — для проверок и валидаций. */
+  async findByIdLight(id: string) {
+    return this.findOne({
+      where: { id },
+      relations: {
         avatar: true,
         lastMessageSender: { profile: true },
       },
@@ -29,9 +41,12 @@ export class ChatRepository extends BaseRepository<Chat> {
       .innerJoin("chat.members", "membership", "membership.userId = :userId", {
         userId,
       })
+      // Загружаем только userId и role для members (без полных user+profile)
       .leftJoinAndSelect("chat.members", "members")
-      .leftJoinAndSelect("members.user", "user")
+      .leftJoin("members.user", "user")
+      .addSelect(["user.id", "user.username"])
       .leftJoinAndSelect("user.profile", "profile")
+      .leftJoinAndSelect("profile.avatar", "profileAvatar")
       .leftJoinAndSelect("chat.avatar", "avatar")
       .leftJoinAndSelect("chat.lastMessageSender", "lastMsgSender")
       .leftJoinAndSelect("lastMsgSender.profile", "lastMsgSenderProfile")

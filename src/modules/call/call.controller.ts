@@ -15,15 +15,9 @@ import {
 import { getContextUser, Injectable, ValidateBody } from "../../core";
 import { KoaRequest } from "../../types/koa";
 import { CallService } from "./call.service";
-import { ECallType } from "./call.types";
 import { CallDto, ICallHistoryDto } from "./dto";
+import { IInitiateCallBody } from "./dto/call-request.dto";
 import { InitiateCallSchema } from "./validation";
-
-interface IInitiateCallBody {
-  calleeId: string;
-  chatId?: string;
-  type?: ECallType;
-}
 
 @Injectable()
 @Tags("Call")

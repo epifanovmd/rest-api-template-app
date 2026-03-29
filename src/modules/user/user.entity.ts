@@ -5,18 +5,13 @@ import {
   Index,
   JoinTable,
   ManyToMany,
-  OneToMany,
   OneToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from "typeorm";
 
-import { Biometric } from "../biometric/biometric.entity";
-import { Otp } from "../otp/otp.entity";
-import { Passkey } from "../passkeys/passkey.entity";
 import { Permission } from "../permission/permission.entity";
 import { Profile } from "../profile/profile.entity";
-import { ResetPasswordTokens } from "../reset-password-tokens/reset-password-tokens.entity";
 import { Role } from "../role/role.entity";
 
 /** Сущность пользователя системы. */
@@ -45,13 +40,6 @@ export class User {
   @Column({ name: "password_hash", type: "varchar", length: 100 })
   passwordHash: string;
 
-  // Временный WebAuthn challenge, хранится между шагами регистрации/аутентификации passkey
-  @Column({ type: "varchar", nullable: true })
-  challenge?: string;
-
-  @Column({ name: "challenge_expires_at", type: "timestamp", nullable: true })
-  challengeExpiresAt?: Date;
-
   @Column({ name: "two_factor_hash", type: "varchar", length: 100, nullable: true })
   twoFactorHash: string | null;
 
@@ -70,7 +58,7 @@ export class User {
    * Роли, назначенные этому пользователю.
    * Эффективные разрешения = объединение всех разрешений ролей + directPermissions.
    */
-  @ManyToMany(() => Role, { eager: true })
+  @ManyToMany(() => Role)
   @JoinTable({
     name: "user_roles",
     joinColumn: { name: "user_id" },
@@ -82,7 +70,7 @@ export class User {
    * Разрешения, выданные напрямую этому пользователю (дополнительно к разрешениям ролей).
    * Полезно для точечного переопределения без создания новой роли.
    */
-  @ManyToMany(() => Permission, { eager: true })
+  @ManyToMany(() => Permission)
   @JoinTable({
     name: "user_permissions",
     joinColumn: { name: "user_id" },
@@ -92,19 +80,6 @@ export class User {
 
   @OneToOne(() => Profile, profile => profile.user, {
     cascade: true,
-    eager: true,
   })
   profile: Profile;
-
-  @OneToMany(() => Biometric, biometric => biometric.user, { cascade: true })
-  biometrics: Biometric[];
-
-  @OneToOne(() => Otp, otp => otp.user, { cascade: true })
-  otps: Otp;
-
-  @OneToOne(() => ResetPasswordTokens, token => token.user, { cascade: true })
-  resetPasswordTokens: ResetPasswordTokens;
-
-  @OneToMany(() => Passkey, passkey => passkey.user, { cascade: true })
-  passkeys: Passkey[];
 }

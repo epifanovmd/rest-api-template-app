@@ -15,12 +15,9 @@ import {
 import { getContextUser, Injectable, ValidateBody } from "../../core";
 import { KoaRequest } from "../../types/koa";
 import { PollDto } from "./dto";
+import { IVotePollBody } from "./dto/poll-request.dto";
 import { PollService } from "./poll.service";
 import { VotePollSchema } from "./validation";
-
-interface IVotePollBody {
-  optionIds: string[];
-}
 
 @Injectable()
 @Tags("Poll")

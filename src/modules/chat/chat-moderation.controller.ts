@@ -16,24 +16,8 @@ import {
 import { getContextUser, Injectable, ValidateBody } from "../../core";
 import { KoaRequest } from "../../types/koa";
 import { ChatModerationService } from "./chat-moderation.service";
+import { IBanMemberBody, IBannedMemberDto, ISetSlowModeBody } from "./dto/chat-moderation-request.dto";
 import { BanMemberSchema, SetSlowModeSchema } from "./validation/moderation.validate";
-
-interface ISetSlowModeBody {
-  seconds: number;
-}
-
-interface IBanMemberBody {
-  duration?: number;
-  reason?: string;
-}
-
-interface IBannedMemberDto {
-  userId: string;
-  chatId: string;
-  reason?: string;
-  bannedAt: Date;
-  expiresAt?: Date;
-}
 
 @Injectable()
 @Tags("Chat Moderation")

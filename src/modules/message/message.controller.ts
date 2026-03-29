@@ -16,17 +16,9 @@ import {
 
 import { getContextUser, Injectable, ValidateBody } from "../../core";
 import { KoaRequest } from "../../types/koa";
-import { IMessageSearchDto, MessageDto } from "./dto";
+import { IAddReactionBody, IEditMessageBody, IMessageSearchDto, MessageDto } from "./dto";
 import { MessageService } from "./message.service";
 import { AddReactionSchema, EditMessageSchema } from "./validation";
-
-interface IEditMessageBody {
-  content: string;
-}
-
-interface IAddReactionBody {
-  emoji: string;
-}
 
 @Injectable()
 @Tags("Message")

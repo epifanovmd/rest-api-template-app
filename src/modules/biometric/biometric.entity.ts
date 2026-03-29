@@ -45,7 +45,7 @@ export class Biometric {
   updatedAt: Date;
 
   // Relations
-  @ManyToOne(() => User, user => user.biometrics, { onDelete: "CASCADE" })
+  @ManyToOne(() => User, { onDelete: "CASCADE" })
   @JoinColumn({ name: "user_id" })
   user: User;
 }

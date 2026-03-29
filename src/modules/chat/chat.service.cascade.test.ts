@@ -102,6 +102,9 @@ describe("ChatService — cascade & additional methods", () => {
 
     // Default stubs for custom repo methods
     chatRepo.findById = sinon.stub().resolves(makeChatEntity());
+    chatRepo.findByIdLight = sinon.stub().callsFake(
+      (id: string) => chatRepo.findById(id),
+    );
     chatRepo.findDirectChat = sinon.stub().resolves(null);
     chatRepo.findByUsername = sinon.stub().resolves(null);
     chatRepo.findUserChats = sinon.stub().resolves([]);
@@ -277,7 +280,7 @@ describe("ChatService — cascade & additional methods", () => {
 
   describe("isMember", () => {
     it("should return true when membership exists", async () => {
-      memberRepo.findMembership.resolves(makeMembership());
+      memberRepo.count.resolves(1);
 
       const result = await service.isMember(chatId, userId);
 
@@ -285,7 +288,7 @@ describe("ChatService — cascade & additional methods", () => {
     });
 
     it("should return false when membership does not exist", async () => {
-      memberRepo.findMembership.resolves(null);
+      memberRepo.count.resolves(0);
 
       const result = await service.isMember(chatId, userId);
 

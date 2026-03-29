@@ -27,8 +27,10 @@ describe("PushService", () => {
     (tokenRepo as any).findByToken = sinon.stub().resolves(null);
     (tokenRepo as any).findByUserIds = sinon.stub().resolves([]);
     (tokenRepo as any).deleteByToken = sinon.stub().resolves();
+    (tokenRepo as any).deleteByTokens = sinon.stub().resolves();
 
     (settingsRepo as any).findByUserId = sinon.stub().resolves(null);
+    (settingsRepo as any).findByUserIds = sinon.stub().resolves([]);
 
     mockMessaging = {
       sendEachForMulticast: sinon.stub().resolves({
@@ -105,7 +107,7 @@ describe("PushService", () => {
       ];
 
       (tokenRepo as any).findByUserIds.resolves(tokens);
-      (settingsRepo as any).findByUserId.resolves(null);
+      (settingsRepo as any).findByUserIds.resolves([]);
 
       await service.sendToUsers([userId, userId2], payload);
 
@@ -123,11 +125,9 @@ describe("PushService", () => {
       ];
 
       (tokenRepo as any).findByUserIds.resolves(tokens);
-      (settingsRepo as any).findByUserId.callsFake(async (uid: string) => {
-        if (uid === userId) return { userId, muteAll: true };
-
-        return null;
-      });
+      (settingsRepo as any).findByUserIds.resolves([
+        { userId, muteAll: true },
+      ]);
 
       await service.sendToUsers([userId, userId2], payload);
 
@@ -176,7 +176,8 @@ describe("PushService", () => {
 
       await service.sendToUser(userId, payload);
 
-      expect((tokenRepo as any).deleteByToken.calledOnceWith("invalid-token")).to.be.true;
+      expect((tokenRepo as any).deleteByTokens.calledOnce).to.be.true;
+      expect((tokenRepo as any).deleteByTokens.firstCall.args[0]).to.deep.equal(["invalid-token"]);
     });
 
     it("should delete unregistered tokens", async () => {
@@ -197,7 +198,8 @@ describe("PushService", () => {
 
       await service.sendToUser(userId, payload);
 
-      expect((tokenRepo as any).deleteByToken.calledOnceWith("unregistered-token")).to.be.true;
+      expect((tokenRepo as any).deleteByTokens.calledOnce).to.be.true;
+      expect((tokenRepo as any).deleteByTokens.firstCall.args[0]).to.deep.equal(["unregistered-token"]);
     });
   });
 });

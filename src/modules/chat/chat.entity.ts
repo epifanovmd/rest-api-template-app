@@ -94,6 +94,6 @@ export class Chat {
   @JoinColumn({ name: "last_message_sender_id" })
   lastMessageSender: User | null;
 
-  @OneToMany(() => ChatMember, member => member.chat, { cascade: true })
+  @OneToMany(() => ChatMember, member => member.chat)
   members: ChatMember[];
 }

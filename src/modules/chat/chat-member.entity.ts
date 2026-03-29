@@ -10,6 +10,7 @@ import {
 import { User } from "../user/user.entity";
 import { Chat } from "./chat.entity";
 import { EChatMemberRole } from "./chat.types";
+import { ChatFolder } from "./chat-folder.entity";
 
 @Entity("chat_members")
 @Index("IDX_CHAT_MEMBERS_CHAT_USER", ["chatId", "userId"], { unique: true })
@@ -60,4 +61,8 @@ export class ChatMember {
   @ManyToOne(() => User, { onDelete: "CASCADE" })
   @JoinColumn({ name: "user_id" })
   user: User;
+
+  @ManyToOne(() => ChatFolder, { onDelete: "SET NULL", nullable: true })
+  @JoinColumn({ name: "folder_id" })
+  folder: ChatFolder | null;
 }

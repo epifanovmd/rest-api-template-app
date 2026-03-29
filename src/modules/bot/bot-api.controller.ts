@@ -15,20 +15,11 @@ import { Injectable } from "../../core";
 import { KoaRequest } from "../../types/koa";
 import { MessageDto } from "../message/dto/message.dto";
 import { MessageService } from "../message/message.service";
-import { EMessageType } from "../message/message.types";
 import { BotService } from "./bot.service";
-
-interface IBotSendMessageBody {
-  chatId: string;
-  content?: string;
-  type?: EMessageType;
-  replyToId?: string;
-  fileIds?: string[];
-}
-
-interface IBotEditMessageBody {
-  content: string;
-}
+import {
+  IBotEditMessageBody,
+  IBotSendMessageBody,
+} from "./dto/bot-request.dto";
 
 @Injectable()
 @Tags("Bot API")

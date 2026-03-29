@@ -17,9 +17,22 @@ import {
 import { getContextUser, Injectable, ValidateBody } from "../../core";
 import { KoaRequest } from "../../types/koa";
 import { ChatService } from "./chat.service";
-import { EChatMemberRole } from "./chat.types";
 import { ChatFolderDto, ChatInviteDto, ChatMemberDto } from "./dto";
 import { ChatDto, IChatListDto } from "./dto";
+import {
+  IAddMembersBody,
+  ICreateChannelBody,
+  ICreateDirectChatBody,
+  ICreateFolderBody,
+  ICreateGroupChatBody,
+  ICreateInviteBody,
+  IMoveChatToFolderBody,
+  IMuteChatBody,
+  IUpdateChannelBody,
+  IUpdateChatBody,
+  IUpdateFolderBody,
+  IUpdateMemberRoleBody,
+} from "./dto/chat-request.dto";
 import {
   AddMembersSchema,
   CreateChannelSchema,
@@ -33,67 +46,6 @@ import {
   UpdateChatSchema,
   UpdateMemberRoleSchema,
 } from "./validation";
-
-interface ICreateDirectChatBody {
-  targetUserId: string;
-}
-
-interface ICreateGroupChatBody {
-  name: string;
-  memberIds: string[];
-  avatarId?: string;
-}
-
-interface IUpdateChatBody {
-  name?: string;
-  avatarId?: string | null;
-}
-
-interface IAddMembersBody {
-  memberIds: string[];
-}
-
-interface IMuteChatBody {
-  mutedUntil: string | null;
-}
-
-interface ICreateChannelBody {
-  name: string;
-  description?: string;
-  username?: string;
-  avatarId?: string;
-  isPublic?: boolean;
-}
-
-interface IUpdateChannelBody {
-  name?: string;
-  description?: string | null;
-  username?: string | null;
-  avatarId?: string | null;
-  isPublic?: boolean;
-}
-
-interface ICreateInviteBody {
-  expiresAt?: string;
-  maxUses?: number;
-}
-
-interface IUpdateMemberRoleBody {
-  role: EChatMemberRole;
-}
-
-interface ICreateFolderBody {
-  name: string;
-}
-
-interface IUpdateFolderBody {
-  name?: string;
-  position?: number;
-}
-
-interface IMoveChatToFolderBody {
-  folderId: string | null;
-}
 
 @Injectable()
 @Tags("Chat")
