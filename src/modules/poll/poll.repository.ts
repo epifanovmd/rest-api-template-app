@@ -24,4 +24,16 @@ export class PollRepository extends BaseRepository<Poll> {
       },
     });
   }
+
+  async findByMessageIds(messageIds: string[]): Promise<Poll[]> {
+    if (messageIds.length === 0) return [];
+
+    return this.find({
+      where: messageIds.map(id => ({ messageId: id })),
+      relations: {
+        options: true,
+        votes: true,
+      },
+    });
+  }
 }

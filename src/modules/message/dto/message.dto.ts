@@ -1,5 +1,6 @@
 import { IListResponseDto } from "../../../core";
 import { BaseDto } from "../../../core/dto/BaseDto";
+import { PollDto } from "../../poll/dto/poll.dto";
 import { Message } from "../message.entity";
 import { EMessageStatus, EMessageType } from "../message.types";
 import { MessageAttachment } from "../message-attachment.entity";
@@ -61,6 +62,7 @@ export class MessageDto extends BaseDto {
   attachments: MessageAttachmentDto[];
   reactions: { emoji: string; count: number; userIds: string[] }[];
   mentions: { userId: string | null; isAll: boolean }[];
+  poll?: PollDto | null;
 
   constructor(entity: Message) {
     super(entity);

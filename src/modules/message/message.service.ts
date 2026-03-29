@@ -11,6 +11,8 @@ import { ChatService } from "../chat/chat.service";
 import { EChatMemberRole, EChatType } from "../chat/chat.types";
 import { ChatMemberRepository } from "../chat/chat-member.repository";
 import { ChatLastMessageUpdatedEvent } from "../chat/events";
+import { PollDto } from "../poll/dto/poll.dto";
+import { PollRepository } from "../poll/poll.repository";
 import { IMediaStatsDto, MediaItemDto, MessageDto } from "./dto";
 import {
   MessageCreatedEvent,
@@ -42,6 +44,7 @@ export class MessageService {
     @inject(ChatRepository) private _chatRepo: ChatRepository,
     @inject(ChatMemberRepository) private _memberRepo: ChatMemberRepository,
     @inject(ChatService) private _chatService: ChatService,
+    @inject(PollRepository) private _pollRepo: PollRepository,
     @inject(EventBus) private _eventBus: EventBus,
   ) {}
 
@@ -201,8 +204,12 @@ export class MessageService {
       limit ?? 50,
     );
 
+    const dtos = messages.map(MessageDto.fromEntity);
+
+    await this._enrichWithPolls(dtos, userId);
+
     return {
-      data: messages.map(MessageDto.fromEntity),
+      data: dtos,
       hasMore,
     };
   }
@@ -366,7 +373,11 @@ export class MessageService {
       order: { pinnedAt: "DESC" },
     });
 
-    return messages.map(MessageDto.fromEntity);
+    const dtos = messages.map(MessageDto.fromEntity);
+
+    await this._enrichWithPolls(dtos, userId);
+
+    return dtos;
   }
 
   async markAsDelivered(chatId: string, userId: string, messageIds: string[]) {
@@ -496,8 +507,12 @@ export class MessageService {
       offset ?? 0,
     );
 
+    const dtos = messages.map(MessageDto.fromEntity);
+
+    await this._enrichWithPolls(dtos, userId);
+
     return {
-      data: messages.map(MessageDto.fromEntity),
+      data: dtos,
       totalCount,
     };
   }
@@ -527,8 +542,12 @@ export class MessageService {
       offset ?? 0,
     );
 
+    const dtos = messages.map(MessageDto.fromEntity);
+
+    await this._enrichWithPolls(dtos, userId);
+
     return {
-      data: messages.map(MessageDto.fromEntity),
+      data: dtos,
       totalCount,
     };
   }
@@ -674,5 +693,28 @@ export class MessageService {
     }
 
     return true;
+  }
+
+  /** Batch-загрузка poll данных для сообщений с type=POLL. */
+  private async _enrichWithPolls(
+    dtos: MessageDto[],
+    userId: string,
+  ): Promise<void> {
+    const pollMessageIds = dtos
+      .filter(d => d.type === EMessageType.POLL)
+      .map(d => d.id);
+
+    if (pollMessageIds.length === 0) return;
+
+    const polls = await this._pollRepo.findByMessageIds(pollMessageIds);
+    const pollMap = new Map(polls.map(p => [p.messageId, p]));
+
+    for (const dto of dtos) {
+      const poll = pollMap.get(dto.id);
+
+      if (poll) {
+        dto.poll = new PollDto(poll, userId);
+      }
+    }
   }
 }

@@ -88,6 +88,10 @@ describe("MessageService", () => {
       getMemberUserIds: sinon.stub().resolves([userId, otherUserId]),
     };
 
+    const pollRepo = {
+      findByMessageIds: sinon.stub().resolves([]),
+    };
+
     service = new MessageService(
       messageRepo as any,
       attachmentRepo as any,
@@ -96,6 +100,7 @@ describe("MessageService", () => {
       chatRepo as any,
       memberRepo as any,
       chatService as any,
+      pollRepo as any,
       eventBus as any,
     );
 

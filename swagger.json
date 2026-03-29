@@ -1224,6 +1224,14 @@
 							"type": "object"
 						},
 						"type": "array"
+					},
+					"poll": {
+						"allOf": [
+							{
+								"$ref": "#/components/schemas/PollDto"
+							}
+						],
+						"nullable": true
 					}
 				},
 				"required": [
@@ -1296,6 +1304,106 @@
 					"thumbnailUrl",
 					"width",
 					"height"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"PollOptionDto": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"text": {
+						"type": "string"
+					},
+					"position": {
+						"type": "number",
+						"format": "double"
+					},
+					"voterCount": {
+						"type": "number",
+						"format": "double"
+					},
+					"voterIds": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"id",
+					"text",
+					"position",
+					"voterCount",
+					"voterIds"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"PollDto": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"messageId": {
+						"type": "string"
+					},
+					"question": {
+						"type": "string"
+					},
+					"isAnonymous": {
+						"type": "boolean"
+					},
+					"isMultipleChoice": {
+						"type": "boolean"
+					},
+					"isClosed": {
+						"type": "boolean"
+					},
+					"closedAt": {
+						"type": "string",
+						"format": "date-time",
+						"nullable": true
+					},
+					"options": {
+						"items": {
+							"$ref": "#/components/schemas/PollOptionDto"
+						},
+						"type": "array"
+					},
+					"totalVotes": {
+						"type": "number",
+						"format": "double"
+					},
+					"userVotedOptionIds": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					},
+					"createdAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"updatedAt": {
+						"type": "string",
+						"format": "date-time"
+					}
+				},
+				"required": [
+					"id",
+					"messageId",
+					"question",
+					"isAnonymous",
+					"isMultipleChoice",
+					"isClosed",
+					"closedAt",
+					"options",
+					"totalVotes",
+					"userVotedOptionIds",
+					"createdAt",
+					"updatedAt"
 				],
 				"type": "object",
 				"additionalProperties": false
@@ -3110,106 +3218,6 @@
 				},
 				"required": [
 					"data"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"PollOptionDto": {
-				"properties": {
-					"id": {
-						"type": "string"
-					},
-					"text": {
-						"type": "string"
-					},
-					"position": {
-						"type": "number",
-						"format": "double"
-					},
-					"voterCount": {
-						"type": "number",
-						"format": "double"
-					},
-					"voterIds": {
-						"items": {
-							"type": "string"
-						},
-						"type": "array"
-					}
-				},
-				"required": [
-					"id",
-					"text",
-					"position",
-					"voterCount",
-					"voterIds"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"PollDto": {
-				"properties": {
-					"id": {
-						"type": "string"
-					},
-					"messageId": {
-						"type": "string"
-					},
-					"question": {
-						"type": "string"
-					},
-					"isAnonymous": {
-						"type": "boolean"
-					},
-					"isMultipleChoice": {
-						"type": "boolean"
-					},
-					"isClosed": {
-						"type": "boolean"
-					},
-					"closedAt": {
-						"type": "string",
-						"format": "date-time",
-						"nullable": true
-					},
-					"options": {
-						"items": {
-							"$ref": "#/components/schemas/PollOptionDto"
-						},
-						"type": "array"
-					},
-					"totalVotes": {
-						"type": "number",
-						"format": "double"
-					},
-					"userVotedOptionIds": {
-						"items": {
-							"type": "string"
-						},
-						"type": "array"
-					},
-					"createdAt": {
-						"type": "string",
-						"format": "date-time"
-					},
-					"updatedAt": {
-						"type": "string",
-						"format": "date-time"
-					}
-				},
-				"required": [
-					"id",
-					"messageId",
-					"question",
-					"isAnonymous",
-					"isMultipleChoice",
-					"isClosed",
-					"closedAt",
-					"options",
-					"totalVotes",
-					"userVotedOptionIds",
-					"createdAt",
-					"updatedAt"
 				],
 				"type": "object",
 				"additionalProperties": false

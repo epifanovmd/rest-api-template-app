@@ -530,6 +530,7 @@ const models: TsoaRoute.Models = {
             "attachments": {"dataType":"array","array":{"dataType":"refObject","ref":"MessageAttachmentDto"},"required":true},
             "reactions": {"dataType":"array","array":{"dataType":"nestedObjectLiteral","nestedProperties":{"userIds":{"dataType":"array","array":{"dataType":"string"},"required":true},"count":{"dataType":"double","required":true},"emoji":{"dataType":"string","required":true}}},"required":true},
             "mentions": {"dataType":"array","array":{"dataType":"nestedObjectLiteral","nestedProperties":{"isAll":{"dataType":"boolean","required":true},"userId":{"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true}}},"required":true},
+            "poll": {"dataType":"union","subSchemas":[{"ref":"PollDto"},{"dataType":"enum","enums":[null]}]},
         },
         "additionalProperties": false,
     },
@@ -546,6 +547,37 @@ const models: TsoaRoute.Models = {
             "thumbnailUrl": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
             "width": {"dataType":"union","subSchemas":[{"dataType":"double"},{"dataType":"enum","enums":[null]}],"required":true},
             "height": {"dataType":"union","subSchemas":[{"dataType":"double"},{"dataType":"enum","enums":[null]}],"required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "PollOptionDto": {
+        "dataType": "refObject",
+        "properties": {
+            "id": {"dataType":"string","required":true},
+            "text": {"dataType":"string","required":true},
+            "position": {"dataType":"double","required":true},
+            "voterCount": {"dataType":"double","required":true},
+            "voterIds": {"dataType":"array","array":{"dataType":"string"},"required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "PollDto": {
+        "dataType": "refObject",
+        "properties": {
+            "id": {"dataType":"string","required":true},
+            "messageId": {"dataType":"string","required":true},
+            "question": {"dataType":"string","required":true},
+            "isAnonymous": {"dataType":"boolean","required":true},
+            "isMultipleChoice": {"dataType":"boolean","required":true},
+            "isClosed": {"dataType":"boolean","required":true},
+            "closedAt": {"dataType":"union","subSchemas":[{"dataType":"datetime"},{"dataType":"enum","enums":[null]}],"required":true},
+            "options": {"dataType":"array","array":{"dataType":"refObject","ref":"PollOptionDto"},"required":true},
+            "totalVotes": {"dataType":"double","required":true},
+            "userVotedOptionIds": {"dataType":"array","array":{"dataType":"string"},"required":true},
+            "createdAt": {"dataType":"datetime","required":true},
+            "updatedAt": {"dataType":"datetime","required":true},
         },
         "additionalProperties": false,
     },
@@ -1341,37 +1373,6 @@ const models: TsoaRoute.Models = {
         "dataType": "refObject",
         "properties": {
             "data": {"ref":"AuthenticationResponseJSON","required":true},
-        },
-        "additionalProperties": false,
-    },
-    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "PollOptionDto": {
-        "dataType": "refObject",
-        "properties": {
-            "id": {"dataType":"string","required":true},
-            "text": {"dataType":"string","required":true},
-            "position": {"dataType":"double","required":true},
-            "voterCount": {"dataType":"double","required":true},
-            "voterIds": {"dataType":"array","array":{"dataType":"string"},"required":true},
-        },
-        "additionalProperties": false,
-    },
-    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "PollDto": {
-        "dataType": "refObject",
-        "properties": {
-            "id": {"dataType":"string","required":true},
-            "messageId": {"dataType":"string","required":true},
-            "question": {"dataType":"string","required":true},
-            "isAnonymous": {"dataType":"boolean","required":true},
-            "isMultipleChoice": {"dataType":"boolean","required":true},
-            "isClosed": {"dataType":"boolean","required":true},
-            "closedAt": {"dataType":"union","subSchemas":[{"dataType":"datetime"},{"dataType":"enum","enums":[null]}],"required":true},
-            "options": {"dataType":"array","array":{"dataType":"refObject","ref":"PollOptionDto"},"required":true},
-            "totalVotes": {"dataType":"double","required":true},
-            "userVotedOptionIds": {"dataType":"array","array":{"dataType":"string"},"required":true},
-            "createdAt": {"dataType":"datetime","required":true},
-            "updatedAt": {"dataType":"datetime","required":true},
         },
         "additionalProperties": false,
     },
