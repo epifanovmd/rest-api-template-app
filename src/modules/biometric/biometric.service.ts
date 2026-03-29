@@ -112,18 +112,19 @@ export class BiometricService {
       throw new UnauthorizedException("Неверная биометрическая подпись");
     }
 
-    // Инвалидируем challenge после успешной проверки
-    biometric.challenge = null;
-    biometric.challengeExpiresAt = null;
-    biometric.lastUsedAt = new Date();
-    await this._biometricRepository.save(biometric);
-
     const user = await this._userService.getUser(userId);
 
+    // Создаём сессию ДО очистки challenge — если сессия не создастся, юзер может повторить
     const { tokens } = await this._sessionService.createAuthenticatedSession(
       user,
       { deviceName: deviceId },
     );
+
+    // Инвалидируем challenge после успешного создания сессии
+    biometric.challenge = null;
+    biometric.challengeExpiresAt = null;
+    biometric.lastUsedAt = new Date();
+    await this._biometricRepository.save(biometric);
 
     return {
       verified: true,

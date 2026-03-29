@@ -10,11 +10,14 @@ import type {
   RegistrationResponseJSON,
 } from "@simplewebauthn/types";
 import { inject } from "inversify";
+import { DataSource } from "typeorm";
 
 import { config } from "../../config";
 import { Injectable } from "../../core";
 import { SessionService } from "../session/session.service";
 import { UserService } from "../user";
+import { Passkey } from "./passkey.entity";
+import { PasskeyChallenge } from "./passkey-challenge.entity";
 import { PasskeyChallengeRepository } from "./passkey-challenge.repository";
 import { PasskeysRepository } from "./passkeys.repository";
 
@@ -32,6 +35,7 @@ export class PasskeysService {
     @inject(PasskeysRepository) private _passkeysRepository: PasskeysRepository,
     @inject(PasskeyChallengeRepository) private _challengeRepo: PasskeyChallengeRepository,
     @inject(SessionService) private _sessionService: SessionService,
+    @inject(DataSource) private _dataSource: DataSource,
   ) {}
 
   /**
@@ -104,16 +108,23 @@ export class PasskeysService {
     if (verification.verified && verification.registrationInfo) {
       const { credential, credentialDeviceType } = verification.registrationInfo;
 
-      await this._passkeysRepository.createAndSave({
-        id: credential.id,
-        publicKey: new Uint8Array(credential.publicKey),
-        userId,
-        counter: credential.counter,
-        deviceType: credentialDeviceType,
-        transports: credential.transports,
-      });
+      await this._dataSource.transaction(async manager => {
+        const passkeyRepo = manager.getRepository(Passkey);
+        const challengeRepo = manager.getRepository(PasskeyChallenge);
 
-      await this._challengeRepo.deleteByUserId(userId);
+        await passkeyRepo.save(
+          passkeyRepo.create({
+            id: credential.id,
+            publicKey: new Uint8Array(credential.publicKey),
+            userId,
+            counter: credential.counter,
+            deviceType: credentialDeviceType,
+            transports: credential.transports,
+          }),
+        );
+
+        await challengeRepo.delete({ userId });
+      });
     }
 
     return { verified: verification.verified };
@@ -200,11 +211,16 @@ export class PasskeysService {
     }
 
     if (verifyData.verified) {
-      passkey.counter = verifyData.authenticationInfo.newCounter;
-      passkey.lastUsed = new Date();
-      await this._passkeysRepository.save(passkey);
+      await this._dataSource.transaction(async manager => {
+        const passkeyRepo = manager.getRepository(Passkey);
+        const challengeRepo = manager.getRepository(PasskeyChallenge);
 
-      await this._challengeRepo.deleteByUserId(user.id);
+        passkey.counter = verifyData.authenticationInfo.newCounter;
+        passkey.lastUsed = new Date();
+        await passkeyRepo.save(passkey);
+
+        await challengeRepo.delete({ userId: user.id });
+      });
     }
 
     let tokens;

@@ -374,23 +374,34 @@ export class ChatService {
       }
     }
 
-    const chat = await this._chatRepo.createAndSave({
-      type: EChatType.CHANNEL,
-      name: data.name,
-      description: data.description ?? null,
-      username: data.username ?? null,
-      avatarId: data.avatarId ?? null,
-      isPublic: data.isPublic ?? false,
-      createdById: userId,
+    const chatId = await this._dataSource.transaction(async manager => {
+      const chatRepo = manager.getRepository(Chat);
+      const memberRepo = manager.getRepository(ChatMember);
+
+      const chat = chatRepo.create({
+        type: EChatType.CHANNEL,
+        name: data.name,
+        description: data.description ?? null,
+        username: data.username ?? null,
+        avatarId: data.avatarId ?? null,
+        isPublic: data.isPublic ?? false,
+        createdById: userId,
+      });
+
+      const savedChat = await chatRepo.save(chat);
+
+      await memberRepo.save(
+        memberRepo.create({
+          chatId: savedChat.id,
+          userId,
+          role: EChatMemberRole.OWNER,
+        }),
+      );
+
+      return savedChat.id;
     });
 
-    await this._memberRepo.createAndSave({
-      chatId: chat.id,
-      userId,
-      role: EChatMemberRole.OWNER,
-    });
-
-    const fullChat = await this._chatRepo.findById(chat.id);
+    const fullChat = await this._chatRepo.findById(chatId);
 
     this._eventBus.emit(new ChatCreatedEvent(fullChat!, [userId]));
 
