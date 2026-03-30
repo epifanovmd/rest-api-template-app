@@ -15,8 +15,21 @@ export const WEBHOOK_EVENT_TYPES = [
   "command",
   "message_edited",
   "message_deleted",
+  "message_reaction",
+  "message_pinned",
+  "message_unpinned",
   "member_joined",
   "member_left",
+  "member_role_changed",
+  "member_banned",
+  "member_unbanned",
+  "chat_created",
+  "chat_updated",
+  "poll_created",
+  "poll_voted",
+  "poll_closed",
+  "call_initiated",
+  "call_ended",
 ] as const;
 
 export type WebhookEventType = (typeof WEBHOOK_EVENT_TYPES)[number];
