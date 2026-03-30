@@ -11,161 +11,161 @@ import { PublicProfileDto } from "../profile/dto";
 
 // ─── Payload-интерфейсы: Клиент → Сервер ─────────────────────────────────
 
-export interface IChatRoomPayload {
+export interface ISocketChatRoomPayload {
   chatId: string;
 }
 
-export interface IMessageReadPayload {
+export interface ISocketMessageReadPayload {
   chatId: string;
   messageId: string;
 }
 
-export interface IMessageDeliveredPayload {
+export interface ISocketMessageDeliveredPayload {
   chatId: string;
   messageIds: string[];
 }
 
-export interface ICallSignalPayload {
+export interface ISocketCallSignalPayload {
   callId: string;
   targetUserId: string;
   sdp: unknown;
 }
 
-export interface ICallIceCandidatePayload {
+export interface ISocketCallIceCandidatePayload {
   callId: string;
   targetUserId: string;
   candidate: unknown;
 }
 
-export interface ICallHangupPayload {
+export interface ISocketCallHangupPayload {
   callId: string;
   targetUserId: string;
 }
 
 // ─── Payload-интерфейсы: Сервер → Клиент ─────────────────────────────────
 
-export interface IAuthenticatedPayload {
+export interface ISocketAuthenticatedPayload {
   userId: string;
 }
 
-export interface IAuthErrorPayload {
+export interface ISocketAuthErrorPayload {
   message: string;
 }
 
-export interface IMessageIdentifierPayload {
+export interface ISocketMessageIdentifierPayload {
   messageId: string;
   chatId: string;
 }
 
-export interface IMessageReactionPayload {
+export interface ISocketMessageReactionPayload {
   messageId: string;
   chatId: string;
   userId: string;
   emoji: string | null;
 }
 
-export interface IMessageStatusPayload {
+export interface ISocketMessageStatusPayload {
   messageId: string;
   chatId: string;
   status: string;
 }
 
-export interface IChatTypingPayload {
+export interface ISocketChatTypingPayload {
   chatId: string;
   userId: string;
 }
 
-export interface IChatUnreadPayload {
+export interface ISocketChatUnreadPayload {
   chatId: string;
   unreadCount: number;
 }
 
-export interface IChatMemberPayload {
+export interface ISocketChatMemberPayload {
   chatId: string;
   userId: string;
 }
 
-export interface IChatPinnedPayload {
+export interface ISocketChatPinnedPayload {
   chatId: string;
   isPinned: boolean;
 }
 
-export interface IChatMemberRoleChangedPayload {
+export interface ISocketChatMemberRoleChangedPayload {
   chatId: string;
   userId: string;
   role: string;
 }
 
-export interface IChatLastMessagePayload {
+export interface ISocketChatLastMessagePayload {
   chatId: string;
   lastMessage: ChatLastMessageDto | null;
 }
 
-export interface IChatSlowModePayload {
+export interface ISocketChatSlowModePayload {
   chatId: string;
   seconds: number;
 }
 
-export interface IChatMemberBannedPayload {
+export interface ISocketChatMemberBannedPayload {
   chatId: string;
   userId: string;
   bannedBy: string;
   reason?: string;
 }
 
-export interface ICallEndedPayload {
+export interface ISocketCallEndedPayload {
   callId: string;
   endedBy: string;
 }
 
-export interface ICallRelayPayload {
+export interface ISocketCallRelayPayload {
   callId: string;
   fromUserId: string;
   sdp: unknown;
 }
 
-export interface ICallIceCandidateRelayPayload {
+export interface ISocketCallIceCandidateRelayPayload {
   callId: string;
   fromUserId: string;
   candidate: unknown;
 }
 
-export interface IUserEmailVerifiedPayload {
+export interface ISocketUserEmailVerifiedPayload {
   verified: boolean;
 }
 
-export interface ISyncAvailablePayload {
+export interface ISocketSyncAvailablePayload {
   version: string;
 }
 
-export interface IContactRemovedPayload {
+export interface ISocketContactRemovedPayload {
   contactId: string;
 }
 
-export interface IUserPasswordChangedPayload {
+export interface ISocketUserPasswordChangedPayload {
   userId: string;
   method: "change" | "reset";
 }
 
-export interface IUserPrivilegesChangedPayload {
+export interface ISocketUserPrivilegesChangedPayload {
   roles: string[];
   permissions: string[];
 }
 
-export interface IUserUsernameChangedPayload {
+export interface ISocketUserUsernameChangedPayload {
   userId: string;
   username: string | null;
 }
 
-export interface IAuth2faChangedPayload {
+export interface ISocketAuth2faChangedPayload {
   enabled: boolean;
 }
 
-export interface ISessionPayload {
+export interface ISocketSessionPayload {
   sessionId: string;
 }
 
-export interface ISocketErrorPayload {
+export interface ISocketErrorEventPayload {
   event: string;
   message: string;
 }
@@ -176,34 +176,34 @@ export interface ISocketEvents {
   "profile:subscribe": () => void;
 
   /** Присоединиться к комнате чата */
-  "chat:join": (data: IChatRoomPayload) => void;
+  "chat:join": (data: ISocketChatRoomPayload) => void;
   /** Покинуть комнату чата */
-  "chat:leave": (data: IChatRoomPayload) => void;
+  "chat:leave": (data: ISocketChatRoomPayload) => void;
   /** Индикатор набора текста */
-  "chat:typing": (data: IChatRoomPayload) => void;
+  "chat:typing": (data: ISocketChatRoomPayload) => void;
   /** Отметить сообщения как прочитанные */
-  "message:read": (data: IMessageReadPayload) => void;
+  "message:read": (data: ISocketMessageReadPayload) => void;
   /** Подтвердить доставку сообщений */
-  "message:delivered": (data: IMessageDeliveredPayload) => void;
+  "message:delivered": (data: ISocketMessageDeliveredPayload) => void;
 
   // ─── Call (WebRTC signaling) ──────────────────────────────────────────
   /** Relay SDP offer */
-  "call:offer": (data: ICallSignalPayload) => void;
+  "call:offer": (data: ISocketCallSignalPayload) => void;
   /** Relay SDP answer */
-  "call:answer": (data: ICallSignalPayload) => void;
+  "call:answer": (data: ISocketCallSignalPayload) => void;
   /** Relay ICE candidate */
-  "call:ice-candidate": (data: ICallIceCandidatePayload) => void;
+  "call:ice-candidate": (data: ISocketCallIceCandidatePayload) => void;
   /** Hangup signal */
-  "call:hangup": (data: ICallHangupPayload) => void;
+  "call:hangup": (data: ISocketCallHangupPayload) => void;
 }
 
 // ─── События Сервер → Клиент ─────────────────────────────────────────────
 
 export interface ISocketEmitEvents {
   /** Успешная аутентификация по JWT токену */
-  authenticated: (...args: [IAuthenticatedPayload]) => void;
+  authenticated: (...args: [ISocketAuthenticatedPayload]) => void;
   /** Ошибка аутентификации */
-  auth_error: (...args: [IAuthErrorPayload]) => void;
+  auth_error: (...args: [ISocketAuthErrorPayload]) => void;
 
   /** Изменение профиля */
   "profile:updated": (...args: [PublicProfileDto]) => void;
@@ -214,33 +214,33 @@ export interface ISocketEmitEvents {
   /** Сообщение отредактировано */
   "message:updated": (...args: [MessageDto]) => void;
   /** Сообщение удалено */
-  "message:deleted": (...args: [IMessageIdentifierPayload]) => void;
+  "message:deleted": (...args: [ISocketMessageIdentifierPayload]) => void;
   /** Реакция на сообщение */
-  "message:reaction": (...args: [IMessageReactionPayload]) => void;
+  "message:reaction": (...args: [ISocketMessageReactionPayload]) => void;
   /** Сообщение закреплено */
   "message:pinned": (...args: [MessageDto]) => void;
   /** Сообщение откреплено */
-  "message:unpinned": (...args: [IMessageIdentifierPayload]) => void;
+  "message:unpinned": (...args: [ISocketMessageIdentifierPayload]) => void;
   /** Обновление статуса доставки сообщения */
-  "message:status": (...args: [IMessageStatusPayload]) => void;
+  "message:status": (...args: [ISocketMessageStatusPayload]) => void;
   /** Новый чат создан */
   "chat:created": (...args: [ChatDto]) => void;
   /** Чат обновлён */
   "chat:updated": (...args: [ChatDto]) => void;
   /** Кто-то набирает текст */
-  "chat:typing": (...args: [IChatTypingPayload]) => void;
+  "chat:typing": (...args: [ISocketChatTypingPayload]) => void;
   /** Обновление счётчика непрочитанных */
-  "chat:unread": (...args: [IChatUnreadPayload]) => void;
+  "chat:unread": (...args: [ISocketChatUnreadPayload]) => void;
   /** Участник добавлен */
-  "chat:member:joined": (...args: [IChatMemberPayload]) => void;
+  "chat:member:joined": (...args: [ISocketChatMemberPayload]) => void;
   /** Участник удалён */
-  "chat:member:left": (...args: [IChatMemberPayload]) => void;
+  "chat:member:left": (...args: [ISocketChatMemberPayload]) => void;
   /** Чат закреплён/откреплён */
-  "chat:pinned": (...args: [IChatPinnedPayload]) => void;
+  "chat:pinned": (...args: [ISocketChatPinnedPayload]) => void;
   /** Роль участника чата изменена */
-  "chat:member:role-changed": (...args: [IChatMemberRoleChangedPayload]) => void;
+  "chat:member:role-changed": (...args: [ISocketChatMemberRoleChangedPayload]) => void;
   /** Обновление последнего сообщения чата */
-  "chat:last-message": (...args: [IChatLastMessagePayload]) => void;
+  "chat:last-message": (...args: [ISocketChatLastMessagePayload]) => void;
 
   // ─── Poll events ──────────────────────────────────────────────────────
   /** Голос в опросе */
@@ -250,11 +250,11 @@ export interface ISocketEmitEvents {
 
   // ─── Chat moderation events ──────────────────────────────────────────
   /** Режим медленной отправки изменён */
-  "chat:slow-mode": (...args: [IChatSlowModePayload]) => void;
+  "chat:slow-mode": (...args: [ISocketChatSlowModePayload]) => void;
   /** Участник заблокирован */
-  "chat:member:banned": (...args: [IChatMemberBannedPayload]) => void;
+  "chat:member:banned": (...args: [ISocketChatMemberBannedPayload]) => void;
   /** Участник разблокирован */
-  "chat:member:unbanned": (...args: [IChatMemberPayload]) => void;
+  "chat:member:unbanned": (...args: [ISocketChatMemberPayload]) => void;
 
   // ─── Call events ─────────────────────────────────────────────────────
   /** Входящий звонок */
@@ -264,29 +264,29 @@ export interface ISocketEmitEvents {
   /** Звонок отклонён */
   "call:declined": (...args: [CallDto]) => void;
   /** Звонок завершён */
-  "call:ended": (...args: [CallDto | ICallEndedPayload]) => void;
+  "call:ended": (...args: [CallDto | ISocketCallEndedPayload]) => void;
   /** Пропущенный звонок */
   "call:missed": (...args: [CallDto]) => void;
   /** Relay SDP offer */
-  "call:offer": (...args: [ICallRelayPayload]) => void;
+  "call:offer": (...args: [ISocketCallRelayPayload]) => void;
   /** Relay SDP answer */
-  "call:answer": (...args: [ICallRelayPayload]) => void;
+  "call:answer": (...args: [ISocketCallRelayPayload]) => void;
   /** Relay ICE candidate */
-  "call:ice-candidate": (...args: [ICallIceCandidateRelayPayload]) => void;
+  "call:ice-candidate": (...args: [ISocketCallIceCandidateRelayPayload]) => void;
 
   // ─── User events ──────────────────────────────────────────────────────
   /** Email пользователя подтверждён */
-  "user:email-verified": (...args: [IUserEmailVerifiedPayload]) => void;
+  "user:email-verified": (...args: [ISocketUserEmailVerifiedPayload]) => void;
   /** Пароль изменён */
-  "user:password-changed": (...args: [IUserPasswordChangedPayload]) => void;
+  "user:password-changed": (...args: [ISocketUserPasswordChangedPayload]) => void;
   /** Привилегии пользователя изменены */
-  "user:privileges-changed": (...args: [IUserPrivilegesChangedPayload]) => void;
+  "user:privileges-changed": (...args: [ISocketUserPrivilegesChangedPayload]) => void;
   /** Username пользователя изменён */
-  "user:username-changed": (...args: [IUserUsernameChangedPayload]) => void;
+  "user:username-changed": (...args: [ISocketUserUsernameChangedPayload]) => void;
 
   // ─── Sync events ───────────────────────────────────────────────────────
   /** Уведомление о наличии новых изменений для sync */
-  "sync:available": (...args: [ISyncAvailablePayload]) => void;
+  "sync:available": (...args: [ISocketSyncAvailablePayload]) => void;
 
   // ─── Contact events ─────────────────────────────────────────────────────
   /** Запрос на добавление в контакты */
@@ -294,7 +294,7 @@ export interface ISocketEmitEvents {
   /** Контакт принят */
   "contact:accepted": (...args: [ContactDto]) => void;
   /** Контакт удалён */
-  "contact:removed": (...args: [IContactRemovedPayload]) => void;
+  "contact:removed": (...args: [ISocketContactRemovedPayload]) => void;
   /** Контакт заблокирован */
   "contact:blocked": (...args: [ContactDto]) => void;
   /** Контакт разблокирован */
@@ -310,17 +310,17 @@ export interface ISocketEmitEvents {
 
   // ─── Auth events ──────────────────────────────────────────────────────
   /** Изменение статуса 2FA */
-  "auth:2fa-changed": (...args: [IAuth2faChangedPayload]) => void;
+  "auth:2fa-changed": (...args: [ISocketAuth2faChangedPayload]) => void;
 
   // ─── Session events ─────────────────────────────────────────────────────
   /** Новая сессия авторизована */
-  "session:new": (...args: [ISessionPayload]) => void;
+  "session:new": (...args: [ISocketSessionPayload]) => void;
   /** Сессия завершена */
-  "session:terminated": (...args: [ISessionPayload]) => void;
+  "session:terminated": (...args: [ISocketSessionPayload]) => void;
 
   // ─── Error event ──────────────────────────────────────────────────────
   /** Общая ошибка обработки socket-события */
-  error: (...args: [ISocketErrorPayload]) => void;
+  error: (...args: [ISocketErrorEventPayload]) => void;
 }
 
 // ─── Типы Socket ─────────────────────────────────────────────────────────────
