@@ -1,7 +1,7 @@
 import { inject } from "inversify";
 
 import { EventBus, Injectable } from "../../core";
-import { ISocketEventListener } from "../socket";
+import { ISocketContactRemovedPayload, ISocketEventListener } from "../socket";
 import { SocketEmitterService } from "../socket/socket-emitter.service";
 import {
   ContactAcceptedEvent,
@@ -45,12 +45,12 @@ export class ContactListener implements ISocketEventListener {
     this._eventBus.on(
       ContactRemovedEvent,
       (event: ContactRemovedEvent) => {
-        this._emitter.toUser(event.userId, "contact:removed", {
+        const payload: ISocketContactRemovedPayload = {
           contactId: event.contactId,
-        });
-        this._emitter.toUser(event.contactUserId, "contact:removed", {
-          contactId: event.contactId,
-        });
+        };
+
+        this._emitter.toUser(event.userId, "contact:removed", payload);
+        this._emitter.toUser(event.contactUserId, "contact:removed", payload);
       },
     );
 

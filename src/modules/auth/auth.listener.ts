@@ -23,14 +23,11 @@ export class AuthListener implements ISocketEventListener {
       });
     });
 
-    this._eventBus.on(
-      TwoFactorEnabledEvent,
-      (event: TwoFactorEnabledEvent) => {
-        this._emitter.toUser(event.userId, "auth:2fa-changed", {
-          enabled: true,
-        });
-      },
-    );
+    this._eventBus.on(TwoFactorEnabledEvent, (event: TwoFactorEnabledEvent) => {
+      this._emitter.toUser(event.userId, "auth:2fa-changed", {
+        enabled: true,
+      });
+    });
 
     this._eventBus.on(
       TwoFactorDisabledEvent,
