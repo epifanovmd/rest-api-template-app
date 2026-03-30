@@ -300,20 +300,6 @@ export class MessageService {
       throw new NotFoundException("Сообщение не найдено");
     }
 
-    // Check admin/owner
-    const membership = await this._memberRepo.findMembership(
-      message.chatId,
-      userId,
-    );
-
-    if (
-      !membership ||
-      (membership.role !== EChatMemberRole.ADMIN &&
-        membership.role !== EChatMemberRole.OWNER)
-    ) {
-      throw new ForbiddenException("Недостаточно прав для закрепления");
-    }
-
     message.isPinned = true;
     message.pinnedAt = new Date();
     message.pinnedById = userId;
@@ -331,19 +317,6 @@ export class MessageService {
 
     if (!message) {
       throw new NotFoundException("Сообщение не найдено");
-    }
-
-    const membership = await this._memberRepo.findMembership(
-      message.chatId,
-      userId,
-    );
-
-    if (
-      !membership ||
-      (membership.role !== EChatMemberRole.ADMIN &&
-        membership.role !== EChatMemberRole.OWNER)
-    ) {
-      throw new ForbiddenException("Недостаточно прав для открепления");
     }
 
     message.isPinned = false;
