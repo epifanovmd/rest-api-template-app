@@ -3,6 +3,7 @@ import "reflect-metadata";
 import { App } from "./app";
 import { AppModule } from "./app.module";
 import { logger } from "./core";
+import { startFilesServer } from "./files-server";
 
 const SHUTDOWN_TIMEOUT_MS = 30000;
 
@@ -10,6 +11,8 @@ const bootstrap = async () => {
   const app = new App();
 
   await app.start(AppModule);
+
+  startFilesServer();
 
   const shutdown = async (signal: string) => {
     logger.info({ signal }, "Shutting down gracefully...");
