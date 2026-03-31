@@ -15,13 +15,13 @@ export function startFilesServer(): void {
   const app = new Koa();
   const filesPath = path.resolve(config.server.filesFolderPath);
 
-  app.use(mount("/files", serve(filesPath)));
+  const { filesRoutePrefix, filesServerPort: port, host } = config.server;
 
-  const { filesServerPort: port, host } = config.server;
+  app.use(mount(filesRoutePrefix, serve(filesPath)));
 
   createServer(app.callback()).listen(port, host, () => {
     logger.info(
-      { url: `http://${host}:${port}/files`, path: filesPath },
+      { url: `http://${host}:${port}${filesRoutePrefix}`, path: filesPath },
       "Static files server started (debug)",
     );
   });

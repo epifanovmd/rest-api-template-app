@@ -66,11 +66,14 @@ describe("PasskeysService", () => {
       deleteByUserId: sinon.stub().resolves(),
     };
 
+    const dataSource = {} as any;
+
     service = new PasskeysService(
       userService as any,
       passkeysRepo as any,
       challengeRepo as any,
       sessionService as any,
+      dataSource,
     );
   });
 

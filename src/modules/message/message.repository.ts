@@ -116,7 +116,11 @@ export class MessageRepository extends BaseRepository<Message> {
       .andWhere("message.isDeleted = false")
       .andWhere("attachments.id IS NOT NULL");
 
-    if (type) {
+    if (type === "document") {
+      qb.andWhere(
+        "file.type NOT LIKE 'image%' AND file.type NOT LIKE 'video%' AND file.type NOT LIKE 'audio%'",
+      );
+    } else if (type) {
       qb.andWhere("file.type LIKE :type", { type: `${type}%` });
     }
 

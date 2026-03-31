@@ -1,9 +1,18 @@
 import { encode } from "blurhash";
+import { execSync } from "child_process";
 import ffmpeg from "fluent-ffmpeg";
 import fs from "fs/promises";
 import path from "path";
 import sharp from "sharp";
 
+try {
+  ffmpeg.setFfmpegPath(execSync("which ffmpeg").toString().trim());
+  ffmpeg.setFfprobePath(execSync("which ffprobe").toString().trim());
+} catch {
+  // ffmpeg/ffprobe not installed — media processing will fall back gracefully
+}
+
+import { config } from "../../config";
 import { Injectable, logger } from "../../core";
 
 const IMAGE_MAX_SIZE = 2048;
@@ -31,6 +40,8 @@ export interface IVideoProcessResult {
 }
 
 export interface IAudioProcessResult {
+  url: string;
+  size: number;
   duration: number | null;
 }
 
@@ -74,7 +85,7 @@ export class MediaProcessorService {
         .webp({ quality: THUMB_QUALITY })
         .toFile(thumbPath);
 
-      thumbnailUrl = `/${path.basename(dir)}/${id}_thumb.webp`;
+      thumbnailUrl = `${config.server.filesRoutePrefix}/${id}_thumb.webp`;
 
       // Medium 800x800
       await sharp(compressedPath)
@@ -85,7 +96,7 @@ export class MediaProcessorService {
         .webp({ quality: THUMB_QUALITY })
         .toFile(mediumPath);
 
-      mediumUrl = `/${path.basename(dir)}/${id}_medium.webp`;
+      mediumUrl = `${config.server.filesRoutePrefix}/${id}_medium.webp`;
 
       // Blurhash из thumbnail (маленький → быстро)
       blurhash = await this._generateBlurhash(thumbPath);
@@ -105,7 +116,7 @@ export class MediaProcessorService {
 
       // Fallback: вернуть оригинал без обработки
       return {
-        url: filePath,
+        url: `${config.server.filesRoutePrefix}/${path.basename(filePath)}`,
         size: (await fs.stat(filePath).catch(() => ({ size: 0 }))).size,
         width,
         height,
@@ -118,7 +129,7 @@ export class MediaProcessorService {
     const stat = await fs.stat(compressedPath);
 
     return {
-      url: compressedPath,
+      url: `${config.server.filesRoutePrefix}/${id}.webp`,
       size: stat.size,
       width,
       height,
@@ -170,7 +181,7 @@ export class MediaProcessorService {
         .webp({ quality: THUMB_QUALITY })
         .toFile(thumbPath);
 
-      thumbnailUrl = `/${path.basename(dir)}/${id}_thumb.webp`;
+      thumbnailUrl = `${config.server.filesRoutePrefix}/${id}_thumb.webp`;
 
       // Medium из кадра
       await sharp(framePath)
@@ -181,7 +192,7 @@ export class MediaProcessorService {
         .webp({ quality: THUMB_QUALITY })
         .toFile(mediumPath);
 
-      mediumUrl = `/${path.basename(dir)}/${id}_medium.webp`;
+      mediumUrl = `${config.server.filesRoutePrefix}/${id}_medium.webp`;
 
       // Удалить временный кадр
       await fs.unlink(framePath).catch(() => {});
@@ -192,21 +203,50 @@ export class MediaProcessorService {
     return { thumbnailUrl, mediumUrl, width, height, duration };
   }
 
-  /** Обработка аудио: duration через ffprobe. */
-  async processAudio(filePath: string): Promise<IAudioProcessResult> {
+  /** Обработка аудио: конвертация в m4a (AAC) для совместимости с iOS, извлечение duration. */
+  async processAudio(
+    filePath: string,
+    id: string,
+  ): Promise<IAudioProcessResult> {
+    const dir = path.dirname(filePath);
+    const m4aPath = path.join(dir, `${id}.m4a`);
     let duration: number | null = null;
 
     try {
-      const probe = await this._ffprobe(filePath);
+      // Конвертация в m4a (AAC) — поддерживается на всех платформах
+      await this._convertToM4a(filePath, m4aPath);
+
+      // Удалить оригинал
+      if (m4aPath !== filePath) {
+        await fs.unlink(filePath).catch(() => {});
+      }
+
+      // Извлечь duration из сконвертированного m4a (webm от MediaRecorder часто не содержит duration)
+      const probe = await this._ffprobe(m4aPath);
 
       duration = probe.format?.duration
         ? parseFloat(String(probe.format.duration))
         : null;
+
+      const stat = await fs.stat(m4aPath);
+
+      return {
+        url: `${config.server.filesRoutePrefix}/${id}.m4a`,
+        size: stat.size,
+        duration,
+      };
     } catch (err) {
       logger.error({ err }, "Failed to process audio");
-    }
 
-    return { duration };
+      // Fallback: вернуть оригинал
+      const stat = await fs.stat(filePath).catch(() => ({ size: 0 }));
+
+      return {
+        url: `${config.server.filesRoutePrefix}/${path.basename(filePath)}`,
+        size: stat.size,
+        duration,
+      };
+    }
   }
 
   /** Генерация blurhash из маленького изображения. */
@@ -230,6 +270,23 @@ export class MediaProcessorService {
 
       return null;
     }
+  }
+
+  /** Конвертация аудио в m4a (AAC) для кросс-платформенной совместимости. */
+  private _convertToM4a(
+    inputPath: string,
+    outputPath: string,
+  ): Promise<void> {
+    return new Promise((resolve, reject) => {
+      ffmpeg(inputPath)
+        .audioCodec("aac")
+        .audioBitrate("128k")
+        .outputOptions("-movflags", "+faststart")
+        .output(outputPath)
+        .on("end", () => resolve())
+        .on("error", (err: Error) => reject(err))
+        .run();
+    });
   }
 
   /** Извлечь первый кадр из видео. */

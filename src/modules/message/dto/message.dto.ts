@@ -15,6 +15,7 @@ export class MessageAttachmentDto extends BaseDto {
   thumbnailUrl: string | null;
   width: number | null;
   height: number | null;
+  duration: number | null;
 
   constructor(entity: MessageAttachment) {
     super(entity);
@@ -28,6 +29,7 @@ export class MessageAttachmentDto extends BaseDto {
     this.thumbnailUrl = entity.file?.thumbnailUrl ?? null;
     this.width = entity.file?.width ?? null;
     this.height = entity.file?.height ?? null;
+    this.duration = entity.file?.duration ?? null;
   }
 
   static fromEntity(entity: MessageAttachment) {

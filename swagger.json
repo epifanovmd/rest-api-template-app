@@ -1308,6 +1308,11 @@
 						"type": "number",
 						"format": "double",
 						"nullable": true
+					},
+					"duration": {
+						"type": "number",
+						"format": "double",
+						"nullable": true
 					}
 				},
 				"required": [
@@ -1319,7 +1324,8 @@
 					"fileSize",
 					"thumbnailUrl",
 					"width",
-					"height"
+					"height",
+					"duration"
 				],
 				"type": "object",
 				"additionalProperties": false

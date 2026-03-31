@@ -34,7 +34,7 @@ export class FileService {
       files.map(async file => {
         const id = v4();
 
-        let url = file.path;
+        let url = `${config.server.filesRoutePrefix}/${path.basename(file.path)}`;
         let size = file.size;
         let width: number | null = null;
         let height: number | null = null;
@@ -62,8 +62,10 @@ export class FileService {
           height = result.height;
           duration = result.duration;
         } else if (file.mimetype.startsWith("audio/")) {
-          const result = await this._mediaProcessor.processAudio(file.path);
+          const result = await this._mediaProcessor.processAudio(file.path, id);
 
+          url = result.url;
+          size = result.size;
           duration = result.duration;
         }
 
@@ -110,7 +112,7 @@ export class FileService {
     try {
       await fs.readdir(config.server.filesFolderPath);
 
-      const file = url.split("/")?.[1];
+      const file = path.basename(url);
 
       if (file) {
         await fs.unlink(path.join(config.server.filesFolderPath, file));

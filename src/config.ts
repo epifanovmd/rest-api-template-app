@@ -26,6 +26,7 @@ const configSchema = z.object({
     host: z.string().default("0.0.0.0"),
     port: port.default(8181),
     filesFolderPath: z.string().default("./files"),
+    filesRoutePrefix: z.string().default("/files"),
     filesServerPort: port.default(8182),
   }),
 
@@ -105,6 +106,7 @@ export const config: Config = configSchema.parse({
     host: env.SERVER_HOST,
     port: env.SERVER_PORT,
     filesFolderPath: env.SERVER_FILES_FOLDER_PATH,
+    filesRoutePrefix: env.SERVER_FILES_ROUTE_PREFIX,
     filesServerPort: env.SERVER_FILES_PORT,
   },
   rateLimit: {
