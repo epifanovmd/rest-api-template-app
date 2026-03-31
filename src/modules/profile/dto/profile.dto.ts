@@ -3,7 +3,6 @@ import { BaseDto } from "../../../core/dto/BaseDto";
 import { IFileDto } from "../../file/file.dto";
 import { UserDto } from "../../user/dto";
 import { Profile } from "../profile.entity";
-import { EProfileStatus } from "../profile.types";
 
 export class ProfileDto extends BaseDto {
   id: string;
@@ -12,7 +11,6 @@ export class ProfileDto extends BaseDto {
   lastName: string | null;
   birthDate: Date | null;
   gender: string | null;
-  status: EProfileStatus;
   lastOnline: Date | null;
   createdAt: Date;
   updatedAt: Date;
@@ -29,7 +27,6 @@ export class ProfileDto extends BaseDto {
     this.lastName = entity.lastName;
     this.birthDate = entity.birthDate;
     this.gender = entity.gender;
-    this.status = entity.status;
     this.lastOnline = entity.lastOnline;
     this.createdAt = entity.createdAt;
     this.updatedAt = entity.updatedAt;
@@ -47,7 +44,6 @@ export class PublicProfileDto extends BaseDto {
   id: string;
   firstName: string | null;
   lastName: string | null;
-  status: EProfileStatus;
   lastOnline: Date | null;
 
   constructor(entity: Profile) {
@@ -56,7 +52,6 @@ export class PublicProfileDto extends BaseDto {
     this.id = entity.id;
     this.firstName = entity.firstName;
     this.lastName = entity.lastName;
-    this.status = entity.status;
     this.lastOnline = entity.lastOnline;
   }
 

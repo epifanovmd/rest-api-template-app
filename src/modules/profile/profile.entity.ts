@@ -12,7 +12,6 @@ import {
 
 import { File } from "../file/file.entity";
 import { User } from "../user/user.entity";
-import { EProfileStatus } from "./profile.types";
 
 /** Сущность профиля пользователя: личные данные и статус онлайн. */
 @Entity("profiles")
@@ -38,15 +37,6 @@ export class Profile {
   // Пол пользователя в свободной форме
   @Column({ type: "varchar", length: 20, nullable: true })
   gender: string | null;
-
-  // Текущий статус присутствия (online/offline)
-  @Column({
-    name: "profile_status_type",
-    type: "enum",
-    enum: ["online", "offline"],
-    default: "offline",
-  })
-  status: EProfileStatus;
 
   // Время последнего онлайна пользователя
   @Column({ name: "last_online", type: "timestamp", nullable: true })

@@ -73,11 +73,6 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "EProfileStatus": {
-        "dataType": "refEnum",
-        "enums": ["online","offline"],
-    },
-    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "IFileDto": {
         "dataType": "refObject",
         "properties": {
@@ -107,7 +102,6 @@ const models: TsoaRoute.Models = {
             "lastName": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
             "birthDate": {"dataType":"union","subSchemas":[{"dataType":"datetime"},{"dataType":"enum","enums":[null]}],"required":true},
             "gender": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
-            "status": {"ref":"EProfileStatus","required":true},
             "lastOnline": {"dataType":"union","subSchemas":[{"dataType":"datetime"},{"dataType":"enum","enums":[null]}],"required":true},
             "createdAt": {"dataType":"datetime","required":true},
             "updatedAt": {"dataType":"datetime","required":true},
@@ -184,7 +178,6 @@ const models: TsoaRoute.Models = {
             "lastName": {"dataType":"string"},
             "birthDate": {"dataType":"datetime"},
             "gender": {"dataType":"string"},
-            "status": {"ref":"EProfileStatus"},
         },
         "additionalProperties": false,
     },
@@ -210,7 +203,6 @@ const models: TsoaRoute.Models = {
             "id": {"dataType":"string","required":true},
             "firstName": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
             "lastName": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
-            "status": {"ref":"EProfileStatus","required":true},
             "lastOnline": {"dataType":"union","subSchemas":[{"dataType":"datetime"},{"dataType":"enum","enums":[null]}],"required":true},
         },
         "additionalProperties": false,
@@ -852,6 +844,16 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "ChatPeerDto": {
+        "dataType": "refObject",
+        "properties": {
+            "userId": {"dataType":"string","required":true},
+            "role": {"ref":"EChatMemberRole","required":true},
+            "profile": {"ref":"PublicProfileDto"},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "ChatDto": {
         "dataType": "refObject",
         "properties": {
@@ -869,6 +871,8 @@ const models: TsoaRoute.Models = {
             "createdAt": {"dataType":"datetime","required":true},
             "updatedAt": {"dataType":"datetime","required":true},
             "members": {"dataType":"array","array":{"dataType":"refObject","ref":"ChatMemberDto"},"required":true},
+            "me": {"dataType":"union","subSchemas":[{"ref":"ChatMemberDto"},{"dataType":"enum","enums":[null]}],"required":true},
+            "peer": {"dataType":"union","subSchemas":[{"ref":"ChatPeerDto"},{"dataType":"enum","enums":[null]}],"required":true},
         },
         "additionalProperties": false,
     },

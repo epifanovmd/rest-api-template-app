@@ -2,6 +2,7 @@ import { In } from "typeorm";
 
 import { InjectableRepository } from "../../core";
 import { BaseRepository } from "../../core/repository/repository";
+import { EChatType } from "./chat.types";
 import { ChatMember } from "./chat-member.entity";
 
 @InjectableRepository(ChatMember)
@@ -38,5 +39,18 @@ export class ChatMemberRepository extends BaseRepository<ChatMember> {
     });
 
     return members.map(m => m.userId);
+  }
+
+  /** Найти всех собеседников пользователя в прямых (direct) чатах. */
+  async findDirectChatPartnerIds(userId: string): Promise<string[]> {
+    const results = await this.createQueryBuilder("m1")
+      .innerJoin("m1.chat", "chat")
+      .innerJoin(ChatMember, "m2", "m2.chatId = chat.id AND m2.userId != :userId", { userId })
+      .select("DISTINCT m2.userId", "partnerId")
+      .where("m1.userId = :userId", { userId })
+      .andWhere("chat.type = :type", { type: EChatType.DIRECT })
+      .getRawMany<{ partnerId: string }>();
+
+    return results.map(r => r.partnerId);
   }
 }

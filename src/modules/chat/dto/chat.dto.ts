@@ -41,6 +41,26 @@ export class ChatMemberDto extends BaseDto {
   }
 }
 
+/** Публичные данные собеседника в direct-чате (без приватных настроек членства). */
+export class ChatPeerDto {
+  userId: string;
+  role: EChatMemberRole;
+  profile?: PublicProfileDto;
+
+  constructor(entity: ChatMember) {
+    this.userId = entity.userId;
+    this.role = entity.role;
+
+    if (entity.user?.profile) {
+      this.profile = PublicProfileDto.fromEntity(entity.user.profile);
+    }
+  }
+
+  static fromEntity(entity: ChatMember) {
+    return new ChatPeerDto(entity);
+  }
+}
+
 export class ChatLastMessageDto {
   id: string;
   content: string | null;
@@ -87,8 +107,12 @@ export class ChatDto extends BaseDto {
   createdAt: Date;
   updatedAt: Date;
   members: ChatMemberDto[];
+  /** Членство текущего пользователя в чате */
+  me: ChatMemberDto | null;
+  /** Собеседник в direct-чате (null для групп/каналов) */
+  peer: ChatPeerDto | null;
 
-  constructor(entity: Chat) {
+  constructor(entity: Chat, currentUserId?: string) {
     super(entity);
 
     this.id = entity.id;
@@ -105,10 +129,23 @@ export class ChatDto extends BaseDto {
     this.createdAt = entity.createdAt;
     this.updatedAt = entity.updatedAt;
     this.members = entity.members?.map(ChatMemberDto.fromEntity) ?? [];
+
+    if (currentUserId) {
+      this.me = this.members.find(m => m.userId === currentUserId) ?? null;
+
+      const peerMember = entity.type === EChatType.DIRECT
+        ? entity.members?.find(m => m.userId !== currentUserId)
+        : undefined;
+
+      this.peer = peerMember ? ChatPeerDto.fromEntity(peerMember) : null;
+    } else {
+      this.me = null;
+      this.peer = null;
+    }
   }
 
-  static fromEntity(entity: Chat) {
-    return new ChatDto(entity);
+  static fromEntity(entity: Chat, currentUserId?: string) {
+    return new ChatDto(entity, currentUserId);
   }
 }
 

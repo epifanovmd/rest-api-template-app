@@ -177,7 +177,7 @@ export class ChatController extends Controller {
       limit,
       count: chats.length,
       totalCount,
-      data: chats.map(ChatDto.fromEntity),
+      data: chats.map(c => ChatDto.fromEntity(c)),
     };
   }
 
@@ -204,7 +204,7 @@ export class ChatController extends Controller {
       limit,
       count: chats.length,
       totalCount,
-      data: chats.map(ChatDto.fromEntity),
+      data: chats.map(c => ChatDto.fromEntity(c, user.userId)),
     };
   }
 

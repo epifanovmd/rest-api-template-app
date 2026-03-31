@@ -1,6 +1,10 @@
 import { inject, multiInject } from "inversify";
 
 import { EventBus, IBootstrap, Injectable, logger } from "../../core";
+import {
+  UserOfflineEvent,
+  UserOnlineEvent,
+} from "../profile/events";
 import { TSocket } from "./socket.types";
 import { SocketAuthMiddleware } from "./socket-auth.middleware";
 import { SocketClientRegistry } from "./socket-client-registry";
@@ -38,6 +42,9 @@ export class SocketBootstrap implements IBootstrap {
     io.on("connection", async (socket: TSocket) => {
       const user = socket.data;
 
+      // Первое соединение → пользователь выходит в онлайн
+      const wasOffline = !this.clientRegistry.isOnline(user.userId);
+
       // Регистрируем соединение (для проверки isOnline)
       this.clientRegistry.register(user.userId, socket);
       // Личная room пользователя — через неё доставляются все push-уведомления.
@@ -45,6 +52,10 @@ export class SocketBootstrap implements IBootstrap {
       // поэтому все соединения (несколько вкладок/устройств) получат событие.
       socket.join(`user_${user.userId}`);
       socket.emit("authenticated", { userId: user.userId });
+
+      if (wasOffline) {
+        this.eventBus.emit(new UserOnlineEvent(user.userId));
+      }
 
       // Передаём управление domain-хендлерам
       const results = await Promise.allSettled(
@@ -72,6 +83,11 @@ export class SocketBootstrap implements IBootstrap {
         );
         // Удаляем именно это соединение; остальные соединения пользователя остаются
         this.clientRegistry.unregister(user.userId, socket);
+
+        // Последнее соединение закрыто → пользователь уходит в оффлайн
+        if (!this.clientRegistry.isOnline(user.userId)) {
+          this.eventBus.emit(new UserOfflineEvent(user.userId));
+        }
       });
     });
 

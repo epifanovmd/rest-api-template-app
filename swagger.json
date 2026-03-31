@@ -52,13 +52,6 @@
 				"type": "object",
 				"additionalProperties": false
 			},
-			"EProfileStatus": {
-				"enum": [
-					"online",
-					"offline"
-				],
-				"type": "string"
-			},
 			"IFileDto": {
 				"properties": {
 					"id": {
@@ -156,9 +149,6 @@
 						"type": "string",
 						"nullable": true
 					},
-					"status": {
-						"$ref": "#/components/schemas/EProfileStatus"
-					},
 					"lastOnline": {
 						"type": "string",
 						"format": "date-time",
@@ -186,7 +176,6 @@
 					"lastName",
 					"birthDate",
 					"gender",
-					"status",
 					"lastOnline",
 					"createdAt",
 					"updatedAt"
@@ -394,9 +383,6 @@
 					},
 					"gender": {
 						"type": "string"
-					},
-					"status": {
-						"$ref": "#/components/schemas/EProfileStatus"
 					}
 				},
 				"type": "object",
@@ -443,9 +429,6 @@
 						"type": "string",
 						"nullable": true
 					},
-					"status": {
-						"$ref": "#/components/schemas/EProfileStatus"
-					},
 					"lastOnline": {
 						"type": "string",
 						"format": "date-time",
@@ -456,7 +439,6 @@
 					"id",
 					"firstName",
 					"lastName",
-					"status",
 					"lastOnline"
 				],
 				"type": "object",
@@ -2116,6 +2098,26 @@
 				"type": "object",
 				"additionalProperties": false
 			},
+			"ChatPeerDto": {
+				"description": "Публичные данные собеседника в direct-чате (без приватных настроек членства).",
+				"properties": {
+					"userId": {
+						"type": "string"
+					},
+					"role": {
+						"$ref": "#/components/schemas/EChatMemberRole"
+					},
+					"profile": {
+						"$ref": "#/components/schemas/PublicProfileDto"
+					}
+				},
+				"required": [
+					"userId",
+					"role"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
 			"ChatDto": {
 				"properties": {
 					"id": {
@@ -2177,6 +2179,24 @@
 							"$ref": "#/components/schemas/ChatMemberDto"
 						},
 						"type": "array"
+					},
+					"me": {
+						"allOf": [
+							{
+								"$ref": "#/components/schemas/ChatMemberDto"
+							}
+						],
+						"nullable": true,
+						"description": "Членство текущего пользователя в чате"
+					},
+					"peer": {
+						"allOf": [
+							{
+								"$ref": "#/components/schemas/ChatPeerDto"
+							}
+						],
+						"nullable": true,
+						"description": "Собеседник в direct-чате (null для групп/каналов)"
 					}
 				},
 				"required": [
@@ -2193,7 +2213,9 @@
 					"lastMessage",
 					"createdAt",
 					"updatedAt",
-					"members"
+					"members",
+					"me",
+					"peer"
 				],
 				"type": "object",
 				"additionalProperties": false

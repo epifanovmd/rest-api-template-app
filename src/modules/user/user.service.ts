@@ -13,7 +13,6 @@ import { OtpService } from "../otp";
 import { PermissionRepository } from "../permission";
 import { ProfileRepository } from "../profile";
 import { Profile } from "../profile/profile.entity";
-import { EProfileStatus } from "../profile/profile.types";
 import { RoleRepository } from "../role";
 import { Roles } from "../role/role.types";
 import {
@@ -95,7 +94,6 @@ export class UserService {
 
       const profile = profileRepo.create({
         userId: savedUser.id,
-        status: EProfileStatus.Offline,
       });
 
       await profileRepo.save(profile);

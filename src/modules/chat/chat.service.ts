@@ -54,7 +54,7 @@ export class ChatService {
     if (existing) {
       const chat = await this._chatRepo.findById(existing.id);
 
-      return ChatDto.fromEntity(chat!);
+      return ChatDto.fromEntity(chat!, userId);
     }
 
     const chatId = await this._dataSource.transaction(async manager => {
@@ -104,7 +104,7 @@ export class ChatService {
 
     this._eventBus.emit(new ChatCreatedEvent(fullChat!, memberUserIds));
 
-    return ChatDto.fromEntity(fullChat!);
+    return ChatDto.fromEntity(fullChat!, userId);
   }
 
   async createGroupChat(
@@ -154,7 +154,7 @@ export class ChatService {
 
     this._eventBus.emit(new ChatCreatedEvent(fullChat!, allMemberIds));
 
-    return ChatDto.fromEntity(fullChat!);
+    return ChatDto.fromEntity(fullChat!, userId);
   }
 
   async getChatById(chatId: string, userId: string) {
@@ -166,7 +166,7 @@ export class ChatService {
       throw new NotFoundException("Чат не найден");
     }
 
-    return ChatDto.fromEntity(chat);
+    return ChatDto.fromEntity(chat, userId);
   }
 
   async getUserChats(userId: string, offset?: number, limit?: number) {
@@ -201,7 +201,7 @@ export class ChatService {
 
     this._eventBus.emit(new ChatUpdatedEvent(updated!));
 
-    return ChatDto.fromEntity(updated!);
+    return ChatDto.fromEntity(updated!, userId);
   }
 
   async leaveChat(chatId: string, userId: string) {
@@ -405,7 +405,7 @@ export class ChatService {
 
     this._eventBus.emit(new ChatCreatedEvent(fullChat!, [userId]));
 
-    return ChatDto.fromEntity(fullChat!);
+    return ChatDto.fromEntity(fullChat!, userId);
   }
 
   async updateChannel(
@@ -450,7 +450,7 @@ export class ChatService {
 
     this._eventBus.emit(new ChatUpdatedEvent(updated!));
 
-    return ChatDto.fromEntity(updated!);
+    return ChatDto.fromEntity(updated!, userId);
   }
 
   async subscribeToChannel(chatId: string, userId: string) {
@@ -469,7 +469,7 @@ export class ChatService {
     if (existing) {
       const fullChat = await this._chatRepo.findById(chatId);
 
-      return ChatDto.fromEntity(fullChat!);
+      return ChatDto.fromEntity(fullChat!, userId);
     }
 
     await this._memberRepo.createAndSave({
@@ -486,7 +486,7 @@ export class ChatService {
 
     const fullChat = await this._chatRepo.findById(chatId);
 
-    return ChatDto.fromEntity(fullChat!);
+    return ChatDto.fromEntity(fullChat!, userId);
   }
 
   async unsubscribeFromChannel(chatId: string, userId: string) {
@@ -604,7 +604,7 @@ export class ChatService {
     if (existing) {
       const chat = await this._chatRepo.findById(invite.chatId);
 
-      return ChatDto.fromEntity(chat!);
+      return ChatDto.fromEntity(chat!, userId);
     }
 
     // Create membership + increment useCount in a transaction
@@ -633,7 +633,7 @@ export class ChatService {
 
     const chat = await this._chatRepo.findById(invite.chatId);
 
-    return ChatDto.fromEntity(chat!);
+    return ChatDto.fromEntity(chat!, userId);
   }
 
   async revokeInvite(chatId: string, inviteId: string, userId: string) {

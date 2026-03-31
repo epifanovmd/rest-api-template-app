@@ -165,6 +165,15 @@ export interface ISocketSessionPayload {
   sessionId: string;
 }
 
+export interface ISocketUserPresencePayload {
+  userId: string;
+  lastOnline?: Date | null;
+}
+
+export interface ISocketPresenceInitPayload {
+  onlineUserIds: string[];
+}
+
 export interface ISocketErrorEventPayload {
   event: string;
   message: string;
@@ -283,6 +292,12 @@ export interface ISocketEmitEvents {
   "user:privileges-changed": (...args: [ISocketUserPrivilegesChangedPayload]) => void;
   /** Username пользователя изменён */
   "user:username-changed": (...args: [ISocketUserUsernameChangedPayload]) => void;
+  /** Пользователь вышел в онлайн */
+  "user:online": (...args: [ISocketUserPresencePayload]) => void;
+  /** Пользователь ушёл в оффлайн */
+  "user:offline": (...args: [ISocketUserPresencePayload]) => void;
+  /** Начальный список онлайн-пользователей при подключении */
+  "presence:init": (...args: [ISocketPresenceInitPayload]) => void;
 
   // ─── Sync events ───────────────────────────────────────────────────────
   /** Уведомление о наличии новых изменений для sync */
