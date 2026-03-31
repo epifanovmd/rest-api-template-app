@@ -54,9 +54,15 @@ export class ChatMessageController extends Controller {
 
   /**
    * Получить сообщения чата с cursor-based пагинацией.
+   * - `before` — загрузить старые сообщения (скролл вверх)
+   * - `after` — загрузить новые сообщения (скролл вниз из detached окна)
+   * - `around` — загрузить окно вокруг конкретного сообщения (навигация)
+   * - без параметров — последние сообщения
    * @summary Список сообщений
    * @param chatId ID чата
-   * @param before ID сообщения для курсора (загрузить более старые)
+   * @param before ID сообщения — загрузить более старые
+   * @param after ID сообщения — загрузить более новые
+   * @param around ID сообщения — загрузить окно вокруг него
    * @param limit Количество сообщений (по умолчанию 50)
    */
   @Security("jwt")
@@ -64,10 +70,30 @@ export class ChatMessageController extends Controller {
   getMessages(
     @Request() req: KoaRequest,
     @Path() chatId: string,
-    @Query() before?: string,
-    @Query() limit?: number,
+    @Query("before") before?: string,
+    @Query("after") after?: string,
+    @Query("around") around?: string,
+    @Query("limit") limit?: number,
   ): Promise<IMessageListDto> {
     const user = getContextUser(req);
+
+    if (around) {
+      return this._messageService.getMessagesAround(
+        chatId,
+        user.userId,
+        around,
+        limit,
+      );
+    }
+
+    if (after) {
+      return this._messageService.getMessagesAfter(
+        chatId,
+        user.userId,
+        after,
+        limit,
+      );
+    }
 
     return this._messageService.getMessages(chatId, user.userId, before, limit);
   }

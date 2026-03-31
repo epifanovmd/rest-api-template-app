@@ -1071,6 +1071,7 @@ const models: TsoaRoute.Models = {
         "properties": {
             "data": {"dataType":"array","array":{"dataType":"refObject","ref":"MessageDto"},"required":true},
             "hasMore": {"dataType":"boolean","required":true},
+            "hasNewer": {"dataType":"boolean"},
         },
         "additionalProperties": false,
     },
@@ -4750,6 +4751,8 @@ export function RegisterRoutes(router: KoaRouter) {
                     req: {"in":"request","name":"req","required":true,"dataType":"object"},
                     chatId: {"in":"path","name":"chatId","required":true,"dataType":"string"},
                     before: {"in":"query","name":"before","dataType":"string"},
+                    after: {"in":"query","name":"after","dataType":"string"},
+                    around: {"in":"query","name":"around","dataType":"string"},
                     limit: {"in":"query","name":"limit","dataType":"double"},
             };
 

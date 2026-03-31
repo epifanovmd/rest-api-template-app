@@ -2608,6 +2608,10 @@
 					},
 					"hasMore": {
 						"type": "boolean"
+					},
+					"hasNewer": {
+						"type": "boolean",
+						"description": "Present when using `around` — indicates newer messages exist above the window."
 					}
 				},
 				"required": [
@@ -7659,7 +7663,7 @@
 						}
 					}
 				},
-				"description": "Получить сообщения чата с cursor-based пагинацией.",
+				"description": "Получить сообщения чата с cursor-based пагинацией.\n- `before` — загрузить старые сообщения (скролл вверх)\n- `after` — загрузить новые сообщения (скролл вниз из detached окна)\n- `around` — загрузить окно вокруг конкретного сообщения (навигация)\n- без параметров — последние сообщения",
 				"summary": "Список сообщений",
 				"tags": [
 					"Message"
@@ -7680,9 +7684,27 @@
 						}
 					},
 					{
-						"description": "ID сообщения для курсора (загрузить более старые)",
+						"description": "ID сообщения — загрузить более старые",
 						"in": "query",
 						"name": "before",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"description": "ID сообщения — загрузить более новые",
+						"in": "query",
+						"name": "after",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"description": "ID сообщения — загрузить окно вокруг него",
+						"in": "query",
+						"name": "around",
 						"required": false,
 						"schema": {
 							"type": "string"

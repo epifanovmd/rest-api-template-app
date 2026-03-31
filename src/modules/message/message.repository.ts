@@ -1,5 +1,6 @@
-import { InjectableRepository } from "../../core";
-import { BaseRepository } from "../../core/repository/repository";
+import { SelectQueryBuilder } from "typeorm";
+
+import { BaseRepository, InjectableRepository } from "../../core";
 import { Message } from "./message.entity";
 
 @InjectableRepository(Message)
@@ -17,34 +18,21 @@ export class MessageRepository extends BaseRepository<Message> {
     });
   }
 
-  async findByChatCursor(
-    chatId: string,
-    before?: string,
-    limit: number = 50,
-  ) {
-    const qb = this.createQueryBuilder("message")
-      .leftJoinAndSelect("message.sender", "sender")
-      .leftJoinAndSelect("sender.profile", "senderProfile")
-      .leftJoinAndSelect("message.replyTo", "replyTo")
-      .leftJoinAndSelect("replyTo.sender", "replyToSender")
-      .leftJoinAndSelect("replyToSender.profile", "replyToSenderProfile")
-      .leftJoinAndSelect("message.attachments", "attachments")
-      .leftJoinAndSelect("attachments.file", "file")
-      .leftJoinAndSelect("message.reactions", "reactions")
-      .leftJoinAndSelect("message.mentions", "mentions")
+  async findByChatCursor(chatId: string, before?: string, limit: number = 50) {
+    const qb = this._baseMessageQuery("message")
       .where("message.chatId = :chatId", { chatId })
       .orderBy("message.createdAt", "DESC")
-      .take(limit + 1); // +1 для определения hasMore
+      .take(limit + 1);
 
     if (before) {
-      const cursorMessage = await this.findOne({
+      const cursor = await this.findOne({
         where: { id: before },
         select: ["id", "createdAt"],
       });
 
-      if (cursorMessage) {
+      if (cursor) {
         qb.andWhere("message.createdAt < :cursorDate", {
-          cursorDate: cursorMessage.createdAt,
+          cursorDate: cursor.createdAt,
         });
       }
     }
@@ -59,17 +47,109 @@ export class MessageRepository extends BaseRepository<Message> {
     return { messages, hasMore };
   }
 
+  /**
+   * Load messages NEWER than cursor (for scrolling down from a detached window).
+   * Returns messages in DESC order (newest first) — consistent with findByChatCursor.
+   */
+  async findAfterCursor(chatId: string, after: string, limit: number = 50) {
+    const cursor = await this.findOne({
+      where: { id: after },
+      select: ["id", "createdAt"],
+    });
+
+    const qb = this._baseMessageQuery("message")
+      .where("message.chatId = :chatId", { chatId })
+      .orderBy("message.createdAt", "ASC")
+      .take(limit + 1);
+
+    if (cursor) {
+      qb.andWhere("message.createdAt > :cursorDate", {
+        cursorDate: cursor.createdAt,
+      });
+    }
+
+    const messages = await qb.getMany();
+    const hasNewer = messages.length > limit;
+
+    if (hasNewer) {
+      messages.pop();
+    }
+
+    // Reverse to DESC (newest first) — consistent with other methods
+    messages.reverse();
+
+    return { messages, hasNewer };
+  }
+
+  /**
+   * Load messages around a specific message (half before, half after).
+   * Returns messages in DESC order (newest first) — same as findByChatCursor.
+   */
+  async findAroundMessage(
+    chatId: string,
+    messageId: string,
+    limit: number = 50,
+  ) {
+    const anchor = await this.findOne({
+      where: { id: messageId, chatId },
+      select: ["id", "createdAt"],
+    });
+
+    if (!anchor) {
+      return null;
+    }
+
+    const half = Math.floor(limit / 2);
+
+    // Messages older than anchor (exclude anchor by id for same-timestamp safety)
+    const olderQb = this._baseMessageQuery("message")
+      .where("message.chatId = :chatId", { chatId })
+      .andWhere("message.id != :anchorId", { anchorId: messageId })
+      .andWhere("message.createdAt <= :anchorDate", {
+        anchorDate: anchor.createdAt,
+      })
+      .orderBy("message.createdAt", "DESC")
+      .take(half + 1);
+
+    // Messages newer than anchor (exclude anchor by id for same-timestamp safety)
+    const newerQb = this._baseMessageQuery("message")
+      .where("message.chatId = :chatId", { chatId })
+      .andWhere("message.id != :anchorId", { anchorId: messageId })
+      .andWhere("message.createdAt >= :anchorDate", {
+        anchorDate: anchor.createdAt,
+      })
+      .orderBy("message.createdAt", "ASC")
+      .take(half + 1);
+
+    const [anchorFull, olderMessages, newerMessages] = await Promise.all([
+      this.findById(messageId),
+      olderQb.getMany(),
+      newerQb.getMany(),
+    ]);
+
+    const hasMore = olderMessages.length > half;
+    const hasNewer = newerMessages.length > half;
+
+    if (hasMore) olderMessages.pop();
+    if (hasNewer) newerMessages.pop();
+
+    // Return in DESC order (newest first) — consistent with findByChatCursor
+    const messages = [
+      ...newerMessages.reverse(), // newer were ASC → reverse to DESC
+      ...(anchorFull ? [anchorFull] : []),
+      ...olderMessages, // already DESC
+    ];
+
+    return { messages, hasMore, hasNewer };
+  }
+
   async searchInChat(
     chatId: string,
     query: string,
     limit: number = 20,
     offset: number = 0,
   ) {
-    return this.createQueryBuilder("message")
-      .leftJoinAndSelect("message.sender", "sender")
-      .leftJoinAndSelect("sender.profile", "senderProfile")
-      .leftJoinAndSelect("message.attachments", "attachments")
-      .leftJoinAndSelect("attachments.file", "file")
+    return this._baseMessageQuery("message")
       .where("message.chatId = :chatId", { chatId })
       .andWhere("message.isDeleted = false")
       .andWhere("message.content ILIKE :query", { query: `%${query}%` })
@@ -87,11 +167,7 @@ export class MessageRepository extends BaseRepository<Message> {
   ) {
     if (chatIds.length === 0) return [[] as Message[], 0] as const;
 
-    return this.createQueryBuilder("message")
-      .leftJoinAndSelect("message.sender", "sender")
-      .leftJoinAndSelect("sender.profile", "senderProfile")
-      .leftJoinAndSelect("message.attachments", "attachments")
-      .leftJoinAndSelect("attachments.file", "file")
+    return this._baseMessageQuery("message")
       .where("message.chatId IN (:...chatIds)", { chatIds })
       .andWhere("message.isDeleted = false")
       .andWhere("message.content ILIKE :query", { query: `%${query}%` })
@@ -161,5 +237,19 @@ export class MessageRepository extends BaseRepository<Message> {
       order: { createdAt: "DESC" },
       relations: { sender: { profile: true } },
     });
+  }
+
+  /** Shared query builder with all message relations. */
+  private _baseMessageQuery(alias: string): SelectQueryBuilder<Message> {
+    return this.createQueryBuilder(alias)
+      .leftJoinAndSelect(`${alias}.sender`, "sender")
+      .leftJoinAndSelect("sender.profile", "senderProfile")
+      .leftJoinAndSelect(`${alias}.replyTo`, "replyTo")
+      .leftJoinAndSelect("replyTo.sender", "replyToSender")
+      .leftJoinAndSelect("replyToSender.profile", "replyToSenderProfile")
+      .leftJoinAndSelect(`${alias}.attachments`, "attachments")
+      .leftJoinAndSelect("attachments.file", "file")
+      .leftJoinAndSelect(`${alias}.reactions`, "reactions")
+      .leftJoinAndSelect(`${alias}.mentions`, "mentions");
   }
 }

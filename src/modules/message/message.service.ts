@@ -214,6 +214,68 @@ export class MessageService {
     };
   }
 
+  async getMessagesAfter(
+    chatId: string,
+    userId: string,
+    after: string,
+    limit?: number,
+  ) {
+    const isMember = await this._chatService.isMember(chatId, userId);
+
+    if (!isMember) {
+      throw new ForbiddenException("Вы не являетесь участником этого чата");
+    }
+
+    const { messages, hasNewer } = await this._messageRepo.findAfterCursor(
+      chatId,
+      after,
+      limit ?? 50,
+    );
+
+    const dtos = messages.map(MessageDto.fromEntity);
+
+    await this._enrichWithPolls(dtos, userId);
+
+    return {
+      data: dtos,
+      hasMore: false as const,
+      hasNewer,
+    };
+  }
+
+  async getMessagesAround(
+    chatId: string,
+    userId: string,
+    messageId: string,
+    limit?: number,
+  ) {
+    const isMember = await this._chatService.isMember(chatId, userId);
+
+    if (!isMember) {
+      throw new ForbiddenException("Вы не являетесь участником этого чата");
+    }
+
+    const result = await this._messageRepo.findAroundMessage(
+      chatId,
+      messageId,
+      limit ?? 50,
+    );
+
+    if (!result) {
+      throw new NotFoundException("Сообщение не найдено");
+    }
+
+    const dtos = result.messages.map(MessageDto.fromEntity);
+
+    await this._enrichWithPolls(dtos, userId);
+
+    return {
+      data: dtos,
+      hasMore: result.hasMore,
+      hasNewer: result.hasNewer,
+    };
+  }
+
   async editMessage(messageId: string, userId: string, content: string) {
     const message = await this._messageRepo.findById(messageId);
 
