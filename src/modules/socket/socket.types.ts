@@ -182,6 +182,9 @@ export interface ISocketErrorEventPayload {
 // ─── События Клиент → Сервер ─────────────────────────────────────────────
 
 export interface ISocketEvents {
+  /** Application-level heartbeat — клиент проверяет, что соединение живо */
+  ping: (data: { ts: number }) => void;
+
   "profile:subscribe": () => void;
 
   /** Присоединиться к комнате чата */
@@ -209,6 +212,9 @@ export interface ISocketEvents {
 // ─── События Сервер → Клиент ─────────────────────────────────────────────
 
 export interface ISocketEmitEvents {
+  /** Application-level heartbeat ответ */
+  pong: (...args: [{ ts: number }]) => void;
+
   /** Успешная аутентификация по JWT токену */
   authenticated: (...args: [ISocketAuthenticatedPayload]) => void;
   /** Ошибка аутентификации */
@@ -247,7 +253,9 @@ export interface ISocketEmitEvents {
   /** Чат закреплён/откреплён */
   "chat:pinned": (...args: [ISocketChatPinnedPayload]) => void;
   /** Роль участника чата изменена */
-  "chat:member:role-changed": (...args: [ISocketChatMemberRoleChangedPayload]) => void;
+  "chat:member:role-changed": (
+    ...args: [ISocketChatMemberRoleChangedPayload]
+  ) => void;
   /** Обновление последнего сообщения чата */
   "chat:last-message": (...args: [ISocketChatLastMessagePayload]) => void;
 
@@ -281,17 +289,25 @@ export interface ISocketEmitEvents {
   /** Relay SDP answer */
   "call:answer": (...args: [ISocketCallRelayPayload]) => void;
   /** Relay ICE candidate */
-  "call:ice-candidate": (...args: [ISocketCallIceCandidateRelayPayload]) => void;
+  "call:ice-candidate": (
+    ...args: [ISocketCallIceCandidateRelayPayload]
+  ) => void;
 
   // ─── User events ──────────────────────────────────────────────────────
   /** Email пользователя подтверждён */
   "user:email-verified": (...args: [ISocketUserEmailVerifiedPayload]) => void;
   /** Пароль изменён */
-  "user:password-changed": (...args: [ISocketUserPasswordChangedPayload]) => void;
+  "user:password-changed": (
+    ...args: [ISocketUserPasswordChangedPayload]
+  ) => void;
   /** Привилегии пользователя изменены */
-  "user:privileges-changed": (...args: [ISocketUserPrivilegesChangedPayload]) => void;
+  "user:privileges-changed": (
+    ...args: [ISocketUserPrivilegesChangedPayload]
+  ) => void;
   /** Username пользователя изменён */
-  "user:username-changed": (...args: [ISocketUserUsernameChangedPayload]) => void;
+  "user:username-changed": (
+    ...args: [ISocketUserUsernameChangedPayload]
+  ) => void;
   /** Пользователь вышел в онлайн */
   "user:online": (...args: [ISocketUserPresencePayload]) => void;
   /** Пользователь ушёл в оффлайн */

@@ -1,10 +1,7 @@
 import { inject, multiInject } from "inversify";
 
 import { EventBus, IBootstrap, Injectable, logger } from "../../core";
-import {
-  UserOfflineEvent,
-  UserOnlineEvent,
-} from "../profile/events";
+import { UserOfflineEvent, UserOnlineEvent } from "../profile";
 import { TSocket } from "./socket.types";
 import { SocketAuthMiddleware } from "./socket-auth.middleware";
 import { SocketClientRegistry } from "./socket-client-registry";
@@ -70,6 +67,11 @@ export class SocketBootstrap implements IBootstrap {
           );
         }
       }
+
+      // Application-level heartbeat — клиент шлёт ping, сервер отвечает pong
+      socket.on("ping", (data: { ts: number }) => {
+        socket.emit("pong", { ts: data.ts });
+      });
 
       socket.on("error", err => {
         logger.error({ err, userId: user.userId }, "[Socket] Socket error");
