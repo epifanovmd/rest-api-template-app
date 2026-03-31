@@ -421,6 +421,9 @@
 					"id": {
 						"type": "string"
 					},
+					"userId": {
+						"type": "string"
+					},
 					"firstName": {
 						"type": "string",
 						"nullable": true
@@ -437,6 +440,7 @@
 				},
 				"required": [
 					"id",
+					"userId",
 					"firstName",
 					"lastName",
 					"lastOnline"

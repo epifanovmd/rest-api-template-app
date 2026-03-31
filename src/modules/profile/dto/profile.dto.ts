@@ -42,6 +42,7 @@ export class ProfileDto extends BaseDto {
 
 export class PublicProfileDto extends BaseDto {
   id: string;
+  userId: string;
   firstName: string | null;
   lastName: string | null;
   lastOnline: Date | null;
@@ -50,6 +51,7 @@ export class PublicProfileDto extends BaseDto {
     super(entity);
 
     this.id = entity.id;
+    this.userId = entity.userId;
     this.firstName = entity.firstName;
     this.lastName = entity.lastName;
     this.lastOnline = entity.lastOnline;
