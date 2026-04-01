@@ -196,7 +196,7 @@ describe("FeatureService", () => {
 });
 ```
 
-Test helpers: `src/test/helpers.ts`.
+Test helpers: `src/test/helpers.ts` — createMockRepository, createMockQueryBuilder, createMockEventBus, createMockEmitter, uuid/uuid2/uuid3.
 
 ## Правила
 
@@ -214,3 +214,4 @@ Test helpers: `src/test/helpers.ts`.
 12. **Nullable** — DB `nullable: true` → TS `| null` (не undefined)
 13. **@Path()** — обязателен для всех path-параметров в контроллерах
 14. **Error handling** — try/catch в socket handlers, HttpException re-throw в services
+15. **Roles/Permissions** — const объекты (`Roles`, `Permissions`), типы `TRole`/`TPermission`, НЕ enums

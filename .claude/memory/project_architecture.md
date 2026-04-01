@@ -11,9 +11,9 @@ type: project
 1. `initializeDatabase()` — TypeORM connection (3 retry, 2s delay)
 2. `registerCoreBindings()` — Controller, DataSource, Koa, HttpServer
 3. `loadModules()` — ModuleLoader обходит дерево @Module, регистрирует providers/bootstrappers
-4. `configureMiddleware()` — 9 middleware по порядку
+4. `configureMiddleware()` — 8 middleware по порядку
 5. `configureRoutes()` — tsoa routes + swagger UI + system routes
-6. `runBootstrappers()` — AdminBootstrap → MessageSchedulerBootstrap → SocketBootstrap
+6. `runBootstrappers()` — AdminBootstrap → SocketBootstrap
 7. `listen()` — HTTP server на config.server.port
 
 Graceful shutdown: SIGTERM/SIGINT → 30s timeout → process.exit
@@ -33,9 +33,10 @@ export class FeatureModule {}
 `@Injectable()` — только маркер (reflect-metadata). Регистрация ТОЛЬКО через `@Module.providers`.
 `@InjectableRepository(Entity)` — auto-bind через `toDynamicValue(DataSource.getRepository(Entity))`.
 
-## 23 модуля (src/app.module.ts)
+## 21 модуль (CoreModule + 20 feature)
 
-CoreModule → MailerModule → OtpModule → ResetPasswordTokensModule → UserModule → ProfileModule → FileModule → AuthModule → BiometricModule → PasskeysModule → EncryptionModule → LinkPreviewModule → ContactModule → ChatModule → ChatModerationModule → MessageModule → PollModule → CallModule → BotModule → PushModule → SessionModule → SyncModule → SocketModule (последний)
+**Порядок в src/app.module.ts:**
+CoreModule → MailerModule → OtpModule → ResetPasswordTokensModule → UserModule → ProfileModule → FileModule → AuthModule → BiometricModule → PasskeysModule → ContactModule → ChatModule → ChatModerationModule → MessageModule → PollModule → CallModule → BotModule → PushModule → SessionModule → SyncModule → SocketModule (последний)
 
 ## Middleware Stack (src/middleware/)
 
@@ -95,9 +96,14 @@ CoreModule → MailerModule → OtpModule → ResetPasswordTokensModule → User
 
 **Permission wildcards:** `*` → all, `chat:*` → `chat:view` + `chat:manage`. Superadmin bypass: role ADMIN или permission `*`.
 
-**AuthContext:** `{ userId, sessionId, roles: ERole[], permissions: string[], emailVerified: boolean }`
+**AuthContext:** `{ userId, sessionId, roles: string[], permissions: string[], emailVerified: boolean }`
 
-## EventBus (~50 событий)
+**Roles/Permissions — const объекты (не enums):**
+- `Roles` = { ADMIN: "admin", USER: "user", GUEST: "guest" } — тип `TRole`
+- `Permissions` = { ALL: "*", USER_VIEW: "user:view", ... } — тип `TPermission`
+- Обе системы расширяемы через API без деплоя (произвольные строки)
+
+## EventBus (~48 событий)
 
 ```typescript
 this.eventBus.emit(new SomeEvent(data));       // sync
@@ -107,13 +113,12 @@ this.eventBus.emitAsync(new SomeEvent(data));   // async Promise.allSettled
 Паттерн: Service emits EventBus event → Listener subscribes → emits socket event via SocketEmitterService.
 Регистрация: `asSocketHandler(cls)` / `asSocketListener(cls)` в @Module.
 
-Модули с событиями: auth (3), user (5), contact (5), chat (10), message (9), call (5), poll (3), profile (2), encryption (2), session (1), bot (3), file (1), push (1), sync (подписка на ~10 событий).
+Модули с событиями: auth (3), user (5), contact (5), chat (8 incl. moderation + last-message), message (7), call (5), poll (3), profile (4 incl. presence), encryption (—), session (1), bot (3), file (1), push (1), sync (подписка на ~10 событий).
 
 ## Bootstrap Tasks
 
 1. **AdminBootstrap** (user) — seed admin user + default role permissions
-2. **MessageSchedulerBootstrap** (message) — scheduled messages + self-destruct timer
-3. **SocketBootstrap** (socket) — auth middleware → on(connection) → handlers → listeners
+2. **SocketBootstrap** (socket) — auth middleware → on(connection) → handlers → listeners → presence
 
 ## Transactions
 
@@ -131,13 +136,17 @@ this.eventBus.emitAsync(new SomeEvent(data));   // async Promise.allSettled
 
 Zod validated. Reads `.env.{NODE_ENV}` or `.env`.
 
+Секции: server (host, port, filesFolderPath, filesRoutePrefix, filesServerPort, publicHost), rateLimit, cors, auth (jwt, admin, otp, resetPassword, webAuthn), database (postgres + poolMax), email (smtp), firebase (serviceAccountPath).
+
 ## Build
 
 Rollup с `preserveModules` (TypeORM entity discovery). Без минификации (class/function names preserved). tsconfig.production.json excludes tests.
 
 ## Тестирование
 
-718 тестов, Mocha + Chai + Sinon, tsx loader. Команда: `yarn test`. Config: `.mocharc.yml`.
+~886 тестов, 45 test-файлов. Mocha + Chai + Sinon, tsx loader. Команда: `yarn test`. Config: `.mocharc.yml`.
+
+Test helpers (`src/test/helpers.ts`): createMockRepository, createMockQueryBuilder, createMockEventBus, createMockEmitter, uuid/uuid2/uuid3.
 
 ## Health Endpoints
 

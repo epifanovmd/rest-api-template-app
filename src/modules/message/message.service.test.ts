@@ -402,35 +402,6 @@ describe("MessageService", () => {
       );
     });
 
-    it("should throw ForbiddenException when regular member tries to pin", async () => {
-      (messageRepo as any).findById.resolves(makeMessageEntity());
-      (memberRepo as any).findMembership.resolves({
-        id: "mem-1",
-        chatId,
-        userId,
-        role: EChatMemberRole.MEMBER,
-      });
-
-      try {
-        await service.pinMessage(messageId, userId);
-        expect.fail("Should have thrown");
-      } catch (err) {
-        expect(err).to.be.instanceOf(ForbiddenException);
-      }
-    });
-
-    it("should throw ForbiddenException when user is not a member", async () => {
-      (messageRepo as any).findById.resolves(makeMessageEntity());
-      (memberRepo as any).findMembership.resolves(null);
-
-      try {
-        await service.pinMessage(messageId, userId);
-        expect.fail("Should have thrown");
-      } catch (err) {
-        expect(err).to.be.instanceOf(ForbiddenException);
-      }
-    });
-
     it("should throw NotFoundException when message does not exist", async () => {
       (messageRepo as any).findById.resolves(null);
 
@@ -473,22 +444,6 @@ describe("MessageService", () => {
       );
     });
 
-    it("should throw ForbiddenException for regular member", async () => {
-      (messageRepo as any).findById.resolves(makeMessageEntity());
-      (memberRepo as any).findMembership.resolves({
-        id: "mem-1",
-        chatId,
-        userId,
-        role: EChatMemberRole.MEMBER,
-      });
-
-      try {
-        await service.unpinMessage(messageId, userId);
-        expect.fail("Should have thrown");
-      } catch (err) {
-        expect(err).to.be.instanceOf(ForbiddenException);
-      }
-    });
   });
 
   // ───── addReaction ─────

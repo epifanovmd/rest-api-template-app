@@ -14,11 +14,13 @@ users ──ManyToMany──▶ roles ──ManyToMany──▶ permissions
   └──OneToMany──▶ sessions (refreshToken, device info)
 ```
 
-## Роли (ERole)
+## Роли (const Roles)
 
-- `ADMIN` — суперадмин, bypass всех проверок
-- `USER` — обычный пользователь (default)
-- `GUEST` — гостевой доступ
+- `admin` — суперадмин, bypass всех проверок
+- `user` — обычный пользователь (default)
+- `guest` — гостевой доступ
+
+Тип: `TRole = KnownRole | (string & {})` — расширяемый через API.
 
 ## JWT Token Structure
 
@@ -76,12 +78,17 @@ Password/Privileges change:
 ## Alternative Auth Methods
 
 **Biometric:** challenge-response RSA SHA256. `verifySignature()` → создаёт Session → issue tokens.
-**Passkeys (WebAuthn):** FIDO2 protocol. `verifyAuthentication()` → создаёт Session → issue tokens.
+**Passkeys (WebAuthn):** FIDO2 protocol. `verifyAuthentication()` → создаёт Session → issue tokens. PasskeyChallenge entity хранит challenge с TTL.
 **Bot:** `Authorization: Bot <token>` → минимальный AuthContext без session.
 
 ## Permission System
 
 **Формат:** `module:action` — например `chat:view`, `user:manage`, `profile:view`
+
+**Предопределённые (const Permissions):**
+`*` (all), `user:view`, `user:manage`, `role:view`, `role:manage`, `profile:view`, `profile:manage`, `contact:view`, `contact:manage`, `contact:*`, `chat:view`, `chat:manage`, `chat:*`, `message:view`, `message:manage`, `message:*`, `push:manage`
+
+Тип: `TPermission = KnownPermission | (string & {})` — расширяемый через API.
 
 **Wildcard иерархия:**
 - `chat:message:delete` → exact match
@@ -97,7 +104,7 @@ effectivePermissions = Set(
 )
 ```
 
-**Проверка (hasPermission):** split by `:`, try progressively shorter prefixes with `:*`.
+**Проверка (hasPermission):** split by `:`, try progressively shorter prefixes с `:*`.
 
 **@Security синтаксис:**
 ```typescript

@@ -81,6 +81,7 @@ describe("ChatListener", () => {
       expect(emitter.toUser.firstCall.args[2]).to.deep.equal({
         chatId,
         userId: userId2,
+        member: undefined,
       });
     });
   });

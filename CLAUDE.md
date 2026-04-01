@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Подробная документация в `.claude/memory/` — при необходимости глубокого анализа читай эти файлы:
 - `.claude/memory/project_architecture.md` — bootstrap flow, module system, IoC binding, все decorators, middleware stack, guards, EventBus, config, build
 - `.claude/memory/project_access_control.md` — JWT auth flow, RBAC+Permission модель, wildcard hierarchy, @Security syntax, AdminBootstrap
-- `.claude/memory/project_modules.md` — все 12 модулей: entities с полями и связями, все endpoints с security, services, DTOs, validation schemas, socket integration
+- `.claude/memory/project_modules.md` — все 21 модуль: entities с полями и связями, все endpoints с security, services, DTOs, validation schemas, socket integration
 - `.claude/memory/project_patterns.md` — паттерны кода (controller/service/dto/repository/validation/socket event), checklist нового модуля, правила которые нельзя нарушать
 
 ## Workflow
@@ -118,7 +118,7 @@ JWT carries `userId`, `roles[]`, and merged `effectivePermissions[]` (computed a
 
 - `TokenService.hasPermission()` supports wildcards: `*`, `wg:*`, `wg:server:*`
 - Superadmin bypass: role `ADMIN` OR permission `*`
-- `AuthContext`: `{ userId, roles: ERole[], permissions[], emailVerified }`
+- `AuthContext`: `{ userId, sessionId, roles: string[], permissions: string[], emailVerified }`
 - Use `getContextUser(req)` in controllers to get the current user from Koa context
 
 ### EventBus

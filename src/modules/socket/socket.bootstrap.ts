@@ -1,7 +1,8 @@
 import { inject, multiInject } from "inversify";
 
 import { EventBus, IBootstrap, Injectable, logger } from "../../core";
-import { UserOfflineEvent, UserOnlineEvent } from "../profile";
+import { UserOfflineEvent } from "../profile/events/user-offline.event";
+import { UserOnlineEvent } from "../profile/events/user-online.event";
 import { TSocket } from "./socket.types";
 import { SocketAuthMiddleware } from "./socket-auth.middleware";
 import { SocketClientRegistry } from "./socket-client-registry";

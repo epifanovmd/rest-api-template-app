@@ -1,6 +1,7 @@
 import { inject } from "inversify";
 
 import { EventBus, Injectable } from "../../core";
+import { ChatMemberRepository } from "../chat/chat-member.repository";
 import { MessageDto } from "../message/dto";
 import { ISocketEventListener, SocketEmitterService } from "../socket";
 import { PollDto } from "./dto";
@@ -12,6 +13,8 @@ export class PollListener implements ISocketEventListener {
     @inject(EventBus) private readonly _eventBus: EventBus,
     @inject(SocketEmitterService)
     private readonly _emitter: SocketEmitterService,
+    @inject(ChatMemberRepository)
+    private readonly _memberRepo: ChatMemberRepository,
   ) {}
 
   register(): void {
@@ -39,16 +42,28 @@ export class PollListener implements ISocketEventListener {
       },
     );
 
-    this._eventBus.on(PollVotedEvent, (event: PollVotedEvent) => {
-      const dto = new PollDto(event.poll);
+    this._eventBus.on(PollVotedEvent, async (event: PollVotedEvent) => {
+      const memberUserIds = await this._memberRepo.getMemberUserIds(event.chatId);
 
-      this._emitter.toRoom(`chat_${event.chatId}`, "poll:voted", dto);
+      for (const userId of memberUserIds) {
+        this._emitter.toUser(
+          userId,
+          "poll:voted",
+          new PollDto(event.poll, userId),
+        );
+      }
     });
 
-    this._eventBus.on(PollClosedEvent, (event: PollClosedEvent) => {
-      const dto = new PollDto(event.poll);
+    this._eventBus.on(PollClosedEvent, async (event: PollClosedEvent) => {
+      const memberUserIds = await this._memberRepo.getMemberUserIds(event.chatId);
 
-      this._emitter.toRoom(`chat_${event.chatId}`, "poll:closed", dto);
+      for (const userId of memberUserIds) {
+        this._emitter.toUser(
+          userId,
+          "poll:closed",
+          new PollDto(event.poll, userId),
+        );
+      }
     });
   }
 }
