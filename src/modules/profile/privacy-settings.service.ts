@@ -56,7 +56,7 @@ export class PrivacySettingsService {
       await this._repo.save(settings);
     }
 
-    this._eventBus.emit(new PrivacySettingsUpdatedEvent(userId));
+    this._eventBus.emit(new PrivacySettingsUpdatedEvent(userId, settings));
 
     return settings;
   }

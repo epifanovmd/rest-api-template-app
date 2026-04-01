@@ -33,7 +33,7 @@ export class NotificationSettingsService {
   ) {
     const settings = await this._settingsRepo.upsertSettings(userId, data);
 
-    this._eventBus.emit(new NotificationSettingsChangedEvent(userId));
+    this._eventBus.emit(new NotificationSettingsChangedEvent(userId, settings));
 
     return NotificationSettingsDto.fromEntity(settings);
   }

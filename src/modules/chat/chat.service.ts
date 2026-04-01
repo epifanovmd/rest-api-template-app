@@ -276,13 +276,15 @@ export class ChatService {
       ...newMemberIds,
     ];
 
+    const members = await this._memberRepo.findChatMembers(chatId);
+
     for (const memberId of newMemberIds) {
+      const member = members.find(m => m.userId === memberId);
+
       this._eventBus.emit(
-        new ChatMemberJoinedEvent(chatId, memberId, allMemberIds),
+        new ChatMemberJoinedEvent(chatId, memberId, allMemberIds, member),
       );
     }
-
-    const members = await this._memberRepo.findChatMembers(chatId);
 
     return members;
   }
@@ -479,12 +481,12 @@ export class ChatService {
     });
 
     const memberUserIds = await this._memberRepo.getMemberUserIds(chatId);
+    const fullChat = await this._chatRepo.findById(chatId);
+    const member = fullChat?.members.find(m => m.userId === userId);
 
     this._eventBus.emit(
-      new ChatMemberJoinedEvent(chatId, userId, memberUserIds),
+      new ChatMemberJoinedEvent(chatId, userId, memberUserIds, member),
     );
-
-    const fullChat = await this._chatRepo.findById(chatId);
 
     return ChatDto.fromEntity(fullChat!, userId);
   }
@@ -627,11 +629,12 @@ export class ChatService {
       invite.chatId,
     );
 
-    this._eventBus.emit(
-      new ChatMemberJoinedEvent(invite.chatId, userId, memberUserIds),
-    );
-
     const chat = await this._chatRepo.findById(invite.chatId);
+    const joinedMember = chat?.members.find(m => m.userId === userId);
+
+    this._eventBus.emit(
+      new ChatMemberJoinedEvent(invite.chatId, userId, memberUserIds, joinedMember),
+    );
 
     return ChatDto.fromEntity(chat!, userId);
   }

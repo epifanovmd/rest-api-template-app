@@ -5,6 +5,7 @@ import { ChatMemberRepository } from "../chat/chat-member.repository";
 import { ContactRequestEvent } from "../contact/events";
 import { MessageCreatedEvent } from "../message/events";
 import { ISocketEventListener, SocketClientRegistry, SocketEmitterService } from "../socket";
+import { NotificationSettingsDto } from "./dto";
 import { NotificationSettingsChangedEvent } from "./events";
 import { PushService } from "./push.service";
 
@@ -119,7 +120,7 @@ export class PushListener implements ISocketEventListener {
         this._emitter.toUser(
           event.userId,
           "push:settings-changed",
-          {} as Record<string, never>,
+          NotificationSettingsDto.fromEntity(event.settings),
         );
       },
     );

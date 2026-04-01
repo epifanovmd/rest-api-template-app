@@ -1,6 +1,7 @@
 import { inject } from "inversify";
 
 import { EventBus, Injectable } from "../../core";
+import { SessionDto } from "../session/session.dto";
 import { ISocketEventListener, SocketEmitterService } from "../socket";
 import {
   TwoFactorDisabledEvent,
@@ -18,9 +19,13 @@ export class AuthListener implements ISocketEventListener {
 
   register(): void {
     this._eventBus.on(UserLoggedInEvent, (event: UserLoggedInEvent) => {
-      this._emitter.toUser(event.userId, "session:new", {
-        sessionId: event.sessionId ?? "",
-      });
+      if (event.session) {
+        this._emitter.toUser(
+          event.userId,
+          "session:new",
+          SessionDto.fromEntity(event.session),
+        );
+      }
     });
 
     this._eventBus.on(TwoFactorEnabledEvent, (event: TwoFactorEnabledEvent) => {

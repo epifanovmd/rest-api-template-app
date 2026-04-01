@@ -140,13 +140,13 @@ export class AuthService {
 
         const fullUser = await this._userService.getUser(user.id);
 
-        const { sessionId, tokens } =
+        const { sessionId, tokens, session } =
           await this._sessionService.createAuthenticatedSession(
             fullUser,
             deviceInfo,
           );
 
-        this._eventBus.emit(new UserLoggedInEvent(fullUser.id, sessionId));
+        this._eventBus.emit(new UserLoggedInEvent(fullUser.id, sessionId, session));
 
         return {
           ...UserDto.fromEntity(fullUser),
@@ -308,10 +308,10 @@ export class AuthService {
       throw new UnauthorizedException("Неверный пароль 2FA");
     }
 
-    const { sessionId, tokens } =
+    const { sessionId, tokens, session } =
       await this._sessionService.createAuthenticatedSession(user, deviceInfo);
 
-    this._eventBus.emit(new UserLoggedInEvent(user.id, sessionId));
+    this._eventBus.emit(new UserLoggedInEvent(user.id, sessionId, session));
 
     return {
       ...UserDto.fromEntity(user),

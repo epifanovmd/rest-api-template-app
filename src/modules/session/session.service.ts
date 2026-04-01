@@ -7,6 +7,7 @@ import { EventBus, Injectable, ITokensDto, TokenService } from "../../core";
 import { User } from "../user/user.entity";
 import { SessionTerminatedEvent } from "./events";
 import { SessionDto } from "./session.dto";
+import { Session } from "./session.entity";
 import { SessionRepository } from "./session.repository";
 import { IDeviceInfo } from "./session.types";
 
@@ -25,11 +26,11 @@ export class SessionService {
   async createAuthenticatedSession(
     user: User,
     deviceInfo: IDeviceInfo = {},
-  ): Promise<{ sessionId: string; tokens: ITokensDto }> {
+  ): Promise<{ sessionId: string; tokens: ITokensDto; session: Session }> {
     const sessionId = crypto.randomUUID();
     const tokens = await this._tokenService.issue(user, sessionId);
 
-    await this._sessionRepo.createAndSave({
+    const session = await this._sessionRepo.createAndSave({
       id: sessionId,
       userId: user.id,
       refreshToken: tokens.refreshToken,
@@ -39,7 +40,7 @@ export class SessionService {
       userAgent: deviceInfo.userAgent ?? null,
     });
 
-    return { sessionId, tokens };
+    return { sessionId, tokens, session };
   }
 
   /** Создать новую сессию. */

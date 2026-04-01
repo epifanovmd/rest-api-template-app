@@ -3,11 +3,13 @@ import { DefaultEventsMap } from "socket.io/dist/typed-events";
 
 import { AuthContext } from "../../types/koa";
 import { CallDto } from "../call/dto/call.dto";
-import { ChatDto, ChatLastMessageDto } from "../chat/dto/chat.dto";
+import { ChatDto, ChatLastMessageDto, ChatMemberDto } from "../chat/dto/chat.dto";
 import { ContactDto } from "../contact/dto/contact.dto";
 import { MessageDto } from "../message/dto/message.dto";
 import { PollDto } from "../poll/dto/poll.dto";
-import { PublicProfileDto } from "../profile/dto";
+import { PrivacySettingsDto, PublicProfileDto } from "../profile/dto";
+import { NotificationSettingsDto } from "../push/dto";
+import { SessionDto } from "../session/session.dto";
 
 // ─── Payload-интерфейсы: Клиент → Сервер ─────────────────────────────────
 
@@ -83,6 +85,12 @@ export interface ISocketChatUnreadPayload {
 export interface ISocketChatMemberPayload {
   chatId: string;
   userId: string;
+}
+
+export interface ISocketChatMemberJoinedPayload {
+  chatId: string;
+  userId: string;
+  member?: ChatMemberDto;
 }
 
 export interface ISocketChatPinnedPayload {
@@ -247,7 +255,7 @@ export interface ISocketEmitEvents {
   /** Обновление счётчика непрочитанных */
   "chat:unread": (...args: [ISocketChatUnreadPayload]) => void;
   /** Участник добавлен */
-  "chat:member:joined": (...args: [ISocketChatMemberPayload]) => void;
+  "chat:member:joined": (...args: [ISocketChatMemberJoinedPayload]) => void;
   /** Участник удалён */
   "chat:member:left": (...args: [ISocketChatMemberPayload]) => void;
   /** Чат закреплён/откреплён */
@@ -333,11 +341,11 @@ export interface ISocketEmitEvents {
 
   // ─── Push events ──────────────────────────────────────────────────────
   /** Настройки уведомлений изменены */
-  "push:settings-changed": (...args: [Record<string, never>]) => void;
+  "push:settings-changed": (...args: [NotificationSettingsDto]) => void;
 
   // ─── Profile privacy events ───────────────────────────────────────────
   /** Настройки приватности изменены */
-  "profile:privacy-changed": (...args: [Record<string, never>]) => void;
+  "profile:privacy-changed": (...args: [PrivacySettingsDto]) => void;
 
   // ─── Auth events ──────────────────────────────────────────────────────
   /** Изменение статуса 2FA */
@@ -345,7 +353,7 @@ export interface ISocketEmitEvents {
 
   // ─── Session events ─────────────────────────────────────────────────────
   /** Новая сессия авторизована */
-  "session:new": (...args: [ISocketSessionPayload]) => void;
+  "session:new": (...args: [SessionDto]) => void;
   /** Сессия завершена */
   "session:terminated": (...args: [ISocketSessionPayload]) => void;
 

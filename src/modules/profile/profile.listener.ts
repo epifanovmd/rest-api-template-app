@@ -2,6 +2,7 @@ import { inject } from "inversify";
 
 import { EventBus, Injectable } from "../../core";
 import { ISocketEventListener, SocketEmitterService } from "../socket";
+import { PrivacySettingsDto } from "./dto";
 import { PrivacySettingsUpdatedEvent, ProfileUpdatedEvent } from "./events";
 
 @Injectable()
@@ -23,7 +24,7 @@ export class ProfileListener implements ISocketEventListener {
         this.emitter.toUser(
           event.userId,
           "profile:privacy-changed",
-          {} as Record<string, never>,
+          PrivacySettingsDto.fromEntity(event.settings),
         );
       },
     );
