@@ -10,6 +10,7 @@ export interface IFileDto {
   width: number | null;
   height: number | null;
   duration: number | null;
+  waveform: number[] | null;
   createdAt: Date;
   updatedAt: Date;
 }

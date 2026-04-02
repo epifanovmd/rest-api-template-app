@@ -41,6 +41,9 @@ export class File {
   @Column({ type: "float", nullable: true })
   duration: number | null;
 
+  @Column({ type: "simple-json", nullable: true })
+  waveform: number[] | null;
+
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 
@@ -60,6 +63,7 @@ export class File {
       width: this.width,
       height: this.height,
       duration: this.duration,
+      waveform: this.waveform,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
     };

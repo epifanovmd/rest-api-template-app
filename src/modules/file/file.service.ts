@@ -42,6 +42,7 @@ export class FileService {
         let mediumUrl: string | null = null;
         let blurhash: string | null = null;
         let duration: number | null = null;
+        let waveform: number[] | null = null;
 
         if (file.mimetype.startsWith("image/")) {
           const result = await this._mediaProcessor.processImage(file.path, id);
@@ -67,6 +68,7 @@ export class FileService {
           url = result.url;
           size = result.size;
           duration = result.duration;
+          waveform = result.waveform;
         }
 
         return this._fileRepository.createAndSave({
@@ -81,6 +83,7 @@ export class FileService {
           width,
           height,
           duration,
+          waveform,
         });
       }),
     );

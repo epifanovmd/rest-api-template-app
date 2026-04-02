@@ -1,5 +1,5 @@
 import { encode } from "blurhash";
-import { execSync } from "child_process";
+import { execSync, spawnSync } from "child_process";
 import ffmpeg from "fluent-ffmpeg";
 import fs from "fs/promises";
 import path from "path";
@@ -43,12 +43,16 @@ export interface IAudioProcessResult {
   url: string;
   size: number;
   duration: number | null;
+  waveform: number[] | null;
 }
 
 @Injectable()
 export class MediaProcessorService {
   /** Обработка изображения: сжатие оригинала, thumbnail, medium, blurhash. */
-  async processImage(filePath: string, id: string): Promise<IImageProcessResult> {
+  async processImage(
+    filePath: string,
+    id: string,
+  ): Promise<IImageProcessResult> {
     const dir = path.dirname(filePath);
     const compressedPath = path.join(dir, `${id}.webp`);
     const thumbPath = path.join(dir, `${id}_thumb.webp`);
@@ -140,7 +144,10 @@ export class MediaProcessorService {
   }
 
   /** Обработка видео: thumbnail первого кадра, duration, resolution через ffprobe. */
-  async processVideo(filePath: string, id: string): Promise<IVideoProcessResult> {
+  async processVideo(
+    filePath: string,
+    id: string,
+  ): Promise<IVideoProcessResult> {
     const dir = path.dirname(filePath);
     const framePath = path.join(dir, `${id}_frame.png`);
     const thumbPath = path.join(dir, `${id}_thumb.webp`);
@@ -203,7 +210,7 @@ export class MediaProcessorService {
     return { thumbnailUrl, mediumUrl, width, height, duration };
   }
 
-  /** Обработка аудио: конвертация в m4a (AAC) для совместимости с iOS, извлечение duration. */
+  /** Обработка аудио: конвертация в m4a (AAC), извлечение duration и waveform. */
   async processAudio(
     filePath: string,
     id: string,
@@ -211,22 +218,22 @@ export class MediaProcessorService {
     const dir = path.dirname(filePath);
     const m4aPath = path.join(dir, `${id}.m4a`);
     let duration: number | null = null;
+    let waveform: number[] | null = null;
 
     try {
-      // Конвертация в m4a (AAC) — поддерживается на всех платформах
       await this._convertToM4a(filePath, m4aPath);
 
-      // Удалить оригинал
       if (m4aPath !== filePath) {
         await fs.unlink(filePath).catch(() => {});
       }
 
-      // Извлечь duration из сконвертированного m4a (webm от MediaRecorder часто не содержит duration)
       const probe = await this._ffprobe(m4aPath);
 
       duration = probe.format?.duration
         ? parseFloat(String(probe.format.duration))
         : null;
+
+      waveform = await this._extractWaveform(m4aPath);
 
       const stat = await fs.stat(m4aPath);
 
@@ -234,17 +241,18 @@ export class MediaProcessorService {
         url: `${config.server.filesRoutePrefix}/${id}.m4a`,
         size: stat.size,
         duration,
+        waveform,
       };
     } catch (err) {
       logger.error({ err }, "Failed to process audio");
 
-      // Fallback: вернуть оригинал
       const stat = await fs.stat(filePath).catch(() => ({ size: 0 }));
 
       return {
         url: `${config.server.filesRoutePrefix}/${path.basename(filePath)}`,
         size: stat.size,
         duration,
+        waveform,
       };
     }
   }
@@ -258,13 +266,7 @@ export class MediaProcessorService {
         .resize(32, 32, { fit: "inside" })
         .toBuffer({ resolveWithObject: true });
 
-      return encode(
-        new Uint8ClampedArray(data),
-        info.width,
-        info.height,
-        4,
-        3,
-      );
+      return encode(new Uint8ClampedArray(data), info.width, info.height, 4, 3);
     } catch (err) {
       logger.error({ err }, "Failed to generate blurhash");
 
@@ -273,10 +275,7 @@ export class MediaProcessorService {
   }
 
   /** Конвертация аудио в m4a (AAC) для кросс-платформенной совместимости. */
-  private _convertToM4a(
-    inputPath: string,
-    outputPath: string,
-  ): Promise<void> {
+  private _convertToM4a(inputPath: string, outputPath: string): Promise<void> {
     return new Promise((resolve, reject) => {
       ffmpeg(inputPath)
         .audioCodec("aac")
@@ -302,13 +301,88 @@ export class MediaProcessorService {
     });
   }
 
+  /**
+   * Извлекает waveform (64 amplitude samples, 0..1) из аудиофайла.
+   * Использует ffmpeg для декодирования в raw PCM s16le mono 8000Hz,
+   * затем вычисляет peak amplitude для каждого сегмента.
+   */
+  private async _extractWaveform(
+    audioPath: string,
+    sampleCount: number = 64,
+  ): Promise<number[] | null> {
+    try {
+      const ffmpegPath = execSync("which ffmpeg").toString().trim();
+
+      // Decode to raw PCM: signed 16-bit little-endian, mono, 8kHz
+      const result = spawnSync(
+        ffmpegPath,
+        [
+          "-i",
+          audioPath,
+          "-ac",
+          "1",
+          "-ar",
+          "8000",
+          "-f",
+          "s16le",
+          "-acodec",
+          "pcm_s16le",
+          "pipe:1",
+        ],
+        {
+          maxBuffer: 10 * 1024 * 1024, // 10MB
+          stdio: ["pipe", "pipe", "pipe"],
+        },
+      );
+
+      if (result.error || !result.stdout || result.stdout.length === 0) {
+        return null;
+      }
+
+      const buffer = result.stdout as Buffer;
+      const totalSamples = buffer.length / 2; // 16-bit = 2 bytes per sample
+
+      if (totalSamples === 0) return null;
+
+      const samplesPerBucket = Math.max(
+        1,
+        Math.floor(totalSamples / sampleCount),
+      );
+      const waveform: number[] = [];
+
+      for (let i = 0; i < sampleCount; i += 1) {
+        const start = i * samplesPerBucket;
+        const end = Math.min(start + samplesPerBucket, totalSamples);
+        let peak = 0;
+
+        for (let j = start; j < end; j += 1) {
+          const sample = Math.abs(buffer.readInt16LE(j * 2));
+
+          if (sample > peak) peak = sample;
+        }
+
+        // Normalize to 0..1 (max int16 = 32767)
+        waveform.push(Math.round((peak / 32767) * 100) / 100);
+      }
+
+      return waveform;
+    } catch (err) {
+      logger.error({ err }, "Failed to extract waveform");
+
+      return null;
+    }
+  }
+
   /** Запуск ffprobe для извлечения metadata. */
   private _ffprobe(filePath: string): Promise<ffmpeg.FfprobeData> {
     return new Promise((resolve, reject) => {
-      ffmpeg.ffprobe(filePath, (err: Error | null, data: ffmpeg.FfprobeData) => {
-        if (err) reject(err);
-        else resolve(data);
-      });
+      ffmpeg.ffprobe(
+        filePath,
+        (err: Error | null, data: ffmpeg.FfprobeData) => {
+          if (err) reject(err);
+          else resolve(data);
+        },
+      );
     });
   }
 }

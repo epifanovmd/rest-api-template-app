@@ -16,6 +16,7 @@ export class MessageAttachmentDto extends BaseDto {
   width: number | null;
   height: number | null;
   duration: number | null;
+  waveform: number[] | null;
 
   constructor(entity: MessageAttachment) {
     super(entity);
@@ -30,6 +31,7 @@ export class MessageAttachmentDto extends BaseDto {
     this.width = entity.file?.width ?? null;
     this.height = entity.file?.height ?? null;
     this.duration = entity.file?.duration ?? null;
+    this.waveform = entity.file?.waveform ?? null;
   }
 
   static fromEntity(entity: MessageAttachment) {

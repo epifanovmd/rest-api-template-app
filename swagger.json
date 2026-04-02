@@ -97,6 +97,14 @@
 						"format": "double",
 						"nullable": true
 					},
+					"waveform": {
+						"items": {
+							"type": "number",
+							"format": "double"
+						},
+						"type": "array",
+						"nullable": true
+					},
 					"createdAt": {
 						"type": "string",
 						"format": "date-time"
@@ -118,6 +126,7 @@
 					"width",
 					"height",
 					"duration",
+					"waveform",
 					"createdAt",
 					"updatedAt"
 				],
@@ -1299,6 +1308,14 @@
 						"type": "number",
 						"format": "double",
 						"nullable": true
+					},
+					"waveform": {
+						"items": {
+							"type": "number",
+							"format": "double"
+						},
+						"type": "array",
+						"nullable": true
 					}
 				},
 				"required": [
@@ -1311,7 +1328,8 @@
 					"thumbnailUrl",
 					"width",
 					"height",
-					"duration"
+					"duration",
+					"waveform"
 				],
 				"type": "object",
 				"additionalProperties": false
