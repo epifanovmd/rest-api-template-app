@@ -650,6 +650,37 @@ export class MessageService {
     return this._messageRepo.getMediaStats(chatId, userId);
   }
 
+  async getUnreadCounts(userId: string): Promise<Record<string, number>> {
+    const rows: { chat_id: string; count: string }[] = await this._messageRepo
+      .createQueryBuilder("message")
+      .innerJoin(
+        "chat_members",
+        "cm",
+        "cm.chat_id = message.chat_id AND cm.user_id = :userId",
+        { userId },
+      )
+      .where(
+        "cm.last_read_message_id IS NULL OR message.created_at > " +
+          "(SELECT m2.created_at FROM messages m2 WHERE m2.id = cm.last_read_message_id)",
+      )
+      .select("message.chat_id", "chat_id")
+      .addSelect("COUNT(*)", "count")
+      .groupBy("message.chat_id")
+      .getRawMany();
+
+    const result: Record<string, number> = {};
+
+    for (const row of rows) {
+      const count = parseInt(row.count, 10);
+
+      if (count > 0) {
+        result[row.chat_id] = count;
+      }
+    }
+
+    return result;
+  }
+
   async getUnreadCount(chatId: string, userId: string): Promise<number> {
     const qb = this._messageRepo
       .createQueryBuilder("message")

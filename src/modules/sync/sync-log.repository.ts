@@ -41,9 +41,21 @@ export class SyncLogRepository extends BaseRepository<SyncLog> {
 
   async getLatestVersion(): Promise<string> {
     const result = await this.createQueryBuilder("log")
-      .select("MAX(log.version)", "maxVersion")
+      .select("log.version")
+      .orderBy("log.version", "DESC")
+      .limit(1)
       .getRawOne();
 
-    return result?.maxVersion ?? "0";
+    return result?.version ?? "0";
+  }
+
+  /** Delete sync logs older than the given date. Returns deleted count. */
+  async deleteOlderThan(before: Date): Promise<number> {
+    const result = await this.createQueryBuilder()
+      .delete()
+      .where("createdAt < :before", { before })
+      .execute();
+
+    return result.affected ?? 0;
   }
 }

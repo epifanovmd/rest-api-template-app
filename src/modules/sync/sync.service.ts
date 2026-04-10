@@ -57,39 +57,29 @@ export class SyncService {
   }
 
   async getSnapshot(userId: string): Promise<ISyncSnapshotDto> {
-    const [chatsResult, currentVersion] = await Promise.all([
+    const [chatsResult, currentVersion, unreadCounts] = await Promise.all([
       this._chatRepo.findUserChats(userId),
       this._syncLogRepo.getLatestVersion(),
+      this._messageService.getUnreadCounts(userId),
     ]);
 
     const [chats] = chatsResult;
     const chatDtos = chats.map(chat => ChatDto.fromEntity(chat, userId));
-
-    // Compute unread counts in parallel
-    const unreadEntries = await Promise.all(
-      chatDtos.map(async chat => {
-        const count = await this._messageService.getUnreadCount(
-          chat.id,
-          userId,
-        );
-
-        return [chat.id, count] as const;
-      }),
-    );
-
-    const unreadCounts: Record<string, number> = {};
-
-    for (const [chatId, count] of unreadEntries) {
-      if (count > 0) {
-        unreadCounts[chatId] = count;
-      }
-    }
 
     return {
       chats: chatDtos,
       unreadCounts,
       currentVersion,
     };
+  }
+
+  /** Delete sync logs older than retentionDays. Call from cron/bootstrap. */
+  async cleanup(retentionDays: number = 90): Promise<number> {
+    const before = new Date();
+
+    before.setDate(before.getDate() - retentionDays);
+
+    return this._syncLogRepo.deleteOlderThan(before);
   }
 
   async logChange(

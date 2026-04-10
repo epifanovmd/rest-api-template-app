@@ -25,7 +25,7 @@ export class MessageRepository extends BaseRepository<Message> {
     limit: number = 50,
   ) {
     const qb = this._baseMessageQuery("message", userId)
-      .where("message.chatId = :chatId", { chatId })
+      .andWhere("message.chatId = :chatId", { chatId })
       .orderBy("message.createdAt", "DESC")
       .take(limit + 1);
 
@@ -68,7 +68,7 @@ export class MessageRepository extends BaseRepository<Message> {
     });
 
     const qb = this._baseMessageQuery("message", userId)
-      .where("message.chatId = :chatId", { chatId })
+      .andWhere("message.chatId = :chatId", { chatId })
       .orderBy("message.createdAt", "ASC")
       .take(limit + 1);
 
@@ -114,7 +114,7 @@ export class MessageRepository extends BaseRepository<Message> {
 
     // Messages older than anchor (exclude anchor by id for same-timestamp safety)
     const olderQb = this._baseMessageQuery("message", userId)
-      .where("message.chatId = :chatId", { chatId })
+      .andWhere("message.chatId = :chatId", { chatId })
       .andWhere("message.id != :anchorId", { anchorId: messageId })
       .andWhere("message.createdAt <= :anchorDate", {
         anchorDate: anchor.createdAt,
@@ -124,7 +124,7 @@ export class MessageRepository extends BaseRepository<Message> {
 
     // Messages newer than anchor (exclude anchor by id for same-timestamp safety)
     const newerQb = this._baseMessageQuery("message", userId)
-      .where("message.chatId = :chatId", { chatId })
+      .andWhere("message.chatId = :chatId", { chatId })
       .andWhere("message.id != :anchorId", { anchorId: messageId })
       .andWhere("message.createdAt >= :anchorDate", {
         anchorDate: anchor.createdAt,
@@ -162,7 +162,7 @@ export class MessageRepository extends BaseRepository<Message> {
     offset: number = 0,
   ) {
     return this._baseMessageQuery("message", userId)
-      .where("message.chatId = :chatId", { chatId })
+      .andWhere("message.chatId = :chatId", { chatId })
       .andWhere("message.content ILIKE :query", { query: `%${query}%` })
       .orderBy("message.createdAt", "DESC")
       .skip(offset)
@@ -180,7 +180,7 @@ export class MessageRepository extends BaseRepository<Message> {
     if (chatIds.length === 0) return [[] as Message[], 0] as const;
 
     return this._baseMessageQuery("message", userId)
-      .where("message.chatId IN (:...chatIds)", { chatIds })
+      .andWhere("message.chatId IN (:...chatIds)", { chatIds })
       .andWhere("message.content ILIKE :query", { query: `%${query}%` })
       .orderBy("message.createdAt", "DESC")
       .skip(offset)
@@ -259,7 +259,7 @@ export class MessageRepository extends BaseRepository<Message> {
 
   async findPinnedByChatId(chatId: string, userId: string) {
     return this._baseMessageQuery("message", userId)
-      .where("message.chatId = :chatId", { chatId })
+      .andWhere("message.chatId = :chatId", { chatId })
       .andWhere("message.isPinned = true")
       .orderBy("message.pinnedAt", "DESC")
       .getMany();
@@ -288,7 +288,7 @@ export class MessageRepository extends BaseRepository<Message> {
       .leftJoinAndSelect("attachments.file", "file")
       .leftJoinAndSelect(`${alias}.reactions`, "reactions")
       .leftJoinAndSelect(`${alias}.mentions`, "mentions")
-      .andWhere(`${alias}.isDeleted = false`);
+      .where(`${alias}.isDeleted = false`);
 
     if (userId) {
       qb.leftJoin(

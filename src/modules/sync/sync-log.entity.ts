@@ -11,6 +11,8 @@ import { ESyncAction, ESyncEntityType } from "./sync.types";
 @Entity("sync_logs")
 @Index("IDX_SYNC_LOGS_USER_VERSION", ["userId", "version"])
 @Index("IDX_SYNC_LOGS_CHAT_VERSION", ["chatId", "version"])
+@Index("IDX_SYNC_LOGS_VERSION", ["version"])
+@Index("IDX_SYNC_LOGS_CREATED_AT", ["createdAt"])
 export class SyncLog {
   @PrimaryGeneratedColumn("increment", { type: "bigint" })
   version: string;
