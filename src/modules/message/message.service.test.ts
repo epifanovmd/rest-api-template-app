@@ -35,6 +35,7 @@ describe("MessageService", () => {
   let messageRepo: ReturnType<typeof createMockRepository>;
   let attachmentRepo: ReturnType<typeof createMockRepository>;
   let reactionRepo: ReturnType<typeof createMockRepository>;
+  let deletionRepo: ReturnType<typeof createMockRepository>;
   let mentionRepo: ReturnType<typeof createMockRepository>;
   let chatRepo: ReturnType<typeof createMockRepository>;
   let memberRepo: ReturnType<typeof createMockRepository>;
@@ -77,6 +78,8 @@ describe("MessageService", () => {
     messageRepo = createMockRepository();
     attachmentRepo = createMockRepository();
     reactionRepo = createMockRepository();
+    deletionRepo = createMockRepository();
+    (deletionRepo as any).deleteForUser = sinon.stub().resolves();
     mentionRepo = createMockRepository();
     chatRepo = createMockRepository();
     memberRepo = createMockRepository();
@@ -96,6 +99,7 @@ describe("MessageService", () => {
       messageRepo as any,
       attachmentRepo as any,
       reactionRepo as any,
+      deletionRepo as any,
       mentionRepo as any,
       chatRepo as any,
       memberRepo as any,
@@ -115,6 +119,7 @@ describe("MessageService", () => {
     (messageRepo as any).searchInChat = sinon.stub().resolves([[], 0]);
     (messageRepo as any).searchGlobal = sinon.stub().resolves([[], 0]);
     (messageRepo as any).findMediaByChatId = sinon.stub().resolves([[], 0]);
+    (messageRepo as any).findPinnedByChatId = sinon.stub().resolves([]);
     (messageRepo as any).getMediaStats = sinon
       .stub()
       .resolves({ images: 0, videos: 0, audio: 0, documents: 0, total: 0 });
@@ -290,15 +295,14 @@ describe("MessageService", () => {
   // ───── deleteMessage ─────
 
   describe("deleteMessage", () => {
-    it("should soft delete own message (isDeleted=true, content=null)", async () => {
+    it("should soft delete own message for all (isDeleted=true)", async () => {
       const msg = makeMessageEntity();
 
       (messageRepo as any).findById.resolves(msg);
 
-      await service.deleteMessage(messageId, userId);
+      await service.deleteMessage(messageId, userId, true);
 
       expect(msg.isDeleted).to.be.true;
-      expect(msg.content).to.be.null;
       expect(messageRepo.save.calledOnce).to.be.true;
       expect(eventBus.emit.calledOnce).to.be.true;
       expect(eventBus.emit.firstCall.args[0]).to.be.instanceOf(
@@ -317,7 +321,7 @@ describe("MessageService", () => {
         role: EChatMemberRole.ADMIN,
       });
 
-      await service.deleteMessage(messageId, userId);
+      await service.deleteMessage(messageId, userId, true);
 
       expect(msg.isDeleted).to.be.true;
       expect(messageRepo.save.calledOnce).to.be.true;
@@ -335,7 +339,7 @@ describe("MessageService", () => {
       });
 
       try {
-        await service.deleteMessage(messageId, userId);
+        await service.deleteMessage(messageId, userId, true);
         expect.fail("Should have thrown");
       } catch (err) {
         expect(err).to.be.instanceOf(ForbiddenException);
@@ -346,7 +350,7 @@ describe("MessageService", () => {
       (messageRepo as any).findById.resolves(null);
 
       try {
-        await service.deleteMessage(messageId, userId);
+        await service.deleteMessage(messageId, userId, true);
         expect.fail("Should have thrown");
       } catch (err) {
         expect(err).to.be.instanceOf(NotFoundException);
@@ -360,7 +364,7 @@ describe("MessageService", () => {
       (memberRepo as any).findMembership.resolves(null);
 
       try {
-        await service.deleteMessage(messageId, userId);
+        await service.deleteMessage(messageId, userId, true);
         expect.fail("Should have thrown");
       } catch (err) {
         expect(err).to.be.instanceOf(ForbiddenException);
@@ -678,7 +682,7 @@ describe("MessageService", () => {
       chatService.isMember.resolves(true);
       const msgs = [makeMessageEntity({ isPinned: true })];
 
-      messageRepo.find.resolves(msgs);
+      (messageRepo as any).findPinnedByChatId.resolves(msgs);
 
       const result = await service.getPinnedMessages(chatId, userId);
 

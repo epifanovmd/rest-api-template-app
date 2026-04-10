@@ -1,4 +1,5 @@
 import { BaseDto } from "../../../core/dto/BaseDto";
+import { ChatDto } from "../../chat/dto";
 import { ESyncAction, ESyncEntityType } from "../sync.types";
 import { SyncLog } from "../sync-log.entity";
 
@@ -32,4 +33,10 @@ export interface ISyncResponseDto {
   changes: SyncLogDto[];
   currentVersion: string;
   hasMore: boolean;
+}
+
+export interface ISyncSnapshotDto {
+  chats: ChatDto[];
+  unreadCounts: Record<string, number>;
+  currentVersion: string;
 }

@@ -83,9 +83,9 @@ describe("MessageListener", () => {
   });
 
   describe("MessageDeletedEvent", () => {
-    it("should emit message:deleted to chat room", () => {
+    it("should emit message:deleted to chat room when forAll=true", () => {
       const messageId = "msg-1";
-      const event = new MessageDeletedEvent(messageId, chatId);
+      const event = new MessageDeletedEvent(messageId, chatId, true, senderId);
 
       eventHandlers["MessageDeletedEvent"](event);
 
@@ -95,6 +95,28 @@ describe("MessageListener", () => {
       expect(emitter.toRoom.firstCall.args[2]).to.deep.equal({
         messageId,
         chatId,
+        forAll: true,
+      });
+    });
+
+    it("should emit message:deleted to user only when forAll=false", () => {
+      const messageId = "msg-1";
+      const event = new MessageDeletedEvent(
+        messageId,
+        chatId,
+        false,
+        senderId,
+      );
+
+      eventHandlers["MessageDeletedEvent"](event);
+
+      expect(emitter.toUser.calledOnce).to.be.true;
+      expect(emitter.toUser.firstCall.args[0]).to.equal(senderId);
+      expect(emitter.toUser.firstCall.args[1]).to.equal("message:deleted");
+      expect(emitter.toUser.firstCall.args[2]).to.deep.equal({
+        messageId,
+        chatId,
+        forAll: false,
       });
     });
   });

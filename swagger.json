@@ -3507,6 +3507,34 @@
 				],
 				"type": "object",
 				"additionalProperties": false
+			},
+			"Record_string.number_": {
+				"properties": {},
+				"type": "object",
+				"description": "Construct a type with a set of properties K of type T"
+			},
+			"ISyncSnapshotDto": {
+				"properties": {
+					"chats": {
+						"items": {
+							"$ref": "#/components/schemas/ChatDto"
+						},
+						"type": "array"
+					},
+					"unreadCounts": {
+						"$ref": "#/components/schemas/Record_string.number_"
+					},
+					"currentVersion": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"chats",
+					"unreadCounts",
+					"currentVersion"
+				],
+				"type": "object",
+				"additionalProperties": false
 			}
 		},
 		"securitySchemes": {
@@ -8122,7 +8150,7 @@
 						"description": "No content"
 					}
 				},
-				"description": "Удалить сообщение (soft delete).",
+				"description": "Удалить сообщение. forAll=true — для всех, forAll=false — только для себя.",
 				"summary": "Удаление сообщения",
 				"tags": [
 					"Message"
@@ -8134,11 +8162,21 @@
 				],
 				"parameters": [
 					{
+						"description": "ID сообщения",
 						"in": "path",
 						"name": "id",
 						"required": true,
 						"schema": {
 							"type": "string"
+						}
+					},
+					{
+						"description": "Удалить для всех (по умолчанию false — только для себя)",
+						"in": "query",
+						"name": "forAll",
+						"required": false,
+						"schema": {
+							"type": "boolean"
 						}
 					}
 				]
@@ -8790,6 +8828,34 @@
 						}
 					}
 				]
+			}
+		},
+		"/api/sync/snapshot": {
+			"get": {
+				"operationId": "GetSnapshot",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ISyncSnapshotDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Получить полный snapshot для быстрого старта: все чаты, unread counts, текущая sync version.\nИспользуется при первом запуске или после полного сброса кэша.",
+				"summary": "Initial snapshot",
+				"tags": [
+					"Sync"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": []
 			}
 		}
 	},

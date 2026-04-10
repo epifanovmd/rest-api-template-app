@@ -76,7 +76,7 @@ export class MessageDto extends BaseDto {
     this.senderId = entity.senderId;
     this.type = entity.type;
     this.status = entity.status;
-    this.content = entity.isDeleted ? null : entity.content;
+    this.content = entity.content;
     this.replyToId = entity.replyToId;
     this.forwardedFromId = entity.forwardedFromId;
     this.isEdited = entity.isEdited;

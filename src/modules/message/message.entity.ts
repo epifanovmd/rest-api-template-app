@@ -14,6 +14,7 @@ import { Chat } from "../chat/chat.entity";
 import { User } from "../user/user.entity";
 import { EMessageStatus, EMessageType } from "./message.types";
 import { MessageAttachment } from "./message-attachment.entity";
+import { MessageDeletion } from "./message-deletion.entity";
 import { MessageMention } from "./message-mention.entity";
 import { MessageReaction } from "./message-reaction.entity";
 
@@ -105,4 +106,7 @@ export class Message {
 
   @OneToMany(() => MessageMention, mention => mention.message)
   mentions: MessageMention[];
+
+  @OneToMany(() => MessageDeletion, deletion => deletion.message)
+  deletions: MessageDeletion[];
 }

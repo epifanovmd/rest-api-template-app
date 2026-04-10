@@ -11,7 +11,7 @@ import {
 
 import { getContextUser, Injectable } from "../../core";
 import { KoaRequest } from "../../types/koa";
-import { ISyncResponseDto } from "./dto/sync.dto";
+import { ISyncResponseDto, ISyncSnapshotDto } from "./dto/sync.dto";
 import { SyncService } from "./sync.service";
 
 @Injectable()
@@ -36,5 +36,18 @@ export class SyncController extends Controller {
     const user = getContextUser(req);
 
     return this._syncService.getChanges(user.userId, sinceVersion, limit);
+  }
+
+  /**
+   * Получить полный snapshot для быстрого старта: все чаты, unread counts, текущая sync version.
+   * Используется при первом запуске или после полного сброса кэша.
+   * @summary Initial snapshot
+   */
+  @Security("jwt")
+  @Get("snapshot")
+  getSnapshot(@Request() req: KoaRequest): Promise<ISyncSnapshotDto> {
+    const user = getContextUser(req);
+
+    return this._syncService.getSnapshot(user.userId);
   }
 }

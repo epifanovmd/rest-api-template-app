@@ -7,6 +7,7 @@ import { MessageListener } from "./message.listener";
 import { MessageRepository } from "./message.repository";
 import { MessageService } from "./message.service";
 import { MessageAttachmentRepository } from "./message-attachment.repository";
+import { MessageDeletionRepository } from "./message-deletion.repository";
 import { MessageMentionRepository } from "./message-mention.repository";
 import { MessageReactionRepository } from "./message-reaction.repository";
 
@@ -14,6 +15,7 @@ import { MessageReactionRepository } from "./message-reaction.repository";
   providers: [
     MessageRepository,
     MessageAttachmentRepository,
+    MessageDeletionRepository,
     MessageReactionRepository,
     MessageMentionRepository,
     MessageService,

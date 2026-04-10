@@ -48,11 +48,11 @@ describe("MessageDto", () => {
     expect(dto.updatedAt).to.deep.equal(new Date("2025-01-02"));
   });
 
-  it("isDeleted sets content to null", () => {
+  it("isDeleted does not mask content (filtering happens at query level)", () => {
     const entity = createEntity({ isDeleted: true, content: "secret" });
     const dto = MessageDto.fromEntity(entity);
 
-    expect(dto.content).to.be.null;
+    expect(dto.content).to.equal("secret");
   });
 
   it("reactions aggregated by emoji with counts and userIds", () => {

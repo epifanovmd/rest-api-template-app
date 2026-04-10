@@ -28,6 +28,7 @@ import { Message } from "./message.entity";
 import { MessageRepository } from "./message.repository";
 import { EMessageStatus, EMessageType } from "./message.types";
 import { MessageAttachmentRepository } from "./message-attachment.repository";
+import { MessageDeletionRepository } from "./message-deletion.repository";
 import { MessageMentionRepository } from "./message-mention.repository";
 import { MessageReactionRepository } from "./message-reaction.repository";
 
@@ -39,6 +40,8 @@ export class MessageService {
     private _attachmentRepo: MessageAttachmentRepository,
     @inject(MessageReactionRepository)
     private _reactionRepo: MessageReactionRepository,
+    @inject(MessageDeletionRepository)
+    private _deletionRepo: MessageDeletionRepository,
     @inject(MessageMentionRepository)
     private _mentionRepo: MessageMentionRepository,
     @inject(ChatRepository) private _chatRepo: ChatRepository,
@@ -200,6 +203,7 @@ export class MessageService {
 
     const { messages, hasMore } = await this._messageRepo.findByChatCursor(
       chatId,
+      userId,
       before,
       limit ?? 50,
     );
@@ -228,6 +232,7 @@ export class MessageService {
 
     const { messages, hasNewer } = await this._messageRepo.findAfterCursor(
       chatId,
+      userId,
       after,
       limit ?? 50,
     );
@@ -257,6 +262,7 @@ export class MessageService {
 
     const result = await this._messageRepo.findAroundMessage(
       chatId,
+      userId,
       messageId,
       limit ?? 50,
     );
@@ -316,42 +322,67 @@ export class MessageService {
     return MessageDto.fromEntity(message);
   }
 
-  async deleteMessage(messageId: string, userId: string) {
+  async deleteMessage(messageId: string, userId: string, forAll: boolean) {
     const message = await this._messageRepo.findById(messageId);
 
     if (!message) {
       throw new NotFoundException("Сообщение не найдено");
     }
 
-    if (message.senderId !== userId) {
-      // Проверяем, является ли пользователь админом/владельцем чата
-      const membership = await this._memberRepo.findMembership(
+    if (forAll) {
+      // Удаление для всех — проверяем права (sender / admin / owner)
+      if (message.senderId !== userId) {
+        const membership = await this._memberRepo.findMembership(
+          message.chatId,
+          userId,
+        );
+
+        if (!membership || membership.role === EChatMemberRole.MEMBER) {
+          throw new ForbiddenException(
+            "Недостаточно прав для удаления сообщения",
+          );
+        }
+      }
+
+      message.isDeleted = true;
+      await this._messageRepo.save(message);
+
+      // Обнулить ссылки replyToId на удалённое сообщение
+      await this._messageRepo
+        .createQueryBuilder()
+        .update()
+        .set({ replyToId: null })
+        .where("replyToId = :messageId", { messageId })
+        .execute();
+
+      const wasLastMessage = await this._recalcLastMessage(
+        message.chatId,
+        messageId,
+      );
+
+      this._eventBus.emit(
+        new MessageDeletedEvent(messageId, message.chatId, true, userId),
+      );
+
+      if (wasLastMessage) {
+        await this._emitLastMessageUpdated(message.chatId);
+      }
+    } else {
+      // Удаление только для себя — проверяем членство в чате
+      const isMember = await this._chatService.isMember(
         message.chatId,
         userId,
       );
 
-      if (!membership || membership.role === EChatMemberRole.MEMBER) {
-        throw new ForbiddenException(
-          "Недостаточно прав для удаления сообщения",
-        );
+      if (!isMember) {
+        throw new ForbiddenException("Вы не являетесь участником этого чата");
       }
-    }
 
-    // Soft delete
-    message.isDeleted = true;
-    message.content = null;
-    await this._messageRepo.save(message);
+      await this._deletionRepo.deleteForUser(messageId, userId);
 
-    // Recalculate lastMessage if this was the last message in chat
-    const wasLastMessage = await this._recalcLastMessage(
-      message.chatId,
-      messageId,
-    );
-
-    this._eventBus.emit(new MessageDeletedEvent(messageId, message.chatId));
-
-    if (wasLastMessage) {
-      await this._emitLastMessageUpdated(message.chatId);
+      this._eventBus.emit(
+        new MessageDeletedEvent(messageId, message.chatId, false, userId),
+      );
     }
   }
 
@@ -396,17 +427,7 @@ export class MessageService {
       throw new ForbiddenException("Вы не являетесь участником этого чата");
     }
 
-    const messages = await this._messageRepo.find({
-      where: { chatId, isPinned: true },
-      relations: {
-        sender: { profile: true },
-        replyTo: { sender: { profile: true } },
-        attachments: { file: true },
-        reactions: true,
-        mentions: true,
-      },
-      order: { pinnedAt: "DESC" },
-    });
+    const messages = await this._messageRepo.findPinnedByChatId(chatId, userId);
 
     const dtos = messages.map(MessageDto.fromEntity);
 
@@ -537,6 +558,7 @@ export class MessageService {
 
     const [messages, totalCount] = await this._messageRepo.searchInChat(
       chatId,
+      userId,
       query,
       limit ?? 20,
       offset ?? 0,
@@ -572,6 +594,7 @@ export class MessageService {
 
     const [messages, totalCount] = await this._messageRepo.searchGlobal(
       chatIds,
+      userId,
       query,
       limit ?? 20,
       offset ?? 0,
@@ -602,6 +625,7 @@ export class MessageService {
 
     const [messages, totalCount] = await this._messageRepo.findMediaByChatId(
       chatId,
+      userId,
       type,
       limit ?? 50,
       offset ?? 0,
@@ -623,7 +647,7 @@ export class MessageService {
       throw new ForbiddenException("Вы не являетесь участником этого чата");
     }
 
-    return this._messageRepo.getMediaStats(chatId);
+    return this._messageRepo.getMediaStats(chatId, userId);
   }
 
   async getUnreadCount(chatId: string, userId: string): Promise<number> {

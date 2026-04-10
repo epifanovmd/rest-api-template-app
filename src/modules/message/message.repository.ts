@@ -18,8 +18,13 @@ export class MessageRepository extends BaseRepository<Message> {
     });
   }
 
-  async findByChatCursor(chatId: string, before?: string, limit: number = 50) {
-    const qb = this._baseMessageQuery("message")
+  async findByChatCursor(
+    chatId: string,
+    userId: string,
+    before?: string,
+    limit: number = 50,
+  ) {
+    const qb = this._baseMessageQuery("message", userId)
       .where("message.chatId = :chatId", { chatId })
       .orderBy("message.createdAt", "DESC")
       .take(limit + 1);
@@ -51,13 +56,18 @@ export class MessageRepository extends BaseRepository<Message> {
    * Load messages NEWER than cursor (for scrolling down from a detached window).
    * Returns messages in DESC order (newest first) — consistent with findByChatCursor.
    */
-  async findAfterCursor(chatId: string, after: string, limit: number = 50) {
+  async findAfterCursor(
+    chatId: string,
+    userId: string,
+    after: string,
+    limit: number = 50,
+  ) {
     const cursor = await this.findOne({
       where: { id: after },
       select: ["id", "createdAt"],
     });
 
-    const qb = this._baseMessageQuery("message")
+    const qb = this._baseMessageQuery("message", userId)
       .where("message.chatId = :chatId", { chatId })
       .orderBy("message.createdAt", "ASC")
       .take(limit + 1);
@@ -87,6 +97,7 @@ export class MessageRepository extends BaseRepository<Message> {
    */
   async findAroundMessage(
     chatId: string,
+    userId: string,
     messageId: string,
     limit: number = 50,
   ) {
@@ -102,7 +113,7 @@ export class MessageRepository extends BaseRepository<Message> {
     const half = Math.floor(limit / 2);
 
     // Messages older than anchor (exclude anchor by id for same-timestamp safety)
-    const olderQb = this._baseMessageQuery("message")
+    const olderQb = this._baseMessageQuery("message", userId)
       .where("message.chatId = :chatId", { chatId })
       .andWhere("message.id != :anchorId", { anchorId: messageId })
       .andWhere("message.createdAt <= :anchorDate", {
@@ -112,7 +123,7 @@ export class MessageRepository extends BaseRepository<Message> {
       .take(half + 1);
 
     // Messages newer than anchor (exclude anchor by id for same-timestamp safety)
-    const newerQb = this._baseMessageQuery("message")
+    const newerQb = this._baseMessageQuery("message", userId)
       .where("message.chatId = :chatId", { chatId })
       .andWhere("message.id != :anchorId", { anchorId: messageId })
       .andWhere("message.createdAt >= :anchorDate", {
@@ -145,13 +156,13 @@ export class MessageRepository extends BaseRepository<Message> {
 
   async searchInChat(
     chatId: string,
+    userId: string,
     query: string,
     limit: number = 20,
     offset: number = 0,
   ) {
-    return this._baseMessageQuery("message")
+    return this._baseMessageQuery("message", userId)
       .where("message.chatId = :chatId", { chatId })
-      .andWhere("message.isDeleted = false")
       .andWhere("message.content ILIKE :query", { query: `%${query}%` })
       .orderBy("message.createdAt", "DESC")
       .skip(offset)
@@ -161,15 +172,15 @@ export class MessageRepository extends BaseRepository<Message> {
 
   async searchGlobal(
     chatIds: string[],
+    userId: string,
     query: string,
     limit: number = 20,
     offset: number = 0,
   ) {
     if (chatIds.length === 0) return [[] as Message[], 0] as const;
 
-    return this._baseMessageQuery("message")
+    return this._baseMessageQuery("message", userId)
       .where("message.chatId IN (:...chatIds)", { chatIds })
-      .andWhere("message.isDeleted = false")
       .andWhere("message.content ILIKE :query", { query: `%${query}%` })
       .orderBy("message.createdAt", "DESC")
       .skip(offset)
@@ -179,6 +190,7 @@ export class MessageRepository extends BaseRepository<Message> {
 
   async findMediaByChatId(
     chatId: string,
+    userId: string,
     type?: string,
     limit: number = 50,
     offset: number = 0,
@@ -188,8 +200,15 @@ export class MessageRepository extends BaseRepository<Message> {
       .leftJoinAndSelect("sender.profile", "senderProfile")
       .leftJoinAndSelect("message.attachments", "attachments")
       .leftJoinAndSelect("attachments.file", "file")
+      .leftJoin(
+        "message_deletions",
+        "md",
+        "md.message_id = message.id AND md.user_id = :mdUserId",
+        { mdUserId: userId },
+      )
       .where("message.chatId = :chatId", { chatId })
       .andWhere("message.isDeleted = false")
+      .andWhere("md.id IS NULL")
       .andWhere("attachments.id IS NOT NULL");
 
     if (type === "document") {
@@ -207,12 +226,19 @@ export class MessageRepository extends BaseRepository<Message> {
       .getManyAndCount();
   }
 
-  async getMediaStats(chatId: string) {
+  async getMediaStats(chatId: string, userId: string) {
     const result = await this.createQueryBuilder("message")
       .innerJoin("message.attachments", "attachments")
       .innerJoin("attachments.file", "file")
+      .leftJoin(
+        "message_deletions",
+        "md",
+        "md.message_id = message.id AND md.user_id = :mdUserId",
+        { mdUserId: userId },
+      )
       .where("message.chatId = :chatId", { chatId })
       .andWhere("message.isDeleted = false")
+      .andWhere("md.id IS NULL")
       .select([
         "SUM(CASE WHEN file.type LIKE 'image%' THEN 1 ELSE 0 END) as images",
         "SUM(CASE WHEN file.type LIKE 'video%' THEN 1 ELSE 0 END) as videos",
@@ -231,6 +257,14 @@ export class MessageRepository extends BaseRepository<Message> {
     };
   }
 
+  async findPinnedByChatId(chatId: string, userId: string) {
+    return this._baseMessageQuery("message", userId)
+      .where("message.chatId = :chatId", { chatId })
+      .andWhere("message.isPinned = true")
+      .orderBy("message.pinnedAt", "DESC")
+      .getMany();
+  }
+
   async findLastForChat(chatId: string) {
     return this.findOne({
       where: { chatId },
@@ -239,9 +273,12 @@ export class MessageRepository extends BaseRepository<Message> {
     });
   }
 
-  /** Shared query builder with all message relations. */
-  private _baseMessageQuery(alias: string): SelectQueryBuilder<Message> {
-    return this.createQueryBuilder(alias)
+  /** Shared query builder with all message relations and deletion filtering. */
+  private _baseMessageQuery(
+    alias: string,
+    userId?: string,
+  ): SelectQueryBuilder<Message> {
+    const qb = this.createQueryBuilder(alias)
       .leftJoinAndSelect(`${alias}.sender`, "sender")
       .leftJoinAndSelect("sender.profile", "senderProfile")
       .leftJoinAndSelect(`${alias}.replyTo`, "replyTo")
@@ -250,6 +287,18 @@ export class MessageRepository extends BaseRepository<Message> {
       .leftJoinAndSelect(`${alias}.attachments`, "attachments")
       .leftJoinAndSelect("attachments.file", "file")
       .leftJoinAndSelect(`${alias}.reactions`, "reactions")
-      .leftJoinAndSelect(`${alias}.mentions`, "mentions");
+      .leftJoinAndSelect(`${alias}.mentions`, "mentions")
+      .andWhere(`${alias}.isDeleted = false`);
+
+    if (userId) {
+      qb.leftJoin(
+        "message_deletions",
+        "md",
+        `md.message_id = ${alias}.id AND md.user_id = :mdUserId`,
+        { mdUserId: userId },
+      ).andWhere("md.id IS NULL");
+    }
+
+    return qb;
   }
 }

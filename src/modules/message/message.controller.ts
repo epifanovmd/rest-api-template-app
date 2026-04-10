@@ -132,18 +132,21 @@ export class MessageController extends Controller {
   }
 
   /**
-   * Удалить сообщение (soft delete).
+   * Удалить сообщение. forAll=true — для всех, forAll=false — только для себя.
    * @summary Удаление сообщения
+   * @param id ID сообщения
+   * @param forAll Удалить для всех (по умолчанию false — только для себя)
    */
   @Security("jwt")
   @Delete("{id}")
   async deleteMessage(
     @Request() req: KoaRequest,
     @Path() id: string,
+    @Query() forAll?: boolean,
   ): Promise<void> {
     const user = getContextUser(req);
 
-    await this._messageService.deleteMessage(id, user.userId);
+    await this._messageService.deleteMessage(id, user.userId, forAll ?? false);
   }
 
 }

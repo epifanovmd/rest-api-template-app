@@ -1,7 +1,11 @@
 import { inject } from "inversify";
 
 import { Injectable } from "../../core";
+import { ChatRepository } from "../chat/chat.repository";
 import { ChatMemberRepository } from "../chat/chat-member.repository";
+import { ChatDto } from "../chat/dto";
+import { MessageService } from "../message/message.service";
+import { ISyncSnapshotDto } from "./dto/sync.dto";
 import { SyncLogDto } from "./dto/sync.dto";
 import { ESyncAction, ESyncEntityType } from "./sync.types";
 import { SyncLogRepository } from "./sync-log.repository";
@@ -11,6 +15,8 @@ export class SyncService {
   constructor(
     @inject(SyncLogRepository) private _syncLogRepo: SyncLogRepository,
     @inject(ChatMemberRepository) private _memberRepo: ChatMemberRepository,
+    @inject(ChatRepository) private _chatRepo: ChatRepository,
+    @inject(MessageService) private _messageService: MessageService,
   ) {}
 
   async getChanges(userId: string, sinceVersion?: string, limit?: number) {
@@ -47,6 +53,42 @@ export class SyncService {
       changes: changes.map(SyncLogDto.fromEntity),
       currentVersion,
       hasMore,
+    };
+  }
+
+  async getSnapshot(userId: string): Promise<ISyncSnapshotDto> {
+    const [chatsResult, currentVersion] = await Promise.all([
+      this._chatRepo.findUserChats(userId),
+      this._syncLogRepo.getLatestVersion(),
+    ]);
+
+    const [chats] = chatsResult;
+    const chatDtos = chats.map(chat => ChatDto.fromEntity(chat, userId));
+
+    // Compute unread counts in parallel
+    const unreadEntries = await Promise.all(
+      chatDtos.map(async chat => {
+        const count = await this._messageService.getUnreadCount(
+          chat.id,
+          userId,
+        );
+
+        return [chat.id, count] as const;
+      }),
+    );
+
+    const unreadCounts: Record<string, number> = {};
+
+    for (const [chatId, count] of unreadEntries) {
+      if (count > 0) {
+        unreadCounts[chatId] = count;
+      }
+    }
+
+    return {
+      chats: chatDtos,
+      unreadCounts,
+      currentVersion,
     };
   }
 

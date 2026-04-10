@@ -83,7 +83,7 @@ export class BotApiController extends Controller {
     const botToken = this._extractBotToken(req);
     const bot = await this._botService.getBotByToken(botToken);
 
-    await this._messageService.deleteMessage(id, bot.ownerId);
+    await this._messageService.deleteMessage(id, bot.ownerId, true);
   }
 
   private _extractBotToken(req: KoaRequest): string {

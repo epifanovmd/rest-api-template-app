@@ -63,10 +63,21 @@ export class MessageListener implements ISocketEventListener {
     this._eventBus.on(
       MessageDeletedEvent,
       (event: MessageDeletedEvent) => {
-        this._emitter.toRoom(`chat_${event.chatId}`, "message:deleted", {
+        const payload = {
           messageId: event.messageId,
           chatId: event.chatId,
-        });
+          forAll: event.forAll,
+        };
+
+        if (event.forAll) {
+          this._emitter.toRoom(
+            `chat_${event.chatId}`,
+            "message:deleted",
+            payload,
+          );
+        } else {
+          this._emitter.toUser(event.userId, "message:deleted", payload);
+        }
       },
     );
 

@@ -83,6 +83,8 @@ export class BotListener implements ISocketEventListener {
     this._eventBus.on(
       MessageDeletedEvent,
       async (event: MessageDeletedEvent) => {
+        if (!event.forAll) return;
+
         await this._deliverToChat(event.chatId, "message_deleted", {
           messageId: event.messageId,
           chatId: event.chatId,

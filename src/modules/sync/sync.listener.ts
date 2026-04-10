@@ -1,6 +1,7 @@
 import { inject } from "inversify";
 
 import { EventBus, Injectable } from "../../core";
+import { ChatMemberRepository } from "../chat/chat-member.repository";
 import { ChatDto } from "../chat/dto";
 import {
   ChatCreatedEvent,
@@ -25,6 +26,8 @@ export class SyncListener implements ISocketEventListener {
   constructor(
     @inject(EventBus) private readonly _eventBus: EventBus,
     @inject(SyncService) private readonly _syncService: SyncService,
+    @inject(ChatMemberRepository)
+    private readonly _memberRepo: ChatMemberRepository,
     @inject(SocketEmitterService)
     private readonly _emitter: SocketEmitterService,
   ) {}
@@ -60,18 +63,22 @@ export class SyncListener implements ISocketEventListener {
             payload: MessageDto.fromEntity(event.message) as unknown as Record<string, unknown>,
           },
         );
+        await this._notifyChatMembers(event.chatId);
       },
     );
 
     this._eventBus.on(
       MessageDeletedEvent,
       async (event: MessageDeletedEvent) => {
+        if (!event.forAll) return;
+
         await this._syncService.logChange(
           ESyncEntityType.MESSAGE,
           event.messageId,
           ESyncAction.DELETE,
           { chatId: event.chatId },
         );
+        await this._notifyChatMembers(event.chatId);
       },
     );
 
@@ -105,6 +112,7 @@ export class SyncListener implements ISocketEventListener {
             payload: ChatDto.fromEntity(event.chat) as unknown as Record<string, unknown>,
           },
         );
+        await this._notifyChatMembers(event.chat.id);
       },
     );
 
@@ -119,6 +127,7 @@ export class SyncListener implements ISocketEventListener {
           ESyncAction.CREATE,
           { chatId: event.chatId, userId: event.userId },
         );
+        this._notifyUsers(event.memberUserIds);
       },
     );
 
@@ -131,6 +140,7 @@ export class SyncListener implements ISocketEventListener {
           ESyncAction.DELETE,
           { chatId: event.chatId, userId: event.userId },
         );
+        this._notifyUsers(event.memberUserIds);
       },
     );
 
@@ -187,5 +197,11 @@ export class SyncListener implements ISocketEventListener {
     for (const userId of userIds) {
       this._emitter.toUser(userId, "sync:available", { version: "0" });
     }
+  }
+
+  private async _notifyChatMembers(chatId: string) {
+    const userIds = await this._memberRepo.getMemberUserIds(chatId);
+
+    this._notifyUsers(userIds);
   }
 }
