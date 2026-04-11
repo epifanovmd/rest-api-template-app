@@ -27,7 +27,7 @@ export class MessageReaction {
   @Column({ type: "varchar", length: 20 })
   emoji: string;
 
-  @CreateDateColumn({ name: "created_at" })
+  @CreateDateColumn({ name: "created_at", type: "timestamptz" })
   createdAt: Date;
 
   @ManyToOne(() => Message, message => message.reactions, {

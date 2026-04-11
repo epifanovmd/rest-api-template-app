@@ -54,13 +54,13 @@ export class Passkey {
   transports?: AuthenticatorTransportFuture[];
 
   // Дата последнего использования passkey для входа
-  @Column({ name: "last_used", type: "timestamp", nullable: true })
+  @Column({ name: "last_used", type: "timestamptz", nullable: true })
   lastUsed?: Date;
 
-  @CreateDateColumn({ name: "created_at" })
+  @CreateDateColumn({ name: "created_at", type: "timestamptz" })
   createdAt: Date;
 
-  @UpdateDateColumn({ name: "updated_at" })
+  @UpdateDateColumn({ name: "updated_at", type: "timestamptz" })
   updatedAt: Date;
 
   // Связи

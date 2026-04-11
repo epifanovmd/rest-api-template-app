@@ -32,16 +32,16 @@ export class Biometric {
   @Column({ type: "varchar", nullable: true })
   challenge: string | null;
 
-  @Column({ name: "challenge_expires_at", type: "timestamp", nullable: true })
+  @Column({ name: "challenge_expires_at", type: "timestamptz", nullable: true })
   challengeExpiresAt: Date | null;
 
-  @Column({ name: "last_used_at", type: "timestamp", nullable: true })
+  @Column({ name: "last_used_at", type: "timestamptz", nullable: true })
   lastUsedAt: Date | null;
 
-  @CreateDateColumn({ name: "created_at" })
+  @CreateDateColumn({ name: "created_at", type: "timestamptz" })
   createdAt: Date;
 
-  @UpdateDateColumn({ name: "updated_at" })
+  @UpdateDateColumn({ name: "updated_at", type: "timestamptz" })
   updatedAt: Date;
 
   // Relations

@@ -34,12 +34,12 @@ export class ChatMember {
 
   @Column({
     name: "joined_at",
-    type: "timestamp",
+    type: "timestamptz",
     default: () => "CURRENT_TIMESTAMP",
   })
   joinedAt: Date;
 
-  @Column({ name: "muted_until", type: "timestamp", nullable: true })
+  @Column({ name: "muted_until", type: "timestamptz", nullable: true })
   mutedUntil: Date | null;
 
   @Column({ name: "last_read_message_id", type: "uuid", nullable: true })
@@ -48,7 +48,7 @@ export class ChatMember {
   @Column({ name: "is_pinned_chat", type: "boolean", default: false })
   isPinnedChat: boolean;
 
-  @Column({ name: "pinned_chat_at", type: "timestamp", nullable: true })
+  @Column({ name: "pinned_chat_at", type: "timestamptz", nullable: true })
   pinnedChatAt: Date | null;
 
   @Column({ name: "folder_id", type: "uuid", nullable: true })

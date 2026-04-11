@@ -27,10 +27,10 @@ export class ChatFolder {
   @Column({ type: "integer", default: 0 })
   position: number;
 
-  @CreateDateColumn({ name: "created_at" })
+  @CreateDateColumn({ name: "created_at", type: "timestamptz" })
   createdAt: Date;
 
-  @UpdateDateColumn({ name: "updated_at" })
+  @UpdateDateColumn({ name: "updated_at", type: "timestamptz" })
   updatedAt: Date;
 
   @ManyToOne(() => User, { onDelete: "CASCADE" })

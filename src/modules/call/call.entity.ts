@@ -41,19 +41,19 @@ export class Call {
   })
   status: ECallStatus;
 
-  @Column({ name: "started_at", type: "timestamp", nullable: true })
+  @Column({ name: "started_at", type: "timestamptz", nullable: true })
   startedAt: Date | null;
 
-  @Column({ name: "ended_at", type: "timestamp", nullable: true })
+  @Column({ name: "ended_at", type: "timestamptz", nullable: true })
   endedAt: Date | null;
 
   @Column({ type: "int", nullable: true })
   duration: number | null;
 
-  @CreateDateColumn({ name: "created_at" })
+  @CreateDateColumn({ name: "created_at", type: "timestamptz" })
   createdAt: Date;
 
-  @UpdateDateColumn({ name: "updated_at" })
+  @UpdateDateColumn({ name: "updated_at", type: "timestamptz" })
   updatedAt: Date;
 
   @ManyToOne(() => User, { onDelete: "CASCADE" })

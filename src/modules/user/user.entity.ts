@@ -46,10 +46,10 @@ export class User {
   @Column({ name: "two_factor_hint", type: "varchar", length: 100, nullable: true })
   twoFactorHint: string | null;
 
-  @CreateDateColumn({ name: "created_at" })
+  @CreateDateColumn({ name: "created_at", type: "timestamptz" })
   createdAt: Date;
 
-  @UpdateDateColumn({ name: "updated_at" })
+  @UpdateDateColumn({ name: "updated_at", type: "timestamptz" })
   updatedAt: Date;
 
   // ── Связи ──────────────────────────────────────────────────────────────────

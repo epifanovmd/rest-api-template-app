@@ -18,9 +18,9 @@ export class PasskeyChallenge {
   @Column({ type: "varchar" })
   challenge: string;
 
-  @Column({ name: "expires_at", type: "timestamp" })
+  @Column({ name: "expires_at", type: "timestamptz" })
   expiresAt: Date;
 
-  @CreateDateColumn({ name: "created_at" })
+  @CreateDateColumn({ name: "created_at", type: "timestamptz" })
   createdAt: Date;
 }

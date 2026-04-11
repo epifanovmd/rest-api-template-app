@@ -27,7 +27,7 @@ export class ChatInvite {
   @Column({ name: "created_by_id", type: "uuid" })
   createdById: string;
 
-  @Column({ name: "expires_at", type: "timestamp", nullable: true })
+  @Column({ name: "expires_at", type: "timestamptz", nullable: true })
   expiresAt: Date | null;
 
   @Column({ name: "max_uses", type: "int", nullable: true })
@@ -39,7 +39,7 @@ export class ChatInvite {
   @Column({ name: "is_active", type: "boolean", default: true })
   isActive: boolean;
 
-  @CreateDateColumn({ name: "created_at" })
+  @CreateDateColumn({ name: "created_at", type: "timestamptz" })
   createdAt: Date;
 
   @ManyToOne(() => Chat, { onDelete: "CASCADE" })

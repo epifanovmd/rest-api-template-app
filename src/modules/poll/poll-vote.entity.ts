@@ -29,7 +29,7 @@ export class PollVote {
   @Column({ name: "user_id", type: "uuid" })
   userId: string;
 
-  @CreateDateColumn({ name: "created_at" })
+  @CreateDateColumn({ name: "created_at", type: "timestamptz" })
   createdAt: Date;
 
   @ManyToOne(() => Poll, poll => poll.votes, { onDelete: "CASCADE" })

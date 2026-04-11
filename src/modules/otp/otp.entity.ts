@@ -21,13 +21,13 @@ export class Otp {
   code: string;
 
   // Время истечения кода
-  @Column({ name: "expire_at", type: "timestamp" })
+  @Column({ name: "expire_at", type: "timestamptz" })
   expireAt: Date;
 
-  @CreateDateColumn({ name: "created_at" })
+  @CreateDateColumn({ name: "created_at", type: "timestamptz" })
   createdAt: Date;
 
-  @UpdateDateColumn({ name: "updated_at" })
+  @UpdateDateColumn({ name: "updated_at", type: "timestamptz" })
   updatedAt: Date;
 
   // Связи

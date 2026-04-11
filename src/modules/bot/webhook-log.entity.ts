@@ -40,7 +40,7 @@ export class WebhookLog {
   @Column({ name: "duration_ms", type: "int", nullable: true })
   durationMs: number | null;
 
-  @CreateDateColumn({ name: "created_at" })
+  @CreateDateColumn({ name: "created_at", type: "timestamptz" })
   createdAt: Date;
 
   @ManyToOne(() => Bot, { onDelete: "CASCADE" })

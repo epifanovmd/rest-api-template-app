@@ -39,13 +39,13 @@ export class Profile {
   gender: string | null;
 
   // Время последнего онлайна пользователя
-  @Column({ name: "last_online", type: "timestamp", nullable: true })
+  @Column({ name: "last_online", type: "timestamptz", nullable: true })
   lastOnline: Date | null;
 
-  @CreateDateColumn({ name: "created_at" })
+  @CreateDateColumn({ name: "created_at", type: "timestamptz" })
   createdAt: Date;
 
-  @UpdateDateColumn({ name: "updated_at" })
+  @UpdateDateColumn({ name: "updated_at", type: "timestamptz" })
   updatedAt: Date;
 
   @Column({ name: "avatar_id", type: "uuid", nullable: true })

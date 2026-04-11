@@ -37,12 +37,12 @@ export class Session {
 
   @Column({
     name: "last_active_at",
-    type: "timestamp",
+    type: "timestamptz",
     default: () => "CURRENT_TIMESTAMP",
   })
   lastActiveAt: Date;
 
-  @CreateDateColumn({ name: "created_at" })
+  @CreateDateColumn({ name: "created_at", type: "timestamptz" })
   createdAt: Date;
 
   @ManyToOne(() => User, { onDelete: "CASCADE" })

@@ -26,7 +26,7 @@ export class MessageDeletion {
   @Column({ name: "user_id", type: "uuid" })
   userId: string;
 
-  @CreateDateColumn({ name: "created_at" })
+  @CreateDateColumn({ name: "created_at", type: "timestamptz" })
   createdAt: Date;
 
   @ManyToOne(() => Message, message => message.deletions, {

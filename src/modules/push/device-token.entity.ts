@@ -31,10 +31,10 @@ export class DeviceToken {
   @Column({ name: "device_name", type: "varchar", length: 100, nullable: true })
   deviceName: string | null;
 
-  @CreateDateColumn({ name: "created_at" })
+  @CreateDateColumn({ name: "created_at", type: "timestamptz" })
   createdAt: Date;
 
-  @UpdateDateColumn({ name: "updated_at" })
+  @UpdateDateColumn({ name: "updated_at", type: "timestamptz" })
   updatedAt: Date;
 
   @ManyToOne(() => User, { onDelete: "CASCADE" })

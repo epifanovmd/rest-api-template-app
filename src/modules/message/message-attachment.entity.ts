@@ -23,7 +23,7 @@ export class MessageAttachment {
   @Column({ name: "file_id", type: "uuid" })
   fileId: string;
 
-  @CreateDateColumn({ name: "created_at" })
+  @CreateDateColumn({ name: "created_at", type: "timestamptz" })
   createdAt: Date;
 
   @ManyToOne(() => Message, msg => msg.attachments, { onDelete: "CASCADE" })

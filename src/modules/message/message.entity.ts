@@ -63,7 +63,7 @@ export class Message {
   @Column({ name: "is_pinned", type: "boolean", default: false })
   isPinned: boolean;
 
-  @Column({ name: "pinned_at", type: "timestamp", nullable: true })
+  @Column({ name: "pinned_at", type: "timestamptz", nullable: true })
   pinnedAt: Date | null;
 
   @Column({ name: "pinned_by_id", type: "uuid", nullable: true })
@@ -72,10 +72,10 @@ export class Message {
   @Column({ type: "jsonb", nullable: true })
   keyboard: unknown | null;
 
-  @CreateDateColumn({ name: "created_at" })
+  @CreateDateColumn({ name: "created_at", type: "timestamptz" })
   createdAt: Date;
 
-  @UpdateDateColumn({ name: "updated_at" })
+  @UpdateDateColumn({ name: "updated_at", type: "timestamptz" })
   updatedAt: Date;
 
   @ManyToOne(() => Chat, { onDelete: "CASCADE" })

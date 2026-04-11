@@ -130,9 +130,17 @@ export class MessageListener implements ISocketEventListener {
     );
 
     this._eventBus.on(MessageReadEvent, (event: MessageReadEvent) => {
+      // Notify the reader that unread count is zero
       this._emitter.toUser(event.userId, "chat:unread", {
         chatId: event.chatId,
-        unreadCount: 0, // Сигнал о прочтении — только для пользователя, прочитавшего сообщение
+        unreadCount: 0,
+      });
+
+      // Notify the chat room that messages are read (sender sees checkmarks)
+      this._emitter.toRoom(`chat_${event.chatId}`, "message:status", {
+        messageId: event.messageId,
+        chatId: event.chatId,
+        status: "read",
       });
     });
 

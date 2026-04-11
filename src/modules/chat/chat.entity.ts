@@ -50,7 +50,7 @@ export class Chat {
 
   @Column({
     name: "last_message_at",
-    type: "timestamp",
+    type: "timestamptz",
     nullable: true,
   })
   lastMessageAt: Date | null;
@@ -72,10 +72,10 @@ export class Chat {
   @Column({ name: "last_message_sender_id", type: "uuid", nullable: true })
   lastMessageSenderId: string | null;
 
-  @CreateDateColumn({ name: "created_at" })
+  @CreateDateColumn({ name: "created_at", type: "timestamptz" })
   createdAt: Date;
 
-  @UpdateDateColumn({ name: "updated_at" })
+  @UpdateDateColumn({ name: "updated_at", type: "timestamptz" })
   updatedAt: Date;
 
   @ManyToOne(() => File, { onDelete: "SET NULL", nullable: true })
