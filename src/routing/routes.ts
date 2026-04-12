@@ -1130,7 +1130,7 @@ const models: TsoaRoute.Models = {
     "IMarkReadBody": {
         "dataType": "refObject",
         "properties": {
-            "messageId": {"dataType":"string","required":true},
+            "messageIds": {"dataType":"array","array":{"dataType":"string"},"required":true},
         },
         "additionalProperties": false,
     },

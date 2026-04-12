@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from "@force-dev/utils";
 import { inject } from "inversify";
+import { In } from "typeorm";
 
 import { EventBus, Injectable, logger } from "../../core";
 import { ChatRepository } from "../chat/chat.repository";
@@ -454,38 +455,52 @@ export class MessageService {
     this._eventBus.emit(new MessageDeliveredEvent(messageIds, chatId, userId));
   }
 
-  async markAsRead(chatId: string, userId: string, messageId: string) {
+  async markAsRead(chatId: string, userId: string, messageIds: string[]) {
+    if (messageIds.length === 0) return;
+
     const membership = await this._memberRepo.findMembership(chatId, userId);
 
     if (!membership) {
       throw new ForbiddenException("Вы не являетесь участником этого чата");
     }
 
-    membership.lastReadMessageId = messageId;
-    await this._memberRepo.save(membership);
+    // Update status to READ for each specified message
+    await this._messageRepo
+      .createQueryBuilder()
+      .update()
+      .set({ status: EMessageStatus.READ })
+      .where("chatId = :chatId", { chatId })
+      .andWhere("id IN (:...messageIds)", { messageIds })
+      .andWhere("senderId != :userId", { userId })
+      .andWhere("status != :readStatus", {
+        readStatus: EMessageStatus.READ,
+      })
+      .execute();
 
-    // Update status to READ for all messages up to this one
-    const readMessage = await this._messageRepo.findOne({
-      where: { id: messageId },
+    // Update lastReadMessageId to the newest read message
+    const newestRead = await this._messageRepo.findOne({
+      where: { id: In(messageIds) },
+      order: { createdAt: "DESC" },
     });
 
-    if (readMessage) {
-      await this._messageRepo
-        .createQueryBuilder()
-        .update()
-        .set({ status: EMessageStatus.READ })
-        .where("chatId = :chatId", { chatId })
-        .andWhere("senderId != :userId", { userId })
-        .andWhere("createdAt <= :createdAt", {
-          createdAt: readMessage.createdAt,
-        })
-        .andWhere("status != :readStatus", {
-          readStatus: EMessageStatus.READ,
-        })
-        .execute();
+    if (newestRead) {
+      const currentLastRead = membership.lastReadMessageId
+        ? await this._messageRepo.findOne({
+            where: { id: membership.lastReadMessageId },
+          })
+        : null;
+
+      // Only advance lastReadMessageId forward, never backward
+      if (
+        !currentLastRead ||
+        newestRead.createdAt > currentLastRead.createdAt
+      ) {
+        membership.lastReadMessageId = newestRead.id;
+        await this._memberRepo.save(membership);
+      }
     }
 
-    this._eventBus.emit(new MessageReadEvent(chatId, userId, messageId));
+    this._eventBus.emit(new MessageReadEvent(chatId, userId, messageIds));
   }
 
   async addReaction(messageId: string, userId: string, emoji: string) {

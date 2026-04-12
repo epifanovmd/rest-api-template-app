@@ -137,11 +137,13 @@ export class MessageListener implements ISocketEventListener {
       });
 
       // Notify the chat room that messages are read (sender sees checkmarks)
-      this._emitter.toRoom(`chat_${event.chatId}`, "message:status", {
-        messageId: event.messageId,
-        chatId: event.chatId,
-        status: "read",
-      });
+      for (const messageId of event.messageIds) {
+        this._emitter.toRoom(`chat_${event.chatId}`, "message:status", {
+          messageId,
+          chatId: event.chatId,
+          status: "read",
+        });
+      }
     });
 
   }

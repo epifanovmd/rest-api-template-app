@@ -181,7 +181,7 @@ export class ChatMessageController extends Controller {
   }
 
   /**
-   * Отметить сообщения как прочитанные до указанного messageId.
+   * Отметить сообщения как прочитанные.
    * @summary Прочитать сообщения
    */
   @Security("jwt")
@@ -194,6 +194,6 @@ export class ChatMessageController extends Controller {
   ): Promise<void> {
     const user = getContextUser(req);
 
-    await this._messageService.markAsRead(chatId, user.userId, body.messageId);
+    await this._messageService.markAsRead(chatId, user.userId, body.messageIds);
   }
 }

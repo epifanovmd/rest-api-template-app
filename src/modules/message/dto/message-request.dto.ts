@@ -11,7 +11,7 @@ export interface ISendMessageBody {
 }
 
 export interface IMarkReadBody {
-  messageId: string;
+  messageIds: string[];
 }
 
 export interface IEditMessageBody {

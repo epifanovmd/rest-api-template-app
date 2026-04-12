@@ -2800,12 +2800,15 @@
 			},
 			"IMarkReadBody": {
 				"properties": {
-					"messageId": {
-						"type": "string"
+					"messageIds": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
 					}
 				},
 				"required": [
-					"messageId"
+					"messageIds"
 				],
 				"type": "object",
 				"additionalProperties": false
@@ -8010,7 +8013,7 @@
 						"description": "No content"
 					}
 				},
-				"description": "Отметить сообщения как прочитанные до указанного messageId.",
+				"description": "Отметить сообщения как прочитанные.",
 				"summary": "Прочитать сообщения",
 				"tags": [
 					"Message"
