@@ -33,11 +33,31 @@ export class ChatHandler implements ISocketHandler {
       socket.leave(`chat_${chatId}`);
     });
 
+    // ── Typing rooms ────────────────────────────────────────────────
+
+    socket.on("typing:subscribe", async ({ chatIds }) => {
+      for (const chatId of chatIds) {
+        socket.join(`typing_${chatId}`);
+      }
+    });
+
+    socket.on("typing:unsubscribe", ({ chatIds }) => {
+      for (const chatId of chatIds) {
+        socket.leave(`typing_${chatId}`);
+      }
+    });
+
     socket.on("chat:typing", ({ chatId }) => {
-      socket.to(`chat_${chatId}`).emit("chat:typing", {
+      const payload = {
         chatId,
         userId: socket.data.userId,
-      });
+      };
+
+      // Full chat room (for users with the chat open)
+      socket.to(`chat_${chatId}`).emit("chat:typing", payload);
+
+      // Lightweight typing room (for chat list indicators)
+      socket.to(`typing_${chatId}`).emit("chat:typing", payload);
     });
   }
 }

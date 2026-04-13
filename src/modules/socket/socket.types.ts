@@ -21,6 +21,10 @@ export interface ISocketChatRoomPayload {
   chatId: string;
 }
 
+export interface ISocketTypingRoomsPayload {
+  chatIds: string[];
+}
+
 export interface ISocketMessageReadPayload {
   chatId: string;
   messageId: string;
@@ -205,6 +209,10 @@ export interface ISocketEvents {
   "chat:leave": (data: ISocketChatRoomPayload) => void;
   /** Индикатор набора текста */
   "chat:typing": (data: ISocketChatRoomPayload) => void;
+  /** Подписаться на typing-комнаты (лёгкие, для списка чатов) */
+  "typing:subscribe": (data: ISocketTypingRoomsPayload) => void;
+  /** Отписаться от typing-комнат */
+  "typing:unsubscribe": (data: ISocketTypingRoomsPayload) => void;
   /** Отметить сообщения как прочитанные */
   "message:read": (data: ISocketMessageReadPayload) => void;
   /** Подтвердить доставку сообщений */

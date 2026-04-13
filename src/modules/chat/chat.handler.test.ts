@@ -30,6 +30,7 @@ describe("ChatHandler", () => {
   beforeEach(() => {
     memberRepo = createMockRepository();
     (memberRepo as any).findMembership = sinon.stub().resolves(null);
+    (memberRepo as any).getMemberUserIds = sinon.stub().resolves([]);
     handler = new ChatHandler(memberRepo as any);
   });
 
@@ -76,7 +77,7 @@ describe("ChatHandler", () => {
   });
 
   describe("chat:typing", () => {
-    it("should broadcast typing event to room", () => {
+    it("should broadcast typing to both chat and typing rooms", () => {
       const socket = createMockSocket();
       const chatId = "chat-1";
       const emitStub = sinon.stub();
@@ -86,10 +87,41 @@ describe("ChatHandler", () => {
       handler.onConnection(socket as any);
       socket._handlers["chat:typing"]({ chatId });
 
-      expect(socket.to.calledOnceWith(`chat_${chatId}`)).to.be.true;
+      // Should emit to chat room
+      expect(socket.to.calledWith(`chat_${chatId}`)).to.be.true;
+      // Should emit to typing room
+      expect(socket.to.calledWith(`typing_${chatId}`)).to.be.true;
+      // Payload should contain chatId and userId
       expect(
-        emitStub.calledOnceWith("chat:typing", { chatId, userId }),
+        emitStub.calledWith("chat:typing", { chatId, userId }),
       ).to.be.true;
+    });
+  });
+
+  describe("typing:subscribe", () => {
+    it("should join typing rooms for given chat IDs", async () => {
+      const socket = createMockSocket();
+
+      handler.onConnection(socket as any);
+      await socket._handlers["typing:subscribe"]({
+        chatIds: ["c1", "c2", "c3"],
+      });
+
+      expect(socket.join.calledWith("typing_c1")).to.be.true;
+      expect(socket.join.calledWith("typing_c2")).to.be.true;
+      expect(socket.join.calledWith("typing_c3")).to.be.true;
+    });
+  });
+
+  describe("typing:unsubscribe", () => {
+    it("should leave typing rooms for given chat IDs", () => {
+      const socket = createMockSocket();
+
+      handler.onConnection(socket as any);
+      socket._handlers["typing:unsubscribe"]({ chatIds: ["c1", "c2"] });
+
+      expect(socket.leave.calledWith("typing_c1")).to.be.true;
+      expect(socket.leave.calledWith("typing_c2")).to.be.true;
     });
   });
 });
