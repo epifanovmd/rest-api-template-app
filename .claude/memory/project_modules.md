@@ -48,7 +48,7 @@ src/modules/feature/
 
 ### Мессенджер
 | Модуль | Entities | Endpoints | Events | Socket |
-|--------|----------|-----------|--------|--------|
+|--------|----------|-----------|--------|-------|
 | contact | Contact | 5 | ContactRequest, ContactAccepted, ContactRemoved, ContactBlocked, ContactUnblocked | contact:* events |
 | chat | Chat, ChatMember, ChatInvite, ChatFolder | 26 | ChatCreated, ChatUpdated, ChatMemberJoined, ChatMemberLeft, ChatMemberRoleChanged, ChatPinned, ChatLastMessageUpdated | chat:* events |
 | chat-moderation | — | 4 | ChatSlowMode, ChatMemberBanned, ChatMemberUnbanned | chat:slow-mode, chat:member:banned/unbanned |
@@ -57,7 +57,7 @@ src/modules/feature/
 | call | Call | 6 | CallInitiated, CallAnswered, CallDeclined, CallEnded, CallMissed | call:* + WebRTC signaling |
 | bot | Bot, BotCommand, WebhookLog | 16 (13 BotCtrl + 3 BotApiCtrl) | BotCreated, BotUpdated, BotDeleted | webhook delivery |
 | push | DeviceToken, NotificationSettings | 4 (2 DeviceCtrl + 2 NotifSettingsCtrl) | NotificationSettingsChanged | push:settings-changed |
-| sync | SyncLog | 1 | — (подписка на ~10 событий) | sync:available |
+| sync | SyncLog | 1 | — (подписка на ~10 событий) |
 
 ## Controllers (21)
 

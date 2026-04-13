@@ -248,8 +248,6 @@ CoreModule → MailerModule → OtpModule → ResetPasswordTokensModule → User
 
 **Listener:** подписывается на все EventBus events → автоматическая запись в SyncLog
 
-**Socket:** sync:available (server) — уведомление клиента о новых данных
-
 ### 14. Push — Push-уведомления
 
 **Entities:** DeviceToken(userId, token unique, platform ios/android/web, deviceName), NotificationSettings(userId unique, muteAll, soundEnabled, showPreview)
@@ -391,7 +389,6 @@ CoreModule → MailerModule → OtpModule → ResetPasswordTokensModule → User
 | user:online | {userId, lastOnline?} | Пользователь онлайн |
 | user:offline | {userId, lastOnline?} | Пользователь оффлайн |
 | presence:init | {onlineUserIds[]} | Начальный список онлайн |
-| sync:available | {version} | Новые данные для sync |
 | contact:request | ContactDto | Запрос контакта |
 | contact:accepted | ContactDto | Контакт принят |
 | contact:removed | {contactId} | Контакт удалён |

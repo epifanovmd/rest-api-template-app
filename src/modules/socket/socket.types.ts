@@ -3,7 +3,11 @@ import { DefaultEventsMap } from "socket.io/dist/typed-events";
 
 import { AuthContext } from "../../types/koa";
 import { CallDto } from "../call/dto/call.dto";
-import { ChatDto, ChatLastMessageDto, ChatMemberDto } from "../chat/dto/chat.dto";
+import {
+  ChatDto,
+  ChatLastMessageDto,
+  ChatMemberDto,
+} from "../chat/dto/chat.dto";
 import { ContactDto } from "../contact/dto/contact.dto";
 import { MessageDto } from "../message/dto/message.dto";
 import { PollDto } from "../poll/dto/poll.dto";
@@ -322,10 +326,6 @@ export interface ISocketEmitEvents {
   "user:offline": (...args: [ISocketUserPresencePayload]) => void;
   /** Начальный список онлайн-пользователей при подключении */
   "presence:init": (...args: [ISocketPresenceInitPayload]) => void;
-
-  // ─── Sync events ───────────────────────────────────────────────────────
-  /** Уведомление о наличии новых изменений для sync */
-  "sync:available": (...args: [ISocketSyncAvailablePayload]) => void;
 
   // ─── Contact events ─────────────────────────────────────────────────────
   /** Запрос на добавление в контакты */

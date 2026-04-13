@@ -68,7 +68,7 @@ enum ESyncAction { CREATE = "create", UPDATE = "update", DELETE = "delete" }
 
 ### SyncListener (ISocketEventListener)
 
-Слушает доменные события и записывает изменения в sync log. После записи уведомляет пользователей через socket-событие `sync:available`.
+Слушает доменные события и записывает изменения в sync log.
 
 | Событие EventBus | Тип сущности | Действие |
 |------------------|--------------|----------|
@@ -89,5 +89,5 @@ enum ESyncAction { CREATE = "create", UPDATE = "update", DELETE = "delete" }
 |-------------|--------|---------------|
 | `ChatMemberRepository` | `modules/chat` | Определение chatIds пользователя |
 | Доменные события | `modules/message`, `chat`, `contact`, `profile` | Триггеры для записи в sync log |
-| `SocketEmitterService` | `modules/socket` | Уведомление `sync:available` |
+| `SocketEmitterService` | `modules/socket` |
 | `EventBus` | `core` | Подписка на события |
