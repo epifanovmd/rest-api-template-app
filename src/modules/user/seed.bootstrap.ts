@@ -35,94 +35,109 @@ const TEST_USERS = [
     firstName: "Charlie",
     lastName: "Brown",
   },
-  {
-    email: "diana@test.local",
-    username: "diana",
-    firstName: "Diana",
-    lastName: "Prince",
-  },
-  {
-    email: "eve@test.local",
-    username: "eve",
-    firstName: "Eve",
-    lastName: "Adams",
-  },
 ];
 
-/** Диалоги для direct чатов (admin ↔ user). Индекс чётный = admin, нечётный = user. */
-const DIRECT_CONVERSATIONS: string[][] = [
-  [
-    "Привет! Как дела?",
-    "Отлично, спасибо! А у тебя?",
-    "Тоже хорошо. Работаю над новым проектом",
-    "Что за проект?",
-    "Мессенджер с offline-first кэшированием, MMKV + WebSocket sync",
-    "Как в Telegram? Звучит серьёзно",
-    "Да, примерно. Уже есть read receipts, очереди, компактификация sync лога",
-    "Впечатляет! Когда можно будет попробовать?",
-    "Через пару недель будет бета. Скину ссылку",
-    "Жду! 🚀",
-  ],
-  [
-    "Доброе утро! Ты видел задачу в Linear?",
-    "Доброе! Да, взял в работу",
-    "Отлично. Дедлайн в пятницу, успеваешь?",
-    "Должен успеть. Основная часть готова, осталось тесты написать",
-    "Хорошо. Если что — пиши, помогу с ревью",
-    "Спасибо! Скину PR сегодня вечером",
-    "Договорились 👍",
-  ],
-  [
-    "Помоги с багом, пожалуйста",
-    "Конечно, что случилось?",
-    "Даты отображаются неправильно. UTC вместо локального времени",
-    "Проверь timezone в TypeORM конфиге. Он может отдавать timestamp без Z",
-    "Точно! Было type: 'timestamp', поменял на 'timestamptz'. Починилось",
-    "Классика. Всегда используй timestamptz для дат 😊",
-    "Запомню. А ещё нашёл проблему с кэшем — stale data после reconnect",
-    "Это потому что sync version не обновлялась. Добавь await перед emit events",
-    "Сработало! Спасибо огромное",
-    "Всегда пожалуйста",
-  ],
-  [
-    "Привет! Видела твой доклад на митапе",
-    "О, привет! Как тебе?",
-    "Очень интересно! Особенно часть про WebSocket reconnection",
-    "Спасибо! Это как раз то, над чем я сейчас работаю",
-    "Circuit breaker для auth ошибок — отличная идея",
-    "Да, без него был бесконечный цикл auth_error → restore → auth_error",
-    "Знакомо 😄 У нас было то же самое год назад",
-    "Как решили?",
-    "Точно так же — cooldown после N неудачных попыток",
-  ],
+// ── Direct Chat 1: Admin ↔ Alice ─────────────────────────────────────
+
+const CHAT_ALICE: string[] = [
+  "Привет, Alice! Как продвигается работа над компонентами?",
+  "Привет! Вчера закончила ChatView — нативный модуль на Swift",
+  "Отлично. Какие основные фичи реализовала?",
+  "Кастомные ячейки, swipe actions, reply preview, attachment carousel",
+  "А как с производительностью? На больших списках не тормозит?",
+  "Нет, использую UICollectionView с DiffableDataSource. Smooth scroll даже на 10k сообщений",
+  "Круто. А анимации переходов?",
+  "Spring animations при открытии клавиатуры, fade для новых сообщений, bounce для reactions",
+  "Нужно будет добавить поддержку голосовых сообщений",
+  "Уже начала. Waveform visualization через AudioEngine, запись через AVAudioRecorder",
+  "Какой формат используешь?",
+  "AAC в контейнере M4A. Лёгкий, хорошее качество, нативная поддержка на обеих платформах",
+  "А что по размеру файла?",
+  "Примерно 12KB на секунду при битрейте 64kbps. Минутное сообщение — 720KB",
+  "Приемлемо. А прогресс загрузки показываешь?",
+  "Да, через NSURLSession с delegate. Показываю процент + скорость + оставшееся время",
+  "А если сеть пропала во время загрузки?",
+  "Automatic retry через background URLSession. iOS сам переподключит когда сеть вернётся",
+  "Надо ещё добавить контекстное меню — long press на сообщение",
+  "Это следующая задача. Планирую UIContextMenuConfiguration с preview provider",
+  "Хорошо. Сколько времени нужно на контекстное меню?",
+  "Два-три дня. Основная работа — haptic feedback и анимации",
+  "Ок, жду. И ещё — добавь поддержку Dark Mode",
+  "Уже есть! Все цвета через semantic colors, автоматически переключаются",
+  "Отлично. Тогда после контекстного меню займёмся inline-редактированием сообщений",
+  "Договорились. Скину PR с контекстным меню к пятнице",
 ];
 
-/** Сообщения для группового чата. Формат: [userIndex, text]. */
+// ── Direct Chat 2: Admin ↔ Bob ──────────────────────────────────────
+
+const CHAT_BOB: string[] = [
+  "Bob, как дела с бэкендом?",
+  "Привет! Закончил систему синхронизации",
+  "Расскажи подробнее. Как работает sync?",
+  "Append-only sync log с auto-increment version. Клиент хранит курсор и тянет изменения",
+  "А компактификация?",
+  "Трёхуровневая: write-time DELETE при каждой записи, DISTINCT ON при чтении, фоновый cleanup раз в 6 часов",
+  "Неплохо. А что с масштабируемостью?",
+  "scope_id вместо chat_id — generic. Завтра добавим folders или teams — одна строка в _collectUserScopeIds",
+  "А push-уведомления о новых изменениях?",
+  "sync:available через socket. Дебаунсится на клиенте 300ms, потом pull",
+  "Что если клиент был offline месяц?",
+  "requiresSnapshot: true — клиент сбрасывает версию и загружает данные через обычные API",
+  "А retention?",
+  "90 дней. Cleanup каждые 24 часа. Записи старше 90 дней удаляются",
+  "Как обрабатываешь unread counts?",
+  "Денормализованный счётчик в chat_members. Атомарный INCREMENT при новом сообщении, декремент при markAsRead",
+  "А если сообщение удалили?",
+  "decrementUnreadForDeletedMessage — проверяет lastReadMessageId через COALESCE, декрементирует только у тех кто не читал",
+  "Что по message receipts?",
+  "Отдельная таблица message_receipts. Per-user статус: SENT → DELIVERED → READ. Только вперёд, через ON CONFLICT с CASE",
+  "А в группах?",
+  "receiptSummary: { delivered: 3, read: 1, total: 5 }. Отправляется в message:status через socket",
+  "Круто. Что ещё нужно доделать?",
+  "Rate limiting на socket events. Сейчас клиент может слать 1000 markRead в секунду",
+  "Да, это важно. Добавь throttle на сервере",
+  "Сделаю. Ещё хочу добавить batch markRead — один запрос вместо N отдельных",
+  "Согласен. И добавь метрики — сколько sync запросов в секунду, средняя латентность",
+  "Prometheus + Grafana?",
+  "Да. prom-client для Node.js, стандартные метрики + кастомные",
+  "Займусь после rate limiting. Ориентировочно к среде",
+];
+
+// ── Group Chat: Проект ──────────────────────────────────────────────
+
 const GROUP_CONVERSATION: Array<[number, string]> = [
-  [0, "Всем привет! Создал чат для обсуждения проекта"],
-  [1, "Привет! Рад присоединиться"],
-  [2, "О, наконец-то! Давно пора было"],
+  [0, "Всем привет! Создал чат для координации по проекту"],
+  [1, "Привет! Рада присоединиться 😊"],
+  [2, "Отлично, давно пора было"],
   [3, "Привет всем! 👋"],
-  [0, "Итак, первый вопрос: какой стек берём?"],
-  [1, "React Native + TypeScript, без вариантов"],
-  [2, "Согласен. Плюс MobX для стейта"],
-  [3, "А бэкенд?"],
-  [0, "Node.js + TypeORM + PostgreSQL. Socket.IO для real-time"],
-  [1, "Inversify для DI?"],
-  [0, "Да, уже настроен. Модульная архитектура"],
-  [2, "Отлично. А что с CI/CD?"],
-  [3, "Могу настроить GitHub Actions. Lint + тесты + сборка"],
-  [0, "Было бы супер. Ещё нужен деплой на staging"],
-  [1, "Могу помочь с Docker + nginx"],
-  [2, "Ребят, а что по срокам?"],
-  [0, "MVP через месяц. Чат + авторизация + базовый функционал"],
-  [3, "Реалистично. Я начну с CI сегодня"],
-  [1, "А я возьму авторизацию и JWT"],
-  [2, "Мне остаётся UI. Начну с navigation и chat screen"],
-  [0, "Отличный план! Созвон завтра в 10:00?"],
-  [1, "Подходит"],
-  [2, "Ок 👍"],
-  [3, "+1"],
+  [0, "Итак, текущий статус. Бэкенд: sync система готова, receipts работают, unread counts денормализованы"],
+  [2, "По бэкенду: socket transport с circuit breaker и auto-join. Все health endpoints на месте"],
+  [1, "По фронту: ChatView нативный модуль почти готов. Swipe actions, replies, attachments — всё работает"],
+  [3, "Я закончил CI/CD. GitHub Actions: lint → test → build → deploy на staging"],
+  [0, "Отлично. Что у нас по приоритетам на эту неделю?"],
+  [1, "Мне нужно добавить контекстное меню и inline-редактирование сообщений"],
+  [2, "Я возьму rate limiting для socket events и batch markRead"],
+  [3, "Могу помочь с Docker. Нужно оптимизировать Dockerfile — сейчас билд 3 минуты"],
+  [0, "Charlie, да, multi-stage build можно ускорить. Попробуй кэшировать node_modules слой отдельно"],
+  [3, "Уже делаю. Разделил на installer → builder → runner. Должно сократиться до минуты"],
+  [2, "Кстати, по базе данных — нужна миграция для новой таблицы message_receipts"],
+  [0, "Верно. Bob, сделай TypeORM миграцию. synchronize в проде выключен"],
+  [2, "Ок. И ещё — нужно добавить индекс на (scope_id, version) в sync_logs"],
+  [0, "Он уже есть: IDX_SYNC_SCOPE_VERSION"],
+  [2, "А, точно, посмотрел — есть. Тогда всё ок"],
+  [1, "Ребят, а что по тестированию? У нас есть e2e тесты?"],
+  [0, "Пока только unit тесты на сервисы. E2E — следующий этап"],
+  [3, "Могу настроить Playwright для web версии и Detox для mobile"],
+  [0, "Давай начнём с Playwright — web проще для CI"],
+  [1, "Согласна. Мобильные e2e можно добавить позже"],
+  [2, "По мне — unit тесты важнее. У нас покрытие message.service.ts только 60%"],
+  [0, "Согласен. Bob, добери покрытие до 80% на этой неделе"],
+  [2, "Сделаю. Начну с markAsRead и markAsDelivered — там сложная логика"],
+  [3, "Я добавлю coverage report в CI. Будет блокировать PR если покрытие упадёт"],
+  [0, "Отличный план. Созвон в пятницу в 15:00 — обсудим результаты"],
+  [1, "Подходит 👍"],
+  [2, "+1"],
+  [3, "Буду"],
 ];
 
 @Injectable()
@@ -152,15 +167,15 @@ export class SeedBootstrap implements IBootstrap {
     if (!admin) return;
 
     const adminId = admin.id;
+    const others = userIds.filter(id => id !== adminId);
 
-    // Direct чаты: admin ↔ каждый test user
-    await this._seedDirectChats(adminId, userIds);
+    // 2 direct чата: admin ↔ alice, admin ↔ bob
+    if (others[0]) await this._seedChat(adminId, others[0], CHAT_ALICE);
+    if (others[1]) await this._seedChat(adminId, others[1], CHAT_BOB);
 
-    // Групповой чат: admin + первые 3 test user
-    const groupMembers = userIds.filter(id => id !== adminId).slice(0, 3);
-
-    if (groupMembers.length >= 2) {
-      await this._seedGroupChat(adminId, groupMembers, userIds);
+    // 1 групповой чат: admin + alice + bob + charlie
+    if (others.length >= 2) {
+      await this._seedGroupChat(adminId, others);
     }
 
     logger.info("Seed data initialized");
@@ -201,62 +216,37 @@ export class SeedBootstrap implements IBootstrap {
     return userIds;
   }
 
-  private async _seedDirectChats(
+  private async _seedChat(
     adminId: string,
-    userIds: string[],
+    otherUserId: string,
+    messages: string[],
   ): Promise<void> {
-    let conversationIdx = 0;
+    const chat = await this._chatService.createDirectChat(adminId, otherUserId);
 
-    for (const otherUserId of userIds) {
-      if (otherUserId === adminId) continue;
+    if (await this._chatHasMessages(chat.id)) return;
 
-      const chat = await this._chatService.createDirectChat(
-        adminId,
-        otherUserId,
-      );
+    for (const [idx, text] of messages.entries()) {
+      const senderId = idx % 2 === 0 ? adminId : otherUserId;
 
-      // Проверяем: есть ли уже сообщения в этом чате
-      const hasMessages = await this._chatHasMessages(chat.id);
-
-      if (hasMessages) {
-        conversationIdx += 1;
-        continue;
-      }
-
-      const messages =
-        DIRECT_CONVERSATIONS[conversationIdx % DIRECT_CONVERSATIONS.length];
-
-      for (const [idx, text] of messages.entries()) {
-        const senderId = idx % 2 === 0 ? adminId : otherUserId;
-
-        await this._messageService.sendMessage(chat.id, senderId, {
-          type: EMessageType.TEXT,
-          content: text,
-        });
-      }
-
-      conversationIdx += 1;
+      await this._messageService.sendMessage(chat.id, senderId, {
+        type: EMessageType.TEXT,
+        content: text,
+      });
     }
   }
 
   private async _seedGroupChat(
     adminId: string,
     memberIds: string[],
-    allUserIds: string[],
   ): Promise<void> {
-    // Проверяем: есть ли уже групповой чат с таким именем
-    const existingGroup = await this._chatRepo.findOne({
+    const existing = await this._chatRepo.findOne({
       where: { name: "Проект: Мессенджер", type: EChatType.GROUP },
     });
 
-    if (existingGroup) {
-      const hasMessages = await this._chatHasMessages(existingGroup.id);
+    if (existing && (await this._chatHasMessages(existing.id))) return;
 
-      if (hasMessages) return;
-    }
-
-    const chat = existingGroup
-      ? existingGroup
+    const chat = existing
+      ? existing
       : await this._chatService.createGroupChat(
           adminId,
           "Проект: Мессенджер",
@@ -267,11 +257,9 @@ export class SeedBootstrap implements IBootstrap {
       typeof chat === "string"
         ? chat
         : "id" in chat
-        ? chat.id
-        : (chat as any).id;
+          ? chat.id
+          : (chat as any).id;
 
-    // Маппинг индексов из GROUP_CONVERSATION → реальные userId
-    // 0 = admin, 1-3 = memberIds[0-2]
     const participantIds = [adminId, ...memberIds];
 
     for (const [userIndex, text] of GROUP_CONVERSATION) {
@@ -285,9 +273,7 @@ export class SeedBootstrap implements IBootstrap {
   }
 
   private async _chatHasMessages(chatId: string): Promise<boolean> {
-    const count = await this._messageRepo.count({
-      where: { chatId },
-    });
+    const count = await this._messageRepo.count({ where: { chatId } });
 
     return count > 0;
   }
