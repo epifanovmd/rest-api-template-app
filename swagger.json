@@ -2837,6 +2837,50 @@
 				"type": "object",
 				"additionalProperties": false
 			},
+			"MessageReceiptDto": {
+				"properties": {
+					"userId": {
+						"type": "string"
+					},
+					"status": {
+						"$ref": "#/components/schemas/EMessageStatus"
+					},
+					"updatedAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"user": {
+						"properties": {
+							"avatarUrl": {
+								"type": "string",
+								"nullable": true
+							},
+							"lastName": {
+								"type": "string",
+								"nullable": true
+							},
+							"firstName": {
+								"type": "string",
+								"nullable": true
+							},
+							"id": {
+								"type": "string"
+							}
+						},
+						"required": [
+							"id"
+						],
+						"type": "object"
+					}
+				},
+				"required": [
+					"userId",
+					"status",
+					"updatedAt"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
 			"PublicKeyCredentialRpEntity": {
 				"properties": {
 					"name": {
@@ -3456,10 +3500,13 @@
 					"entityId": {
 						"type": "string"
 					},
+					"entityKey": {
+						"type": "string"
+					},
 					"action": {
 						"$ref": "#/components/schemas/ESyncAction"
 					},
-					"chatId": {
+					"scopeId": {
 						"type": "string",
 						"nullable": true
 					},
@@ -3480,8 +3527,9 @@
 					"version",
 					"entityType",
 					"entityId",
+					"entityKey",
 					"action",
-					"chatId",
+					"scopeId",
 					"payload",
 					"createdAt"
 				],
@@ -3501,39 +3549,28 @@
 					},
 					"hasMore": {
 						"type": "boolean"
+					},
+					"requiresSnapshot": {
+						"type": "boolean",
+						"description": "true — версия клиента устарела, нужно сбросить кэш\nи загрузить данные через обычные API endpoints заново."
 					}
 				},
 				"required": [
 					"changes",
 					"currentVersion",
-					"hasMore"
+					"hasMore",
+					"requiresSnapshot"
 				],
 				"type": "object",
 				"additionalProperties": false
 			},
-			"Record_string.number_": {
-				"properties": {},
-				"type": "object",
-				"description": "Construct a type with a set of properties K of type T"
-			},
-			"ISyncSnapshotDto": {
+			"ISyncVersionDto": {
 				"properties": {
-					"chats": {
-						"items": {
-							"$ref": "#/components/schemas/ChatDto"
-						},
-						"type": "array"
-					},
-					"unreadCounts": {
-						"$ref": "#/components/schemas/Record_string.number_"
-					},
 					"currentVersion": {
 						"type": "string"
 					}
 				},
 				"required": [
-					"chats",
-					"unreadCounts",
 					"currentVersion"
 				],
 				"type": "object",
@@ -8318,6 +8355,46 @@
 				]
 			}
 		},
+		"/api/message/{id}/receipts": {
+			"get": {
+				"operationId": "GetReceiptInfo",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"items": {
+										"$ref": "#/components/schemas/MessageReceiptDto"
+									},
+									"type": "array"
+								}
+							}
+						}
+					}
+				},
+				"description": "Получить информацию о прочтении сообщения (кто прочитал, кто получил).\nДоступно для участников чата.",
+				"summary": "Информация о прочтении сообщения",
+				"tags": [
+					"Message"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
 		"/api/passkeys/generate-registration-options": {
 			"post": {
 				"operationId": "GenerateRegistrationOptions",
@@ -8802,7 +8879,7 @@
 						}
 					}
 				},
-				"description": "Получить изменения с указанной версии.",
+				"description": "Получить изменения с указанной версии (компактифицированные).\nЕсли версия клиента устарела — вернёт requiresSnapshot: true.",
 				"summary": "Incremental sync",
 				"tags": [
 					"Sync"
@@ -8833,23 +8910,23 @@
 				]
 			}
 		},
-		"/api/sync/snapshot": {
+		"/api/sync/version": {
 			"get": {
-				"operationId": "GetSnapshot",
+				"operationId": "GetVersion",
 				"responses": {
 					"200": {
 						"description": "Ok",
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/ISyncSnapshotDto"
+									"$ref": "#/components/schemas/ISyncVersionDto"
 								}
 							}
 						}
 					}
 				},
-				"description": "Получить полный snapshot для быстрого старта: все чаты, unread counts, текущая sync version.\nИспользуется при первом запуске или после полного сброса кэша.",
-				"summary": "Initial snapshot",
+				"description": "Получить текущую sync version.\nИспользуется при первом запуске для установки начальной точки синхронизации.",
+				"summary": "Current sync version",
 				"tags": [
 					"Sync"
 				],

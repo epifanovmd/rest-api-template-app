@@ -41,6 +41,103 @@ export class ChatMemberRepository extends BaseRepository<ChatMember> {
     return members.map(m => m.userId);
   }
 
+  /**
+   * Атомарный инкремент unread_count для всех участников чата, кроме отправителя.
+   * Один запрос вместо N отдельных getUnreadCount + setCount.
+   */
+  async incrementUnreadForChat(
+    chatId: string,
+    excludeUserId: string,
+  ): Promise<void> {
+    await this.createQueryBuilder()
+      .update()
+      .set({ unreadCount: () => "unread_count + 1" })
+      .where("chatId = :chatId", { chatId })
+      .andWhere("userId != :excludeUserId", { excludeUserId })
+      .execute();
+  }
+
+  /**
+   * Декремент unread_count для участников, у которых удалённое сообщение было непрочитанным.
+   * Непрочитано = lastReadMessageId IS NULL OR lastReadMessage.createdAt < messageCreatedAt.
+   */
+  async decrementUnreadForDeletedMessage(
+    chatId: string,
+    senderId: string,
+    messageCreatedAt: Date,
+  ): Promise<void> {
+    // COALESCE: если lastReadMessage удалён (subquery → NULL),
+    // считаем что ничего не прочитано (epoch) → декремент сработает.
+    await this.query(
+      `UPDATE chat_members
+       SET unread_count = GREATEST(0, unread_count - 1)
+       WHERE chat_id = $1
+         AND user_id != $2
+         AND unread_count > 0
+         AND (
+           last_read_message_id IS NULL
+           OR COALESCE(
+             (SELECT created_at FROM messages WHERE id = last_read_message_id),
+             '1970-01-01'::timestamptz
+           ) < $3
+         )`,
+      [chatId, senderId, messageCreatedAt],
+    );
+  }
+
+  /** Сбросить unread_count в 0 для конкретного пользователя в чате. */
+  async resetUnreadCount(chatId: string, userId: string): Promise<void> {
+    await this.createQueryBuilder()
+      .update()
+      .set({ unreadCount: 0 })
+      .where("chatId = :chatId", { chatId })
+      .andWhere("userId = :userId", { userId })
+      .execute();
+  }
+
+  /**
+   * Получить unread_count для всех чатов пользователя.
+   * Простой SELECT вместо COUNT(*) с коррелированным подзапросом.
+   */
+  async getUnreadCounts(
+    userId: string,
+  ): Promise<Record<string, number>> {
+    const rows = await this.find({
+      where: { userId },
+      select: ["chatId", "unreadCount"],
+    });
+
+    const result: Record<string, number> = {};
+
+    for (const row of rows) {
+      if (row.unreadCount > 0) {
+        result[row.chatId] = row.unreadCount;
+      }
+    }
+
+    return result;
+  }
+
+  /** Получить userId + unreadCount для всех участников чата (без JOIN на user/profile). */
+  async getMembersUnreadCounts(
+    chatId: string,
+  ): Promise<Array<{ userId: string; unreadCount: number }>> {
+    return this.find({
+      where: { chatId },
+      select: ["userId", "unreadCount"],
+    });
+  }
+
+  /** Получить все chatId, в которых пользователь состоит. */
+  async getUserChatIds(userId: string): Promise<string[]> {
+    const members = await this.find({
+      where: { userId },
+      select: ["chatId"],
+    });
+
+    return members.map(m => m.chatId);
+  }
+
   /** Найти всех собеседников пользователя в прямых (direct) чатах. */
   async findDirectChatPartnerIds(userId: string): Promise<string[]> {
     const results = await this.createQueryBuilder("m1")

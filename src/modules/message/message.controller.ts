@@ -16,7 +16,13 @@ import {
 
 import { getContextUser, Injectable, ValidateBody } from "../../core";
 import { KoaRequest } from "../../types/koa";
-import { IAddReactionBody, IEditMessageBody, IMessageSearchDto, MessageDto } from "./dto";
+import {
+  IAddReactionBody,
+  IEditMessageBody,
+  IMessageSearchDto,
+  MessageDto,
+  MessageReceiptDto,
+} from "./dto";
 import { MessageService } from "./message.service";
 import { AddReactionSchema, EditMessageSchema } from "./validation";
 
@@ -129,6 +135,22 @@ export class MessageController extends Controller {
     const user = getContextUser(req);
 
     await this._messageService.unpinMessage(id, user.userId);
+  }
+
+  /**
+   * Получить информацию о прочтении сообщения (кто прочитал, кто получил).
+   * Доступно для участников чата.
+   * @summary Информация о прочтении сообщения
+   */
+  @Security("jwt")
+  @Get("{id}/receipts")
+  async getReceiptInfo(
+    @Request() req: KoaRequest,
+    @Path() id: string,
+  ): Promise<MessageReceiptDto[]> {
+    const user = getContextUser(req);
+
+    return this._messageService.getReceiptInfo(id, user.userId);
   }
 
   /**

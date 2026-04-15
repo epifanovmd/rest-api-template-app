@@ -45,6 +45,15 @@ export class ChatMember {
   @Column({ name: "last_read_message_id", type: "uuid", nullable: true })
   lastReadMessageId: string | null;
 
+  /**
+   * Денормализованный счётчик непрочитанных сообщений.
+   * Инкрементируется атомарно при новом сообщении,
+   * сбрасывается при markAsRead.
+   * Избавляет от COUNT(*) при каждом запросе.
+   */
+  @Column({ name: "unread_count", type: "int", default: 0 })
+  unreadCount: number;
+
   @Column({ name: "is_pinned_chat", type: "boolean", default: false })
   isPinnedChat: boolean;
 

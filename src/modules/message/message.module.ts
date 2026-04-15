@@ -10,6 +10,7 @@ import { MessageAttachmentRepository } from "./message-attachment.repository";
 import { MessageDeletionRepository } from "./message-deletion.repository";
 import { MessageMentionRepository } from "./message-mention.repository";
 import { MessageReactionRepository } from "./message-reaction.repository";
+import { MessageReceiptRepository } from "./message-receipt.repository";
 
 @Module({
   providers: [
@@ -17,6 +18,7 @@ import { MessageReactionRepository } from "./message-reaction.repository";
     MessageAttachmentRepository,
     MessageDeletionRepository,
     MessageReactionRepository,
+    MessageReceiptRepository,
     MessageMentionRepository,
     MessageService,
     ChatMessageController,

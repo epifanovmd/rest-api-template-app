@@ -95,6 +95,11 @@ describe("MessageService", () => {
       findByMessageIds: sinon.stub().resolves([]),
     };
 
+    const receiptRepo = {
+      upsertReceipts: sinon.stub().resolves(),
+      getReceiptSummary: sinon.stub().resolves({ delivered: 0, read: 0, total: 0 }),
+    };
+
     service = new MessageService(
       messageRepo as any,
       attachmentRepo as any,
@@ -105,6 +110,7 @@ describe("MessageService", () => {
       memberRepo as any,
       chatService as any,
       pollRepo as any,
+      receiptRepo as any,
       eventBus as any,
     );
 
@@ -601,7 +607,7 @@ describe("MessageService", () => {
       messageRepo.findOne.resolves(readMsg);
       messageRepo.createQueryBuilder.returns(qb);
 
-      await service.markAsRead(chatId, userId, messageId);
+      await service.markAsRead(chatId, userId, [messageId]);
 
       expect(membership.lastReadMessageId).to.equal(messageId);
       expect(memberRepo.save.calledOnce).to.be.true;
@@ -615,7 +621,7 @@ describe("MessageService", () => {
       (memberRepo as any).findMembership.resolves(null);
 
       try {
-        await service.markAsRead(chatId, userId, messageId);
+        await service.markAsRead(chatId, userId, [messageId]);
         expect.fail("Should have thrown");
       } catch (err) {
         expect(err).to.be.instanceOf(ForbiddenException);

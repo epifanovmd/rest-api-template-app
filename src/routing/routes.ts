@@ -1151,6 +1151,17 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "MessageReceiptDto": {
+        "dataType": "refObject",
+        "properties": {
+            "userId": {"dataType":"string","required":true},
+            "status": {"ref":"EMessageStatus","required":true},
+            "updatedAt": {"dataType":"datetime","required":true},
+            "user": {"dataType":"nestedObjectLiteral","nestedProperties":{"avatarUrl":{"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}]},"lastName":{"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}]},"firstName":{"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}]},"id":{"dataType":"string","required":true}}},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "PublicKeyCredentialRpEntity": {
         "dataType": "refObject",
         "properties": {
@@ -1471,8 +1482,9 @@ const models: TsoaRoute.Models = {
             "version": {"dataType":"string","required":true},
             "entityType": {"ref":"ESyncEntityType","required":true},
             "entityId": {"dataType":"string","required":true},
+            "entityKey": {"dataType":"string","required":true},
             "action": {"ref":"ESyncAction","required":true},
-            "chatId": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
+            "scopeId": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
             "payload": {"dataType":"union","subSchemas":[{"ref":"Record_string.unknown_"},{"dataType":"enum","enums":[null]}],"required":true},
             "createdAt": {"dataType":"datetime","required":true},
         },
@@ -1485,20 +1497,14 @@ const models: TsoaRoute.Models = {
             "changes": {"dataType":"array","array":{"dataType":"refObject","ref":"SyncLogDto"},"required":true},
             "currentVersion": {"dataType":"string","required":true},
             "hasMore": {"dataType":"boolean","required":true},
+            "requiresSnapshot": {"dataType":"boolean","required":true},
         },
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "Record_string.number_": {
-        "dataType": "refAlias",
-        "type": {"dataType":"nestedObjectLiteral","nestedProperties":{},"validators":{}},
-    },
-    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "ISyncSnapshotDto": {
+    "ISyncVersionDto": {
         "dataType": "refObject",
         "properties": {
-            "chats": {"dataType":"array","array":{"dataType":"refObject","ref":"ChatDto"},"required":true},
-            "unreadCounts": {"ref":"Record_string.number_","required":true},
             "currentVersion": {"dataType":"string","required":true},
         },
         "additionalProperties": false,
@@ -5150,6 +5156,37 @@ export function RegisterRoutes(router: KoaRouter) {
             return promiseHandler(controller, promise, context, undefined, undefined);
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        router.get('/api/message/:id/receipts',
+            authenticateMiddleware([{"jwt":[]}]),
+            ...(fetchMiddlewares<Middleware>(MessageController)),
+            ...(fetchMiddlewares<Middleware>(MessageController.prototype.getReceiptInfo)),
+
+            async function MessageController_getReceiptInfo(context: any, next: any) {
+            const args = {
+                    req: {"in":"request","name":"req","required":true,"dataType":"object"},
+                    id: {"in":"path","name":"id","required":true,"dataType":"string"},
+            };
+
+            let validatedArgs: any[] = [];
+            try {
+              validatedArgs = getValidatedArgs(args, context, next);
+            } catch (err) {
+              const error = err as any;
+              context.status = error.status;
+              context.throw(error.status, JSON.stringify({ fields: error.fields }));
+            }
+
+            const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(context.request) : iocContainer;
+
+            const controller: any = await container.get<MessageController>(MessageController);
+            if (typeof controller['setStatus'] === 'function') {
+                controller.setStatus(undefined);
+            }
+
+            const promise = controller.getReceiptInfo.apply(controller, validatedArgs as any);
+            return promiseHandler(controller, promise, context, undefined, undefined);
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         router.delete('/api/message/:id',
             authenticateMiddleware([{"jwt":[]}]),
             ...(fetchMiddlewares<Middleware>(MessageController)),
@@ -5612,14 +5649,13 @@ export function RegisterRoutes(router: KoaRouter) {
             return promiseHandler(controller, promise, context, undefined, undefined);
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-        router.get('/api/sync/snapshot',
+        router.get('/api/sync/version',
             authenticateMiddleware([{"jwt":[]}]),
             ...(fetchMiddlewares<Middleware>(SyncController)),
-            ...(fetchMiddlewares<Middleware>(SyncController.prototype.getSnapshot)),
+            ...(fetchMiddlewares<Middleware>(SyncController.prototype.getVersion)),
 
-            async function SyncController_getSnapshot(context: any, next: any) {
+            async function SyncController_getVersion(context: any, next: any) {
             const args = {
-                    req: {"in":"request","name":"req","required":true,"dataType":"object"},
             };
 
             let validatedArgs: any[] = [];
@@ -5638,7 +5674,7 @@ export function RegisterRoutes(router: KoaRouter) {
                 controller.setStatus(undefined);
             }
 
-            const promise = controller.getSnapshot.apply(controller, validatedArgs as any);
+            const promise = controller.getVersion.apply(controller, validatedArgs as any);
             return promiseHandler(controller, promise, context, undefined, undefined);
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa

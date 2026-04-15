@@ -14,7 +14,7 @@ import { ChatMemberRepository } from "../chat/chat-member.repository";
 import { ChatLastMessageUpdatedEvent } from "../chat/events";
 import { PollDto } from "../poll/dto/poll.dto";
 import { PollRepository } from "../poll/poll.repository";
-import { IMediaStatsDto, MediaItemDto, MessageDto } from "./dto";
+import { IMediaStatsDto, MediaItemDto, MessageDto, MessageReceiptDto } from "./dto";
 import {
   MessageCreatedEvent,
   MessageDeletedEvent,
@@ -32,6 +32,7 @@ import { MessageAttachmentRepository } from "./message-attachment.repository";
 import { MessageDeletionRepository } from "./message-deletion.repository";
 import { MessageMentionRepository } from "./message-mention.repository";
 import { MessageReactionRepository } from "./message-reaction.repository";
+import { MessageReceiptRepository } from "./message-receipt.repository";
 
 @Injectable()
 export class MessageService {
@@ -49,6 +50,8 @@ export class MessageService {
     @inject(ChatMemberRepository) private _memberRepo: ChatMemberRepository,
     @inject(ChatService) private _chatService: ChatService,
     @inject(PollRepository) private _pollRepo: PollRepository,
+    @inject(MessageReceiptRepository)
+    private _receiptRepo: MessageReceiptRepository,
     @inject(EventBus) private _eventBus: EventBus,
   ) {}
 
@@ -162,6 +165,7 @@ export class MessageService {
     // Денормализованный кэш, не требует атомарности с INSERT сообщения
     const previewContent = (message.content ?? "").slice(0, 200) || null;
 
+    // lastMessage — fire-and-forget (денормализованный кэш, не критично)
     this._chatRepo
       .update(chatId, {
         lastMessageAt: message.createdAt,
@@ -174,20 +178,28 @@ export class MessageService {
         logger.warn({ err }, "Failed to update chat lastMessage");
       });
 
-    // Загрузка сообщения для ответа клиенту
+    // unread_count increment ДОЛЖЕН завершиться ДО emit events,
+    // иначе listener прочитает старое значение.
+    await this._memberRepo.incrementUnreadForChat(chatId, senderId);
+
+    // Загрузка сообщения с relations для ответа клиенту
     const fullMessage = await this._messageRepo.findById(message.id);
+
+    if (!fullMessage) {
+      throw new NotFoundException("Сообщение не найдено после создания");
+    }
 
     // Эмиссия событий — fire-and-forget (клиент не ждёт)
     this._emitSendMessageEvents(
       chatId,
-      fullMessage!,
+      fullMessage,
       data.mentionedUserIds ?? [],
       data.mentionAll ?? false,
     ).catch(err => {
       logger.warn({ err }, "Failed to emit message events");
     });
 
-    return MessageDto.fromEntity(fullMessage!);
+    return MessageDto.fromEntity(fullMessage);
   }
 
   async getMessages(
@@ -356,6 +368,16 @@ export class MessageService {
         .where("replyToId = :messageId", { messageId })
         .execute();
 
+      // Декремент unread_count у участников, которые НЕ прочитали это сообщение.
+      // Сообщение непрочитано, если lastReadMessageId NULL или lastReadMessage.createdAt < message.createdAt.
+      if (message.senderId) {
+        this._memberRepo
+          .decrementUnreadForDeletedMessage(message.chatId, message.senderId, message.createdAt)
+          .catch(err => {
+            logger.warn({ err }, "Failed to decrement unread on delete");
+          });
+      }
+
       const wasLastMessage = await this._recalcLastMessage(
         message.chatId,
         messageId,
@@ -437,26 +459,62 @@ export class MessageService {
     return dtos;
   }
 
+  /** Максимальное количество messageIds в одном вызове mark*. */
+  private static readonly MAX_BATCH_SIZE = 200;
+
   async markAsDelivered(chatId: string, userId: string, messageIds: string[]) {
+    if (messageIds.length === 0) return;
+
+    // Защита от слишком большого batch
+    const ids = messageIds.slice(0, MessageService.MAX_BATCH_SIZE);
+
     const isMember = await this._chatService.isMember(chatId, userId);
 
     if (!isMember) return;
 
-    await this._messageRepo
-      .createQueryBuilder()
-      .update()
-      .set({ status: EMessageStatus.DELIVERED })
-      .where("chatId = :chatId", { chatId })
-      .andWhere("id IN (:...messageIds)", { messageIds })
-      .andWhere("senderId != :userId", { userId })
-      .andWhere("status = :status", { status: EMessageStatus.SENT })
-      .execute();
+    // Фильтруем только чужие сообщения
+    const foreignMessages = await this._messageRepo.find({
+      where: { chatId, id: In(ids) },
+      select: ["id", "senderId"],
+    });
 
-    this._eventBus.emit(new MessageDeliveredEvent(messageIds, chatId, userId));
+    const foreignIds = foreignMessages
+      .filter(m => m.senderId !== userId)
+      .map(m => m.id);
+
+    if (foreignIds.length === 0) return;
+
+    // Транзакция: receipts + message status update атомарно
+    await this._messageRepo.withTransaction(async (_repo, em) => {
+      // 1. Per-user receipts
+      await this._receiptRepo.upsertReceipts(
+        chatId,
+        userId,
+        foreignIds,
+        EMessageStatus.DELIVERED,
+      );
+
+      // 2. Обновляем глобальный статус только SENT → DELIVERED
+      //    (не трогаем сообщения уже в READ — защита от регрессии)
+      await em
+        .createQueryBuilder()
+        .update("messages")
+        .set({ status: EMessageStatus.DELIVERED })
+        .where("chat_id = :chatId", { chatId })
+        .andWhere("id IN (:...foreignIds)", { foreignIds })
+        .andWhere("sender_id != :userId", { userId })
+        .andWhere("status = :sent", { sent: EMessageStatus.SENT })
+        .execute();
+    });
+
+    this._eventBus.emit(new MessageDeliveredEvent(foreignIds, chatId, userId));
   }
 
   async markAsRead(chatId: string, userId: string, messageIds: string[]) {
     if (messageIds.length === 0) return;
+
+    // Защита от слишком большого batch
+    const ids = messageIds.slice(0, MessageService.MAX_BATCH_SIZE);
 
     const membership = await this._memberRepo.findMembership(chatId, userId);
 
@@ -464,43 +522,80 @@ export class MessageService {
       throw new ForbiddenException("Вы не являетесь участником этого чата");
     }
 
-    // Update status to READ for each specified message
-    await this._messageRepo
-      .createQueryBuilder()
-      .update()
-      .set({ status: EMessageStatus.READ })
-      .where("chatId = :chatId", { chatId })
-      .andWhere("id IN (:...messageIds)", { messageIds })
-      .andWhere("senderId != :userId", { userId })
-      .andWhere("status != :readStatus", {
-        readStatus: EMessageStatus.READ,
-      })
-      .execute();
-
-    // Update lastReadMessageId to the newest read message
-    const newestRead = await this._messageRepo.findOne({
-      where: { id: In(messageIds) },
-      order: { createdAt: "DESC" },
+    // Фильтруем только чужие сообщения
+    const foreignMessages = await this._messageRepo.find({
+      where: { chatId, id: In(ids) },
+      select: ["id", "senderId", "createdAt"],
     });
 
-    if (newestRead) {
-      const currentLastRead = membership.lastReadMessageId
-        ? await this._messageRepo.findOne({
+    const foreignIds = foreignMessages
+      .filter(m => m.senderId !== userId)
+      .map(m => m.id);
+
+    if (foreignIds.length === 0) return;
+
+    // Транзакция: receipts + message status + lastReadMessageId атомарно
+    await this._messageRepo.withTransaction(async (_repo, em) => {
+      // 1. Per-user receipts
+      await this._receiptRepo.upsertReceipts(
+        chatId,
+        userId,
+        foreignIds,
+        EMessageStatus.READ,
+      );
+
+      // 2. Update global status — SENT/DELIVERED → READ
+      //    (READ → READ — no-op, protected by WHERE)
+      await em
+        .createQueryBuilder()
+        .update("messages")
+        .set({ status: EMessageStatus.READ })
+        .where("chat_id = :chatId", { chatId })
+        .andWhere("id IN (:...foreignIds)", { foreignIds })
+        .andWhere("sender_id != :userId", { userId })
+        .andWhere("status != :read", { read: EMessageStatus.READ })
+        .execute();
+
+      // 3. Advance lastReadMessageId + decrement unread_count
+      const newestRead = foreignMessages.reduce<
+        (typeof foreignMessages)[0] | null
+      >((newest, msg) => {
+        if (!newest || msg.createdAt > newest.createdAt) return msg;
+
+        return newest;
+      }, null);
+
+      if (newestRead) {
+        let shouldAdvancePointer = false;
+
+        if (!membership.lastReadMessageId) {
+          shouldAdvancePointer = true;
+        } else {
+          const currentLastRead = await em.findOne(Message, {
             where: { id: membership.lastReadMessageId },
-          })
-        : null;
+            select: ["id", "createdAt"],
+          });
 
-      // Only advance lastReadMessageId forward, never backward
-      if (
-        !currentLastRead ||
-        newestRead.createdAt > currentLastRead.createdAt
-      ) {
-        membership.lastReadMessageId = newestRead.id;
-        await this._memberRepo.save(membership);
+          shouldAdvancePointer =
+            !currentLastRead ||
+            newestRead.createdAt > currentLastRead.createdAt;
+        }
+
+        if (shouldAdvancePointer) {
+          membership.lastReadMessageId = newestRead.id;
+        }
+
+        // Декрементируем на количество реально прочитанных, не сбрасываем в 0.
+        // foreignIds.length — только чужие сообщения, которые мы пометили как read.
+        membership.unreadCount = Math.max(
+          0,
+          membership.unreadCount - foreignIds.length,
+        );
+        await em.save(membership);
       }
-    }
+    });
 
-    this._eventBus.emit(new MessageReadEvent(chatId, userId, messageIds));
+    this._eventBus.emit(new MessageReadEvent(chatId, userId, foreignIds));
   }
 
   async addReaction(messageId: string, userId: string, emoji: string) {
@@ -665,53 +760,59 @@ export class MessageService {
     return this._messageRepo.getMediaStats(chatId, userId);
   }
 
+  /**
+   * Получить unread counts для всех чатов пользователя.
+   * Читает денормализованный счётчик из chat_members — O(1) per chat, без COUNT(*).
+   */
   async getUnreadCounts(userId: string): Promise<Record<string, number>> {
-    const rows: { chat_id: string; count: string }[] = await this._messageRepo
-      .createQueryBuilder("message")
-      .innerJoin(
-        "chat_members",
-        "cm",
-        "cm.chat_id = message.chat_id AND cm.user_id = :userId",
-        { userId },
-      )
-      .where(
-        "cm.last_read_message_id IS NULL OR message.created_at > " +
-          "(SELECT m2.created_at FROM messages m2 WHERE m2.id = cm.last_read_message_id)",
-      )
-      .select("message.chat_id", "chat_id")
-      .addSelect("COUNT(*)", "count")
-      .groupBy("message.chat_id")
-      .getRawMany();
-
-    const result: Record<string, number> = {};
-
-    for (const row of rows) {
-      const count = parseInt(row.count, 10);
-
-      if (count > 0) {
-        result[row.chat_id] = count;
-      }
-    }
-
-    return result;
+    return this._memberRepo.getUnreadCounts(userId);
   }
 
+  /**
+   * Получить unread count для конкретного чата.
+   * Читает денормализованный счётчик из chat_members.
+   */
   async getUnreadCount(chatId: string, userId: string): Promise<number> {
-    const qb = this._messageRepo
-      .createQueryBuilder("message")
-      .innerJoin(
-        "chat_members",
-        "cm",
-        "cm.chat_id = message.chat_id AND cm.user_id = :userId",
-        { userId },
-      )
-      .where("message.chatId = :chatId", { chatId })
-      .andWhere(
-        "cm.last_read_message_id IS NULL OR message.created_at > " +
-          "(SELECT m2.created_at FROM messages m2 WHERE m2.id = cm.last_read_message_id)",
-      );
+    const membership = await this._memberRepo.findMembership(chatId, userId);
 
-    return qb.getCount();
+    return membership?.unreadCount ?? 0;
+  }
+
+  /** Получить детальную информацию о receipts для сообщения (кто прочитал/получил). */
+  async getReceiptInfo(
+    messageId: string,
+    userId: string,
+  ): Promise<MessageReceiptDto[]> {
+    const message = await this._messageRepo.findOne({
+      where: { id: messageId },
+      select: ["id", "chatId", "senderId"],
+    });
+
+    if (!message) {
+      throw new NotFoundException("Сообщение не найдено");
+    }
+
+    const isMember = await this._chatService.isMember(message.chatId, userId);
+
+    if (!isMember) {
+      throw new ForbiddenException("Вы не являетесь участником этого чата");
+    }
+
+    const receipts = await this._receiptRepo.findByMessageId(messageId);
+
+    return receipts.map(r => ({
+      userId: r.userId,
+      status: r.status,
+      updatedAt: r.updatedAt,
+      user: r.user
+        ? {
+            id: r.user.id,
+            firstName: r.user.profile?.firstName,
+            lastName: r.user.profile?.lastName,
+            avatarUrl: r.user.profile?.avatar?.url,
+          }
+        : undefined,
+    }));
   }
 
   /** Эмиссия событий после отправки сообщения (fire-and-forget). */

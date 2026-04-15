@@ -27,7 +27,13 @@ describe("SyncService", () => {
     });
     (syncLogRepo as any).getLatestVersion = sinon.stub().resolves("100");
 
-    service = new SyncService(syncLogRepo as any, memberRepo as any);
+    const emitter = {
+      toUser: sinon.stub(),
+      toRoom: sinon.stub(),
+      broadcast: sinon.stub(),
+    };
+
+    service = new SyncService(syncLogRepo as any, memberRepo as any, emitter as any);
   });
 
   afterEach(() => sandbox.restore());
@@ -96,8 +102,7 @@ describe("SyncService", () => {
       syncLogRepo.createAndSave.resolves({});
 
       await service.logChange(ESyncEntityType.MESSAGE, "msg-1", ESyncAction.CREATE, {
-        userId,
-        chatId,
+        scopeId: chatId,
         payload: { content: "hello" },
       });
 

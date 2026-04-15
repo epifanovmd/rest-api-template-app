@@ -1,5 +1,4 @@
 import { BaseDto } from "../../../core/dto/BaseDto";
-import { ChatDto } from "../../chat/dto";
 import { ESyncAction, ESyncEntityType } from "../sync.types";
 import { SyncLog } from "../sync-log.entity";
 
@@ -7,8 +6,9 @@ export class SyncLogDto extends BaseDto {
   version: string;
   entityType: ESyncEntityType;
   entityId: string;
+  entityKey: string;
   action: ESyncAction;
-  chatId: string | null;
+  scopeId: string | null;
   payload: Record<string, unknown> | null;
   createdAt: Date;
 
@@ -18,8 +18,9 @@ export class SyncLogDto extends BaseDto {
     this.version = entity.version;
     this.entityType = entity.entityType;
     this.entityId = entity.entityId;
+    this.entityKey = entity.entityKey;
     this.action = entity.action;
-    this.chatId = entity.chatId;
+    this.scopeId = entity.scopeId;
     this.payload = entity.payload;
     this.createdAt = entity.createdAt;
   }
@@ -33,10 +34,13 @@ export interface ISyncResponseDto {
   changes: SyncLogDto[];
   currentVersion: string;
   hasMore: boolean;
+  /**
+   * true — версия клиента устарела, нужно сбросить кэш
+   * и загрузить данные через обычные API endpoints заново.
+   */
+  requiresSnapshot: boolean;
 }
 
-export interface ISyncSnapshotDto {
-  chats: ChatDto[];
-  unreadCounts: Record<string, number>;
+export interface ISyncVersionDto {
   currentVersion: string;
 }

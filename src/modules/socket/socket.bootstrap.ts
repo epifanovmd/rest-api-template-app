@@ -1,6 +1,7 @@
 import { inject, multiInject } from "inversify";
 
 import { EventBus, IBootstrap, Injectable, logger } from "../../core";
+import { ChatMemberRepository } from "../chat/chat-member.repository";
 import { UserOfflineEvent } from "../profile/events/user-offline.event";
 import { UserOnlineEvent } from "../profile/events/user-online.event";
 import { TSocket } from "./socket.types";
@@ -28,6 +29,8 @@ export class SocketBootstrap implements IBootstrap {
     private readonly handlers: ISocketHandler[],
     @multiInject(SOCKET_EVENT_LISTENER)
     private readonly eventListeners: ISocketEventListener[],
+    @inject(ChatMemberRepository)
+    private readonly memberRepo: ChatMemberRepository,
   ) {}
 
   async initialize(): Promise<void> {
@@ -50,6 +53,29 @@ export class SocketBootstrap implements IBootstrap {
       // поэтому все соединения (несколько вкладок/устройств) получат событие.
       socket.join(`user_${user.userId}`);
       socket.emit("authenticated", { userId: user.userId });
+
+      // Auto-join all chat rooms — обеспечивает доставку событий без ручного chat:join
+      // и автоматическое восстановление комнат при reconnect.
+      // ВАЖНО: выполняется ДО domain-хендлеров, чтобы socket уже был в комнатах.
+      try {
+        const chatIds = await this.memberRepo.getUserChatIds(user.userId);
+
+        for (const chatId of chatIds) {
+          socket.join(`chat_${chatId}`);
+          socket.join(`typing_${chatId}`);
+        }
+
+        logger.info(
+          { userId: user.userId, chatCount: chatIds.length },
+          "[Socket] Auto-joined chat rooms",
+        );
+      } catch (err) {
+        // Non-fatal: пользователь сможет вручную join через chat:join
+        logger.error(
+          { err, userId: user.userId },
+          "[Socket] Failed to auto-join chat rooms",
+        );
+      }
 
       if (wasOffline) {
         this.eventBus.emit(new UserOnlineEvent(user.userId));

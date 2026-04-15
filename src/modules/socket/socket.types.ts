@@ -27,12 +27,20 @@ export interface ISocketTypingRoomsPayload {
 
 export interface ISocketMessageReadPayload {
   chatId: string;
-  messageId: string;
+  messageIds: string[];
+  /** @deprecated use messageIds */
+  messageId?: string;
 }
 
 export interface ISocketMessageDeliveredPayload {
   chatId: string;
   messageIds: string[];
+}
+
+/** Ack response for critical socket events */
+export interface ISocketAckResponse {
+  ok: boolean;
+  error?: string;
 }
 
 export interface ISocketCallSignalPayload {
@@ -78,6 +86,14 @@ export interface ISocketMessageStatusPayload {
   messageId: string;
   chatId: string;
   status: string;
+  /** ID пользователя, изменившего статус (для per-user tracking в группах) */
+  userId?: string;
+  /** Агрегированная информация о receipts (для отправителя в группах) */
+  receiptSummary?: {
+    delivered: number;
+    read: number;
+    total: number;
+  };
 }
 
 export interface ISocketChatTypingPayload {
@@ -213,10 +229,16 @@ export interface ISocketEvents {
   "typing:subscribe": (data: ISocketTypingRoomsPayload) => void;
   /** Отписаться от typing-комнат */
   "typing:unsubscribe": (data: ISocketTypingRoomsPayload) => void;
-  /** Отметить сообщения как прочитанные */
-  "message:read": (data: ISocketMessageReadPayload) => void;
-  /** Подтвердить доставку сообщений */
-  "message:delivered": (data: ISocketMessageDeliveredPayload) => void;
+  /** Отметить сообщения как прочитанные (с ack-подтверждением) */
+  "message:read": (
+    data: ISocketMessageReadPayload,
+    ack?: (response: ISocketAckResponse) => void,
+  ) => void;
+  /** Подтвердить доставку сообщений (с ack-подтверждением) */
+  "message:delivered": (
+    data: ISocketMessageDeliveredPayload,
+    ack?: (response: ISocketAckResponse) => void,
+  ) => void;
 
   // ─── Call (WebRTC signaling) ──────────────────────────────────────────
   /** Relay SDP offer */
@@ -364,6 +386,10 @@ export interface ISocketEmitEvents {
   "session:new": (...args: [SessionDto]) => void;
   /** Сессия завершена */
   "session:terminated": (...args: [ISocketSessionPayload]) => void;
+
+  // ─── Sync events ──────────────────────────────────────────────────────
+  /** Доступны новые изменения для синхронизации */
+  "sync:available": (...args: [ISocketSyncAvailablePayload]) => void;
 
   // ─── Error event ──────────────────────────────────────────────────────
   /** Общая ошибка обработки socket-события */

@@ -18,47 +18,121 @@ import {
 
 type Constructor = new (...args: any[]) => any;
 
+// ── DB Retry Config ─────────────────────────────────────────────────
+
+/** Базовая задержка между попытками подключения к БД (ms). */
+const DB_BASE_DELAY_MS = 1_000;
+
+/** Максимальная задержка между попытками (ms). */
+const DB_MAX_DELAY_MS = 30_000;
+
+/** Интервал логирования при долгом ожидании БД (каждые N попыток). */
+const DB_LOG_EVERY_N_ATTEMPTS = 10;
+
+// ── Non-critical bootstrappers ──────────────────────────────────────
+
+/** Bootstrappers, чей сбой НЕ прерывает запуск сервера. */
+const NON_CRITICAL_BOOTSTRAPPERS = new Set([
+  "SeedBootstrap",
+  "AdminBootstrap",
+  "SyncCleanupBootstrap",
+]);
+
+// ─────────────────────────────────────────────────────────────────────
+
+/**
+ * Application lifecycle manager.
+ *
+ * Порядок запуска (production-ready):
+ *
+ * 1. HTTP server + health endpoints  → livenessProbe работает
+ * 2. Database connection (∞ retry)   → ждём пока БД появится
+ * 3. Module loading + DI             → IoC container готов
+ * 4. Bootstrappers                   → сервисы инициализированы
+ * 5. isReady = true                  → readinessProbe → 200
+ *
+ * Если БД недоступна — сервер живёт, отвечает на /ping и /ready (503).
+ * Когда БД подключается — автоматически завершает инициализацию.
+ */
 export class App {
   private readonly koa: Koa;
   private httpServer?: HttpServer;
+  private _isReady = false;
+
+  /** true когда все bootstrappers завершились и сервер готов к трафику. */
+  get isReady(): boolean {
+    return this._isReady;
+  }
 
   constructor() {
     this.koa = new Koa();
   }
 
   async start(RootModule: Constructor): Promise<void> {
-    await this.initializeDatabase();
+    // 1. HTTP server стартует ПЕРВЫМ — /ping и /ready доступны сразу.
+    //    Kubernetes видит живой процесс и не убивает его.
     this.registerCoreBindings();
+    this.configureHealthRoutes();
+    await this.listen();
+
+    // 2. Database — бесконечный retry. Сервер ждёт пока БД появится.
+    await this.connectDatabase();
+
+    // 3. Modules + Routes (после DB, потому что используют DataSource)
     this.loadModules(RootModule);
     this.configureMiddleware();
-    this.configureRoutes();
+    this.configureAppRoutes();
+
+    // 4. Bootstrappers (с изоляцией ошибок)
     await this.runBootstrappers();
-    await this.listen();
+
+    // 5. Ready — readinessProbe вернёт 200
+    this._isReady = true;
+    logger.info("Application is ready to accept traffic");
   }
 
   async stop(): Promise<void> {
-    const bootstrappers = iocContainer.getAll<IBootstrap>(BOOTSTRAP).reverse();
+    this._isReady = false;
 
-    for (const bootstrapper of bootstrappers) {
-      await bootstrapper.destroy?.();
+    // Destroy bootstrappers в обратном порядке, с изоляцией ошибок
+    try {
+      const bootstrappers = iocContainer
+        .getAll<IBootstrap>(BOOTSTRAP)
+        .reverse();
+
+      for (const bootstrapper of bootstrappers) {
+        try {
+          await bootstrapper.destroy?.();
+        } catch (err) {
+          logger.error(
+            { err, bootstrapper: bootstrapper.constructor.name },
+            "Bootstrapper destroy failed (continuing shutdown)",
+          );
+        }
+      }
+    } catch {
+      // IoC container may not have bootstrappers if startup failed early
     }
 
-    await new Promise<void>((resolve, reject) => {
-      this.httpServer?.close(err => (err ? reject(err) : resolve()));
-    });
+    // Закрываем HTTP сервер
+    if (this.httpServer) {
+      await new Promise<void>(resolve => {
+        this.httpServer!.close(() => resolve());
+      });
+    }
 
+    // Закрываем БД
     if (TypeOrmDataSource.isInitialized) {
       logger.info("Closing database connection...");
-      await TypeOrmDataSource.destroy();
+      await TypeOrmDataSource.destroy().catch(err => {
+        logger.error({ err }, "Database destroy error");
+      });
       logger.info("Database connection closed");
     }
   }
 
-  /**
-   * Регистрирует примитивы, которые не могут быть частью модуля:
-   * DataSource (создан статически), Koa и единый HttpServer.
-   * tsoa требует, чтобы базовый класс Controller был injectable.
-   */
+  // ─── Private: Setup ───────────────────────────────────────────────
+
   private registerCoreBindings(): void {
     decorate(injectable(), Controller);
     this.httpServer = createServer(this.koa.callback());
@@ -68,9 +142,15 @@ export class App {
     iocContainer.bind(HttpServer).toConstantValue(this.httpServer);
   }
 
-  /**
-   * Обходит дерево модулей и регистрирует все провайдеры и bootstrapper-ы.
-   */
+  /** Health/readiness routes подключаются ДО всего остального. */
+  private configureHealthRoutes(): void {
+    const router = new KoaRouter();
+
+    RegisterSystemRoutes(router, TypeOrmDataSource, this);
+    this.koa.use(router.routes());
+    this.koa.use(router.allowedMethods());
+  }
+
   private loadModules(RootModule: Constructor): void {
     new ModuleLoader(iocContainer).load(RootModule);
   }
@@ -79,10 +159,10 @@ export class App {
     RegisterAppMiddlewares(this.koa);
   }
 
-  private configureRoutes(): void {
+  /** App routes (API, swagger) подключаются ПОСЛЕ modules. */
+  private configureAppRoutes(): void {
     const router = new KoaRouter();
 
-    RegisterSystemRoutes(router, TypeOrmDataSource);
     RegisterSwagger(router, "/api-docs");
     RegisterRoutes(router);
 
@@ -93,7 +173,24 @@ export class App {
 
   private async runBootstrappers(): Promise<void> {
     for (const bootstrapper of iocContainer.getAll<IBootstrap>(BOOTSTRAP)) {
-      await bootstrapper.initialize();
+      const name = bootstrapper.constructor.name;
+
+      try {
+        await bootstrapper.initialize();
+      } catch (err) {
+        if (NON_CRITICAL_BOOTSTRAPPERS.has(name)) {
+          logger.warn(
+            { err, bootstrapper: name },
+            "Non-critical bootstrapper failed (skipping)",
+          );
+        } else {
+          logger.error(
+            { err, bootstrapper: name },
+            "Critical bootstrapper failed (aborting startup)",
+          );
+          throw err;
+        }
+      }
     }
   }
 
@@ -108,42 +205,57 @@ export class App {
     });
   }
 
-  private async initializeDatabase(
-    retries = 3,
-    delayMs = 2000,
-  ): Promise<void> {
-    const { host: dbHost, port: dbPort, database } = config.database.postgres;
+  // ─── Private: Database ────────────────────────────────────────────
 
-    for (let attempt = 1; attempt <= retries; attempt += 1) {
+  /**
+   * Бесконечный retry подключения к БД с exponential backoff.
+   *
+   * Сервер НЕ падает если БД недоступна — он ждёт.
+   * HTTP endpoints (/ping, /ready=503) работают пока ждём.
+   * Когда БД появляется — продолжаем инициализацию.
+   *
+   * Backoff: 1s → 2s → 4s → 8s → 16s → 30s → 30s → 30s → ...
+   */
+  private async connectDatabase(): Promise<void> {
+    const { host: dbHost, port: dbPort, database } = config.database.postgres;
+    let attempt = 0;
+
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      attempt += 1;
+
       try {
-        logger.info(
-          { attempt, retries, db: `${dbHost}:${dbPort}/${database}` },
-          "Connecting to database...",
-        );
+        // Логируем каждую первую попытку и далее каждые N попыток
+        if (attempt === 1 || attempt % DB_LOG_EVERY_N_ATTEMPTS === 0) {
+          logger.info(
+            { attempt, db: `${dbHost}:${dbPort}/${database}` },
+            "Connecting to database...",
+          );
+        }
 
         await TypeOrmDataSource.initialize();
 
         logger.info(
-          { db: `${dbHost}:${dbPort}/${database}` },
+          { attempt, db: `${dbHost}:${dbPort}/${database}` },
           "Database connection established",
         );
 
         return;
       } catch (error) {
-        logger.error(
-          { err: error, attempt, retries },
-          "Database connection failed",
-        );
-
-        if (attempt === retries) {
-          throw error;
+        // Первые 3 попытки и каждые N — логируем ошибку
+        if (attempt <= 3 || attempt % DB_LOG_EVERY_N_ATTEMPTS === 0) {
+          logger.error(
+            { err: error, attempt },
+            "Database connection failed, retrying...",
+          );
         }
 
-        logger.info(
-          { delayMs, nextAttempt: attempt + 1 },
-          "Retrying database connection...",
+        const delay = Math.min(
+          DB_BASE_DELAY_MS * Math.pow(2, Math.min(attempt - 1, 15)),
+          DB_MAX_DELAY_MS,
         );
-        await new Promise(resolve => setTimeout(resolve, delayMs));
+
+        await new Promise(resolve => setTimeout(resolve, delay));
       }
     }
   }

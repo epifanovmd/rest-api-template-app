@@ -1,6 +1,6 @@
 import { inject } from "inversify";
 
-import { Injectable } from "../../core";
+import { Injectable, logger } from "../../core";
 import { ISocketHandler, TSocket } from "../socket";
 import { MessageService } from "./message.service";
 
@@ -11,7 +11,7 @@ export class MessageHandler implements ISocketHandler {
   ) {}
 
   onConnection(socket: TSocket): void {
-    socket.on("message:read", async ({ chatId, messageIds, messageId }) => {
+    socket.on("message:read", async ({ chatId, messageIds, messageId }, ack) => {
       try {
         // Support both old (single messageId) and new (array messageIds) format
         const ids = messageIds ?? (messageId ? [messageId] : []);
@@ -23,20 +23,32 @@ export class MessageHandler implements ISocketHandler {
             ids,
           );
         }
-      } catch {
-        // Ignore errors in socket handler — user may not be a member
+
+        ack?.({ ok: true });
+      } catch (err) {
+        logger.warn(
+          { err, chatId, userId: socket.data.userId },
+          "[MessageHandler] message:read failed",
+        );
+        ack?.({ ok: false, error: "Failed to mark as read" });
       }
     });
 
-    socket.on("message:delivered", async ({ chatId, messageIds }) => {
+    socket.on("message:delivered", async ({ chatId, messageIds }, ack) => {
       try {
         await this._messageService.markAsDelivered(
           chatId,
           socket.data.userId,
           messageIds,
         );
-      } catch {
-        // Ignore errors in socket handler
+
+        ack?.({ ok: true });
+      } catch (err) {
+        logger.warn(
+          { err, chatId, userId: socket.data.userId },
+          "[MessageHandler] message:delivered failed",
+        );
+        ack?.({ ok: false, error: "Failed to mark as delivered" });
       }
     });
   }

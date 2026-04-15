@@ -5,7 +5,9 @@ services:
     env_file: .env.production
     ports:
       - "8181:8181"
-    restart: unless-stopped
+    # always: перезапуск при любом crash, OOM, exit(1), uncaughtException.
+    # В отличие от unless-stopped — перезапускается даже после docker stop + docker start.
+    restart: always
     cap_add:
       - NET_ADMIN
       - SYS_MODULE
@@ -13,8 +15,13 @@ services:
       - net.ipv4.ip_forward=1
       - net.ipv6.conf.all.forwarding=1
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://127.0.0.1:8181/health"]
-      interval: 30s
+      # /ready возвращает 200 только когда ВСЕ bootstrappers завершились:
+      # DB подключена, Socket готов, модули загружены.
+      # /ping (liveness) всегда 200 пока процесс жив.
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8181/ready"]
+      interval: 10s
       timeout: 5s
-      retries: 3
-      start_period: 30s
+      retries: 30
+      # start_period: время на первый старт (DB connect + bootstrappers).
+      # Во время start_period failing health checks не считаются.
+      start_period: 60s

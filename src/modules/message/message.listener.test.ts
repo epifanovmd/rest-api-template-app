@@ -37,7 +37,26 @@ describe("MessageListener", () => {
       },
     };
 
-    listener = new MessageListener(mockEventBus as any, emitter as any);
+    const mockMessageService = {
+      getUnreadCount: sinon.stub().resolves(1),
+    };
+
+    const mockReceiptRepo = {
+      getReceiptSummary: sinon.stub().resolves({ delivered: 0, read: 0, total: 0 }),
+    };
+
+    const mockMemberRepo = {
+      getMembersUnreadCounts: sinon.stub().resolves([]),
+      findMembership: sinon.stub().resolves({ unreadCount: 0 }),
+    };
+
+    listener = new MessageListener(
+      mockEventBus as any,
+      emitter as any,
+      mockMessageService as any,
+      mockReceiptRepo as any,
+      mockMemberRepo as any,
+    );
     listener.register();
   });
 
@@ -198,8 +217,8 @@ describe("MessageListener", () => {
 
   describe("MessageReadEvent", () => {
     it("should emit chat:unread to user", () => {
-      const messageId = "msg-1";
-      const event = new MessageReadEvent(chatId, userId2, messageId);
+      const messageIds = ["msg-1"];
+      const event = new MessageReadEvent(chatId, userId2, messageIds);
 
       eventHandlers["MessageReadEvent"](event);
 

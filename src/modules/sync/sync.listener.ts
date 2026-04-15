@@ -1,6 +1,7 @@
 import { inject } from "inversify";
 
-import { EventBus, Injectable } from "../../core";
+import { EventBus, Injectable, logger } from "../../core";
+import { ChatMemberRepository } from "../chat/chat-member.repository";
 import { ChatDto } from "../chat/dto";
 import {
   ChatCreatedEvent,
@@ -15,173 +16,230 @@ import {
   MessageDeletedEvent,
   MessageUpdatedEvent,
 } from "../message/events";
-import { ProfileUpdatedEvent } from "../profile/events/profile-updated.event";
 import { ISocketEventListener } from "../socket";
 import { SyncService } from "./sync.service";
 import { ESyncAction, ESyncEntityType } from "./sync.types";
 
+/**
+ * Правила scoping записей в sync_logs:
+ *
+ *   SCOPE:  scopeId=set,  userId=NULL  → видно всем с доступом к этому scope
+ *   USER:   userId=set,   scopeId=NULL → видно только этому пользователю
+ *
+ * scopeId — generic. Для чатов это chatId. Для будущих сущностей —
+ * их group identifier (folderId, teamId, и т.д.).
+ *
+ * ProfileUpdated НЕ логируется — обрабатывается socket events + API.
+ */
 @Injectable()
 export class SyncListener implements ISocketEventListener {
   constructor(
     @inject(EventBus) private readonly _eventBus: EventBus,
     @inject(SyncService) private readonly _syncService: SyncService,
+    @inject(ChatMemberRepository)
+    private readonly _memberRepo: ChatMemberRepository,
   ) {}
 
   register(): void {
-    // ── Messages ──────────────────────────────────────────────────
+    // ── Messages (scope = chatId) ────────────────────────────────
 
     this._eventBus.on(
       MessageCreatedEvent,
-      async (event: MessageCreatedEvent) => {
-        await this._syncService.logChange(
+      (event: MessageCreatedEvent) => {
+        this._logScopeScoped(
+          event.chatId,
           ESyncEntityType.MESSAGE,
           event.message.id,
           ESyncAction.CREATE,
-          {
-            chatId: event.chatId,
-            payload: MessageDto.fromEntity(event.message) as unknown as Record<
-              string,
-              unknown
-            >,
-          },
+          MessageDto.fromEntity(event.message) as unknown as Record<
+            string,
+            unknown
+          >,
+          event.memberUserIds.filter(id => id !== event.message.senderId),
         );
       },
     );
 
     this._eventBus.on(
       MessageUpdatedEvent,
-      async (event: MessageUpdatedEvent) => {
-        await this._syncService.logChange(
+      (event: MessageUpdatedEvent) => {
+        this._logScopeScopedWithMemberLookup(
+          event.chatId,
           ESyncEntityType.MESSAGE,
           event.message.id,
           ESyncAction.UPDATE,
-          {
-            chatId: event.chatId,
-            payload: MessageDto.fromEntity(event.message) as unknown as Record<
-              string,
-              unknown
-            >,
-          },
+          MessageDto.fromEntity(event.message) as unknown as Record<
+            string,
+            unknown
+          >,
         );
       },
     );
 
     this._eventBus.on(
       MessageDeletedEvent,
-      async (event: MessageDeletedEvent) => {
+      (event: MessageDeletedEvent) => {
         if (!event.forAll) return;
 
-        await this._syncService.logChange(
+        this._logScopeScopedWithMemberLookup(
+          event.chatId,
           ESyncEntityType.MESSAGE,
           event.messageId,
           ESyncAction.DELETE,
-          { chatId: event.chatId },
         );
       },
     );
 
-    // ── Chats ─────────────────────────────────────────────────────
+    // ── Chats (scope = chatId) ───────────────────────────────────
 
-    this._eventBus.on(ChatCreatedEvent, async (event: ChatCreatedEvent) => {
-      await this._syncService.logChange(
+    this._eventBus.on(ChatCreatedEvent, (event: ChatCreatedEvent) => {
+      this._logScopeScoped(
+        event.chat.id,
         ESyncEntityType.CHAT,
         event.chat.id,
         ESyncAction.CREATE,
-        {
-          chatId: event.chat.id,
-          payload: ChatDto.fromEntity(event.chat) as unknown as Record<
-            string,
-            unknown
-          >,
-        },
+        ChatDto.fromEntity(event.chat) as unknown as Record<string, unknown>,
+        event.memberUserIds,
       );
     });
 
-    this._eventBus.on(ChatUpdatedEvent, async (event: ChatUpdatedEvent) => {
-      await this._syncService.logChange(
+    this._eventBus.on(ChatUpdatedEvent, (event: ChatUpdatedEvent) => {
+      this._logScopeScopedWithMemberLookup(
+        event.chat.id,
         ESyncEntityType.CHAT,
         event.chat.id,
         ESyncAction.UPDATE,
-        {
-          chatId: event.chat.id,
-          payload: ChatDto.fromEntity(event.chat) as unknown as Record<
-            string,
-            unknown
-          >,
-        },
+        ChatDto.fromEntity(event.chat) as unknown as Record<string, unknown>,
       );
     });
 
-    // ── Chat Members ──────────────────────────────────────────────
+    // ── Chat Members (scope = chatId) ────────────────────────────
 
     this._eventBus.on(
       ChatMemberJoinedEvent,
-      async (event: ChatMemberJoinedEvent) => {
-        await this._syncService.logChange(
+      (event: ChatMemberJoinedEvent) => {
+        this._logScopeScopedWithMemberLookup(
+          event.chatId,
           ESyncEntityType.CHAT_MEMBER,
-          event.userId,
+          `${event.chatId}:${event.userId}`,
           ESyncAction.CREATE,
-          { chatId: event.chatId, userId: event.userId },
         );
       },
     );
 
     this._eventBus.on(
       ChatMemberLeftEvent,
-      async (event: ChatMemberLeftEvent) => {
-        await this._syncService.logChange(
+      (event: ChatMemberLeftEvent) => {
+        this._logScopeScopedWithMemberLookup(
+          event.chatId,
           ESyncEntityType.CHAT_MEMBER,
-          event.userId,
+          `${event.chatId}:${event.userId}`,
           ESyncAction.DELETE,
-          { chatId: event.chatId, userId: event.userId },
         );
       },
     );
 
-    // ── Contacts ──────────────────────────────────────────────────
+    // ── Contacts (user-scoped) ───────────────────────────────────
 
     this._eventBus.on(
       ContactRequestEvent,
-      async (event: ContactRequestEvent) => {
-        await this._syncService.logChange(
+      (event: ContactRequestEvent) => {
+        this._logUserScoped(
+          event.targetUserId,
           ESyncEntityType.CONTACT,
           event.contact.id,
           ESyncAction.CREATE,
-          {
-            userId: event.targetUserId,
-            payload: event.contact as unknown as Record<string, unknown>,
-          },
+          event.contact as unknown as Record<string, unknown>,
         );
       },
     );
 
     this._eventBus.on(
       ContactAcceptedEvent,
-      async (event: ContactAcceptedEvent) => {
-        await this._syncService.logChange(
+      (event: ContactAcceptedEvent) => {
+        this._logUserScoped(
+          event.requesterId,
           ESyncEntityType.CONTACT,
           event.contact.id,
           ESyncAction.UPDATE,
-          {
-            userId: event.requesterId,
-            payload: event.contact as unknown as Record<string, unknown>,
-          },
+          event.contact as unknown as Record<string, unknown>,
         );
       },
     );
+  }
 
-    // ── Profile ───────────────────────────────────────────────────
+  // ── Helpers ────────────────────────────────────────────────────
 
-    this._eventBus.on(
-      ProfileUpdatedEvent,
-      async (event: ProfileUpdatedEvent) => {
-        await this._syncService.logChange(
-          ESyncEntityType.PROFILE,
-          event.profile.id,
-          ESyncAction.UPDATE,
-          { payload: event.profile as unknown as Record<string, unknown> },
+  /** Scope-scoped: scopeId=set, userId=NULL. Видно всем с доступом к scope. */
+  private _logScopeScoped(
+    scopeId: string,
+    entityType: ESyncEntityType,
+    entityId: string,
+    action: ESyncAction,
+    payload?: Record<string, unknown> | null,
+    notifyUserIds?: string[],
+  ): void {
+    this._syncService
+      .logChange(entityType, entityId, action, {
+        scopeId,
+        userId: null,
+        payload: payload ?? null,
+        notifyUserIds,
+      })
+      .catch(err => {
+        logger.error(
+          { err, entityType, entityId, action, scopeId },
+          "[SyncListener] Failed to log scope-scoped change",
         );
-      },
-    );
+      });
+  }
+
+  /** Scope-scoped с автоматическим lookup memberUserIds для push. */
+  private _logScopeScopedWithMemberLookup(
+    scopeId: string,
+    entityType: ESyncEntityType,
+    entityId: string,
+    action: ESyncAction,
+    payload?: Record<string, unknown> | null,
+  ): void {
+    this._memberRepo
+      .getMemberUserIds(scopeId)
+      .then(memberIds => {
+        return this._syncService.logChange(entityType, entityId, action, {
+          scopeId,
+          userId: null,
+          payload: payload ?? null,
+          notifyUserIds: memberIds,
+        });
+      })
+      .catch(err => {
+        logger.error(
+          { err, entityType, entityId, action, scopeId },
+          "[SyncListener] Failed to log scope-scoped change with member lookup",
+        );
+      });
+  }
+
+  /** User-scoped: userId=set, scopeId=NULL. Видно только этому пользователю. */
+  private _logUserScoped(
+    userId: string,
+    entityType: ESyncEntityType,
+    entityId: string,
+    action: ESyncAction,
+    payload?: Record<string, unknown> | null,
+  ): void {
+    this._syncService
+      .logChange(entityType, entityId, action, {
+        userId,
+        scopeId: null,
+        payload: payload ?? null,
+        notifyUserIds: [userId],
+      })
+      .catch(err => {
+        logger.error(
+          { err, entityType, entityId, action, userId },
+          "[SyncListener] Failed to log user-scoped change",
+        );
+      });
   }
 }
