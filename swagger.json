@@ -550,8 +550,7 @@
 				"required": [
 					"userId",
 					"email",
-					"username",
-					"profile"
+					"username"
 				],
 				"type": "object",
 				"additionalProperties": false
@@ -1099,6 +1098,10 @@
 				"properties": {
 					"id": {
 						"type": "string"
+					},
+					"localId": {
+						"type": "string",
+						"description": "Транзитный клиентский ID для дедупликации оптимистичных сообщений."
 					},
 					"chatId": {
 						"type": "string"
@@ -2637,6 +2640,10 @@
 					},
 					"mentionAll": {
 						"type": "boolean"
+					},
+					"localId": {
+						"type": "string",
+						"description": "Клиентский ID для дедупликации оптимистичных сообщений. Транзитное поле — не сохраняется в БД."
 					}
 				},
 				"type": "object",

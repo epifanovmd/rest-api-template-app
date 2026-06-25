@@ -41,7 +41,7 @@ export class PublicUserDto extends BaseDto {
   userId: string;
   email: string | null;
   username: string | null;
-  profile: PublicProfileDto;
+  profile?: PublicProfileDto;
 
   constructor(entity: User) {
     super(entity);
@@ -49,7 +49,7 @@ export class PublicUserDto extends BaseDto {
     this.userId = entity.id;
     this.email = entity.email;
     this.username = entity.username;
-    this.profile = PublicProfileDto.fromEntity(entity.profile);
+    this.profile = entity.profile && PublicProfileDto.fromEntity(entity.profile);
   }
 
   static fromEntity(entity: User) {

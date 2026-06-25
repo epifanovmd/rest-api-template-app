@@ -8,6 +8,8 @@ export interface ISendMessageBody {
   fileIds?: string[];
   mentionedUserIds?: string[];
   mentionAll?: boolean;
+  /** Клиентский ID для дедупликации оптимистичных сообщений. Транзитное поле — не сохраняется в БД. */
+  localId?: string;
 }
 
 export interface IMarkReadBody {

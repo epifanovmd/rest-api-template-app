@@ -7,5 +7,6 @@ export class MessageCreatedEvent {
     public readonly memberUserIds: string[],
     public readonly mentionedUserIds: string[] = [],
     public readonly mentionAll: boolean = false,
+    public readonly localId?: string,
   ) {}
 }

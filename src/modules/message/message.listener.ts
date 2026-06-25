@@ -35,6 +35,11 @@ export class MessageListener implements ISocketEventListener {
     this._eventBus.on(MessageCreatedEvent, (event: MessageCreatedEvent) => {
       const dto = MessageDto.fromEntity(event.message);
 
+      // Прокидываем localId для дедупликации оптимистичных сообщений на клиенте
+      if (event.localId) {
+        dto.localId = event.localId;
+      }
+
       // Broadcast new message to chat room
       this._emitter.toRoom(`chat_${event.chatId}`, "message:new", dto);
 

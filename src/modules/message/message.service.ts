@@ -66,6 +66,7 @@ export class MessageService {
       fileIds?: string[];
       mentionedUserIds?: string[];
       mentionAll?: boolean;
+      localId?: string;
     },
   ) {
     // Параллельная загрузка чата и членства (вместо canSendMessage + повторного fetch)
@@ -190,16 +191,22 @@ export class MessageService {
     }
 
     // Эмиссия событий — fire-and-forget (клиент не ждёт)
+    // localId прокидывается в event чтобы все клиенты отправителя могли дедуплицировать
     this._emitSendMessageEvents(
       chatId,
       fullMessage,
       data.mentionedUserIds ?? [],
       data.mentionAll ?? false,
+      data.localId,
     ).catch(err => {
       logger.warn({ err }, "Failed to emit message events");
     });
 
-    return MessageDto.fromEntity(fullMessage);
+    const dto = MessageDto.fromEntity(fullMessage);
+
+    dto.localId = data.localId;
+
+    return dto;
   }
 
   async getMessages(
@@ -821,6 +828,7 @@ export class MessageService {
     message: Message,
     mentionedUserIds: string[],
     mentionAll: boolean,
+    localId?: string,
   ) {
     const [memberUserIds, updatedChat] = await Promise.all([
       this._chatService.getMemberUserIds(chatId),
@@ -837,6 +845,7 @@ export class MessageService {
         memberUserIds,
         mentionedUserIds,
         mentionAll,
+        localId,
       ),
     );
 

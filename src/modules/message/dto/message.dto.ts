@@ -41,6 +41,8 @@ export class MessageAttachmentDto extends BaseDto {
 
 export class MessageDto extends BaseDto {
   id: string;
+  /** Транзитный клиентский ID для дедупликации оптимистичных сообщений. */
+  localId?: string;
   chatId: string;
   senderId: string | null;
   type: EMessageType;
