@@ -10,6 +10,12 @@
         "scheme": "bearer",
         "bearerFormat": "JWT"
       },
+      "bot": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-Bot-Token",
+        "description": "Токен бота; также `Authorization: Bot <token>`"
+      },
       "apiKey": {
         "type": "apiKey",
         "in": "header",

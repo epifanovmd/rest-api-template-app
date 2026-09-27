@@ -22,6 +22,10 @@
 - [project_modules.md](project_modules.md) — модель веток (main + example/*, базовая миграция не пересоздаётся), модули main и их сущности, эндпоинты по тегам, очереди задач (cron/external), сокет handlers/listeners/комнаты, бизнес-правила
 - [project_reference.md](project_reference.md) — стек, карта README модулей, системные маршруты, Swagger `servers` на запрос, socket-события базы, enum-ы, env по группам
 
+## Project — Эта ветка
+
+- [Ветка example/messenger](project_example.md) — модули мессенджера: точки подключения к платформе, сокет-события, очереди, бизнес-правила, gotcha
+
 ## Project — Patterns (эталоны)
 
 - [project_patterns.md](project_patterns.md) — эталоны main (gen:module, api-key, ошибки, пагинация, задачи/outbox/cron/external, хранилище, схемы auth, права, e2e), точки расширения для модулей веток (`*.socket-events.ts`, profile relations, `<feature>.config.ts`, письма, права), скелет теста, проектные gotcha

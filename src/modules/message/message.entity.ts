@@ -1,0 +1,112 @@
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  Index,
+  JoinColumn,
+  ManyToOne,
+  OneToMany,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
+} from "typeorm";
+
+import { Chat } from "../chat/chat.entity";
+import { User } from "../user/user.entity";
+import { EMessageStatus, EMessageType } from "./message.types";
+import { MessageAttachment } from "./message-attachment.entity";
+import { MessageDeletion } from "./message-deletion.entity";
+import { MessageMention } from "./message-mention.entity";
+import { MessageReaction } from "./message-reaction.entity";
+
+@Entity("messages")
+@Index("IDX_MESSAGES_CHAT_CREATED_ID", ["chatId", "createdAt", "id"])
+@Index("IDX_MESSAGES_SENDER", ["senderId"])
+export class Message {
+  @PrimaryGeneratedColumn("uuid")
+  id!: string;
+
+  @Column({ name: "chat_id", type: "uuid" })
+  chatId!: string;
+
+  @Column({ name: "sender_id", type: "uuid", nullable: true })
+  senderId!: string | null;
+
+  @Column({
+    type: "enum",
+    enum: EMessageType,
+    default: EMessageType.TEXT,
+  })
+  type!: EMessageType;
+
+  @Column({ type: "text", nullable: true })
+  content!: string | null;
+
+  @Column({ name: "reply_to_id", type: "uuid", nullable: true })
+  replyToId!: string | null;
+
+  @Column({ name: "forwarded_from_id", type: "uuid", nullable: true })
+  forwardedFromId!: string | null;
+
+  @Column({
+    type: "enum",
+    enum: EMessageStatus,
+    default: EMessageStatus.SENT,
+  })
+  status!: EMessageStatus;
+
+  @Column({ name: "is_edited", type: "boolean", default: false })
+  isEdited!: boolean;
+
+  @Column({ name: "is_deleted", type: "boolean", default: false })
+  isDeleted!: boolean;
+
+  @Column({ name: "is_pinned", type: "boolean", default: false })
+  isPinned!: boolean;
+
+  @Column({ name: "pinned_at", type: "timestamptz", nullable: true })
+  pinnedAt!: Date | null;
+
+  @Column({ name: "pinned_by_id", type: "uuid", nullable: true })
+  pinnedById!: string | null;
+
+  @Column({ type: "jsonb", nullable: true })
+  keyboard: unknown | null;
+
+  @CreateDateColumn({ name: "created_at", type: "timestamptz" })
+  createdAt!: Date;
+
+  @UpdateDateColumn({ name: "updated_at", type: "timestamptz" })
+  updatedAt!: Date;
+
+  @ManyToOne(() => Chat, { onDelete: "CASCADE" })
+  @JoinColumn({ name: "chat_id" })
+  chat!: Chat;
+
+  @ManyToOne(() => User, { onDelete: "SET NULL", nullable: true })
+  @JoinColumn({ name: "sender_id" })
+  sender!: User | null;
+
+  @ManyToOne(() => Message, { onDelete: "SET NULL", nullable: true })
+  @JoinColumn({ name: "reply_to_id" })
+  replyTo!: Message | null;
+
+  @ManyToOne(() => Message, { onDelete: "SET NULL", nullable: true })
+  @JoinColumn({ name: "forwarded_from_id" })
+  forwardedFrom!: Message | null;
+
+  @ManyToOne(() => User, { onDelete: "SET NULL", nullable: true })
+  @JoinColumn({ name: "pinned_by_id" })
+  pinnedBy!: User | null;
+
+  @OneToMany(() => MessageAttachment, attachment => attachment.message)
+  attachments!: MessageAttachment[];
+
+  @OneToMany(() => MessageReaction, reaction => reaction.message)
+  reactions!: MessageReaction[];
+
+  @OneToMany(() => MessageMention, mention => mention.message)
+  mentions!: MessageMention[];
+
+  @OneToMany(() => MessageDeletion, deletion => deletion.message)
+  deletions!: MessageDeletion[];
+}

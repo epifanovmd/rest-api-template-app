@@ -1,0 +1,84 @@
+import {
+  Column,
+  Entity,
+  Index,
+  JoinColumn,
+  ManyToOne,
+  PrimaryGeneratedColumn,
+} from "typeorm";
+
+import { User } from "../user/user.entity";
+import { Chat } from "./chat.entity";
+import { EChatMemberRole } from "./chat.types";
+import { ChatFolder } from "./chat-folder.entity";
+
+@Entity("chat_members")
+@Index("IDX_CHAT_MEMBERS_CHAT_USER", ["chatId", "userId"], { unique: true })
+@Index("IDX_CHAT_MEMBERS_USER", ["userId"])
+export class ChatMember {
+  @PrimaryGeneratedColumn("uuid")
+  id!: string;
+
+  @Column({ name: "chat_id", type: "uuid" })
+  chatId!: string;
+
+  @Column({ name: "user_id", type: "uuid" })
+  userId!: string;
+
+  @Column({
+    type: "enum",
+    enum: EChatMemberRole,
+    default: EChatMemberRole.MEMBER,
+  })
+  role!: EChatMemberRole;
+
+  @Column({
+    name: "joined_at",
+    type: "timestamptz",
+    default: () => "CURRENT_TIMESTAMP",
+  })
+  joinedAt!: Date;
+
+  @Column({ name: "muted_until", type: "timestamptz", nullable: true })
+  mutedUntil!: Date | null;
+
+  @Column({ name: "last_read_message_id", type: "uuid", nullable: true })
+  lastReadMessageId!: string | null;
+
+  /**
+   * Денормализованный счётчик непрочитанных сообщений.
+   * Инкрементируется атомарно при новом сообщении,
+   * сбрасывается при markAsRead.
+   * Избавляет от COUNT(*) при каждом запросе.
+   */
+  @Column({ name: "unread_count", type: "int", default: 0 })
+  unreadCount!: number;
+
+  @Column({ name: "is_pinned_chat", type: "boolean", default: false })
+  isPinnedChat!: boolean;
+
+  @Column({ name: "pinned_chat_at", type: "timestamptz", nullable: true })
+  pinnedChatAt!: Date | null;
+
+  @Column({ name: "folder_id", type: "uuid", nullable: true })
+  folderId!: string | null;
+
+  /**
+   * Direct-чат скрыт пользователем («выход» из личного чата). Членство и
+   * история сохраняются; новое сообщение снова показывает чат.
+   */
+  @Column({ name: "hidden_at", type: "timestamptz", nullable: true })
+  hiddenAt!: Date | null;
+
+  @ManyToOne(() => Chat, chat => chat.members, { onDelete: "CASCADE" })
+  @JoinColumn({ name: "chat_id" })
+  chat!: Chat;
+
+  @ManyToOne(() => User, { onDelete: "CASCADE" })
+  @JoinColumn({ name: "user_id" })
+  user!: User;
+
+  @ManyToOne(() => ChatFolder, { onDelete: "SET NULL", nullable: true })
+  @JoinColumn({ name: "folder_id" })
+  folder!: ChatFolder | null;
+}

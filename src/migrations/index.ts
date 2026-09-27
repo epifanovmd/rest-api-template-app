@@ -1,4 +1,5 @@
 import { InitialSchema1790353961289 } from "./1790353961289-InitialSchema";
+import { Messenger1790355565150 } from "./1790355565150-Messenger";
 import { JobRunStop1790357606328 } from "./1790357606328-JobRunStop";
 import { FileOwnerSetNull1790358900018 } from "./1790358900018-FileOwnerSetNull";
 import { JobWorkers1790363180288 } from "./1790363180288-JobWorkers";
@@ -10,6 +11,7 @@ import { JobWorkers1790363180288 } from "./1790363180288-JobWorkers";
  */
 export const migrations: Function[] = [
   InitialSchema1790353961289,
+  Messenger1790355565150,
   JobRunStop1790357606328,
   FileOwnerSetNull1790358900018,
   JobWorkers1790363180288,

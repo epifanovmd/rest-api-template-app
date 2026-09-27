@@ -1,0 +1,45 @@
+import { EMessageType } from "../../message";
+
+export interface ICreateBotBody {
+  username: string;
+  displayName: string;
+  description?: string;
+}
+
+export interface IUpdateBotBody {
+  displayName?: string;
+  description?: string | null;
+  avatarId?: string | null;
+}
+
+export interface ISetWebhookBody {
+  url: string;
+  secret?: string;
+}
+
+export interface ISetWebhookEventsBody {
+  events: string[];
+}
+
+export interface ISetCommandsBody {
+  commands: { command: string; description: string }[];
+}
+
+export interface IWebhookTestResponse {
+  success: boolean;
+  statusCode: number | null;
+  errorMessage: string | null;
+  durationMs: number;
+}
+
+/** Текстовое сообщение бота; `type` — только `text`. */
+export interface IBotSendMessageBody {
+  chatId: string;
+  content: string;
+  type?: EMessageType.TEXT;
+  replyToId?: string;
+}
+
+export interface IBotEditMessageBody {
+  content: string;
+}

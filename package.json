@@ -53,6 +53,7 @@
     "blurhash": "^2.0.5",
     "ejs": "^6",
     "file-type": "^22.1.1",
+    "firebase-admin": "^14",
     "helmet": "^8",
     "inversify": "^8",
     "ioredis": "^6",

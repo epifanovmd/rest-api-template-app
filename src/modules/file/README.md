@@ -152,8 +152,8 @@ src/modules/file/
 
 Модули, ссылающиеся на файлы, регистрируют `asFileUsageProbe(Cls)` с
 `filesInUse(fileIds): Promise<string[]>` — пакетно. Используемый файл удалить вручную
-нельзя (409), сборщик мусора его не трогает. В main — `ProfileAvatarUsageProbe`
-(аватар профиля).
+нельзя (409), сборщик мусора его не трогает. В этой ветке — `ProfileAvatarUsageProbe` (аватар профиля),
+`MessageFileUsageProbe` (вложения), `ChatAvatarUsageProbe`, `BotAvatarUsageProbe`.
 
 ## Зависимости
 

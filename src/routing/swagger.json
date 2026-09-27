@@ -883,6 +883,879 @@
 				"type": "object",
 				"additionalProperties": false
 			},
+			"EContactStatus": {
+				"enum": [
+					"pending",
+					"accepted",
+					"blocked"
+				],
+				"type": "string"
+			},
+			"ContactDto": {
+				"description": "Контакт; ссылка на аватар профиля — из карты подписей `files`.",
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"userId": {
+						"type": "string"
+					},
+					"contactUserId": {
+						"type": "string"
+					},
+					"displayName": {
+						"type": "string",
+						"nullable": true
+					},
+					"status": {
+						"$ref": "#/components/schemas/EContactStatus"
+					},
+					"createdAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"updatedAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"contactProfile": {
+						"$ref": "#/components/schemas/PublicProfileDto"
+					}
+				},
+				"required": [
+					"id",
+					"userId",
+					"contactUserId",
+					"displayName",
+					"status",
+					"createdAt",
+					"updatedAt"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"ICreateContactBody": {
+				"properties": {
+					"contactUserId": {
+						"type": "string"
+					},
+					"displayName": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"contactUserId"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IPaginatedDto_ContactDto_": {
+				"description": "Страница по смещению: списки с известным общим числом.",
+				"properties": {
+					"items": {
+						"items": {
+							"$ref": "#/components/schemas/ContactDto"
+						},
+						"type": "array"
+					},
+					"total": {
+						"type": "number",
+						"format": "double",
+						"description": "Всего элементов, подходящих под фильтр."
+					},
+					"offset": {
+						"type": "number",
+						"format": "double"
+					},
+					"limit": {
+						"type": "number",
+						"format": "double"
+					}
+				},
+				"required": [
+					"items",
+					"total",
+					"offset",
+					"limit"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"EChatType": {
+				"enum": [
+					"direct",
+					"group",
+					"channel"
+				],
+				"type": "string"
+			},
+			"EMessageType": {
+				"enum": [
+					"text",
+					"image",
+					"file",
+					"voice",
+					"system",
+					"poll"
+				],
+				"type": "string"
+			},
+			"ChatLastMessageDto": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"content": {
+						"type": "string",
+						"nullable": true
+					},
+					"type": {
+						"$ref": "#/components/schemas/EMessageType"
+					},
+					"senderId": {
+						"type": "string",
+						"nullable": true
+					},
+					"senderName": {
+						"type": "string",
+						"nullable": true
+					},
+					"createdAt": {
+						"type": "string",
+						"format": "date-time"
+					}
+				},
+				"required": [
+					"id",
+					"content",
+					"type",
+					"senderId",
+					"senderName",
+					"createdAt"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"EChatMemberRole": {
+				"enum": [
+					"owner",
+					"admin",
+					"member",
+					"subscriber"
+				],
+				"type": "string"
+			},
+			"ChatMemberPublicDto": {
+				"description": "Публичные данные участника: видны всем участникам чата.",
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"userId": {
+						"type": "string"
+					},
+					"role": {
+						"$ref": "#/components/schemas/EChatMemberRole"
+					},
+					"joinedAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"profile": {
+						"$ref": "#/components/schemas/PublicProfileDto"
+					}
+				},
+				"required": [
+					"id",
+					"userId",
+					"role",
+					"joinedAt"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"ChatMemberDto": {
+				"description": "Членство текущего пользователя: публичные поля + личные настройки чата.",
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"userId": {
+						"type": "string"
+					},
+					"role": {
+						"$ref": "#/components/schemas/EChatMemberRole"
+					},
+					"joinedAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"profile": {
+						"$ref": "#/components/schemas/PublicProfileDto"
+					},
+					"mutedUntil": {
+						"type": "string",
+						"format": "date-time",
+						"nullable": true
+					},
+					"lastReadMessageId": {
+						"type": "string",
+						"nullable": true
+					},
+					"isPinnedChat": {
+						"type": "boolean"
+					},
+					"pinnedChatAt": {
+						"type": "string",
+						"format": "date-time",
+						"nullable": true
+					},
+					"folderId": {
+						"type": "string",
+						"nullable": true
+					}
+				},
+				"required": [
+					"id",
+					"userId",
+					"role",
+					"joinedAt",
+					"mutedUntil",
+					"lastReadMessageId",
+					"isPinnedChat",
+					"pinnedChatAt",
+					"folderId"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"ChatPeerDto": {
+				"description": "Публичные данные собеседника в direct-чате (без приватных настроек членства).",
+				"properties": {
+					"userId": {
+						"type": "string"
+					},
+					"role": {
+						"$ref": "#/components/schemas/EChatMemberRole"
+					},
+					"profile": {
+						"$ref": "#/components/schemas/PublicProfileDto"
+					}
+				},
+				"required": [
+					"userId",
+					"role"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"ChatDto": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"type": {
+						"$ref": "#/components/schemas/EChatType"
+					},
+					"name": {
+						"type": "string",
+						"nullable": true
+					},
+					"description": {
+						"type": "string",
+						"nullable": true
+					},
+					"username": {
+						"type": "string",
+						"nullable": true
+					},
+					"isPublic": {
+						"type": "boolean"
+					},
+					"avatarUrl": {
+						"type": "string",
+						"nullable": true,
+						"description": "Подписанная ссылка на аватар; срок ограничен."
+					},
+					"createdById": {
+						"type": "string",
+						"nullable": true
+					},
+					"slowModeSeconds": {
+						"type": "number",
+						"format": "double"
+					},
+					"lastMessageAt": {
+						"type": "string",
+						"format": "date-time",
+						"nullable": true
+					},
+					"lastMessage": {
+						"allOf": [
+							{
+								"$ref": "#/components/schemas/ChatLastMessageDto"
+							}
+						],
+						"nullable": true
+					},
+					"createdAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"updatedAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"members": {
+						"items": {
+							"$ref": "#/components/schemas/ChatMemberPublicDto"
+						},
+						"type": "array",
+						"description": "Участники (для групп и каналов — первые N) без приватных настроек."
+					},
+					"membersCount": {
+						"type": "number",
+						"format": "double",
+						"description": "Общее число участников чата."
+					},
+					"me": {
+						"allOf": [
+							{
+								"$ref": "#/components/schemas/ChatMemberDto"
+							}
+						],
+						"nullable": true,
+						"description": "Членство текущего пользователя в чате (с личными настройками)."
+					},
+					"peer": {
+						"allOf": [
+							{
+								"$ref": "#/components/schemas/ChatPeerDto"
+							}
+						],
+						"nullable": true,
+						"description": "Собеседник в direct-чате (null для групп/каналов)"
+					}
+				},
+				"required": [
+					"id",
+					"type",
+					"name",
+					"description",
+					"username",
+					"isPublic",
+					"avatarUrl",
+					"createdById",
+					"slowModeSeconds",
+					"lastMessageAt",
+					"lastMessage",
+					"createdAt",
+					"updatedAt",
+					"members",
+					"membersCount",
+					"me",
+					"peer"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"ICreateDirectChatBody": {
+				"properties": {
+					"targetUserId": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"targetUserId"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"ICreateGroupChatBody": {
+				"properties": {
+					"name": {
+						"type": "string"
+					},
+					"memberIds": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					},
+					"avatarId": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"name",
+					"memberIds"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"ICreateChannelBody": {
+				"properties": {
+					"name": {
+						"type": "string"
+					},
+					"description": {
+						"type": "string"
+					},
+					"username": {
+						"type": "string"
+					},
+					"avatarId": {
+						"type": "string"
+					},
+					"isPublic": {
+						"type": "boolean"
+					}
+				},
+				"required": [
+					"name"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IUpdateChannelBody": {
+				"properties": {
+					"name": {
+						"type": "string"
+					},
+					"description": {
+						"type": "string",
+						"nullable": true
+					},
+					"username": {
+						"type": "string",
+						"nullable": true
+					},
+					"avatarId": {
+						"type": "string",
+						"nullable": true
+					},
+					"isPublic": {
+						"type": "boolean"
+					}
+				},
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IPaginatedDto_ChatDto_": {
+				"description": "Страница по смещению: списки с известным общим числом.",
+				"properties": {
+					"items": {
+						"items": {
+							"$ref": "#/components/schemas/ChatDto"
+						},
+						"type": "array"
+					},
+					"total": {
+						"type": "number",
+						"format": "double",
+						"description": "Всего элементов, подходящих под фильтр."
+					},
+					"offset": {
+						"type": "number",
+						"format": "double"
+					},
+					"limit": {
+						"type": "number",
+						"format": "double"
+					}
+				},
+				"required": [
+					"items",
+					"total",
+					"offset",
+					"limit"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IUpdateChatBody": {
+				"properties": {
+					"name": {
+						"type": "string"
+					},
+					"avatarId": {
+						"type": "string",
+						"nullable": true
+					}
+				},
+				"type": "object",
+				"additionalProperties": false
+			},
+			"ITransferOwnershipBody": {
+				"properties": {
+					"userId": {
+						"type": "string",
+						"description": "Участник, который станет владельцем."
+					}
+				},
+				"required": [
+					"userId"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IPaginatedDto_ChatMemberPublicDto_": {
+				"description": "Страница по смещению: списки с известным общим числом.",
+				"properties": {
+					"items": {
+						"items": {
+							"$ref": "#/components/schemas/ChatMemberPublicDto"
+						},
+						"type": "array"
+					},
+					"total": {
+						"type": "number",
+						"format": "double",
+						"description": "Всего элементов, подходящих под фильтр."
+					},
+					"offset": {
+						"type": "number",
+						"format": "double"
+					},
+					"limit": {
+						"type": "number",
+						"format": "double"
+					}
+				},
+				"required": [
+					"items",
+					"total",
+					"offset",
+					"limit"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"ChatInviteDto": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"chatId": {
+						"type": "string"
+					},
+					"code": {
+						"type": "string"
+					},
+					"createdById": {
+						"type": "string"
+					},
+					"expiresAt": {
+						"type": "string",
+						"format": "date-time",
+						"nullable": true
+					},
+					"maxUses": {
+						"type": "number",
+						"format": "double",
+						"nullable": true
+					},
+					"useCount": {
+						"type": "number",
+						"format": "double"
+					},
+					"isActive": {
+						"type": "boolean"
+					},
+					"createdAt": {
+						"type": "string",
+						"format": "date-time"
+					}
+				},
+				"required": [
+					"id",
+					"chatId",
+					"code",
+					"createdById",
+					"expiresAt",
+					"maxUses",
+					"useCount",
+					"isActive",
+					"createdAt"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"ICreateInviteBody": {
+				"properties": {
+					"expiresAt": {
+						"type": "string"
+					},
+					"maxUses": {
+						"type": "number",
+						"format": "double"
+					}
+				},
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IPaginatedDto_ChatInviteDto_": {
+				"description": "Страница по смещению: списки с известным общим числом.",
+				"properties": {
+					"items": {
+						"items": {
+							"$ref": "#/components/schemas/ChatInviteDto"
+						},
+						"type": "array"
+					},
+					"total": {
+						"type": "number",
+						"format": "double",
+						"description": "Всего элементов, подходящих под фильтр."
+					},
+					"offset": {
+						"type": "number",
+						"format": "double"
+					},
+					"limit": {
+						"type": "number",
+						"format": "double"
+					}
+				},
+				"required": [
+					"items",
+					"total",
+					"offset",
+					"limit"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IMuteChatBody": {
+				"properties": {
+					"mutedUntil": {
+						"type": "string",
+						"nullable": true
+					}
+				},
+				"required": [
+					"mutedUntil"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IAddMembersBody": {
+				"properties": {
+					"memberIds": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"memberIds"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IUpdateMemberRoleBody": {
+				"properties": {
+					"role": {
+						"$ref": "#/components/schemas/EChatMemberRole"
+					}
+				},
+				"required": [
+					"role"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IMoveChatToFolderBody": {
+				"properties": {
+					"folderId": {
+						"type": "string",
+						"nullable": true
+					}
+				},
+				"required": [
+					"folderId"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"ChatFolderDto": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"userId": {
+						"type": "string"
+					},
+					"name": {
+						"type": "string"
+					},
+					"position": {
+						"type": "number",
+						"format": "double"
+					},
+					"createdAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"updatedAt": {
+						"type": "string",
+						"format": "date-time"
+					}
+				},
+				"required": [
+					"id",
+					"userId",
+					"name",
+					"position",
+					"createdAt",
+					"updatedAt"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"ICreateFolderBody": {
+				"properties": {
+					"name": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"name"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IUpdateFolderBody": {
+				"properties": {
+					"name": {
+						"type": "string"
+					},
+					"position": {
+						"type": "number",
+						"format": "double"
+					}
+				},
+				"type": "object",
+				"additionalProperties": false
+			},
+			"ESyncEntityType": {
+				"enum": [
+					"message",
+					"chat",
+					"chat_member",
+					"contact",
+					"profile",
+					"message_pin",
+					"poll",
+					"chat_pin",
+					"chat_folder",
+					"chat_folder_item",
+					"chat_mute"
+				],
+				"type": "string"
+			},
+			"ESyncAction": {
+				"enum": [
+					"create",
+					"update",
+					"delete"
+				],
+				"type": "string"
+			},
+			"Record_string.unknown_": {
+				"properties": {},
+				"additionalProperties": {},
+				"type": "object",
+				"description": "Construct a type with a set of properties K of type T"
+			},
+			"SyncLogDto": {
+				"properties": {
+					"version": {
+						"type": "string"
+					},
+					"entityType": {
+						"$ref": "#/components/schemas/ESyncEntityType"
+					},
+					"entityId": {
+						"type": "string"
+					},
+					"entityKey": {
+						"type": "string"
+					},
+					"action": {
+						"$ref": "#/components/schemas/ESyncAction"
+					},
+					"scopeId": {
+						"type": "string",
+						"nullable": true
+					},
+					"payload": {
+						"allOf": [
+							{
+								"$ref": "#/components/schemas/Record_string.unknown_"
+							}
+						],
+						"nullable": true
+					},
+					"createdAt": {
+						"type": "string",
+						"format": "date-time"
+					}
+				},
+				"required": [
+					"version",
+					"entityType",
+					"entityId",
+					"entityKey",
+					"action",
+					"scopeId",
+					"payload",
+					"createdAt"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"ISyncResponseDto": {
+				"properties": {
+					"changes": {
+						"items": {
+							"$ref": "#/components/schemas/SyncLogDto"
+						},
+						"type": "array"
+					},
+					"currentVersion": {
+						"type": "string"
+					},
+					"hasMore": {
+						"type": "boolean"
+					},
+					"requiresSnapshot": {
+						"type": "boolean",
+						"description": "true — версия клиента устарела, нужно сбросить кэш\nи загрузить данные через обычные API endpoints заново."
+					}
+				},
+				"required": [
+					"changes",
+					"currentVersion",
+					"hasMore",
+					"requiresSnapshot"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"ISyncVersionDto": {
+				"properties": {
+					"currentVersion": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"currentVersion"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
 			"SessionDto": {
 				"properties": {
 					"id": {
@@ -962,6 +1835,238 @@
 					"total",
 					"offset",
 					"limit"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"NotificationSettingsDto": {
+				"properties": {
+					"muteAll": {
+						"type": "boolean"
+					},
+					"soundEnabled": {
+						"type": "boolean"
+					},
+					"showPreview": {
+						"type": "boolean"
+					}
+				},
+				"required": [
+					"muteAll",
+					"soundEnabled",
+					"showPreview"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IUpdateNotificationSettingsBody": {
+				"properties": {
+					"muteAll": {
+						"type": "boolean"
+					},
+					"soundEnabled": {
+						"type": "boolean"
+					},
+					"showPreview": {
+						"type": "boolean"
+					}
+				},
+				"type": "object",
+				"additionalProperties": false
+			},
+			"EDevicePlatform": {
+				"enum": [
+					"ios",
+					"android",
+					"web"
+				],
+				"type": "string"
+			},
+			"DeviceTokenDto": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"token": {
+						"type": "string"
+					},
+					"platform": {
+						"$ref": "#/components/schemas/EDevicePlatform"
+					},
+					"deviceName": {
+						"type": "string",
+						"nullable": true
+					},
+					"createdAt": {
+						"type": "string",
+						"format": "date-time"
+					}
+				},
+				"required": [
+					"id",
+					"token",
+					"platform",
+					"deviceName",
+					"createdAt"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IRegisterDeviceBody": {
+				"properties": {
+					"token": {
+						"type": "string"
+					},
+					"platform": {
+						"$ref": "#/components/schemas/EDevicePlatform"
+					},
+					"deviceName": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"token",
+					"platform"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"PollOptionDto": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"text": {
+						"type": "string"
+					},
+					"position": {
+						"type": "number",
+						"format": "double"
+					},
+					"voterCount": {
+						"type": "number",
+						"format": "double"
+					},
+					"voterIds": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"id",
+					"text",
+					"position",
+					"voterCount",
+					"voterIds"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"PollDto": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"messageId": {
+						"type": "string"
+					},
+					"question": {
+						"type": "string"
+					},
+					"isAnonymous": {
+						"type": "boolean"
+					},
+					"isMultipleChoice": {
+						"type": "boolean"
+					},
+					"isClosed": {
+						"type": "boolean"
+					},
+					"closedAt": {
+						"type": "string",
+						"format": "date-time",
+						"nullable": true
+					},
+					"options": {
+						"items": {
+							"$ref": "#/components/schemas/PollOptionDto"
+						},
+						"type": "array"
+					},
+					"totalVotes": {
+						"type": "number",
+						"format": "double"
+					},
+					"userVotedOptionIds": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					},
+					"createdAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"updatedAt": {
+						"type": "string",
+						"format": "date-time"
+					}
+				},
+				"required": [
+					"id",
+					"messageId",
+					"question",
+					"isAnonymous",
+					"isMultipleChoice",
+					"isClosed",
+					"closedAt",
+					"options",
+					"totalVotes",
+					"userVotedOptionIds",
+					"createdAt",
+					"updatedAt"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IVotePollBody": {
+				"properties": {
+					"optionIds": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"optionIds"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"ICreatePollBody": {
+				"properties": {
+					"question": {
+						"type": "string"
+					},
+					"options": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					},
+					"isAnonymous": {
+						"type": "boolean"
+					},
+					"isMultipleChoice": {
+						"type": "boolean"
+					}
+				},
+				"required": [
+					"question",
+					"options"
 				],
 				"type": "object",
 				"additionalProperties": false
@@ -1808,6 +2913,624 @@
 				"type": "object",
 				"additionalProperties": false
 			},
+			"EMessageStatus": {
+				"enum": [
+					"sent",
+					"delivered",
+					"read"
+				],
+				"type": "string"
+			},
+			"MessageDto": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"localId": {
+						"type": "string",
+						"description": "Транзитный клиентский ID для дедупликации оптимистичных сообщений."
+					},
+					"chatId": {
+						"type": "string"
+					},
+					"senderId": {
+						"type": "string",
+						"nullable": true
+					},
+					"type": {
+						"$ref": "#/components/schemas/EMessageType"
+					},
+					"status": {
+						"$ref": "#/components/schemas/EMessageStatus"
+					},
+					"content": {
+						"type": "string",
+						"nullable": true
+					},
+					"replyToId": {
+						"type": "string",
+						"nullable": true
+					},
+					"forwardedFromId": {
+						"type": "string",
+						"nullable": true
+					},
+					"isEdited": {
+						"type": "boolean"
+					},
+					"isDeleted": {
+						"type": "boolean"
+					},
+					"isPinned": {
+						"type": "boolean"
+					},
+					"pinnedAt": {
+						"type": "string",
+						"format": "date-time",
+						"nullable": true
+					},
+					"pinnedById": {
+						"type": "string",
+						"nullable": true
+					},
+					"keyboard": {
+						"nullable": true
+					},
+					"createdAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"updatedAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"sender": {
+						"properties": {
+							"avatarUrl": {
+								"type": "string",
+								"nullable": true
+							},
+							"lastName": {
+								"type": "string",
+								"nullable": true
+							},
+							"firstName": {
+								"type": "string",
+								"nullable": true
+							},
+							"id": {
+								"type": "string"
+							}
+						},
+						"required": [
+							"id"
+						],
+						"type": "object"
+					},
+					"replyTo": {
+						"allOf": [
+							{
+								"$ref": "#/components/schemas/MessageDto"
+							}
+						],
+						"nullable": true
+					},
+					"attachments": {
+						"items": {
+							"$ref": "#/components/schemas/MessageAttachmentDto"
+						},
+						"type": "array"
+					},
+					"reactions": {
+						"items": {
+							"properties": {
+								"userIds": {
+									"items": {
+										"type": "string"
+									},
+									"type": "array"
+								},
+								"count": {
+									"type": "number",
+									"format": "double"
+								},
+								"emoji": {
+									"type": "string"
+								}
+							},
+							"required": [
+								"userIds",
+								"count",
+								"emoji"
+							],
+							"type": "object"
+						},
+						"type": "array"
+					},
+					"mentions": {
+						"items": {
+							"properties": {
+								"isAll": {
+									"type": "boolean"
+								},
+								"userId": {
+									"type": "string",
+									"nullable": true
+								}
+							},
+							"required": [
+								"isAll",
+								"userId"
+							],
+							"type": "object"
+						},
+						"type": "array"
+					},
+					"poll": {
+						"allOf": [
+							{
+								"$ref": "#/components/schemas/PollDto"
+							}
+						],
+						"nullable": true
+					}
+				},
+				"required": [
+					"id",
+					"chatId",
+					"senderId",
+					"type",
+					"status",
+					"content",
+					"replyToId",
+					"forwardedFromId",
+					"isEdited",
+					"isDeleted",
+					"isPinned",
+					"pinnedAt",
+					"pinnedById",
+					"keyboard",
+					"createdAt",
+					"updatedAt",
+					"attachments",
+					"reactions",
+					"mentions"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"EAttachmentStatus": {
+				"description": "Состояние файла вложения: `processing` — ещё обрабатывается (превью,\nwaveform), `failed` — обработка не удалась. Задаёт модуль file.",
+				"enum": [
+					"processing",
+					"ready",
+					"failed"
+				],
+				"type": "string"
+			},
+			"MessageAttachmentDto": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"fileId": {
+						"type": "string"
+					},
+					"fileName": {
+						"type": "string"
+					},
+					"fileUrl": {
+						"type": "string",
+						"description": "Подписанная ссылка для показа; срок ограничен."
+					},
+					"downloadUrl": {
+						"type": "string",
+						"nullable": true,
+						"description": "Подписанная ссылка на скачивание оригинала под исходным именем."
+					},
+					"fileType": {
+						"type": "string"
+					},
+					"fileSize": {
+						"type": "number",
+						"format": "double"
+					},
+					"thumbnailUrl": {
+						"type": "string",
+						"nullable": true
+					},
+					"status": {
+						"$ref": "#/components/schemas/EAttachmentStatus",
+						"description": "Пока `processing`, превью и waveform могут отсутствовать."
+					},
+					"width": {
+						"type": "number",
+						"format": "double",
+						"nullable": true
+					},
+					"height": {
+						"type": "number",
+						"format": "double",
+						"nullable": true
+					},
+					"duration": {
+						"type": "number",
+						"format": "double",
+						"nullable": true
+					},
+					"waveform": {
+						"items": {
+							"type": "number",
+							"format": "double"
+						},
+						"type": "array",
+						"nullable": true
+					}
+				},
+				"required": [
+					"id",
+					"fileId",
+					"fileName",
+					"fileUrl",
+					"downloadUrl",
+					"fileType",
+					"fileSize",
+					"thumbnailUrl",
+					"status",
+					"width",
+					"height",
+					"duration",
+					"waveform"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IPaginatedDto_MessageDto_": {
+				"description": "Страница по смещению: списки с известным общим числом.",
+				"properties": {
+					"items": {
+						"items": {
+							"$ref": "#/components/schemas/MessageDto"
+						},
+						"type": "array"
+					},
+					"total": {
+						"type": "number",
+						"format": "double",
+						"description": "Всего элементов, подходящих под фильтр."
+					},
+					"offset": {
+						"type": "number",
+						"format": "double"
+					},
+					"limit": {
+						"type": "number",
+						"format": "double"
+					}
+				},
+				"required": [
+					"items",
+					"total",
+					"offset",
+					"limit"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IEditMessageBody": {
+				"properties": {
+					"content": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"content"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IAddReactionBody": {
+				"properties": {
+					"emoji": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"emoji"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"MessageReceiptDto": {
+				"properties": {
+					"userId": {
+						"type": "string"
+					},
+					"status": {
+						"$ref": "#/components/schemas/EMessageStatus"
+					},
+					"updatedAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"user": {
+						"properties": {
+							"avatarUrl": {
+								"type": "string",
+								"nullable": true
+							},
+							"lastName": {
+								"type": "string",
+								"nullable": true
+							},
+							"firstName": {
+								"type": "string",
+								"nullable": true
+							},
+							"id": {
+								"type": "string"
+							}
+						},
+						"required": [
+							"id"
+						],
+						"type": "object"
+					}
+				},
+				"required": [
+					"userId",
+					"status",
+					"updatedAt"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"EMessageType.TEXT": {
+				"enum": [
+					"text"
+				],
+				"type": "string"
+			},
+			"EMessageType.IMAGE": {
+				"enum": [
+					"image"
+				],
+				"type": "string"
+			},
+			"EMessageType.FILE": {
+				"enum": [
+					"file"
+				],
+				"type": "string"
+			},
+			"EMessageType.VOICE": {
+				"enum": [
+					"voice"
+				],
+				"type": "string"
+			},
+			"TClientMessageType": {
+				"anyOf": [
+					{
+						"$ref": "#/components/schemas/EMessageType.TEXT"
+					},
+					{
+						"$ref": "#/components/schemas/EMessageType.IMAGE"
+					},
+					{
+						"$ref": "#/components/schemas/EMessageType.FILE"
+					},
+					{
+						"$ref": "#/components/schemas/EMessageType.VOICE"
+					}
+				]
+			},
+			"ISendMessageBody": {
+				"properties": {
+					"type": {
+						"$ref": "#/components/schemas/TClientMessageType",
+						"description": "Служебные типы (system, poll) клиент не отправляет."
+					},
+					"content": {
+						"type": "string"
+					},
+					"replyToId": {
+						"type": "string"
+					},
+					"forwardedFromId": {
+						"type": "string"
+					},
+					"fileIds": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					},
+					"mentionedUserIds": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					},
+					"mentionAll": {
+						"type": "boolean"
+					},
+					"localId": {
+						"type": "string",
+						"description": "Клиентский ID для дедупликации оптимистичных сообщений. Транзитное поле — не сохраняется в БД."
+					}
+				},
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IMessagePageDto": {
+				"description": "Страница истории сообщений (от новых к старым). `nextCursor` — к более\nстарым, `prevCursor` — к более новым; `null` — в эту сторону конец.",
+				"properties": {
+					"items": {
+						"items": {
+							"$ref": "#/components/schemas/MessageDto"
+						},
+						"type": "array"
+					},
+					"nextCursor": {
+						"type": "string",
+						"nullable": true,
+						"description": "Курсор следующей страницы; `null` — страниц больше нет."
+					},
+					"prevCursor": {
+						"type": "string",
+						"nullable": true,
+						"description": "Курсор более новых сообщений; `null` — страница содержит самые новые."
+					}
+				},
+				"required": [
+					"items",
+					"nextCursor",
+					"prevCursor"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"MediaItemDto": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"messageId": {
+						"type": "string"
+					},
+					"chatId": {
+						"type": "string"
+					},
+					"senderId": {
+						"type": "string",
+						"nullable": true
+					},
+					"attachments": {
+						"items": {
+							"$ref": "#/components/schemas/MessageAttachmentDto"
+						},
+						"type": "array"
+					},
+					"createdAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"sender": {
+						"properties": {
+							"avatarUrl": {
+								"type": "string",
+								"nullable": true
+							},
+							"lastName": {
+								"type": "string",
+								"nullable": true
+							},
+							"firstName": {
+								"type": "string",
+								"nullable": true
+							},
+							"id": {
+								"type": "string"
+							}
+						},
+						"required": [
+							"id"
+						],
+						"type": "object"
+					}
+				},
+				"required": [
+					"id",
+					"messageId",
+					"chatId",
+					"senderId",
+					"attachments",
+					"createdAt"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IPaginatedDto_MediaItemDto_": {
+				"description": "Страница по смещению: списки с известным общим числом.",
+				"properties": {
+					"items": {
+						"items": {
+							"$ref": "#/components/schemas/MediaItemDto"
+						},
+						"type": "array"
+					},
+					"total": {
+						"type": "number",
+						"format": "double",
+						"description": "Всего элементов, подходящих под фильтр."
+					},
+					"offset": {
+						"type": "number",
+						"format": "double"
+					},
+					"limit": {
+						"type": "number",
+						"format": "double"
+					}
+				},
+				"required": [
+					"items",
+					"total",
+					"offset",
+					"limit"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IMediaStatsDto": {
+				"properties": {
+					"images": {
+						"type": "number",
+						"format": "double"
+					},
+					"videos": {
+						"type": "number",
+						"format": "double"
+					},
+					"audio": {
+						"type": "number",
+						"format": "double"
+					},
+					"documents": {
+						"type": "number",
+						"format": "double"
+					},
+					"total": {
+						"type": "number",
+						"format": "double"
+					}
+				},
+				"required": [
+					"images",
+					"videos",
+					"audio",
+					"documents",
+					"total"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IMarkReadBody": {
+				"properties": {
+					"messageIds": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"messageIds"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
 			"EJobRunStatus": {
 				"description": "Статус видимой задачи.",
 				"enum": [
@@ -2234,6 +3957,711 @@
 				"type": "object",
 				"additionalProperties": false
 			},
+			"ISetSlowModeBody": {
+				"properties": {
+					"seconds": {
+						"type": "number",
+						"format": "double"
+					}
+				},
+				"required": [
+					"seconds"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IBanMemberBody": {
+				"properties": {
+					"duration": {
+						"type": "number",
+						"format": "double"
+					},
+					"reason": {
+						"type": "string"
+					}
+				},
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IBannedMemberDto": {
+				"properties": {
+					"userId": {
+						"type": "string"
+					},
+					"chatId": {
+						"type": "string"
+					},
+					"bannedBy": {
+						"type": "string",
+						"nullable": true,
+						"description": "Кто забанил (null — пользователь удалён)."
+					},
+					"reason": {
+						"type": "string",
+						"nullable": true
+					},
+					"bannedAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"expiresAt": {
+						"type": "string",
+						"format": "date-time",
+						"nullable": true,
+						"description": "null — бессрочный бан."
+					}
+				},
+				"required": [
+					"userId",
+					"chatId",
+					"bannedBy",
+					"reason",
+					"bannedAt",
+					"expiresAt"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IPaginatedDto_IBannedMemberDto_": {
+				"description": "Страница по смещению: списки с известным общим числом.",
+				"properties": {
+					"items": {
+						"items": {
+							"$ref": "#/components/schemas/IBannedMemberDto"
+						},
+						"type": "array"
+					},
+					"total": {
+						"type": "number",
+						"format": "double",
+						"description": "Всего элементов, подходящих под фильтр."
+					},
+					"offset": {
+						"type": "number",
+						"format": "double"
+					},
+					"limit": {
+						"type": "number",
+						"format": "double"
+					}
+				},
+				"required": [
+					"items",
+					"total",
+					"offset",
+					"limit"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"ECallType": {
+				"enum": [
+					"voice",
+					"video"
+				],
+				"type": "string"
+			},
+			"ECallStatus": {
+				"enum": [
+					"ringing",
+					"active",
+					"ended",
+					"missed",
+					"declined"
+				],
+				"type": "string"
+			},
+			"CallDto": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"callerId": {
+						"type": "string"
+					},
+					"calleeId": {
+						"type": "string"
+					},
+					"chatId": {
+						"type": "string",
+						"nullable": true
+					},
+					"type": {
+						"$ref": "#/components/schemas/ECallType"
+					},
+					"status": {
+						"$ref": "#/components/schemas/ECallStatus"
+					},
+					"ringingTimeoutAt": {
+						"type": "string",
+						"format": "date-time",
+						"nullable": true
+					},
+					"startedAt": {
+						"type": "string",
+						"format": "date-time",
+						"nullable": true
+					},
+					"endedAt": {
+						"type": "string",
+						"format": "date-time",
+						"nullable": true
+					},
+					"duration": {
+						"type": "number",
+						"format": "double",
+						"nullable": true
+					},
+					"createdAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"updatedAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"caller": {
+						"properties": {
+							"avatarUrl": {
+								"type": "string",
+								"nullable": true
+							},
+							"lastName": {
+								"type": "string",
+								"nullable": true
+							},
+							"firstName": {
+								"type": "string",
+								"nullable": true
+							},
+							"id": {
+								"type": "string"
+							}
+						},
+						"required": [
+							"id"
+						],
+						"type": "object"
+					},
+					"callee": {
+						"properties": {
+							"avatarUrl": {
+								"type": "string",
+								"nullable": true
+							},
+							"lastName": {
+								"type": "string",
+								"nullable": true
+							},
+							"firstName": {
+								"type": "string",
+								"nullable": true
+							},
+							"id": {
+								"type": "string"
+							}
+						},
+						"required": [
+							"id"
+						],
+						"type": "object"
+					}
+				},
+				"required": [
+					"id",
+					"callerId",
+					"calleeId",
+					"chatId",
+					"type",
+					"status",
+					"ringingTimeoutAt",
+					"startedAt",
+					"endedAt",
+					"duration",
+					"createdAt",
+					"updatedAt"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IInitiateCallBody": {
+				"properties": {
+					"calleeId": {
+						"type": "string"
+					},
+					"type": {
+						"$ref": "#/components/schemas/ECallType"
+					}
+				},
+				"required": [
+					"calleeId"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IPaginatedDto_CallDto_": {
+				"description": "Страница по смещению: списки с известным общим числом.",
+				"properties": {
+					"items": {
+						"items": {
+							"$ref": "#/components/schemas/CallDto"
+						},
+						"type": "array"
+					},
+					"total": {
+						"type": "number",
+						"format": "double",
+						"description": "Всего элементов, подходящих под фильтр."
+					},
+					"offset": {
+						"type": "number",
+						"format": "double"
+					},
+					"limit": {
+						"type": "number",
+						"format": "double"
+					}
+				},
+				"required": [
+					"items",
+					"total",
+					"offset",
+					"limit"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"BotCommandDto": {
+				"properties": {
+					"command": {
+						"type": "string"
+					},
+					"description": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"command",
+					"description"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"BotDetailDto": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"userId": {
+						"type": "string",
+						"description": "Технический пользователь бота — отправитель его сообщений, участник чатов."
+					},
+					"username": {
+						"type": "string"
+					},
+					"displayName": {
+						"type": "string"
+					},
+					"description": {
+						"type": "string",
+						"nullable": true
+					},
+					"avatarUrl": {
+						"type": "string",
+						"nullable": true,
+						"description": "Подписанная ссылка на аватар; срок ограничен."
+					},
+					"isActive": {
+						"type": "boolean"
+					},
+					"createdAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"token": {
+						"type": "string"
+					},
+					"webhookUrl": {
+						"type": "string",
+						"nullable": true
+					},
+					"webhookSecret": {
+						"type": "string",
+						"nullable": true
+					},
+					"webhookEvents": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					},
+					"webhookDisabledAt": {
+						"type": "string",
+						"format": "date-time",
+						"nullable": true,
+						"description": "Вебхук отключён автоматически после серии провалов; `null` — работает."
+					},
+					"webhookFailureCount": {
+						"type": "number",
+						"format": "double",
+						"description": "Подряд проваленных доставок."
+					},
+					"commands": {
+						"items": {
+							"$ref": "#/components/schemas/BotCommandDto"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"id",
+					"userId",
+					"username",
+					"displayName",
+					"description",
+					"avatarUrl",
+					"isActive",
+					"createdAt",
+					"token",
+					"webhookUrl",
+					"webhookSecret",
+					"webhookEvents",
+					"webhookDisabledAt",
+					"webhookFailureCount",
+					"commands"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"ICreateBotBody": {
+				"properties": {
+					"username": {
+						"type": "string"
+					},
+					"displayName": {
+						"type": "string"
+					},
+					"description": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"username",
+					"displayName"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"BotDto": {
+				"description": "Бот; ссылка на аватар — из карты подписей `files`.",
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"userId": {
+						"type": "string",
+						"description": "Технический пользователь бота — отправитель его сообщений, участник чатов."
+					},
+					"username": {
+						"type": "string"
+					},
+					"displayName": {
+						"type": "string"
+					},
+					"description": {
+						"type": "string",
+						"nullable": true
+					},
+					"avatarUrl": {
+						"type": "string",
+						"nullable": true,
+						"description": "Подписанная ссылка на аватар; срок ограничен."
+					},
+					"isActive": {
+						"type": "boolean"
+					},
+					"createdAt": {
+						"type": "string",
+						"format": "date-time"
+					}
+				},
+				"required": [
+					"id",
+					"userId",
+					"username",
+					"displayName",
+					"description",
+					"avatarUrl",
+					"isActive",
+					"createdAt"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IPaginatedDto_BotDto_": {
+				"description": "Страница по смещению: списки с известным общим числом.",
+				"properties": {
+					"items": {
+						"items": {
+							"$ref": "#/components/schemas/BotDto"
+						},
+						"type": "array"
+					},
+					"total": {
+						"type": "number",
+						"format": "double",
+						"description": "Всего элементов, подходящих под фильтр."
+					},
+					"offset": {
+						"type": "number",
+						"format": "double"
+					},
+					"limit": {
+						"type": "number",
+						"format": "double"
+					}
+				},
+				"required": [
+					"items",
+					"total",
+					"offset",
+					"limit"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IUpdateBotBody": {
+				"properties": {
+					"displayName": {
+						"type": "string"
+					},
+					"description": {
+						"type": "string",
+						"nullable": true
+					},
+					"avatarId": {
+						"type": "string",
+						"nullable": true
+					}
+				},
+				"type": "object",
+				"additionalProperties": false
+			},
+			"ISetWebhookBody": {
+				"properties": {
+					"url": {
+						"type": "string"
+					},
+					"secret": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"url"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"ISetCommandsBody": {
+				"properties": {
+					"commands": {
+						"items": {
+							"properties": {
+								"description": {
+									"type": "string"
+								},
+								"command": {
+									"type": "string"
+								}
+							},
+							"required": [
+								"description",
+								"command"
+							],
+							"type": "object"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"commands"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IWebhookTestResponse": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"statusCode": {
+						"type": "number",
+						"format": "double",
+						"nullable": true
+					},
+					"errorMessage": {
+						"type": "string",
+						"nullable": true
+					},
+					"durationMs": {
+						"type": "number",
+						"format": "double"
+					}
+				},
+				"required": [
+					"success",
+					"statusCode",
+					"errorMessage",
+					"durationMs"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"WebhookLogDto": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"deliveryId": {
+						"type": "string",
+						"nullable": true,
+						"description": "Доставка, к которой относится попытка; `null` — тестовый ping."
+					},
+					"eventType": {
+						"type": "string"
+					},
+					"payload": {
+						"allOf": [
+							{
+								"$ref": "#/components/schemas/Record_string.unknown_"
+							}
+						],
+						"nullable": true
+					},
+					"statusCode": {
+						"type": "number",
+						"format": "double",
+						"nullable": true
+					},
+					"success": {
+						"type": "boolean"
+					},
+					"errorMessage": {
+						"type": "string",
+						"nullable": true
+					},
+					"attempts": {
+						"type": "number",
+						"format": "double",
+						"description": "Номер попытки, с 1."
+					},
+					"durationMs": {
+						"type": "number",
+						"format": "double",
+						"nullable": true
+					},
+					"createdAt": {
+						"type": "string",
+						"format": "date-time"
+					}
+				},
+				"required": [
+					"id",
+					"deliveryId",
+					"eventType",
+					"payload",
+					"statusCode",
+					"success",
+					"errorMessage",
+					"attempts",
+					"durationMs",
+					"createdAt"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IPaginatedDto_WebhookLogDto_": {
+				"description": "Страница по смещению: списки с известным общим числом.",
+				"properties": {
+					"items": {
+						"items": {
+							"$ref": "#/components/schemas/WebhookLogDto"
+						},
+						"type": "array"
+					},
+					"total": {
+						"type": "number",
+						"format": "double",
+						"description": "Всего элементов, подходящих под фильтр."
+					},
+					"offset": {
+						"type": "number",
+						"format": "double"
+					},
+					"limit": {
+						"type": "number",
+						"format": "double"
+					}
+				},
+				"required": [
+					"items",
+					"total",
+					"offset",
+					"limit"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"ISetWebhookEventsBody": {
+				"properties": {
+					"events": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"events"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IBotSendMessageBody": {
+				"description": "Текстовое сообщение бота; `type` — только `text`.",
+				"properties": {
+					"chatId": {
+						"type": "string"
+					},
+					"content": {
+						"type": "string"
+					},
+					"type": {
+						"$ref": "#/components/schemas/EMessageType.TEXT"
+					},
+					"replyToId": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"chatId",
+					"content"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IBotEditMessageBody": {
+				"properties": {
+					"content": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"content"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
 			"IRegisterBiometricResponseDto": {
 				"properties": {
 					"registered": {
@@ -2383,12 +4811,6 @@
 				],
 				"type": "object",
 				"additionalProperties": false
-			},
-			"Record_string.unknown_": {
-				"properties": {},
-				"additionalProperties": {},
-				"type": "object",
-				"description": "Construct a type with a set of properties K of type T"
 			},
 			"AuditEventDto": {
 				"description": "Событие журнала безопасности.",
@@ -2597,6 +5019,12 @@
 				"type": "http",
 				"scheme": "bearer",
 				"bearerFormat": "JWT"
+			},
+			"bot": {
+				"type": "apiKey",
+				"in": "header",
+				"name": "X-Bot-Token",
+				"description": "Токен бота; также `Authorization: Bot <token>`"
 			},
 			"apiKey": {
 				"type": "apiKey",
@@ -4350,6 +6778,1863 @@
 				]
 			}
 		},
+		"/api/v1/contact": {
+			"post": {
+				"operationId": "AddContact",
+				"responses": {
+					"201": {
+						"description": "Created",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ContactDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Добавить контакт. Недоступно, если один из пользователей заблокировал\nдругого (403).",
+				"summary": "Добавление контакта",
+				"tags": [
+					"Contact"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/ICreateContactBody"
+							}
+						}
+					}
+				}
+			},
+			"get": {
+				"operationId": "GetContacts",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IPaginatedDto_ContactDto_"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Контакты текущего пользователя постранично. `status=blocked` —\nсписок заблокированных.",
+				"summary": "Список контактов",
+				"tags": [
+					"Contact"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "query",
+						"name": "status",
+						"required": false,
+						"schema": {
+							"$ref": "#/components/schemas/EContactStatus"
+						}
+					},
+					{
+						"description": "Смещение (по умолчанию 0)",
+						"in": "query",
+						"name": "offset",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					},
+					{
+						"description": "Размер страницы (по умолчанию 20, максимум 100)",
+						"in": "query",
+						"name": "limit",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/contact/block/{userId}": {
+			"post": {
+				"operationId": "BlockUser",
+				"responses": {
+					"204": {
+						"description": "No Content"
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Заблокировать пользователя (идемпотентно). Заблокированный не может\nписать, звонить, создавать личный чат и добавлять в группы/контакты.",
+				"summary": "Блокировка пользователя",
+				"tags": [
+					"Contact"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "userId",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					}
+				]
+			},
+			"delete": {
+				"operationId": "UnblockUser",
+				"responses": {
+					"204": {
+						"description": "No Content"
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Снять блокировку пользователя. Контакт при этом не восстанавливается.",
+				"summary": "Разблокировка пользователя",
+				"tags": [
+					"Contact"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "userId",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/contact/{id}/accept": {
+			"patch": {
+				"operationId": "AcceptContact",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ContactDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Принять запрос на добавление в контакты.",
+				"summary": "Принять контакт",
+				"tags": [
+					"Contact"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/contact/{id}": {
+			"delete": {
+				"operationId": "RemoveContact",
+				"responses": {
+					"204": {
+						"description": "No Content"
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Удалить контакт (обе стороны связи). Блокировку, поставленную\nсобеседником, удаление не снимает; свою — только разблокировкой (409).",
+				"summary": "Удаление контакта",
+				"tags": [
+					"Contact"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/chat/direct": {
+			"post": {
+				"operationId": "CreateDirectChat",
+				"responses": {
+					"201": {
+						"description": "Created",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ChatDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Создать или получить существующий личный чат.",
+				"summary": "Создание личного чата",
+				"tags": [
+					"Chat"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/ICreateDirectChatBody"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/chat/group": {
+			"post": {
+				"operationId": "CreateGroupChat",
+				"responses": {
+					"201": {
+						"description": "Created",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ChatDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Создать групповой чат.",
+				"summary": "Создание группового чата",
+				"tags": [
+					"Chat"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/ICreateGroupChatBody"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/chat/channel": {
+			"post": {
+				"operationId": "CreateChannel",
+				"responses": {
+					"201": {
+						"description": "Created",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ChatDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Создать канал.",
+				"summary": "Создание канала",
+				"tags": [
+					"Chat"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/ICreateChannelBody"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/chat/channel/{id}": {
+			"patch": {
+				"operationId": "UpdateChannel",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ChatDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Обновить канал.",
+				"summary": "Обновление канала",
+				"tags": [
+					"Chat"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IUpdateChannelBody"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/chat/channel/{id}/subscribe": {
+			"post": {
+				"operationId": "SubscribeToChannel",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ChatDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Подписаться на публичный канал.",
+				"summary": "Подписка на канал",
+				"tags": [
+					"Chat"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					}
+				]
+			},
+			"delete": {
+				"operationId": "UnsubscribeFromChannel",
+				"responses": {
+					"204": {
+						"description": "No Content"
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Отписаться от канала.",
+				"summary": "Отписка от канала",
+				"tags": [
+					"Chat"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/chat/channel/search": {
+			"get": {
+				"operationId": "SearchChannels",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IPaginatedDto_ChatDto_"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Поиск публичных каналов. Запрос `q` — минимум 2 символа.",
+				"summary": "Поиск каналов",
+				"tags": [
+					"Chat"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "query",
+						"name": "q",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"description": "Смещение (по умолчанию 0)",
+						"in": "query",
+						"name": "offset",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					},
+					{
+						"description": "Размер страницы (по умолчанию 20, максимум 100)",
+						"in": "query",
+						"name": "limit",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/chat": {
+			"get": {
+				"operationId": "GetUserChats",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IPaginatedDto_ChatDto_"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Список чатов текущего пользователя. Для каждого чата — своё членство\n(`me`), `membersCount` и первые участники; скрытые direct-чаты не входят.",
+				"summary": "Список чатов",
+				"tags": [
+					"Chat"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"description": "Смещение (по умолчанию 0)",
+						"in": "query",
+						"name": "offset",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					},
+					{
+						"description": "Размер страницы (по умолчанию 20, максимум 100)",
+						"in": "query",
+						"name": "limit",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/chat/{id}": {
+			"get": {
+				"operationId": "GetChatById",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ChatDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Получить информацию о чате.",
+				"summary": "Получение чата",
+				"tags": [
+					"Chat"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					}
+				]
+			},
+			"patch": {
+				"operationId": "UpdateChat",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ChatDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Обновить групповой чат (название, аватар).",
+				"summary": "Обновление чата",
+				"tags": [
+					"Chat"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IUpdateChatBody"
+							}
+						}
+					}
+				}
+			},
+			"delete": {
+				"operationId": "DeleteChat",
+				"responses": {
+					"204": {
+						"description": "No Content"
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Удалить группу или канал. Только владелец.",
+				"summary": "Удаление чата",
+				"tags": [
+					"Chat"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/chat/{id}/leave": {
+			"post": {
+				"operationId": "LeaveChat",
+				"responses": {
+					"204": {
+						"description": "No Content"
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Покинуть чат. Личный чат скрывается до нового сообщения. Владелец\nгруппы/канала должен сначала передать права (409), если он не последний\nучастник; последний участник-владелец удаляет чат.",
+				"summary": "Выход из чата",
+				"tags": [
+					"Chat"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/chat/{id}/transfer-ownership": {
+			"post": {
+				"operationId": "TransferOwnership",
+				"responses": {
+					"204": {
+						"description": "No Content"
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Передать права владельца другому участнику. Текущий владелец становится\nадминистратором.",
+				"summary": "Передача владения",
+				"tags": [
+					"Chat"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/ITransferOwnershipBody"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/chat/{id}/members": {
+			"get": {
+				"operationId": "GetChatMembers",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IPaginatedDto_ChatMemberPublicDto_"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Участники чата постранично (без приватных настроек).",
+				"summary": "Участники чата",
+				"tags": [
+					"Chat"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					},
+					{
+						"description": "Смещение (по умолчанию 0)",
+						"in": "query",
+						"name": "offset",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					},
+					{
+						"description": "Размер страницы (по умолчанию 20, максимум 100)",
+						"in": "query",
+						"name": "limit",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					}
+				]
+			},
+			"post": {
+				"operationId": "AddMembers",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"items": {
+										"$ref": "#/components/schemas/ChatMemberPublicDto"
+									},
+									"type": "array"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Добавить участников в групповой чат. Возвращает только добавленных\n(уже состоявшие пропускаются).",
+				"summary": "Добавление участников",
+				"tags": [
+					"Chat"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IAddMembersBody"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/chat/{id}/invite": {
+			"post": {
+				"operationId": "CreateInviteLink",
+				"responses": {
+					"201": {
+						"description": "Created",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ChatInviteDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Создать invite-ссылку для группового чата.",
+				"summary": "Создание invite-ссылки",
+				"tags": [
+					"Chat"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/ICreateInviteBody"
+							}
+						}
+					}
+				}
+			},
+			"get": {
+				"operationId": "GetInvites",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IPaginatedDto_ChatInviteDto_"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Активные invite-ссылки чата постранично. Только ADMIN/OWNER.",
+				"summary": "Список invite-ссылок",
+				"tags": [
+					"Chat"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					},
+					{
+						"description": "Смещение (по умолчанию 0)",
+						"in": "query",
+						"name": "offset",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					},
+					{
+						"description": "Размер страницы (по умолчанию 20, максимум 100)",
+						"in": "query",
+						"name": "limit",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/chat/{id}/invite/{inviteId}": {
+			"delete": {
+				"operationId": "RevokeInvite",
+				"responses": {
+					"204": {
+						"description": "No Content"
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Отозвать invite-ссылку.",
+				"summary": "Отзыв invite-ссылки",
+				"tags": [
+					"Chat"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					},
+					{
+						"in": "path",
+						"name": "inviteId",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/chat/join/{code}": {
+			"post": {
+				"operationId": "JoinByInvite",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ChatDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Присоединиться к чату по invite-коду.",
+				"summary": "Вступление по invite-ссылке",
+				"tags": [
+					"Chat"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "code",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/chat/{id}/mute": {
+			"patch": {
+				"operationId": "MuteChat",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ChatMemberDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Замутить или размутить чат.",
+				"summary": "Мут чата",
+				"tags": [
+					"Chat"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IMuteChatBody"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/chat/{id}/members/{userId}": {
+			"delete": {
+				"operationId": "RemoveMember",
+				"responses": {
+					"204": {
+						"description": "No Content"
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Удалить участника группы или канала. Владелец — любого, администратор —\nтолько участников и подписчиков.",
+				"summary": "Удаление участника",
+				"tags": [
+					"Chat"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					},
+					{
+						"in": "path",
+						"name": "userId",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					}
+				]
+			},
+			"patch": {
+				"operationId": "UpdateMemberRole",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ChatMemberPublicDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Изменить роль участника. Только владелец; свою роль и роль владельца\nменять нельзя. Группа: ADMIN/MEMBER, канал: ADMIN/SUBSCRIBER.\nВладение передаётся отдельным методом.",
+				"summary": "Изменение роли участника",
+				"tags": [
+					"Chat"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					},
+					{
+						"in": "path",
+						"name": "userId",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IUpdateMemberRoleBody"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/chat/{id}/pin": {
+			"post": {
+				"operationId": "PinChat",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ChatMemberDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Закрепить чат.",
+				"summary": "Закрепление чата",
+				"tags": [
+					"Chat"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					}
+				]
+			},
+			"delete": {
+				"operationId": "UnpinChat",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ChatMemberDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Открепить чат.",
+				"summary": "Открепление чата",
+				"tags": [
+					"Chat"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/chat/{id}/folder": {
+			"patch": {
+				"operationId": "MoveChatToFolder",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ChatMemberDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Переместить чат в папку.",
+				"summary": "Перемещение в папку",
+				"tags": [
+					"Chat"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IMoveChatToFolderBody"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/chat/folder/list": {
+			"get": {
+				"operationId": "GetUserFolders",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"items": {
+										"$ref": "#/components/schemas/ChatFolderDto"
+									},
+									"type": "array"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Папки чатов пользователя — целиком (не больше 20).",
+				"summary": "Список папок",
+				"tags": [
+					"Chat"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": []
+			}
+		},
+		"/api/v1/chat/folder": {
+			"post": {
+				"operationId": "CreateFolder",
+				"responses": {
+					"201": {
+						"description": "Created",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ChatFolderDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Создать папку для чатов.",
+				"summary": "Создание папки",
+				"tags": [
+					"Chat"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/ICreateFolderBody"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/chat/folder/{folderId}": {
+			"patch": {
+				"operationId": "UpdateFolder",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ChatFolderDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Обновить папку.",
+				"summary": "Обновление папки",
+				"tags": [
+					"Chat"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "folderId",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IUpdateFolderBody"
+							}
+						}
+					}
+				}
+			},
+			"delete": {
+				"operationId": "DeleteFolder",
+				"responses": {
+					"204": {
+						"description": "No Content"
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Удалить папку.",
+				"summary": "Удаление папки",
+				"tags": [
+					"Chat"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "folderId",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/sync": {
+			"get": {
+				"operationId": "GetChanges",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ISyncResponseDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Получить изменения с указанной версии (компактифицированные).\nЕсли версия клиента устарела — вернёт requiresSnapshot: true.",
+				"summary": "Incremental sync",
+				"tags": [
+					"Sync"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "query",
+						"name": "sinceVersion",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "limit",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/sync/version": {
+			"get": {
+				"operationId": "GetVersion",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ISyncVersionDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Получить текущую sync version.\nИспользуется при первом запуске для установки начальной точки синхронизации.",
+				"summary": "Current sync version",
+				"tags": [
+					"Sync"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": []
+			}
+		},
 		"/api/v1/session": {
 			"get": {
 				"operationId": "GetSessions",
@@ -4478,6 +8763,431 @@
 					}
 				],
 				"parameters": []
+			}
+		},
+		"/api/v1/notification/settings": {
+			"get": {
+				"operationId": "GetSettings",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/NotificationSettingsDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Получить настройки уведомлений текущего пользователя.",
+				"summary": "Настройки уведомлений",
+				"tags": [
+					"Push"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": []
+			},
+			"patch": {
+				"operationId": "UpdateSettings",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/NotificationSettingsDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Обновить настройки уведомлений.",
+				"summary": "Обновление настроек уведомлений",
+				"tags": [
+					"Push"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IUpdateNotificationSettingsBody"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/device": {
+			"post": {
+				"operationId": "RegisterDevice",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/DeviceTokenDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Зарегистрировать устройство для push-уведомлений.\nТокен привязывается к текущей сессии и удаляется при её завершении.\nТокен, привязанный к другому пользователю, перепривязывается.",
+				"summary": "Регистрация устройства",
+				"tags": [
+					"Push"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IRegisterDeviceBody"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/device/{token}": {
+			"delete": {
+				"operationId": "UnregisterDevice",
+				"responses": {
+					"204": {
+						"description": "No Content"
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Удалить своё устройство из push-уведомлений.\nЧужой или несуществующий токен — 404.",
+				"summary": "Удаление устройства",
+				"tags": [
+					"Push"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "token",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/poll/{id}/vote": {
+			"post": {
+				"operationId": "Vote",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/PollDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Проголосовать в опросе. Закрытый опрос или удалённое сообщение — 400;\nповторяющиеся optionIds схлопываются.",
+				"summary": "Голосование",
+				"tags": [
+					"Poll"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IVotePollBody"
+							}
+						}
+					}
+				}
+			},
+			"delete": {
+				"operationId": "RetractVote",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/PollDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Отозвать голос.",
+				"summary": "Отзыв голоса",
+				"tags": [
+					"Poll"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/poll/{id}/close": {
+			"post": {
+				"operationId": "ClosePoll",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/PollDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Закрыть опрос. Доступно автору и ADMIN/OWNER чата.",
+				"summary": "Закрытие опроса",
+				"tags": [
+					"Poll"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/poll/{id}": {
+			"get": {
+				"operationId": "GetPoll",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/PollDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Получить опрос по ID (только участникам чата).",
+				"summary": "Получение опроса",
+				"tags": [
+					"Poll"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/chat/{chatId}/poll": {
+			"post": {
+				"operationId": "CreatePoll",
+				"responses": {
+					"201": {
+						"description": "Created",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/PollDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Создать опрос в чате. Создаётся как сообщение типа poll: те же права,\nslow mode и блокировки, что у отправки сообщения.",
+				"summary": "Создание опроса",
+				"tags": [
+					"Poll"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "chatId",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/ICreatePollBody"
+							}
+						}
+					}
+				}
 			}
 		},
 		"/api/v1/auth/sign-up": {
@@ -5206,6 +9916,848 @@
 				}
 			}
 		},
+		"/api/v1/message/search": {
+			"get": {
+				"operationId": "SearchMessages",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IPaginatedDto_MessageDto_"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Глобальный поиск по сообщениям во всех чатах пользователя.\nЗапрос — минимум 2 символа; `%` и `_` ищутся буквально.",
+				"summary": "Глобальный поиск сообщений",
+				"tags": [
+					"Message"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "query",
+						"name": "q",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"description": "Смещение (по умолчанию 0)",
+						"in": "query",
+						"name": "offset",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					},
+					{
+						"description": "Размер страницы (по умолчанию 20, максимум 100)",
+						"in": "query",
+						"name": "limit",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/message/{id}": {
+			"patch": {
+				"operationId": "EditMessage",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/MessageDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Отредактировать своё текстовое сообщение (нужно быть участником чата).",
+				"summary": "Редактирование сообщения",
+				"tags": [
+					"Message"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IEditMessageBody"
+							}
+						}
+					}
+				}
+			},
+			"delete": {
+				"operationId": "DeleteMessage",
+				"responses": {
+					"204": {
+						"description": "No Content"
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Удалить сообщение. forAll=true — для всех (автор или ADMIN/OWNER;\nповторно — 400; опрос при этом закрывается), forAll=false — только для себя.",
+				"summary": "Удаление сообщения",
+				"tags": [
+					"Message"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"description": "ID сообщения",
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					},
+					{
+						"description": "Удалить для всех (по умолчанию false — только для себя)",
+						"in": "query",
+						"name": "forAll",
+						"required": false,
+						"schema": {
+							"type": "boolean"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/message/{id}/reaction": {
+			"post": {
+				"operationId": "AddReaction",
+				"responses": {
+					"204": {
+						"description": "No Content"
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Добавить реакцию на сообщение.",
+				"summary": "Добавление реакции",
+				"tags": [
+					"Message"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IAddReactionBody"
+							}
+						}
+					}
+				}
+			},
+			"delete": {
+				"operationId": "RemoveReaction",
+				"responses": {
+					"204": {
+						"description": "No Content"
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Удалить реакцию с сообщения.",
+				"summary": "Удаление реакции",
+				"tags": [
+					"Message"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/message/{id}/pin": {
+			"post": {
+				"operationId": "PinMessage",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/MessageDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Закрепить сообщение. В группе и канале — только ADMIN/OWNER,\nв личном чате — любой участник.",
+				"summary": "Закрепление сообщения",
+				"tags": [
+					"Message"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					}
+				]
+			},
+			"delete": {
+				"operationId": "UnpinMessage",
+				"responses": {
+					"204": {
+						"description": "No Content"
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Открепить сообщение. Права — как у закрепления.",
+				"summary": "Открепление сообщения",
+				"tags": [
+					"Message"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/message/{id}/receipts": {
+			"get": {
+				"operationId": "GetReceiptInfo",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"items": {
+										"$ref": "#/components/schemas/MessageReceiptDto"
+									},
+									"type": "array"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Получить информацию о прочтении сообщения (кто прочитал, кто получил).\nДоступно для участников чата.",
+				"summary": "Информация о прочтении сообщения",
+				"tags": [
+					"Message"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/chat/{chatId}/message": {
+			"post": {
+				"operationId": "SendMessage",
+				"responses": {
+					"201": {
+						"description": "Created",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/MessageDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Отправить сообщение в чат.\n- `replyToId` — только сообщение этого же чата;\n- `forwardedFromId` — сообщение из чата, где отправитель состоит;\n- `fileIds` — свои загруженные файлы, ещё не прикреплённые к сообщениям;\n- в личном чате с блокировкой — 403;\n- slow mode — 429 `MESSAGE_SLOW_MODE` с заголовком `Retry-After`\n  (ADMIN/OWNER не ограничены).",
+				"summary": "Отправка сообщения",
+				"tags": [
+					"Message"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "chatId",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/ISendMessageBody"
+							}
+						}
+					}
+				}
+			},
+			"get": {
+				"operationId": "GetMessages",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IMessagePageDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "История сообщений чата, от новых к старым, курсорами.\n- без параметров — последние сообщения;\n- `cursor` — `nextCursor` (более старые) или `prevCursor` (более новые)\n  из предыдущей страницы;\n- `around` — окно вокруг сообщения (переход к сообщению), с курсорами\n  в обе стороны; вместе с `cursor` не передаётся.",
+				"summary": "Список сообщений",
+				"tags": [
+					"Message"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"description": "ID чата",
+						"in": "path",
+						"name": "chatId",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					},
+					{
+						"description": "Курсор из предыдущей страницы",
+						"in": "query",
+						"name": "cursor",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"description": "ID сообщения — окно вокруг него",
+						"in": "query",
+						"name": "around",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"description": "Размер страницы (по умолчанию 50, максимум 100)",
+						"in": "query",
+						"name": "limit",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/chat/{chatId}/message/search": {
+			"get": {
+				"operationId": "SearchChatMessages",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IPaginatedDto_MessageDto_"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Поиск сообщений в чате. Запрос — минимум 2 символа; `%` и `_` ищутся буквально.",
+				"summary": "Поиск в чате",
+				"tags": [
+					"Message"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "chatId",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					},
+					{
+						"in": "query",
+						"name": "q",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"description": "Смещение (по умолчанию 0)",
+						"in": "query",
+						"name": "offset",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					},
+					{
+						"description": "Размер страницы (по умолчанию 20, максимум 100)",
+						"in": "query",
+						"name": "limit",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/chat/{chatId}/message/pinned": {
+			"get": {
+				"operationId": "GetPinnedMessages",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IPaginatedDto_MessageDto_"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Закреплённые сообщения чата постранично (последние закреплённые первыми).",
+				"summary": "Закреплённые сообщения",
+				"tags": [
+					"Message"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "chatId",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					},
+					{
+						"description": "Смещение (по умолчанию 0)",
+						"in": "query",
+						"name": "offset",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					},
+					{
+						"description": "Размер страницы (по умолчанию 20, максимум 100)",
+						"in": "query",
+						"name": "limit",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/chat/{chatId}/media": {
+			"get": {
+				"operationId": "GetChatMedia",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IPaginatedDto_MediaItemDto_"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Медиафайлы чата постранично.",
+				"summary": "Медиа-галерея чата",
+				"tags": [
+					"Message"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"description": "ID чата",
+						"in": "path",
+						"name": "chatId",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					},
+					{
+						"description": "Фильтр: MIME-префикс (image, video, audio) или document",
+						"in": "query",
+						"name": "type",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"description": "Смещение (по умолчанию 0)",
+						"in": "query",
+						"name": "offset",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					},
+					{
+						"description": "Размер страницы (по умолчанию 20, максимум 100)",
+						"in": "query",
+						"name": "limit",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/chat/{chatId}/media/stats": {
+			"get": {
+				"operationId": "GetChatMediaStats",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IMediaStatsDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Получить статистику медиафайлов чата.",
+				"summary": "Статистика медиа",
+				"tags": [
+					"Message"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "chatId",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/chat/{chatId}/message/read": {
+			"post": {
+				"operationId": "MarkAsRead",
+				"responses": {
+					"204": {
+						"description": "No Content"
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Отметить сообщения как прочитанные.",
+				"summary": "Прочитать сообщения",
+				"tags": [
+					"Message"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "chatId",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IMarkReadBody"
+							}
+						}
+					}
+				}
+			}
+		},
 		"/api/v1/jobs": {
 			"get": {
 				"operationId": "ListJobs",
@@ -5687,6 +11239,1432 @@
 						}
 					}
 				}
+			}
+		},
+		"/api/v1/chat/{id}/slow-mode": {
+			"patch": {
+				"operationId": "SetSlowMode",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"slowModeSeconds": {
+											"type": "number",
+											"format": "double"
+										},
+										"chatId": {
+											"type": "string"
+										}
+									},
+									"required": [
+										"slowModeSeconds",
+										"chatId"
+									],
+									"type": "object"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Установить режим медленной отправки.",
+				"summary": "Медленный режим",
+				"tags": [
+					"Chat Moderation"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/ISetSlowModeBody"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/chat/{id}/members/{userId}/ban": {
+			"post": {
+				"operationId": "BanMember",
+				"responses": {
+					"204": {
+						"description": "No Content"
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Забанить участника: он исключается из чата и не может вернуться (инвайт,\nподписка, добавление) до снятия бана или истечения `duration` секунд.\nБез `duration` — бессрочно. Администратор банит только участников и\nподписчиков, владелец — также администраторов.",
+				"summary": "Блокировка участника",
+				"tags": [
+					"Chat Moderation"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					},
+					{
+						"in": "path",
+						"name": "userId",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IBanMemberBody"
+							}
+						}
+					}
+				}
+			},
+			"delete": {
+				"operationId": "UnbanMember",
+				"responses": {
+					"204": {
+						"description": "No Content"
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Снять бан. Пользователь не возвращается в чат автоматически.",
+				"summary": "Разблокировка участника",
+				"tags": [
+					"Chat Moderation"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					},
+					{
+						"in": "path",
+						"name": "userId",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/chat/{id}/members/banned": {
+			"get": {
+				"operationId": "GetBannedMembers",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IPaginatedDto_IBannedMemberDto_"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Действующие баны чата постранично (истёкшие не возвращаются).",
+				"summary": "Заблокированные участники",
+				"tags": [
+					"Chat Moderation"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					},
+					{
+						"description": "Смещение (по умолчанию 0)",
+						"in": "query",
+						"name": "offset",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					},
+					{
+						"description": "Размер страницы (по умолчанию 20, максимум 100)",
+						"in": "query",
+						"name": "limit",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/call": {
+			"post": {
+				"operationId": "InitiateCall",
+				"responses": {
+					"201": {
+						"description": "Created",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/CallDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Инициировать звонок. Callee должен существовать и не быть в блокировке\nс вызывающим; звонок привязывается к direct-чату пары, если он есть.\nБез ответа в течение таймаута звонок становится MISSED.",
+				"summary": "Начать звонок",
+				"tags": [
+					"Call"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IInitiateCallBody"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/call/{id}/answer": {
+			"post": {
+				"operationId": "AnswerCall",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/CallDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Ответить на звонок.",
+				"summary": "Ответить",
+				"tags": [
+					"Call"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/call/{id}/decline": {
+			"post": {
+				"operationId": "DeclineCall",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/CallDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Отклонить звонок.",
+				"summary": "Отклонить",
+				"tags": [
+					"Call"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/call/{id}/end": {
+			"post": {
+				"operationId": "EndCall",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/CallDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Завершить звонок. Отвеченный → ENDED с длительностью; ещё не отвеченный —\nMISSED (завершил caller) или DECLINED (завершил callee).",
+				"summary": "Завершить",
+				"tags": [
+					"Call"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/call/history": {
+			"get": {
+				"operationId": "GetCallHistory",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IPaginatedDto_CallDto_"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "История звонков постранично (новые первыми).",
+				"summary": "История звонков",
+				"tags": [
+					"Call"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"description": "Смещение (по умолчанию 0)",
+						"in": "query",
+						"name": "offset",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					},
+					{
+						"description": "Размер страницы (по умолчанию 20, максимум 100)",
+						"in": "query",
+						"name": "limit",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/call/active": {
+			"get": {
+				"operationId": "GetActiveCall",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"allOf": [
+										{
+											"$ref": "#/components/schemas/CallDto"
+										}
+									],
+									"nullable": true
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Получить активный звонок.",
+				"summary": "Активный звонок",
+				"tags": [
+					"Call"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": []
+			}
+		},
+		"/api/v1/bot": {
+			"post": {
+				"operationId": "CreateBot",
+				"responses": {
+					"201": {
+						"description": "Created",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/BotDetailDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Создать бота. Вместе с ботом создаётся его технический пользователь\n(`userId`): от него бот состоит в чатах и пишет сообщения.",
+				"summary": "Создать бота",
+				"tags": [
+					"Bot"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/ICreateBotBody"
+							}
+						}
+					}
+				}
+			},
+			"get": {
+				"operationId": "GetMyBots",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IPaginatedDto_BotDto_"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Боты текущего пользователя, новые первыми.",
+				"summary": "Мои боты",
+				"tags": [
+					"Bot"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"description": "Смещение (по умолчанию 0)",
+						"in": "query",
+						"name": "offset",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					},
+					{
+						"description": "Размер страницы (по умолчанию 20, максимум 100)",
+						"in": "query",
+						"name": "limit",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/bot/{id}": {
+			"get": {
+				"operationId": "GetBotById",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/BotDetailDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"summary": "Детали бота",
+				"tags": [
+					"Bot"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					}
+				]
+			},
+			"patch": {
+				"operationId": "UpdateBot",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/BotDetailDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"summary": "Обновить бота",
+				"tags": [
+					"Bot"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IUpdateBotBody"
+							}
+						}
+					}
+				}
+			},
+			"delete": {
+				"operationId": "DeleteBot",
+				"responses": {
+					"204": {
+						"description": "No Content"
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"summary": "Удалить бота",
+				"tags": [
+					"Bot"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/bot/{id}/token": {
+			"post": {
+				"operationId": "RegenerateToken",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/BotDetailDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"summary": "Перегенерировать токен",
+				"tags": [
+					"Bot"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/bot/{id}/webhook": {
+			"post": {
+				"operationId": "SetWebhook",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/BotDetailDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"summary": "Установить webhook",
+				"tags": [
+					"Bot"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/ISetWebhookBody"
+							}
+						}
+					}
+				}
+			},
+			"delete": {
+				"operationId": "DeleteWebhook",
+				"responses": {
+					"204": {
+						"description": "No Content"
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"summary": "Удалить webhook",
+				"tags": [
+					"Bot"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/bot/{id}/commands": {
+			"post": {
+				"operationId": "SetCommands",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"items": {
+										"$ref": "#/components/schemas/BotCommandDto"
+									},
+									"type": "array"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"summary": "Установить команды бота",
+				"tags": [
+					"Bot"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/ISetCommandsBody"
+							}
+						}
+					}
+				}
+			},
+			"get": {
+				"operationId": "GetCommands",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"items": {
+										"$ref": "#/components/schemas/BotCommandDto"
+									},
+									"type": "array"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"summary": "Получить команды бота",
+				"tags": [
+					"Bot"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/bot/{id}/webhook/test": {
+			"post": {
+				"operationId": "TestWebhook",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IWebhookTestResponse"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Отправить ping на вебхук синхронно, без очереди и повторов. Попытка\nпишется в журнал доставок.",
+				"summary": "Тестировать webhook",
+				"tags": [
+					"Bot"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/bot/{id}/webhook/logs": {
+			"get": {
+				"operationId": "GetWebhookLogs",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IPaginatedDto_WebhookLogDto_"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Журнал доставок вебхука: запись на каждую попытку, новые первыми.",
+				"summary": "Логи доставки webhook",
+				"tags": [
+					"Bot"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					},
+					{
+						"description": "Смещение (по умолчанию 0)",
+						"in": "query",
+						"name": "offset",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					},
+					{
+						"description": "Размер страницы (по умолчанию 20, максимум 100)",
+						"in": "query",
+						"name": "limit",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/bot/{id}/webhook/events": {
+			"post": {
+				"operationId": "SetWebhookEvents",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/BotDetailDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"summary": "Обновить фильтр событий webhook",
+				"tags": [
+					"Bot"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/ISetWebhookEventsBody"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/bot/{id}/chats/{chatId}": {
+			"post": {
+				"operationId": "AddBotToChat",
+				"responses": {
+					"204": {
+						"description": "No Content"
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Добавить бота в группу участником. Доступно владельцу и админам чата.",
+				"summary": "Добавить бота в чат",
+				"tags": [
+					"Bot"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					},
+					{
+						"in": "path",
+						"name": "chatId",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					}
+				]
+			},
+			"delete": {
+				"operationId": "RemoveBotFromChat",
+				"responses": {
+					"204": {
+						"description": "No Content"
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Удалить бота из чата. Доступно владельцу и админам чата.",
+				"summary": "Удалить бота из чата",
+				"tags": [
+					"Bot"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					},
+					{
+						"in": "path",
+						"name": "chatId",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/bot-api/message": {
+			"post": {
+				"operationId": "BotSendMessage",
+				"responses": {
+					"201": {
+						"description": "Created",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/MessageDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Отправить текстовое сообщение от имени бота. Бот должен быть участником чата.",
+				"summary": "Bot: отправка сообщения",
+				"tags": [
+					"Bot API"
+				],
+				"security": [
+					{
+						"bot": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IBotSendMessageBody"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/bot-api/message/{id}": {
+			"patch": {
+				"operationId": "BotEditMessage",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/MessageDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Редактировать сообщение бота.",
+				"summary": "Bot: редактирование сообщения",
+				"tags": [
+					"Bot API"
+				],
+				"security": [
+					{
+						"bot": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IBotEditMessageBody"
+							}
+						}
+					}
+				}
+			},
+			"delete": {
+				"operationId": "BotDeleteMessage",
+				"responses": {
+					"204": {
+						"description": "No Content"
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Удалить сообщение бота для всех.",
+				"summary": "Bot: удаление сообщения",
+				"tags": [
+					"Bot API"
+				],
+				"security": [
+					{
+						"bot": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					}
+				]
 			}
 		},
 		"/api/v1/biometric/register": {

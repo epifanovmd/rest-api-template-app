@@ -1,0 +1,29 @@
+import { z } from "zod";
+
+import { CLIENT_MESSAGE_TYPES, EMessageType } from "../message.types";
+
+export const SendMessageSchema = z
+  .object({
+    type: z.enum(CLIENT_MESSAGE_TYPES).default(EMessageType.TEXT),
+    content: z
+      .string()
+      .trim()
+      .max(4000, "Сообщение не должно превышать 4000 символов")
+      .transform(v => (v === "" ? undefined : v))
+      .optional(),
+    replyToId: z.string().uuid("Некорректный UUID").optional(),
+    forwardedFromId: z.string().uuid("Некорректный UUID").optional(),
+    fileIds: z
+      .array(z.string().uuid("Некорректный UUID"))
+      .max(10, "Максимум 10 вложений")
+      .optional(),
+    mentionedUserIds: z
+      .array(z.string().uuid("Некорректный UUID"))
+      .max(50, "Максимум 50 упоминаний")
+      .optional(),
+    mentionAll: z.boolean().optional(),
+  })
+  .refine(data => data.content || (data.fileIds && data.fileIds.length > 0), {
+    message: "Необходимо указать текст или прикрепить файл",
+    path: ["content"],
+  });

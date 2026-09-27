@@ -128,6 +128,7 @@ export const startServer = async (): Promise<void> => {
       JWT_SECRET_KEY: "e2e-secret-key-0123456789abcdef0123456789",
       ADMIN_EMAIL: E2E.admin.email,
       ADMIN_PASSWORD: E2E.admin.password,
+      FIREBASE_SERVICE_ACCOUNT_PATH: "",
     },
   });
 
