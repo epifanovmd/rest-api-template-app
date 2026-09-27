@@ -1,0 +1,6207 @@
+{
+	"openapi": "3.0.0",
+	"components": {
+		"examples": {},
+		"headers": {},
+		"parameters": {},
+		"requestBodies": {},
+		"responses": {},
+		"schemas": {
+			"IErrorResponseDto": {
+				"description": "Тело любого ответа с ошибкой (`status >= 400`).",
+				"properties": {
+					"status": {
+						"type": "number",
+						"format": "double",
+						"description": "HTTP-статус."
+					},
+					"code": {
+						"type": "string",
+						"description": "Машинный код: доменный (`USER_EMAIL_TAKEN`) или по статусу (`NOT_FOUND`,\n`VALIDATION_ERROR`, `INTERNAL_ERROR`). Стабилен — на него опирается клиент."
+					},
+					"message": {
+						"type": "string",
+						"description": "Человекочитаемое сообщение; для 5xx — общее, без внутренних деталей."
+					},
+					"details": {
+						"description": "Подробности: для VALIDATION_ERROR — поле → сообщение."
+					},
+					"requestId": {
+						"type": "string",
+						"description": "Идентификатор запроса — для обращения в поддержку и поиска в логах."
+					},
+					"stack": {
+						"type": "string",
+						"description": "Stack trace — только вне production."
+					}
+				},
+				"required": [
+					"status",
+					"code",
+					"message"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"EFileStatus": {
+				"description": "Состояние файла.",
+				"enum": [
+					"pending",
+					"processing",
+					"ready",
+					"failed"
+				],
+				"type": "string"
+			},
+			"IFileDto": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"ownerId": {
+						"type": "string",
+						"nullable": true
+					},
+					"name": {
+						"type": "string"
+					},
+					"type": {
+						"type": "string"
+					},
+					"size": {
+						"type": "number",
+						"format": "double"
+					},
+					"status": {
+						"$ref": "#/components/schemas/EFileStatus"
+					},
+					"url": {
+						"type": "string",
+						"nullable": true,
+						"description": "Подписанная ссылка для показа: оптимизированная версия, если готова,\nиначе оригинал. `null` — прямая загрузка не завершена. Срок ограничен."
+					},
+					"downloadUrl": {
+						"type": "string",
+						"nullable": true,
+						"description": "Подписанная ссылка на скачивание оригинала под исходным именем."
+					},
+					"thumbnailUrl": {
+						"type": "string",
+						"nullable": true
+					},
+					"mediumUrl": {
+						"type": "string",
+						"nullable": true
+					},
+					"blurhash": {
+						"type": "string",
+						"nullable": true
+					},
+					"width": {
+						"type": "number",
+						"format": "double",
+						"nullable": true
+					},
+					"height": {
+						"type": "number",
+						"format": "double",
+						"nullable": true
+					},
+					"duration": {
+						"type": "number",
+						"format": "double",
+						"nullable": true
+					},
+					"waveform": {
+						"items": {
+							"type": "number",
+							"format": "double"
+						},
+						"type": "array",
+						"nullable": true
+					},
+					"createdAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"updatedAt": {
+						"type": "string",
+						"format": "date-time"
+					}
+				},
+				"required": [
+					"id",
+					"ownerId",
+					"name",
+					"type",
+					"size",
+					"status",
+					"url",
+					"downloadUrl",
+					"thumbnailUrl",
+					"mediumUrl",
+					"blurhash",
+					"width",
+					"height",
+					"duration",
+					"waveform",
+					"createdAt",
+					"updatedAt"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IPaginatedDto_IFileDto_": {
+				"description": "Страница по смещению: списки с известным общим числом.",
+				"properties": {
+					"items": {
+						"items": {
+							"$ref": "#/components/schemas/IFileDto"
+						},
+						"type": "array"
+					},
+					"total": {
+						"type": "number",
+						"format": "double",
+						"description": "Всего элементов, подходящих под фильтр."
+					},
+					"offset": {
+						"type": "number",
+						"format": "double"
+					},
+					"limit": {
+						"type": "number",
+						"format": "double"
+					}
+				},
+				"required": [
+					"items",
+					"total",
+					"offset",
+					"limit"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"UUID": {
+				"type": "string",
+				"description": "Идентификатор сущности в пути или теле запроса. tsoa проверяет формат до\nконтроллера: неверный uuid → 422, а не ошибка Postgres.",
+				"pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
+			},
+			"Record_string.string_": {
+				"properties": {},
+				"additionalProperties": {
+					"type": "string"
+				},
+				"type": "object",
+				"description": "Construct a type with a set of properties K of type T"
+			},
+			"IDirectUploadDto": {
+				"description": "Выданная прямая загрузка: `PUT uploadUrl` с заголовками `headers`, затем `complete`.",
+				"properties": {
+					"fileId": {
+						"type": "string"
+					},
+					"uploadUrl": {
+						"type": "string"
+					},
+					"headers": {
+						"$ref": "#/components/schemas/Record_string.string_",
+						"description": "Заголовки, обязательные для `PUT` (входят в подпись)."
+					},
+					"expiresAt": {
+						"type": "string",
+						"format": "date-time"
+					}
+				},
+				"required": [
+					"fileId",
+					"uploadUrl",
+					"headers",
+					"expiresAt"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"ICreateUploadBody": {
+				"description": "Запрос прямой загрузки.",
+				"properties": {
+					"name": {
+						"type": "string",
+						"description": "Исходное имя файла (с расширением из белого списка)."
+					},
+					"size": {
+						"type": "number",
+						"format": "double",
+						"description": "Точный размер, байт."
+					},
+					"contentType": {
+						"type": "string",
+						"description": "MIME-тип; должен соответствовать расширению."
+					}
+				},
+				"required": [
+					"name",
+					"size",
+					"contentType"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"ProfileDto": {
+				"description": "Профиль владельца; ссылки на аватар — из карты подписей `files`.",
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"userId": {
+						"type": "string"
+					},
+					"firstName": {
+						"type": "string",
+						"nullable": true
+					},
+					"lastName": {
+						"type": "string",
+						"nullable": true
+					},
+					"birthDate": {
+						"type": "string",
+						"format": "date-time",
+						"nullable": true
+					},
+					"gender": {
+						"type": "string",
+						"nullable": true
+					},
+					"locale": {
+						"type": "string",
+						"nullable": true
+					},
+					"lastOnline": {
+						"type": "string",
+						"format": "date-time",
+						"nullable": true
+					},
+					"createdAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"updatedAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"avatar": {
+						"$ref": "#/components/schemas/IFileDto",
+						"description": "Аватар с подписанными ссылками; нет аватара или связь не загружена — поля нет."
+					},
+					"user": {
+						"$ref": "#/components/schemas/UserDto"
+					}
+				},
+				"required": [
+					"id",
+					"userId",
+					"firstName",
+					"lastName",
+					"birthDate",
+					"gender",
+					"locale",
+					"lastOnline",
+					"createdAt",
+					"updatedAt"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"KnownRole": {
+				"type": "string",
+				"enum": [
+					"admin",
+					"user",
+					"guest"
+				],
+				"description": "Тип для предопределённых ролей (автодополнение в IDE)."
+			},
+			"TRole": {
+				"anyOf": [
+					{
+						"$ref": "#/components/schemas/KnownRole"
+					},
+					{
+						"allOf": [
+							{
+								"type": "string"
+							},
+							{
+								"properties": {},
+								"type": "object"
+							}
+						]
+					}
+				],
+				"description": "Роль — произвольная строка; предопределённые значения дают автодополнение."
+			},
+			"KnownPermission": {
+				"type": "string",
+				"enum": [
+					"*",
+					"user:view",
+					"user:manage",
+					"role:view",
+					"role:manage",
+					"profile:view",
+					"profile:manage",
+					"apikey:manage",
+					"audit:view"
+				],
+				"description": "Тип для предопределённых permissions (автодополнение в IDE)."
+			},
+			"TPermission": {
+				"anyOf": [
+					{
+						"$ref": "#/components/schemas/KnownPermission"
+					},
+					{
+						"allOf": [
+							{
+								"type": "string"
+							},
+							{
+								"properties": {},
+								"type": "object"
+							}
+						]
+					}
+				],
+				"description": "Permission — произвольная строка; предопределённые значения дают автодополнение."
+			},
+			"IPermissionDto": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"name": {
+						"$ref": "#/components/schemas/TPermission"
+					},
+					"createdAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"updatedAt": {
+						"type": "string",
+						"format": "date-time"
+					}
+				},
+				"required": [
+					"id",
+					"name",
+					"createdAt",
+					"updatedAt"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IRoleDto": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"name": {
+						"$ref": "#/components/schemas/TRole"
+					},
+					"createdAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"updatedAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"permissions": {
+						"items": {
+							"$ref": "#/components/schemas/IPermissionDto"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"id",
+					"name",
+					"createdAt",
+					"updatedAt",
+					"permissions"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"UserDto": {
+				"description": "Пользователь для владельца и администрирования; аватар — из карты подписей.",
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"email": {
+						"type": "string",
+						"nullable": true
+					},
+					"emailVerified": {
+						"type": "boolean"
+					},
+					"phone": {
+						"type": "string",
+						"nullable": true
+					},
+					"username": {
+						"type": "string",
+						"nullable": true
+					},
+					"profile": {
+						"$ref": "#/components/schemas/ProfileDto"
+					},
+					"roles": {
+						"items": {
+							"$ref": "#/components/schemas/IRoleDto"
+						},
+						"type": "array"
+					},
+					"directPermissions": {
+						"items": {
+							"$ref": "#/components/schemas/IPermissionDto"
+						},
+						"type": "array"
+					},
+					"createdAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"updatedAt": {
+						"type": "string",
+						"format": "date-time"
+					}
+				},
+				"required": [
+					"id",
+					"email",
+					"phone",
+					"username",
+					"roles",
+					"directPermissions",
+					"createdAt",
+					"updatedAt"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IProfileUpdateRequestDto": {
+				"properties": {
+					"firstName": {
+						"type": "string",
+						"nullable": true,
+						"maxLength": 40
+					},
+					"lastName": {
+						"type": "string",
+						"nullable": true,
+						"maxLength": 40
+					},
+					"birthDate": {
+						"type": "string",
+						"format": "date-time",
+						"nullable": true
+					},
+					"gender": {
+						"type": "string",
+						"nullable": true,
+						"maxLength": 20
+					},
+					"locale": {
+						"type": "string",
+						"nullable": true,
+						"description": "Язык пользователя: `ru`, `en`, `en-US`. Письма — на `ru`/`en`, прочие\nязыки получают письма на `ru`.",
+						"maxLength": 10
+					},
+					"avatarId": {
+						"allOf": [
+							{
+								"$ref": "#/components/schemas/UUID"
+							}
+						],
+						"nullable": true,
+						"description": "Аватар: id своего загруженного изображения (`POST /api/v1/file`);\n`null` — снять аватар."
+					}
+				},
+				"type": "object",
+				"additionalProperties": false
+			},
+			"EPrivacyLevel": {
+				"enum": [
+					"everyone",
+					"contacts",
+					"nobody"
+				],
+				"type": "string"
+			},
+			"PrivacySettingsDto": {
+				"properties": {
+					"showLastOnline": {
+						"$ref": "#/components/schemas/EPrivacyLevel"
+					},
+					"showPhone": {
+						"$ref": "#/components/schemas/EPrivacyLevel"
+					},
+					"showAvatar": {
+						"$ref": "#/components/schemas/EPrivacyLevel"
+					}
+				},
+				"required": [
+					"showLastOnline",
+					"showPhone",
+					"showAvatar"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"PublicProfileDto": {
+				"description": "Профиль глазами другого пользователя; ссылка на аватар — из карты подписей.",
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"userId": {
+						"type": "string"
+					},
+					"firstName": {
+						"type": "string",
+						"nullable": true
+					},
+					"lastName": {
+						"type": "string",
+						"nullable": true
+					},
+					"lastOnline": {
+						"type": "string",
+						"format": "date-time",
+						"nullable": true
+					},
+					"avatarUrl": {
+						"type": "string",
+						"nullable": true,
+						"description": "Подписанная ссылка на аватар; срок ограничен. `null` — аватара нет."
+					}
+				},
+				"required": [
+					"id",
+					"userId",
+					"firstName",
+					"lastName",
+					"lastOnline",
+					"avatarUrl"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IProfileListDto": {
+				"properties": {
+					"items": {
+						"items": {
+							"$ref": "#/components/schemas/PublicProfileDto"
+						},
+						"type": "array"
+					},
+					"total": {
+						"type": "number",
+						"format": "double",
+						"description": "Всего элементов, подходящих под фильтр."
+					},
+					"offset": {
+						"type": "number",
+						"format": "double"
+					},
+					"limit": {
+						"type": "number",
+						"format": "double"
+					}
+				},
+				"required": [
+					"items",
+					"total",
+					"offset",
+					"limit"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"RoleName": {
+				"type": "string",
+				"description": "Имя роли в теле запроса API. Обычная строка: `TRole` с `string & {}`\ntsoa проверить не может и отклоняет любое значение. Известные роли — `Roles`.",
+				"minLength": 1,
+				"maxLength": 100
+			},
+			"ICreateRoleRequestDto": {
+				"properties": {
+					"name": {
+						"$ref": "#/components/schemas/RoleName"
+					}
+				},
+				"required": [
+					"name"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"PermissionName": {
+				"type": "string",
+				"description": "Имя права в теле запроса API (`домен:действие`). Обычная строка: `TPermission`\nс `string & {}` tsoa проверить не может. Известные права — `Permissions`.",
+				"minLength": 1,
+				"maxLength": 100
+			},
+			"IRolePermissionsRequestDto": {
+				"properties": {
+					"permissions": {
+						"items": {
+							"$ref": "#/components/schemas/PermissionName"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"permissions"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IUserUpdateRequestDto": {
+				"properties": {
+					"email": {
+						"type": "string"
+					},
+					"phone": {
+						"type": "string"
+					}
+				},
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IUserConfirmEmailChangeDto": {
+				"properties": {
+					"code": {
+						"type": "string",
+						"description": "Код из письма, отправленного на новый адрес (6 цифр)."
+					}
+				},
+				"required": [
+					"code"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IUserDeleteDto": {
+				"properties": {
+					"password": {
+						"type": "string",
+						"description": "Текущий пароль — подтверждение удаления аккаунта."
+					}
+				},
+				"required": [
+					"password"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"PublicUserDto": {
+				"description": "Пользователь глазами другого пользователя: без email, телефон — по приватности.",
+				"properties": {
+					"userId": {
+						"type": "string"
+					},
+					"username": {
+						"type": "string",
+						"nullable": true
+					},
+					"phone": {
+						"type": "string",
+						"nullable": true
+					},
+					"profile": {
+						"$ref": "#/components/schemas/PublicProfileDto"
+					}
+				},
+				"required": [
+					"userId",
+					"username",
+					"phone"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IUserListDto": {
+				"properties": {
+					"items": {
+						"items": {
+							"$ref": "#/components/schemas/PublicUserDto"
+						},
+						"type": "array"
+					},
+					"total": {
+						"type": "number",
+						"format": "double",
+						"description": "Всего элементов, подходящих под фильтр."
+					},
+					"offset": {
+						"type": "number",
+						"format": "double"
+					},
+					"limit": {
+						"type": "number",
+						"format": "double"
+					}
+				},
+				"required": [
+					"items",
+					"total",
+					"offset",
+					"limit"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IUserAdminListDto": {
+				"description": "Список пользователей для администрирования (`user:view`).",
+				"properties": {
+					"items": {
+						"items": {
+							"$ref": "#/components/schemas/UserDto"
+						},
+						"type": "array"
+					},
+					"total": {
+						"type": "number",
+						"format": "double",
+						"description": "Всего элементов, подходящих под фильтр."
+					},
+					"offset": {
+						"type": "number",
+						"format": "double"
+					},
+					"limit": {
+						"type": "number",
+						"format": "double"
+					}
+				},
+				"required": [
+					"items",
+					"total",
+					"offset",
+					"limit"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IUserOptionDto": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"name": {
+						"type": "string",
+						"nullable": true
+					}
+				},
+				"required": [
+					"id",
+					"name"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IUserOptionsDto": {
+				"properties": {
+					"data": {
+						"items": {
+							"$ref": "#/components/schemas/IUserOptionDto"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"data"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IUserPrivilegesRequestDto": {
+				"properties": {
+					"roles": {
+						"items": {
+							"$ref": "#/components/schemas/RoleName"
+						},
+						"type": "array",
+						"description": "Роли для назначения пользователю (заменяет текущие роли)."
+					},
+					"permissions": {
+						"items": {
+							"$ref": "#/components/schemas/PermissionName"
+						},
+						"type": "array",
+						"description": "Прямые разрешения, выданные этому пользователю дополнительно к разрешениям ролей.\nЗаменяет текущие прямые разрешения."
+					}
+				},
+				"required": [
+					"roles",
+					"permissions"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IUserVerifyEmailDto": {
+				"properties": {
+					"code": {
+						"type": "string",
+						"description": "Код из письма (6 цифр)."
+					}
+				},
+				"required": [
+					"code"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IUserChangePasswordDto": {
+				"properties": {
+					"currentPassword": {
+						"type": "string"
+					},
+					"newPassword": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"currentPassword",
+					"newPassword"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"SessionDto": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"userId": {
+						"type": "string"
+					},
+					"deviceName": {
+						"type": "string",
+						"nullable": true
+					},
+					"deviceType": {
+						"type": "string",
+						"nullable": true
+					},
+					"ip": {
+						"type": "string",
+						"nullable": true
+					},
+					"userAgent": {
+						"type": "string",
+						"nullable": true
+					},
+					"lastActiveAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"expiresAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"createdAt": {
+						"type": "string",
+						"format": "date-time"
+					}
+				},
+				"required": [
+					"id",
+					"userId",
+					"deviceName",
+					"deviceType",
+					"ip",
+					"userAgent",
+					"lastActiveAt",
+					"expiresAt",
+					"createdAt"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IPaginatedDto_SessionDto_": {
+				"description": "Страница по смещению: списки с известным общим числом.",
+				"properties": {
+					"items": {
+						"items": {
+							"$ref": "#/components/schemas/SessionDto"
+						},
+						"type": "array"
+					},
+					"total": {
+						"type": "number",
+						"format": "double",
+						"description": "Всего элементов, подходящих под фильтр."
+					},
+					"offset": {
+						"type": "number",
+						"format": "double"
+					},
+					"limit": {
+						"type": "number",
+						"format": "double"
+					}
+				},
+				"required": [
+					"items",
+					"total",
+					"offset",
+					"limit"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"ITokensDto": {
+				"properties": {
+					"accessToken": {
+						"type": "string"
+					},
+					"refreshToken": {
+						"type": "string"
+					},
+					"expiresIn": {
+						"type": "number",
+						"format": "double",
+						"description": "Сколько секунд живёт access-токен (как `expires_in` в OAuth 2.0)."
+					},
+					"sessionId": {
+						"type": "string",
+						"description": "Сессия, к которой привязаны токены."
+					}
+				},
+				"required": [
+					"accessToken",
+					"refreshToken",
+					"expiresIn",
+					"sessionId"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IUserWithTokensDto": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"email": {
+						"type": "string",
+						"nullable": true
+					},
+					"emailVerified": {
+						"type": "boolean"
+					},
+					"phone": {
+						"type": "string",
+						"nullable": true
+					},
+					"username": {
+						"type": "string",
+						"nullable": true
+					},
+					"profile": {
+						"$ref": "#/components/schemas/ProfileDto"
+					},
+					"roles": {
+						"items": {
+							"$ref": "#/components/schemas/IRoleDto"
+						},
+						"type": "array"
+					},
+					"directPermissions": {
+						"items": {
+							"$ref": "#/components/schemas/IPermissionDto"
+						},
+						"type": "array"
+					},
+					"createdAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"updatedAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"tokens": {
+						"$ref": "#/components/schemas/ITokensDto"
+					}
+				},
+				"required": [
+					"id",
+					"email",
+					"phone",
+					"username",
+					"roles",
+					"directPermissions",
+					"createdAt",
+					"updatedAt",
+					"tokens"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"TSignUpRequestDto": {
+				"allOf": [
+					{
+						"properties": {
+							"password": {
+								"type": "string"
+							},
+							"lastName": {
+								"type": "string"
+							},
+							"firstName": {
+								"type": "string"
+							}
+						},
+						"required": [
+							"password"
+						],
+						"type": "object"
+					},
+					{
+						"anyOf": [
+							{
+								"properties": {
+									"phone": {
+										"type": "string"
+									},
+									"email": {
+										"type": "string"
+									}
+								},
+								"required": [
+									"phone"
+								],
+								"type": "object"
+							},
+							{
+								"properties": {
+									"phone": {
+										"type": "string"
+									},
+									"email": {
+										"type": "string"
+									}
+								},
+								"required": [
+									"email"
+								],
+								"type": "object"
+							}
+						]
+					}
+				]
+			},
+			"I2FARequiredDto": {
+				"properties": {
+					"require2FA": {
+						"type": "boolean",
+						"enum": [
+							true
+						],
+						"nullable": false
+					},
+					"twoFactorToken": {
+						"type": "string"
+					},
+					"twoFactorHint": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"require2FA",
+					"twoFactorToken"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"ISignInResponseDto": {
+				"anyOf": [
+					{
+						"$ref": "#/components/schemas/IUserWithTokensDto"
+					},
+					{
+						"$ref": "#/components/schemas/I2FARequiredDto"
+					}
+				]
+			},
+			"ISignInRequestDto": {
+				"properties": {
+					"login": {
+						"type": "string",
+						"description": "Может быть телефоном, email-ом и username-ом"
+					},
+					"password": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"login",
+					"password"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"ApiResponseDto": {
+				"properties": {
+					"message": {
+						"type": "string"
+					},
+					"data": {}
+				},
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IUserLoginRequestDto": {
+				"properties": {
+					"login": {
+						"type": "string",
+						"description": "Может быть телефоном, email-ом и username-ом"
+					}
+				},
+				"required": [
+					"login"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IUserResetPasswordRequestDto": {
+				"properties": {
+					"token": {
+						"type": "string",
+						"description": "Токен из письма сброса пароля"
+					},
+					"password": {
+						"type": "string",
+						"description": "Новый пароль: от 8 символов, не email, не из списка частых"
+					}
+				},
+				"required": [
+					"token",
+					"password"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IRefreshRequestDto": {
+				"properties": {
+					"refreshToken": {
+						"type": "string",
+						"description": "Refresh-токен; без него берётся из cookie `refresh_token` (если включена)."
+					}
+				},
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IEnable2FARequestDto": {
+				"properties": {
+					"currentPassword": {
+						"type": "string",
+						"description": "Текущий пароль аккаунта"
+					},
+					"password": {
+						"type": "string",
+						"description": "Пароль второго фактора"
+					},
+					"hint": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"currentPassword",
+					"password"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IDisable2FARequestDto": {
+				"properties": {
+					"currentPassword": {
+						"type": "string",
+						"description": "Текущий пароль аккаунта"
+					},
+					"password": {
+						"type": "string",
+						"description": "Пароль второго фактора"
+					}
+				},
+				"required": [
+					"currentPassword",
+					"password"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IVerify2FARequestDto": {
+				"properties": {
+					"twoFactorToken": {
+						"type": "string"
+					},
+					"password": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"twoFactorToken",
+					"password"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"PasskeyDto": {
+				"description": "Passkey пользователя — без ключа и счётчика.",
+				"properties": {
+					"id": {
+						"type": "string",
+						"description": "Credential ID (Base64URL)"
+					},
+					"deviceType": {
+						"type": "string"
+					},
+					"transports": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array",
+						"nullable": true
+					},
+					"lastUsed": {
+						"type": "string",
+						"format": "date-time",
+						"nullable": true
+					},
+					"createdAt": {
+						"type": "string",
+						"format": "date-time"
+					}
+				},
+				"required": [
+					"id",
+					"deviceType",
+					"transports",
+					"lastUsed",
+					"createdAt"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IPaginatedDto_PasskeyDto_": {
+				"description": "Страница по смещению: списки с известным общим числом.",
+				"properties": {
+					"items": {
+						"items": {
+							"$ref": "#/components/schemas/PasskeyDto"
+						},
+						"type": "array"
+					},
+					"total": {
+						"type": "number",
+						"format": "double",
+						"description": "Всего элементов, подходящих под фильтр."
+					},
+					"offset": {
+						"type": "number",
+						"format": "double"
+					},
+					"limit": {
+						"type": "number",
+						"format": "double"
+					}
+				},
+				"required": [
+					"items",
+					"total",
+					"offset",
+					"limit"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"PublicKeyCredentialRpEntity": {
+				"properties": {
+					"name": {
+						"type": "string"
+					},
+					"id": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"name"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"PublicKeyCredentialUserEntityJSON": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"name": {
+						"type": "string"
+					},
+					"displayName": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"id",
+					"name",
+					"displayName"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"Base64URLString": {
+				"type": "string",
+				"description": "Строка в кодировке Base64URL."
+			},
+			"COSEAlgorithmIdentifier": {
+				"type": "number",
+				"format": "double",
+				"description": "Идентификатор алгоритма COSE (-7 — ES256, -257 — RS256)."
+			},
+			"PublicKeyCredentialType": {
+				"type": "string",
+				"enum": [
+					"public-key"
+				],
+				"nullable": false
+			},
+			"PublicKeyCredentialParameters": {
+				"properties": {
+					"alg": {
+						"$ref": "#/components/schemas/COSEAlgorithmIdentifier"
+					},
+					"type": {
+						"$ref": "#/components/schemas/PublicKeyCredentialType"
+					}
+				},
+				"required": [
+					"alg",
+					"type"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"PublicKeyCredentialDescriptorJSON": {
+				"properties": {
+					"id": {
+						"$ref": "#/components/schemas/Base64URLString"
+					},
+					"type": {
+						"type": "string",
+						"description": "Всегда `public-key`; строкой — чтобы новые типы не ломали контракт."
+					},
+					"transports": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array",
+						"description": "Транспорты из `AuthenticatorTransportFuture` и будущие значения."
+					}
+				},
+				"required": [
+					"id",
+					"type"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"AuthenticatorAttachment": {
+				"type": "string",
+				"enum": [
+					"cross-platform",
+					"platform"
+				]
+			},
+			"ResidentKeyRequirement": {
+				"type": "string",
+				"enum": [
+					"discouraged",
+					"preferred",
+					"required"
+				]
+			},
+			"UserVerificationRequirement": {
+				"type": "string",
+				"enum": [
+					"discouraged",
+					"preferred",
+					"required"
+				]
+			},
+			"AuthenticatorSelectionCriteria": {
+				"properties": {
+					"authenticatorAttachment": {
+						"$ref": "#/components/schemas/AuthenticatorAttachment"
+					},
+					"requireResidentKey": {
+						"type": "boolean"
+					},
+					"residentKey": {
+						"$ref": "#/components/schemas/ResidentKeyRequirement"
+					},
+					"userVerification": {
+						"$ref": "#/components/schemas/UserVerificationRequirement"
+					}
+				},
+				"type": "object",
+				"additionalProperties": false
+			},
+			"AttestationConveyancePreference": {
+				"type": "string",
+				"enum": [
+					"direct",
+					"enterprise",
+					"indirect",
+					"none"
+				]
+			},
+			"AuthenticationExtensionsClientInputs": {
+				"description": "Расширения, которые сервер запрашивает у аутентификатора.",
+				"properties": {
+					"appid": {
+						"type": "string"
+					},
+					"credProps": {
+						"type": "boolean"
+					},
+					"hmacCreateSecret": {
+						"type": "boolean"
+					},
+					"minPinLength": {
+						"type": "boolean"
+					}
+				},
+				"type": "object",
+				"additionalProperties": false
+			},
+			"PublicKeyCredentialCreationOptionsJSON": {
+				"description": "Опции для `navigator.credentials.create()`.",
+				"properties": {
+					"rp": {
+						"$ref": "#/components/schemas/PublicKeyCredentialRpEntity"
+					},
+					"user": {
+						"$ref": "#/components/schemas/PublicKeyCredentialUserEntityJSON"
+					},
+					"challenge": {
+						"$ref": "#/components/schemas/Base64URLString"
+					},
+					"pubKeyCredParams": {
+						"items": {
+							"$ref": "#/components/schemas/PublicKeyCredentialParameters"
+						},
+						"type": "array"
+					},
+					"timeout": {
+						"type": "number",
+						"format": "double"
+					},
+					"excludeCredentials": {
+						"items": {
+							"$ref": "#/components/schemas/PublicKeyCredentialDescriptorJSON"
+						},
+						"type": "array"
+					},
+					"authenticatorSelection": {
+						"$ref": "#/components/schemas/AuthenticatorSelectionCriteria"
+					},
+					"hints": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					},
+					"attestation": {
+						"$ref": "#/components/schemas/AttestationConveyancePreference"
+					},
+					"attestationFormats": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					},
+					"extensions": {
+						"$ref": "#/components/schemas/AuthenticationExtensionsClientInputs"
+					}
+				},
+				"required": [
+					"rp",
+					"user",
+					"challenge",
+					"pubKeyCredParams"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IVerifyRegistrationResponseDto": {
+				"properties": {
+					"verified": {
+						"type": "boolean"
+					}
+				},
+				"required": [
+					"verified"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"AuthenticatorTransportFuture": {
+				"type": "string",
+				"enum": [
+					"ble",
+					"cable",
+					"hybrid",
+					"internal",
+					"nfc",
+					"smart-card",
+					"usb"
+				]
+			},
+			"AuthenticatorAttestationResponseJSON": {
+				"properties": {
+					"clientDataJSON": {
+						"$ref": "#/components/schemas/Base64URLString"
+					},
+					"attestationObject": {
+						"$ref": "#/components/schemas/Base64URLString"
+					},
+					"authenticatorData": {
+						"$ref": "#/components/schemas/Base64URLString"
+					},
+					"transports": {
+						"items": {
+							"$ref": "#/components/schemas/AuthenticatorTransportFuture"
+						},
+						"type": "array"
+					},
+					"publicKeyAlgorithm": {
+						"$ref": "#/components/schemas/COSEAlgorithmIdentifier"
+					},
+					"publicKey": {
+						"$ref": "#/components/schemas/Base64URLString"
+					}
+				},
+				"required": [
+					"clientDataJSON",
+					"attestationObject"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"CredentialPropertiesOutput": {
+				"properties": {
+					"rk": {
+						"type": "boolean"
+					}
+				},
+				"type": "object",
+				"additionalProperties": false
+			},
+			"AuthenticationExtensionsClientOutputs": {
+				"description": "Результаты расширений от аутентификатора.",
+				"properties": {
+					"appid": {
+						"type": "boolean"
+					},
+					"credProps": {
+						"$ref": "#/components/schemas/CredentialPropertiesOutput"
+					},
+					"hmacCreateSecret": {
+						"type": "boolean"
+					}
+				},
+				"type": "object",
+				"additionalProperties": false
+			},
+			"RegistrationResponseJSON": {
+				"description": "Ответ браузера на регистрацию passkey.",
+				"properties": {
+					"id": {
+						"$ref": "#/components/schemas/Base64URLString"
+					},
+					"rawId": {
+						"$ref": "#/components/schemas/Base64URLString"
+					},
+					"response": {
+						"$ref": "#/components/schemas/AuthenticatorAttestationResponseJSON"
+					},
+					"authenticatorAttachment": {
+						"$ref": "#/components/schemas/AuthenticatorAttachment"
+					},
+					"clientExtensionResults": {
+						"$ref": "#/components/schemas/AuthenticationExtensionsClientOutputs"
+					},
+					"type": {
+						"$ref": "#/components/schemas/PublicKeyCredentialType"
+					}
+				},
+				"required": [
+					"id",
+					"rawId",
+					"response",
+					"clientExtensionResults",
+					"type"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IVerifyRegistrationRequestDto": {
+				"properties": {
+					"data": {
+						"$ref": "#/components/schemas/RegistrationResponseJSON"
+					}
+				},
+				"required": [
+					"data"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"PublicKeyCredentialRequestOptionsJSON": {
+				"description": "Опции для `navigator.credentials.get()`.",
+				"properties": {
+					"challenge": {
+						"$ref": "#/components/schemas/Base64URLString"
+					},
+					"timeout": {
+						"type": "number",
+						"format": "double"
+					},
+					"rpId": {
+						"type": "string"
+					},
+					"allowCredentials": {
+						"items": {
+							"$ref": "#/components/schemas/PublicKeyCredentialDescriptorJSON"
+						},
+						"type": "array"
+					},
+					"userVerification": {
+						"$ref": "#/components/schemas/UserVerificationRequirement"
+					},
+					"hints": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					},
+					"extensions": {
+						"$ref": "#/components/schemas/AuthenticationExtensionsClientInputs"
+					}
+				},
+				"required": [
+					"challenge"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IGenerateAuthenticationOptionsRequestDto": {
+				"properties": {
+					"login": {
+						"type": "string",
+						"description": "Email или телефон пользователя"
+					}
+				},
+				"required": [
+					"login"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IVerifyAuthenticationResponseDto": {
+				"properties": {
+					"verified": {
+						"type": "boolean"
+					},
+					"tokens": {
+						"$ref": "#/components/schemas/ITokensDto"
+					}
+				},
+				"required": [
+					"verified"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"AuthenticatorAssertionResponseJSON": {
+				"properties": {
+					"clientDataJSON": {
+						"$ref": "#/components/schemas/Base64URLString"
+					},
+					"authenticatorData": {
+						"$ref": "#/components/schemas/Base64URLString"
+					},
+					"signature": {
+						"$ref": "#/components/schemas/Base64URLString"
+					},
+					"userHandle": {
+						"$ref": "#/components/schemas/Base64URLString"
+					}
+				},
+				"required": [
+					"clientDataJSON",
+					"authenticatorData",
+					"signature"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"AuthenticationResponseJSON": {
+				"description": "Ответ браузера на вход по passkey.",
+				"properties": {
+					"id": {
+						"$ref": "#/components/schemas/Base64URLString"
+					},
+					"rawId": {
+						"$ref": "#/components/schemas/Base64URLString"
+					},
+					"response": {
+						"$ref": "#/components/schemas/AuthenticatorAssertionResponseJSON"
+					},
+					"authenticatorAttachment": {
+						"$ref": "#/components/schemas/AuthenticatorAttachment"
+					},
+					"clientExtensionResults": {
+						"$ref": "#/components/schemas/AuthenticationExtensionsClientOutputs"
+					},
+					"type": {
+						"$ref": "#/components/schemas/PublicKeyCredentialType"
+					}
+				},
+				"required": [
+					"id",
+					"rawId",
+					"response",
+					"clientExtensionResults",
+					"type"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IVerifyAuthenticationRequestDto": {
+				"properties": {
+					"data": {
+						"$ref": "#/components/schemas/AuthenticationResponseJSON"
+					}
+				},
+				"required": [
+					"data"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"EJobRunStatus": {
+				"description": "Статус видимой задачи.",
+				"enum": [
+					"queued",
+					"running",
+					"completed",
+					"failed",
+					"cancelled"
+				],
+				"type": "string"
+			},
+			"IJobRunError": {
+				"description": "Ошибка задачи в записи и в ответе API.",
+				"properties": {
+					"code": {
+						"type": "string"
+					},
+					"message": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"code",
+					"message"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"JobRunDto": {
+				"properties": {
+					"id": {
+						"type": "string",
+						"description": "Id задачи (совпадает с id pg-boss)."
+					},
+					"queue": {
+						"type": "string"
+					},
+					"status": {
+						"$ref": "#/components/schemas/EJobRunStatus"
+					},
+					"title": {
+						"type": "string"
+					},
+					"progress": {
+						"type": "number",
+						"format": "double",
+						"description": "Прогресс 0..1."
+					},
+					"progressText": {
+						"type": "string",
+						"nullable": true
+					},
+					"logTail": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array",
+						"description": "Последние строки лога."
+					},
+					"result": {},
+					"error": {
+						"allOf": [
+							{
+								"$ref": "#/components/schemas/IJobRunError"
+							}
+						],
+						"nullable": true
+					},
+					"ownerId": {
+						"type": "string",
+						"nullable": true
+					},
+					"scopeType": {
+						"type": "string",
+						"nullable": true
+					},
+					"scopeId": {
+						"type": "string",
+						"nullable": true
+					},
+					"attempt": {
+						"type": "number",
+						"format": "double",
+						"description": "Номер попытки, с 0."
+					},
+					"cancelRequested": {
+						"type": "boolean"
+					},
+					"stopRequested": {
+						"type": "boolean",
+						"description": "Запрошена штатная досрочная остановка."
+					},
+					"startedAt": {
+						"type": "string",
+						"format": "date-time",
+						"nullable": true
+					},
+					"finishedAt": {
+						"type": "string",
+						"format": "date-time",
+						"nullable": true
+					},
+					"createdAt": {
+						"type": "string",
+						"format": "date-time"
+					}
+				},
+				"required": [
+					"id",
+					"queue",
+					"status",
+					"title",
+					"progress",
+					"progressText",
+					"logTail",
+					"result",
+					"error",
+					"ownerId",
+					"scopeType",
+					"scopeId",
+					"attempt",
+					"cancelRequested",
+					"stopRequested",
+					"startedAt",
+					"finishedAt",
+					"createdAt"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IPaginatedDto_JobRunDto_": {
+				"description": "Страница по смещению: списки с известным общим числом.",
+				"properties": {
+					"items": {
+						"items": {
+							"$ref": "#/components/schemas/JobRunDto"
+						},
+						"type": "array"
+					},
+					"total": {
+						"type": "number",
+						"format": "double",
+						"description": "Всего элементов, подходящих под фильтр."
+					},
+					"offset": {
+						"type": "number",
+						"format": "double"
+					},
+					"limit": {
+						"type": "number",
+						"format": "double"
+					}
+				},
+				"required": [
+					"items",
+					"total",
+					"offset",
+					"limit"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IDemoEchoData": {
+				"properties": {
+					"text": {
+						"type": "string"
+					},
+					"inputKey": {
+						"type": "string",
+						"description": "Отдать воркеру файлы: входной — ключ хранилища, выход — `jobs/<id>/echo.txt`."
+					},
+					"withOutput": {
+						"type": "boolean"
+					}
+				},
+				"required": [
+					"text"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IWorkerInstanceDto": {
+				"description": "Воркер очереди в статусе.",
+				"properties": {
+					"name": {
+						"type": "string"
+					},
+					"lastSeenAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"meta": {
+						"$ref": "#/components/schemas/Record_string.string_"
+					}
+				},
+				"required": [
+					"name",
+					"lastSeenAt",
+					"meta"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IWorkerQueueStatusDto": {
+				"description": "Внешняя очередь: есть ли воркеры на связи.",
+				"properties": {
+					"queue": {
+						"type": "string"
+					},
+					"online": {
+						"type": "boolean",
+						"description": "Хотя бы один воркер брал задачи в последние 90 с."
+					},
+					"workers": {
+						"items": {
+							"$ref": "#/components/schemas/IWorkerInstanceDto"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"queue",
+					"online",
+					"workers"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IClaimedJobDto": {
+				"description": "Задача, выданная воркеру.",
+				"properties": {
+					"jobId": {
+						"type": "string"
+					},
+					"queue": {
+						"type": "string"
+					},
+					"data": {},
+					"attempt": {
+						"type": "number",
+						"format": "double",
+						"description": "Номер попытки, с 0: вернуть в heartbeat/complete/fail."
+					},
+					"leaseSeconds": {
+						"type": "number",
+						"format": "double",
+						"description": "Heartbeat нужен чаще, чем раз в этот срок."
+					},
+					"inputs": {
+						"$ref": "#/components/schemas/Record_string.string_",
+						"description": "Подписанные ссылки на чтение входных файлов."
+					},
+					"outputs": {
+						"$ref": "#/components/schemas/Record_string.string_",
+						"description": "Подписанные ссылки на загрузку результатов (PUT)."
+					},
+					"outputContentTypes": {
+						"$ref": "#/components/schemas/Record_string.string_",
+						"description": "Content-Type, с которым подписана ссылка выхода: PUT обязан отправить\nровно его (иначе S3 отклонит подпись)."
+					}
+				},
+				"required": [
+					"jobId",
+					"queue",
+					"data",
+					"attempt",
+					"leaseSeconds",
+					"inputs",
+					"outputs",
+					"outputContentTypes"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IWorkerInfoBody": {
+				"description": "Представление воркера.",
+				"properties": {
+					"name": {
+						"type": "string",
+						"description": "Имя экземпляра: хост и pid."
+					},
+					"meta": {
+						"$ref": "#/components/schemas/Record_string.string_",
+						"description": "Сведения о воркере: версия SDK, устройство (строки)."
+					}
+				},
+				"required": [
+					"name"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IClaimJobsBody": {
+				"description": "Запрос задач внешним воркером.",
+				"properties": {
+					"queues": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array",
+						"description": "Очереди, из которых воркер готов брать задачи."
+					},
+					"max": {
+						"type": "number",
+						"format": "double",
+						"description": "Сколько задач взять за раз (1..10, по умолчанию 1)."
+					},
+					"waitSeconds": {
+						"type": "number",
+						"format": "double",
+						"description": "Long-poll: сколько ждать задач, если их нет (0..25 с)."
+					},
+					"worker": {
+						"$ref": "#/components/schemas/IWorkerInfoBody",
+						"description": "Кто берёт задачи — для статуса воркеров."
+					}
+				},
+				"required": [
+					"queues"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IHeartbeatResultDto": {
+				"properties": {
+					"cancel": {
+						"type": "boolean",
+						"description": "Задачу отменили или аренда потеряна — прекратить работу."
+					},
+					"stop": {
+						"type": "boolean",
+						"description": "Попросили завершить досрочно, но штатно: довести шаг и сдать результат\nчерез complete."
+					}
+				},
+				"required": [
+					"cancel",
+					"stop"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IWorkerEventBody": {
+				"description": "Событие воркера.",
+				"properties": {
+					"type": {
+						"type": "string",
+						"description": "Тип события в пределах очереди: `epoch`."
+					},
+					"data": {}
+				},
+				"required": [
+					"type"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IHeartbeatJobBody": {
+				"properties": {
+					"attempt": {
+						"type": "number",
+						"format": "double"
+					},
+					"progress": {
+						"type": "number",
+						"format": "double",
+						"description": "Прогресс 0..1."
+					},
+					"text": {
+						"type": "string"
+					},
+					"log": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array",
+						"description": "Новые строки лога."
+					},
+					"events": {
+						"items": {
+							"$ref": "#/components/schemas/IWorkerEventBody"
+						},
+						"type": "array",
+						"description": "События для хука очереди (`onEvent`): метрики эпохи и т. п."
+					}
+				},
+				"type": "object",
+				"additionalProperties": false
+			},
+			"ICompleteJobBody": {
+				"properties": {
+					"attempt": {
+						"type": "number",
+						"format": "double"
+					},
+					"result": {
+						"description": "Результат задачи (JSON)."
+					}
+				},
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IFailJobBody": {
+				"properties": {
+					"attempt": {
+						"type": "number",
+						"format": "double"
+					},
+					"code": {
+						"type": "string",
+						"description": "Машинный код ошибки: `MODEL_NOT_FOUND`."
+					},
+					"message": {
+						"type": "string"
+					},
+					"retryable": {
+						"type": "boolean",
+						"description": "Повторять ли задачу (по умолчанию true)."
+					}
+				},
+				"required": [
+					"code",
+					"message"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IRegisterBiometricResponseDto": {
+				"properties": {
+					"registered": {
+						"type": "boolean"
+					}
+				},
+				"required": [
+					"registered"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IRegisterBiometricRequestDto": {
+				"properties": {
+					"deviceId": {
+						"type": "string"
+					},
+					"deviceName": {
+						"type": "string"
+					},
+					"publicKey": {
+						"type": "string",
+						"description": "Публичный ключ устройства (SPKI DER в base64)"
+					}
+				},
+				"required": [
+					"deviceId",
+					"deviceName",
+					"publicKey"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IGenerateNonceResponseDto": {
+				"properties": {
+					"nonce": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"nonce"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IGenerateNonceRequestDto": {
+				"properties": {
+					"userId": {
+						"type": "string"
+					},
+					"deviceId": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"userId",
+					"deviceId"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IVerifyBiometricSignatureResponseDto": {
+				"properties": {
+					"verified": {
+						"type": "boolean"
+					},
+					"tokens": {
+						"$ref": "#/components/schemas/ITokensDto"
+					}
+				},
+				"required": [
+					"verified",
+					"tokens"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IVerifyBiometricSignatureRequestDto": {
+				"properties": {
+					"userId": {
+						"type": "string"
+					},
+					"deviceId": {
+						"type": "string"
+					},
+					"nonce": {
+						"type": "string",
+						"description": "Nonce, выданный generate-nonce"
+					},
+					"signature": {
+						"type": "string",
+						"description": "Подпись nonce приватным ключом устройства (RSA-SHA256, base64)"
+					}
+				},
+				"required": [
+					"userId",
+					"deviceId",
+					"nonce",
+					"signature"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IBiometricDeviceDto": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"deviceId": {
+						"type": "string"
+					},
+					"deviceName": {
+						"type": "string",
+						"nullable": true
+					},
+					"lastUsedAt": {
+						"type": "string",
+						"format": "date-time",
+						"nullable": true
+					},
+					"createdAt": {
+						"type": "string",
+						"format": "date-time"
+					}
+				},
+				"required": [
+					"id",
+					"deviceId",
+					"deviceName",
+					"lastUsedAt",
+					"createdAt"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IBiometricDevicesResponseDto": {
+				"properties": {
+					"devices": {
+						"items": {
+							"$ref": "#/components/schemas/IBiometricDeviceDto"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"devices"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"Record_string.unknown_": {
+				"properties": {},
+				"additionalProperties": {},
+				"type": "object",
+				"description": "Construct a type with a set of properties K of type T"
+			},
+			"AuditEventDto": {
+				"description": "Событие журнала безопасности.",
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"type": {
+						"type": "string",
+						"description": "Тип: `auth.login.succeeded`, `session.terminated`, …"
+					},
+					"actorId": {
+						"type": "string",
+						"nullable": true
+					},
+					"subjectId": {
+						"type": "string",
+						"nullable": true
+					},
+					"ip": {
+						"type": "string",
+						"nullable": true
+					},
+					"userAgent": {
+						"type": "string",
+						"nullable": true
+					},
+					"meta": {
+						"$ref": "#/components/schemas/Record_string.unknown_"
+					},
+					"createdAt": {
+						"type": "string",
+						"format": "date-time"
+					}
+				},
+				"required": [
+					"id",
+					"type",
+					"actorId",
+					"subjectId",
+					"ip",
+					"userAgent",
+					"meta",
+					"createdAt"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"ICursorPageDto_AuditEventDto_": {
+				"description": "Страница по курсору: ленты, где записи добавляются во время чтения\n(сообщения, события). Курсор непрозрачен для клиента.",
+				"properties": {
+					"items": {
+						"items": {
+							"$ref": "#/components/schemas/AuditEventDto"
+						},
+						"type": "array"
+					},
+					"nextCursor": {
+						"type": "string",
+						"nullable": true,
+						"description": "Курсор следующей страницы; `null` — страниц больше нет."
+					}
+				},
+				"required": [
+					"items",
+					"nextCursor"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"ApiKeyDto": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"name": {
+						"type": "string"
+					},
+					"prefix": {
+						"type": "string",
+						"description": "Открытая часть ключа: по ней ключ узнают в списке."
+					},
+					"scopes": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					},
+					"ownerId": {
+						"type": "string"
+					},
+					"lastUsedAt": {
+						"type": "string",
+						"format": "date-time",
+						"nullable": true
+					},
+					"expiresAt": {
+						"type": "string",
+						"format": "date-time",
+						"nullable": true
+					},
+					"revokedAt": {
+						"type": "string",
+						"format": "date-time",
+						"nullable": true
+					},
+					"createdAt": {
+						"type": "string",
+						"format": "date-time"
+					}
+				},
+				"required": [
+					"id",
+					"name",
+					"prefix",
+					"scopes",
+					"ownerId",
+					"lastUsedAt",
+					"expiresAt",
+					"revokedAt",
+					"createdAt"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"ICreatedApiKeyDto": {
+				"description": "Созданный ключ: `key` показывается один раз и больше не восстановим.",
+				"properties": {
+					"apiKey": {
+						"$ref": "#/components/schemas/ApiKeyDto"
+					},
+					"key": {
+						"type": "string",
+						"description": "Полный ключ `<prefix>.<secret>` — передаётся в `X-Api-Key`."
+					}
+				},
+				"required": [
+					"apiKey",
+					"key"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"ICreateApiKeyBody": {
+				"properties": {
+					"name": {
+						"type": "string",
+						"minLength": 1,
+						"maxLength": 100
+					},
+					"scopes": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array",
+						"description": "Разрешения: `worker:demo.echo`, `worker:*`."
+					},
+					"expiresAt": {
+						"type": "string",
+						"format": "date-time",
+						"description": "Срок действия; без него ключ бессрочный."
+					}
+				},
+				"required": [
+					"name",
+					"scopes"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IPaginatedDto_ApiKeyDto_": {
+				"description": "Страница по смещению: списки с известным общим числом.",
+				"properties": {
+					"items": {
+						"items": {
+							"$ref": "#/components/schemas/ApiKeyDto"
+						},
+						"type": "array"
+					},
+					"total": {
+						"type": "number",
+						"format": "double",
+						"description": "Всего элементов, подходящих под фильтр."
+					},
+					"offset": {
+						"type": "number",
+						"format": "double"
+					},
+					"limit": {
+						"type": "number",
+						"format": "double"
+					}
+				},
+				"required": [
+					"items",
+					"total",
+					"offset",
+					"limit"
+				],
+				"type": "object",
+				"additionalProperties": false
+			}
+		},
+		"securitySchemes": {
+			"jwt": {
+				"type": "http",
+				"scheme": "bearer",
+				"bearerFormat": "JWT"
+			},
+			"apiKey": {
+				"type": "apiKey",
+				"in": "header",
+				"name": "X-Api-Key",
+				"description": "API-ключ сервиса (внешний воркер, интеграция)"
+			}
+		}
+	},
+	"info": {
+		"title": "rest-api",
+		"version": "1.0.1",
+		"description": "REST API Template App",
+		"license": {
+			"name": "MIT"
+		},
+		"contact": {
+			"name": "Epifanov Andrei",
+			"email": "epifanovmd@gmail.com"
+		}
+	},
+	"paths": {
+		"/api/v1/file": {
+			"get": {
+				"operationId": "GetMyFiles",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IPaginatedDto_IFileDto_"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Файлы текущего пользователя, новые первыми. Ссылки в ответе подписаны\nи действуют ограниченное время.",
+				"summary": "Мои файлы",
+				"tags": [
+					"Files"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"description": "Смещение",
+						"in": "query",
+						"name": "offset",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					},
+					{
+						"description": "Размер страницы (до 100)",
+						"in": "query",
+						"name": "limit",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					}
+				]
+			},
+			"post": {
+				"operationId": "UploadFile",
+				"responses": {
+					"201": {
+						"description": "Created",
+						"content": {
+							"application/json": {
+								"schema": {
+									"items": {
+										"$ref": "#/components/schemas/IFileDto"
+									},
+									"type": "array"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Загрузить небольшой файл (multipart, до 100 MB). Допустимы только типы\nиз белого списка; расширение, заявленный mime и сигнатура содержимого\nдолжны совпадать, иначе 415. Медиа обрабатывается в фоне: файл\nвозвращается в статусе `processing`, по готовности приходит\n`file:processed`.",
+				"summary": "Загрузка файла",
+				"tags": [
+					"Files"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"multipart/form-data": {
+							"schema": {
+								"type": "object",
+								"properties": {
+									"file": {
+										"type": "string",
+										"format": "binary",
+										"description": "Файл, который нужно загрузить"
+									}
+								},
+								"required": [
+									"file"
+								]
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/file/{id}": {
+			"get": {
+				"operationId": "GetFileById",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IFileDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Метаданные файла и подписанные ссылки на него.",
+				"summary": "Получение файла по ID",
+				"tags": [
+					"Files"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"description": "ID файла",
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					}
+				]
+			},
+			"delete": {
+				"operationId": "DeleteFile",
+				"responses": {
+					"204": {
+						"description": "No Content"
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Удалить файл вместе с производными версиями. Доступно владельцу и\nсуперпользователю; файл, прикреплённый к сообщению, удалить нельзя (409).",
+				"summary": "Удаление файла",
+				"tags": [
+					"Files"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"description": "ID файла",
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/file/uploads": {
+			"post": {
+				"operationId": "CreateUpload",
+				"responses": {
+					"201": {
+						"description": "Created",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IDirectUploadDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Начать прямую загрузку крупного файла: возвращает подписанную ссылку\nдля `PUT` (с заголовками из `headers`, тело — ровно `size` байт).\nПосле загрузки — `POST /uploads/{fileId}/complete`. Неподтверждённая\nзагрузка удаляется через сутки.",
+				"summary": "Прямая загрузка: получить ссылку",
+				"tags": [
+					"Files"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/ICreateUploadBody"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/file/uploads/{fileId}/complete": {
+			"post": {
+				"operationId": "CompleteUpload",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IFileDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Завершить прямую загрузку: проверяются размер и сигнатура, затем\nмедиа ставится в фоновую обработку. Повторный вызов безопасен.",
+				"summary": "Прямая загрузка: завершить",
+				"tags": [
+					"Files"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"description": "ID файла из ответа на создание загрузки",
+						"in": "path",
+						"name": "fileId",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/profile/my": {
+			"get": {
+				"operationId": "GetMyProfile",
+				"responses": {
+					"200": {
+						"description": "Пользователь",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ProfileDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Получить профиль текущего пользователя.\nЭтот эндпоинт позволяет получить данные профиля пользователя, который выполнил запрос.\nИспользуется для получения информации о текущем пользователе, например, его имени, email, и других данных.",
+				"summary": "Получение профиля текущего пользователя",
+				"tags": [
+					"Profile"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": []
+			}
+		},
+		"/api/v1/profile/my/update": {
+			"patch": {
+				"operationId": "UpdateMyProfile",
+				"responses": {
+					"200": {
+						"description": "Обновленный профиль пользователя",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ProfileDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Обновить профиль текущего пользователя.\nЭтот эндпоинт позволяет пользователю обновить свои данные, такие как имя, email и другие параметры профиля.",
+				"summary": "Обновление профиля текущего пользователя",
+				"tags": [
+					"Profile"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"description": "Обновленные данные профиля",
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IProfileUpdateRequestDto",
+								"description": "Обновленные данные профиля"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/profile/my/privacy": {
+			"get": {
+				"operationId": "GetPrivacySettings",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/PrivacySettingsDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Получить настройки приватности.",
+				"summary": "Настройки приватности",
+				"tags": [
+					"Profile"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": []
+			},
+			"patch": {
+				"operationId": "UpdatePrivacySettings",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/PrivacySettingsDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Обновить настройки приватности.",
+				"summary": "Обновление настроек приватности",
+				"tags": [
+					"Profile"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"properties": {
+									"showAvatar": {
+										"$ref": "#/components/schemas/EPrivacyLevel"
+									},
+									"showPhone": {
+										"$ref": "#/components/schemas/EPrivacyLevel"
+									},
+									"showLastOnline": {
+										"$ref": "#/components/schemas/EPrivacyLevel"
+									}
+								},
+								"type": "object"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/profile/my/delete": {
+			"delete": {
+				"operationId": "DeleteMyProfile",
+				"responses": {
+					"204": {
+						"description": "No Content"
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Очистить профиль текущего пользователя.\nЛичные данные (имя, фамилия, дата рождения, пол, аватар) обнуляются,\nсама запись профиля остаётся.",
+				"summary": "Очистка профиля текущего пользователя",
+				"tags": [
+					"Profile"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": []
+			}
+		},
+		"/api/v1/profile/all": {
+			"get": {
+				"operationId": "GetProfiles",
+				"responses": {
+					"200": {
+						"description": "Страница профилей",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IProfileListDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Получить все профили постранично, новые первыми.",
+				"summary": "Получение всех профилей",
+				"tags": [
+					"Profile"
+				],
+				"security": [
+					{
+						"jwt": [
+							"permission:profile:view"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"description": "Смещение, по умолчанию 0",
+						"in": "query",
+						"name": "offset",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					},
+					{
+						"description": "Размер страницы: по умолчанию 20, не больше 100",
+						"in": "query",
+						"name": "limit",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/profile/{userId}": {
+			"get": {
+				"operationId": "GetProfileById",
+				"responses": {
+					"200": {
+						"description": "Пользователь по ID",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/PublicProfileDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Получить профиль по ID.\nЭтот эндпоинт позволяет получить профиль другого пользователя по его ID. Доступен только для администраторов.",
+				"summary": "Получение профиля по ID",
+				"tags": [
+					"Profile"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"description": "ID пользователя, профиль которого нужно получить",
+						"in": "path",
+						"name": "userId",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/profile/update/{userId}": {
+			"patch": {
+				"operationId": "UpdateProfile",
+				"responses": {
+					"200": {
+						"description": "Обновленный профиль пользователя",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ProfileDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Обновить профиль другого пользователя.\nЭтот эндпоинт позволяет администраторам обновлять профиль других пользователей.",
+				"summary": "Обновление профиля другого пользователя",
+				"tags": [
+					"Profile"
+				],
+				"security": [
+					{
+						"jwt": [
+							"permission:profile:manage"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"description": "ID пользователя, профиль которого необходимо обновить",
+						"in": "path",
+						"name": "userId",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					}
+				],
+				"requestBody": {
+					"description": "Данные для обновления профиля",
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IProfileUpdateRequestDto",
+								"description": "Данные для обновления профиля"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/profile/delete/{userId}": {
+			"delete": {
+				"operationId": "DeleteProfile",
+				"responses": {
+					"204": {
+						"description": "No Content"
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Очистить профиль другого пользователя.\nЛичные данные обнуляются, запись профиля остаётся.",
+				"summary": "Очистка профиля другого пользователя",
+				"tags": [
+					"Profile"
+				],
+				"security": [
+					{
+						"jwt": [
+							"permission:profile:manage"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"description": "ID пользователя, профиль которого необходимо очистить",
+						"in": "path",
+						"name": "userId",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/roles": {
+			"get": {
+				"operationId": "GetRoles",
+				"responses": {
+					"200": {
+						"description": "Список ролей",
+						"content": {
+							"application/json": {
+								"schema": {
+									"items": {
+										"$ref": "#/components/schemas/IRoleDto"
+									},
+									"type": "array"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Получить все роли с их правами.",
+				"summary": "Список ролей",
+				"tags": [
+					"Role"
+				],
+				"security": [
+					{
+						"jwt": [
+							"permission:role:view"
+						]
+					}
+				],
+				"parameters": []
+			},
+			"post": {
+				"operationId": "CreateRole",
+				"responses": {
+					"201": {
+						"description": "Created",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IRoleDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Создать новую роль.",
+				"summary": "Создание роли",
+				"tags": [
+					"Role"
+				],
+				"security": [
+					{
+						"jwt": [
+							"permission:role:manage"
+						]
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"description": "Название роли",
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/ICreateRoleRequestDto",
+								"description": "Название роли"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/roles/{id}": {
+			"delete": {
+				"operationId": "DeleteRole",
+				"responses": {
+					"204": {
+						"description": "No Content"
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Удалить роль.",
+				"summary": "Удаление роли",
+				"tags": [
+					"Role"
+				],
+				"security": [
+					{
+						"jwt": [
+							"permission:role:manage"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"description": "ID роли",
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/roles/{id}/permissions": {
+			"patch": {
+				"operationId": "SetRolePermissions",
+				"responses": {
+					"200": {
+						"description": "Обновлённая роль",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IRoleDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Установить права для роли.\nЗаменяет текущий набор прав роли указанным. Роль `admin`, право `*` и\nсобственную роль меняет только суперпользователь. Все пользователи роли\nполучают `user:privileges-changed`, их сессии завершаются.",
+				"summary": "Установка прав роли",
+				"tags": [
+					"Role"
+				],
+				"security": [
+					{
+						"jwt": [
+							"permission:role:manage"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"description": "ID роли",
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					}
+				],
+				"requestBody": {
+					"description": "Список прав",
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IRolePermissionsRequestDto",
+								"description": "Список прав"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/user/my": {
+			"get": {
+				"operationId": "GetMyUser",
+				"responses": {
+					"200": {
+						"description": "Пользователь",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/UserDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Получить пользователя.\nЭтот эндпоинт позволяет получить данные пользователя, который выполнил запрос.",
+				"summary": "Получение данных текущего пользователя",
+				"tags": [
+					"User"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": []
+			}
+		},
+		"/api/v1/user/my/update": {
+			"patch": {
+				"operationId": "UpdateMyUser",
+				"responses": {
+					"200": {
+						"description": "Пользователь (email — прежний до подтверждения)",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/UserDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Обновить email и/или телефон текущего пользователя.\nТелефон меняется сразу. Email — нет: создаётся запрос на смену, код\nуходит на новый адрес, уведомление — на старый; адрес меняется после\n`POST my/email/confirm`. Повторный запрос — не чаще раза в минуту (429).\nЗанятые email/телефон → 409 (`USER_EMAIL_TAKEN` / `USER_PHONE_TAKEN`).",
+				"summary": "Обновление данных текущего пользователя",
+				"tags": [
+					"User"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"description": "Обновленные данные пользователя",
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IUserUpdateRequestDto",
+								"description": "Обновленные данные пользователя"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/user/my/email/confirm": {
+			"post": {
+				"operationId": "ConfirmEmailChange",
+				"responses": {
+					"200": {
+						"description": "Пользователь с новым email",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/UserDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Подтвердить смену email кодом из письма на новый адрес. Email\nменяется и считается подтверждённым. Неверный код расходует попытку\n(`USER_EMAIL_CHANGE_INVALID_CODE`, в `details.attemptsLeft` — остаток);\nпосле 5 неверных или по истечении 15 минут запрос аннулируется.",
+				"summary": "Подтверждение смены email",
+				"tags": [
+					"User"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"description": "Код подтверждения",
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IUserConfirmEmailChangeDto",
+								"description": "Код подтверждения"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/user/my/delete": {
+			"post": {
+				"operationId": "DeleteMyUser",
+				"responses": {
+					"204": {
+						"description": "No Content"
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Удалить текущего пользователя. Требуется текущий пароль.\nPOST, а не DELETE: тело DELETE-запроса не разбирается body-parser-ом.",
+				"summary": "Удаление текущего пользователя",
+				"tags": [
+					"User"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IUserDeleteDto"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/user/my/username": {
+			"patch": {
+				"operationId": "SetUsername",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/UserDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Установить username для текущего пользователя.",
+				"summary": "Установка username",
+				"tags": [
+					"User"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"properties": {
+									"username": {
+										"type": "string"
+									}
+								},
+								"required": [
+									"username"
+								],
+								"type": "object"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/user/search": {
+			"get": {
+				"operationId": "SearchUsers",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IUserListDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Поиск пользователей по username, имени и фамилии.\nEmail в ответе не отдаётся; телефон — по настройке приватности `showPhone`.",
+				"summary": "Поиск пользователей",
+				"tags": [
+					"User"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"description": "Поисковый запрос, минимум 2 символа",
+						"in": "query",
+						"name": "q",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"description": "Размер страницы: по умолчанию 20, не больше 100",
+						"in": "query",
+						"name": "limit",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					},
+					{
+						"description": "Смещение, по умолчанию 0",
+						"in": "query",
+						"name": "offset",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/user/by-username/{username}": {
+			"get": {
+				"operationId": "GetUserByUsername",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/PublicUserDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Получить пользователя по username.",
+				"summary": "Получение по username",
+				"tags": [
+					"User"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "username",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/user/all": {
+			"get": {
+				"operationId": "GetUsers",
+				"responses": {
+					"200": {
+						"description": "Страница пользователей",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IUserAdminListDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Получить пользователей постранично (администрирование), новые первыми.",
+				"summary": "Получение всех пользователей",
+				"tags": [
+					"User"
+				],
+				"security": [
+					{
+						"jwt": [
+							"permission:user:view"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"description": "Смещение, по умолчанию 0",
+						"in": "query",
+						"name": "offset",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					},
+					{
+						"description": "Размер страницы: по умолчанию 20, не больше 100",
+						"in": "query",
+						"name": "limit",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					},
+					{
+						"description": "Поиск по email, минимум 2 символа",
+						"in": "query",
+						"name": "query",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/user/options": {
+			"get": {
+				"operationId": "GetUserOptions",
+				"responses": {
+					"200": {
+						"description": "Список опций",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IUserOptionsDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Получить опции пользователей для выпадающих списков (id + name).\nname — имя и фамилия или email если профиль не заполнен.",
+				"summary": "Опции пользователей",
+				"tags": [
+					"User"
+				],
+				"security": [
+					{
+						"jwt": [
+							"permission:user:view"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"description": "Поиск по email, имени или фамилии",
+						"in": "query",
+						"name": "query",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/user/{id}": {
+			"get": {
+				"operationId": "GetUserById",
+				"responses": {
+					"200": {
+						"description": "Пользователь по ID",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/UserDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Получить пользователя по ID.",
+				"summary": "Получение пользователя по ID",
+				"tags": [
+					"User"
+				],
+				"security": [
+					{
+						"jwt": [
+							"permission:user:view"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"description": "ID пользователя, которого нужно получить",
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/user/setPrivileges/{id}": {
+			"patch": {
+				"operationId": "SetPrivileges",
+				"responses": {
+					"200": {
+						"description": "Обновленный пользователь с привилегиями",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/UserDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Установить роли и прямые права пользователя.\nРоли и права должны существовать. Свои привилегии менять нельзя; роль\n`admin` и право `*` выдаёт только суперпользователь.",
+				"summary": "Установка привилегий для пользователя",
+				"tags": [
+					"User"
+				],
+				"security": [
+					{
+						"jwt": [
+							"permission:user:manage"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"description": "ID пользователя, для которого необходимо установить привилегии",
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					}
+				],
+				"requestBody": {
+					"description": "Запрос, содержащий роль и разрешения",
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IUserPrivilegesRequestDto",
+								"description": "Запрос, содержащий роль и разрешения"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/user/verify-email/request": {
+			"post": {
+				"operationId": "RequestVerifyEmail",
+				"responses": {
+					"204": {
+						"description": "No Content"
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Отправить код подтверждения на email текущего пользователя.\nПовторная отправка — не чаще раза в минуту (429).",
+				"summary": "Запрос подтверждения email",
+				"tags": [
+					"User"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": []
+			}
+		},
+		"/api/v1/user/verify-email": {
+			"post": {
+				"operationId": "VerifyEmail",
+				"responses": {
+					"204": {
+						"description": "No Content"
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Подтвердить email текущего пользователя кодом из письма.",
+				"summary": "Подтверждение email-адреса",
+				"tags": [
+					"User"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"description": "Код подтверждения",
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IUserVerifyEmailDto",
+								"description": "Код подтверждения"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/user/update/{id}": {
+			"patch": {
+				"operationId": "UpdateUser",
+				"responses": {
+					"200": {
+						"description": "Обновленный пользователь",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/UserDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Обновить email/телефон другого пользователя — сразу, без подтверждения\nкодом. Новый email сбрасывает `emailVerified`.",
+				"summary": "Обновление другого пользователя",
+				"tags": [
+					"User"
+				],
+				"security": [
+					{
+						"jwt": [
+							"permission:user:manage"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"description": "ID пользователя, которого необходимо обновить",
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					}
+				],
+				"requestBody": {
+					"description": "Данные для обновления пользователя",
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IUserUpdateRequestDto",
+								"description": "Данные для обновления пользователя"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/user/changePassword": {
+			"post": {
+				"operationId": "ChangePassword",
+				"responses": {
+					"204": {
+						"description": "No Content"
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Изменить пароль текущего пользователя. Требуется текущий пароль;\nостальные сессии завершаются, текущая остаётся.",
+				"summary": "Изменение пароля",
+				"tags": [
+					"User"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"description": "Текущий и новый пароль",
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IUserChangePasswordDto",
+								"description": "Текущий и новый пароль"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/user/delete/{id}": {
+			"delete": {
+				"operationId": "DeleteUser",
+				"responses": {
+					"204": {
+						"description": "No Content"
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Удалить другого пользователя. Себя и суперпользователя удалить нельзя.",
+				"summary": "Удаление другого пользователя",
+				"tags": [
+					"User"
+				],
+				"security": [
+					{
+						"jwt": [
+							"permission:user:manage"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"description": "ID пользователя, которого необходимо удалить",
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/session": {
+			"get": {
+				"operationId": "GetSessions",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IPaginatedDto_SessionDto_"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Получить список активных сессий пользователя (последние активные — первыми).",
+				"summary": "Список сессий",
+				"tags": [
+					"Session"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"description": "Смещение (по умолчанию 0)",
+						"in": "query",
+						"name": "offset",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					},
+					{
+						"description": "Размер страницы (по умолчанию 20, максимум 100)",
+						"in": "query",
+						"name": "limit",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/session/{id}": {
+			"delete": {
+				"operationId": "TerminateSession",
+				"responses": {
+					"204": {
+						"description": "No Content"
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Завершить конкретную сессию: её access-токен сразу перестаёт действовать.",
+				"summary": "Завершение сессии",
+				"tags": [
+					"Session"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/session/terminate-others": {
+			"post": {
+				"operationId": "TerminateOtherSessions",
+				"responses": {
+					"204": {
+						"description": "No Content"
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Завершить все сессии, кроме текущей.",
+				"summary": "Завершение остальных сессий",
+				"tags": [
+					"Session"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": []
+			}
+		},
+		"/api/v1/auth/sign-up": {
+			"post": {
+				"operationId": "SignUp",
+				"responses": {
+					"201": {
+						"description": "Created",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IUserWithTokensDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Регистрация нового пользователя",
+				"summary": "Регистрация",
+				"tags": [
+					"Authorization"
+				],
+				"security": [],
+				"parameters": [],
+				"requestBody": {
+					"description": "Данные для регистрации",
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/TSignUpRequestDto",
+								"description": "Данные для регистрации"
+							},
+							"example": {
+								"email": "user@example.com",
+								"password": "Correct-Horse-42",
+								"firstName": "John",
+								"lastName": "Doe"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/auth/sign-in": {
+			"post": {
+				"operationId": "SignIn",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ISignInResponseDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Авторизация пользователя",
+				"summary": "Вход в систему",
+				"tags": [
+					"Authorization"
+				],
+				"security": [],
+				"parameters": [],
+				"requestBody": {
+					"description": "Данные для входа",
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/ISignInRequestDto",
+								"description": "Данные для входа"
+							},
+							"example": {
+								"login": "epifanovmd@gmail.com",
+								"password": "Epifan123"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/auth/request-reset-password": {
+			"post": {
+				"operationId": "RequestResetPassword",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponseDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Запрос на сброс пароля",
+				"summary": "Запрос сброса пароля",
+				"tags": [
+					"Authorization"
+				],
+				"security": [],
+				"parameters": [],
+				"requestBody": {
+					"description": "Логин (email или телефон)",
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IUserLoginRequestDto",
+								"description": "Логин (email или телефон)"
+							},
+							"example": {
+								"login": "user@example.com"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/auth/reset-password": {
+			"post": {
+				"operationId": "ResetPassword",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponseDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Сброс пароля",
+				"summary": "Смена пароля",
+				"tags": [
+					"Authorization"
+				],
+				"security": [],
+				"parameters": [],
+				"requestBody": {
+					"description": "Токен и новый пароль",
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IUserResetPasswordRequestDto",
+								"description": "Токен и новый пароль"
+							},
+							"example": {
+								"token": "reset-token-123",
+								"password": "newSecurePassword"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/auth/refresh": {
+			"post": {
+				"operationId": "Refresh",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ITokensDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Обновление токенов доступа",
+				"summary": "Обновление токенов",
+				"tags": [
+					"Authorization"
+				],
+				"security": [],
+				"parameters": [],
+				"requestBody": {
+					"description": "Тело запроса с refresh токеном",
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IRefreshRequestDto",
+								"description": "Тело запроса с refresh токеном"
+							},
+							"example": {
+								"refreshToken": "old-refresh-token"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/auth/sign-out": {
+			"post": {
+				"operationId": "SignOut",
+				"responses": {
+					"204": {
+						"description": "No Content"
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Выйти из текущей сессии: сессия завершается, access-токен сразу\nперестаёт действовать, cookie с refresh-токеном очищается.",
+				"summary": "Выход",
+				"tags": [
+					"Authorization"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": []
+			}
+		},
+		"/api/v1/auth/sign-out-all": {
+			"post": {
+				"operationId": "SignOutAll",
+				"responses": {
+					"204": {
+						"description": "No Content"
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Выйти со всех устройств, включая текущее: все сессии завершаются,\nих access-токены сразу перестают действовать.",
+				"summary": "Выход со всех устройств",
+				"tags": [
+					"Authorization"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": []
+			}
+		},
+		"/api/v1/auth/enable-2fa": {
+			"post": {
+				"operationId": "Enable2FA",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponseDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Включить двухфакторную аутентификацию. Требует текущий пароль аккаунта.",
+				"summary": "Включение 2FA",
+				"tags": [
+					"Authorization"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IEnable2FARequestDto"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/auth/disable-2fa": {
+			"post": {
+				"operationId": "Disable2FA",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponseDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Отключить двухфакторную аутентификацию. Требует текущий пароль аккаунта\nи пароль 2FA.",
+				"summary": "Отключение 2FA",
+				"tags": [
+					"Authorization"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IDisable2FARequestDto"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/auth/verify-2fa": {
+			"post": {
+				"operationId": "Verify2FA",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IUserWithTokensDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Верифицировать 2FA и получить токены. Токен 2FA одноразовый; после\nнескольких неверных паролей вход по 2FA временно блокируется.",
+				"summary": "Верификация 2FA",
+				"tags": [
+					"Authorization"
+				],
+				"security": [],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IVerify2FARequestDto"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/passkeys": {
+			"get": {
+				"operationId": "GetPasskeys",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IPaginatedDto_PasskeyDto_"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Список passkeys текущего пользователя (новые — первыми).",
+				"summary": "Мои passkeys",
+				"tags": [
+					"Passkeys"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"description": "Смещение (по умолчанию 0)",
+						"in": "query",
+						"name": "offset",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					},
+					{
+						"description": "Размер страницы (по умолчанию 20, максимум 100)",
+						"in": "query",
+						"name": "limit",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/passkeys/{id}": {
+			"delete": {
+				"operationId": "DeletePasskey",
+				"responses": {
+					"204": {
+						"description": "No Content"
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Удаляет passkey текущего пользователя.",
+				"summary": "Удаление passkey",
+				"tags": [
+					"Passkeys"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"description": "Credential ID passkey",
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/passkeys/generate-registration-options": {
+			"post": {
+				"operationId": "GenerateRegistrationOptions",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/PublicKeyCredentialCreationOptionsJSON"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Генерирует параметры для регистрации нового passkey.\nТребует авторизации — passkey привязывается к текущему пользователю.",
+				"summary": "Параметры регистрации passkey",
+				"tags": [
+					"Passkeys"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": []
+			}
+		},
+		"/api/v1/passkeys/verify-registration": {
+			"post": {
+				"operationId": "VerifyRegistration",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IVerifyRegistrationResponseDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Верифицирует ответ устройства и сохраняет passkey для текущего пользователя.",
+				"summary": "Верификация регистрации passkey",
+				"tags": [
+					"Passkeys"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IVerifyRegistrationRequestDto"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/passkeys/generate-authentication-options": {
+			"post": {
+				"operationId": "GenerateAuthenticationOptions",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/PublicKeyCredentialRequestOptionsJSON"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Генерирует параметры для аутентификации по passkey.\nПринимает login (email или телефон) пользователя.",
+				"summary": "Параметры аутентификации passkey",
+				"tags": [
+					"Passkeys"
+				],
+				"security": [],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IGenerateAuthenticationOptionsRequestDto"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/passkeys/verify-authentication": {
+			"post": {
+				"operationId": "VerifyAuthentication",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IVerifyAuthenticationResponseDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Верифицирует ответ устройства и возвращает токены при успехе.",
+				"summary": "Аутентификация по passkey",
+				"tags": [
+					"Passkeys"
+				],
+				"security": [],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IVerifyAuthenticationRequestDto"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/jobs": {
+			"get": {
+				"operationId": "ListJobs",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IPaginatedDto_JobRunDto_"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Видимые задачи: свои, либо задачи scope (`scopeType` + `scopeId`), если\nполитика scope разрешает просмотр. Новые — первыми.",
+				"summary": "Список задач",
+				"tags": [
+					"Jobs"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "query",
+						"name": "status",
+						"required": false,
+						"schema": {
+							"$ref": "#/components/schemas/EJobRunStatus"
+						}
+					},
+					{
+						"in": "query",
+						"name": "scopeType",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "scopeId",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "offset",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					},
+					{
+						"in": "query",
+						"name": "limit",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/jobs/{id}": {
+			"get": {
+				"operationId": "GetJob",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/JobRunDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Задача: статус, прогресс, хвост лога, результат или ошибка.",
+				"summary": "Задача",
+				"tags": [
+					"Jobs"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/jobs/{id}/cancel": {
+			"post": {
+				"operationId": "CancelJob",
+				"responses": {
+					"204": {
+						"description": "No Content"
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Отменить задачу: ждущая снимается сразу, выполняющаяся получает сигнал\nотмены. Завершённую отменить нельзя (409).",
+				"summary": "Отмена задачи",
+				"tags": [
+					"Jobs"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/jobs/demo/echo": {
+			"post": {
+				"operationId": "DemoEchoJob",
+				"responses": {
+					"201": {
+						"description": "Created",
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"jobId": {
+											"type": "string"
+										}
+									},
+									"required": [
+										"jobId"
+									],
+									"type": "object"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Поставить демо-задачу `demo.echo` внешнему воркеру — проверка, что\nворкеры подключены (`python/examples/echo_worker.py`). Только для админов.",
+				"summary": "Проверка внешних воркеров",
+				"tags": [
+					"Jobs"
+				],
+				"security": [
+					{
+						"jwt": [
+							"permission:jobs:manage"
+						]
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IDemoEchoData"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/worker/status": {
+			"get": {
+				"operationId": "Status",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"items": {
+										"$ref": "#/components/schemas/IWorkerQueueStatusDto"
+									},
+									"type": "array"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Внешние очереди и воркеры: кто брал задачи и на связи ли сейчас (брал в\nпоследние 90 с). Для индикатора «воркер доступен» в интерфейсе.",
+				"summary": "Статус воркеров",
+				"tags": [
+					"Worker"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": []
+			}
+		},
+		"/api/v1/worker/jobs/claim": {
+			"post": {
+				"operationId": "Claim",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"items": {
+										"$ref": "#/components/schemas/IClaimedJobDto"
+									},
+									"type": "array"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Взять задачи из очередей. Long-poll: без задач ждёт до `waitSeconds`\n(не больше 25 с) и возвращает пустой список. Каждая задача выдаётся в\nаренду на `leaseSeconds`; без heartbeat она вернётся в очередь.",
+				"summary": "Взять задачи",
+				"tags": [
+					"Worker"
+				],
+				"security": [
+					{
+						"apiKey": [
+							"worker"
+						]
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IClaimJobsBody"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/worker/jobs/{id}/heartbeat": {
+			"post": {
+				"operationId": "Heartbeat",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IHeartbeatResultDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Продлить аренду и сообщить прогресс. `cancel: true` — задачу отменили\nили аренда потеряна: прекратить работу и не вызывать complete.",
+				"summary": "Heartbeat задачи",
+				"tags": [
+					"Worker"
+				],
+				"security": [
+					{
+						"apiKey": [
+							"worker"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IHeartbeatJobBody"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/worker/jobs/{id}/complete": {
+			"post": {
+				"operationId": "Complete",
+				"responses": {
+					"204": {
+						"description": "No Content"
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Завершить задачу с результатом. 409 — аренда потеряна или задачу\nотменили: результат не принят.",
+				"summary": "Завершить задачу",
+				"tags": [
+					"Worker"
+				],
+				"security": [
+					{
+						"apiKey": [
+							"worker"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/ICompleteJobBody"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/worker/jobs/{id}/fail": {
+			"post": {
+				"operationId": "Fail",
+				"responses": {
+					"204": {
+						"description": "No Content"
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Сообщить об ошибке. `retryable: false` — без повторов; иначе задача\nповторяется по политике очереди.",
+				"summary": "Ошибка задачи",
+				"tags": [
+					"Worker"
+				],
+				"security": [
+					{
+						"apiKey": [
+							"worker"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IFailJobBody"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/biometric/register": {
+			"post": {
+				"operationId": "RegisterBiometric",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IRegisterBiometricResponseDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Регистрирует публичный ключ устройства для входа по биометрии.",
+				"summary": "Регистрация биометрии",
+				"tags": [
+					"Biometric"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IRegisterBiometricRequestDto"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/biometric/generate-nonce": {
+			"post": {
+				"operationId": "GenerateNonce",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IGenerateNonceResponseDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Выдаёт одноразовый nonce (5 минут), который устройство подписывает своим\nключом. Публичный: вызывается до входа.",
+				"summary": "Nonce для биометрического входа",
+				"tags": [
+					"Biometric"
+				],
+				"security": [],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IGenerateNonceRequestDto"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/biometric/verify-signature": {
+			"post": {
+				"operationId": "VerifySignature",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IVerifyBiometricSignatureResponseDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Проверяет подпись nonce и открывает новую сессию. Публичный; nonce\nодноразовый — одна попытка на nonce.",
+				"summary": "Вход по биометрии",
+				"tags": [
+					"Biometric"
+				],
+				"security": [],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IVerifyBiometricSignatureRequestDto"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/biometric/devices": {
+			"get": {
+				"operationId": "GetDevices",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IBiometricDevicesResponseDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Список зарегистрированных устройств пользователя.",
+				"summary": "Мои биометрические устройства",
+				"tags": [
+					"Biometric"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": []
+			}
+		},
+		"/api/v1/biometric/{deviceId}": {
+			"delete": {
+				"operationId": "DeleteDevice",
+				"responses": {
+					"204": {
+						"description": "No Content"
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Удаляет зарегистрированное устройство.",
+				"summary": "Удаление биометрического устройства",
+				"tags": [
+					"Biometric"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "deviceId",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/audit/my": {
+			"get": {
+				"operationId": "GetMyAudit",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ICursorPageDto_AuditEventDto_"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Журнал безопасности текущего пользователя: входы (в том числе\nнеудачные), блокировки, 2FA, смена пароля, сессии, passkeys, биометрия.\nНовые — первыми.",
+				"summary": "Мой журнал безопасности",
+				"tags": [
+					"Audit"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"description": "Курсор следующей страницы (`nextCursor` предыдущего ответа)",
+						"in": "query",
+						"name": "cursor",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"description": "Размер страницы (по умолчанию 20, максимум 100)",
+						"in": "query",
+						"name": "limit",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					},
+					{
+						"description": "Фильтр по типу события",
+						"in": "query",
+						"name": "type",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/audit": {
+			"get": {
+				"operationId": "ListAuditEvents",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ICursorPageDto_AuditEventDto_"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Журнал безопасности всех пользователей. Требует право `audit:view`.",
+				"summary": "Журнал безопасности",
+				"tags": [
+					"Audit"
+				],
+				"security": [
+					{
+						"jwt": [
+							"permission:audit:view"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"description": "Курсор следующей страницы",
+						"in": "query",
+						"name": "cursor",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"description": "Размер страницы (по умолчанию 20, максимум 100)",
+						"in": "query",
+						"name": "limit",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					},
+					{
+						"description": "Фильтр по типу события",
+						"in": "query",
+						"name": "type",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"description": "Фильтр по пользователю",
+						"in": "query",
+						"name": "actorId",
+						"required": false,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/api-keys": {
+			"post": {
+				"operationId": "CreateApiKey",
+				"responses": {
+					"201": {
+						"description": "Created",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ICreatedApiKeyDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Выпустить API-ключ сервиса. Полный ключ (`key`) возвращается только в\nэтом ответе — сохраните его: в БД хранится лишь хеш.",
+				"summary": "Создание API-ключа",
+				"tags": [
+					"ApiKey"
+				],
+				"security": [
+					{
+						"jwt": [
+							"permission:apikey:manage"
+						]
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/ICreateApiKeyBody"
+							}
+						}
+					}
+				}
+			},
+			"get": {
+				"operationId": "ListApiKeys",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IPaginatedDto_ApiKeyDto_"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Все API-ключи, новые первыми. Секреты не возвращаются.",
+				"summary": "Список API-ключей",
+				"tags": [
+					"ApiKey"
+				],
+				"security": [
+					{
+						"jwt": [
+							"permission:apikey:manage"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"in": "query",
+						"name": "offset",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					},
+					{
+						"in": "query",
+						"name": "limit",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/api-keys/{id}/revoke": {
+			"post": {
+				"operationId": "RevokeApiKey",
+				"responses": {
+					"204": {
+						"description": "No Content"
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Отозвать ключ: запросы с ним сразу получают 401. Повторный отзыв — 204.",
+				"summary": "Отзыв API-ключа",
+				"tags": [
+					"ApiKey"
+				],
+				"security": [
+					{
+						"jwt": [
+							"permission:apikey:manage"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					}
+				]
+			}
+		}
+	},
+	"servers": [
+		{
+			"url": "http://localhost:8181",
+			"description": "Local dev"
+		}
+	]
+}

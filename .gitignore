@@ -1,0 +1,19 @@
+dist
+build
+.vscode/
+node_modules
+.idea
+yarn-error.log
+files/
+.env*
+!.env.example
+!.env.deploy.example
+.DS_Store
+coverage
+
+# Python
+__pycache__/
+*.pyc
+
+# Ключи сервисных аккаунтов (Firebase и т. п.) — не в репозиторий и не в образ
+firebaseAccount.json

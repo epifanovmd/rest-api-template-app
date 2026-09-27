@@ -1,0 +1,78 @@
+# Локальная инфраструктура для `yarn dev` и e2e: Postgres, Redis, Mailpit (SMTP)
+# и S3 (SeaweedFS) с bucket-ами.
+#   docker compose -f docker-compose.dev.yml up -d
+# S3 локально: STORAGE_DRIVER=s3 S3_ENDPOINT=http://localhost:8333
+#   S3_FORCE_PATH_STYLE=true S3_BUCKET=rest-api S3_ACCESS_KEY_ID=storage S3_SECRET_ACCESS_KEY=storage12345
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-rest_api}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres-dev:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  # Тестовый SMTP: письма не уходят наружу, смотреть — http://localhost:8025
+  mailpit:
+    image: axllent/mailpit
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
+  # S3 API — http://localhost:8333 (storage / storage12345)
+  s3:
+    image: chrislusf/seaweedfs:latest
+    command: ["server", "-s3", "-dir=/data", "-volume.max=0"]
+    environment:
+      AWS_ACCESS_KEY_ID: ${S3_ROOT_ACCESS_KEY:-storage}
+      AWS_SECRET_ACCESS_KEY: ${S3_ROOT_SECRET_KEY:-storage12345}
+    ports:
+      - "8333:8333"
+    volumes:
+      - s3-dev:/data
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:9333/cluster/status"]
+      interval: 5s
+      timeout: 5s
+      retries: 24
+
+  # Bucket приложения и e2e (идемпотентно).
+  s3-init:
+    image: amazon/aws-cli:latest
+    depends_on:
+      s3:
+        condition: service_healthy
+    environment:
+      AWS_ACCESS_KEY_ID: ${S3_ROOT_ACCESS_KEY:-storage}
+      AWS_SECRET_ACCESS_KEY: ${S3_ROOT_SECRET_KEY:-storage12345}
+      AWS_DEFAULT_REGION: us-east-1
+    entrypoint:
+      - /bin/sh
+      - -c
+      - >-
+        for b in rest-api e2e; do
+        aws --endpoint-url http://s3:8333 s3api head-bucket --bucket "$$b" 2>/dev/null ||
+        aws --endpoint-url http://s3:8333 s3 mb "s3://$$b"; done
+    restart: "no"
+
+volumes:
+  postgres-dev:
+  s3-dev:

@@ -1,0 +1,193 @@
+# Production-стек: api (масштабируемый) + worker + одноразовый migrate, Redis.
+# Postgres и S3 (SeaweedFS) — отдельными файлами, подключаются при необходимости:
+#   COMPOSE_FILE=docker-compose.yml:docker-compose.postgres.yml:docker-compose.s3.yml
+# Образы — из registry или сборкой из исходников на хосте (`make release` /
+# `make deploy`, см. Makefile).
+#
+#   docker compose build api worker    # или TAG=v1.2.3 docker compose pull
+#   docker compose run --rm migrate
+#   docker compose up -d
+#
+# Секреты и настройки — .env.production (другой файл: ENV_FILE=...).
+# Внешний Postgres (в т.ч. общий контейнер на этом же хосте): без
+# docker-compose.postgres.yml, POSTGRES_HOST в .env.production (с хоста —
+# host.docker.internal). Без docker-compose.s3.yml — STORAGE_DRIVER=local (том
+# files) или внешний S3 через S3_*.
+# Python-воркер: `docker compose --profile python-worker up -d`.
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+# Общее для api, worker и migrate.
+x-app: &app
+  env_file: ${ENV_FILE:-.env.production}
+  environment: &app-env
+    NODE_ENV: production
+    SERVER_HOST: 0.0.0.0
+    TRUST_PROXY: "true"
+    POSTGRES_HOST: ${POSTGRES_HOST:-postgres}
+    REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+    # Схему применяет только сервис migrate.
+    DB_MIGRATIONS_RUN: "false"
+    STORAGE_DRIVER: ${STORAGE_DRIVER:-s3}
+    S3_ENDPOINT: ${S3_ENDPOINT:-http://s3:8333}
+    # Ссылки на файлы получают клиенты: публичный адрес хранилища (домен за
+    # reverse proxy). По умолчанию — проброшенный порт на этом хосте.
+    S3_PUBLIC_ENDPOINT: ${S3_PUBLIC_ENDPOINT:-http://localhost:8333}
+    S3_FORCE_PATH_STYLE: ${S3_FORCE_PATH_STYLE:-true}
+    S3_BUCKET: ${S3_BUCKET:-rest-api}
+    S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:-${S3_ROOT_ACCESS_KEY:-storage}}
+    # Без ключей при STORAGE_DRIVER=s3 приложение не стартует (проверка конфига).
+    S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:-${S3_ROOT_SECRET_KEY:-}}
+    # Куча V8 — ниже лимита памяти контейнера, иначе OOM-kill вместо GC.
+    NODE_OPTIONS: --enable-source-maps --max-old-space-size=768
+  # Сервисы хоста (общий Postgres, опубликованный на порту хоста).
+  extra_hosts:
+    - host.docker.internal:host-gateway
+  init: true
+  read_only: true
+  tmpfs:
+    - /tmp
+  cap_drop:
+    - ALL
+  security_opt:
+    - no-new-privileges:true
+  logging: *logging
+
+x-ready-check: &ready-check
+  test:
+    [
+      "CMD",
+      "node",
+      "-e",
+      "fetch('http://127.0.0.1:8181/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+    ]
+  interval: 10s
+  timeout: 5s
+  retries: 6
+  start_period: 60s
+
+x-after-migrate: &after-migrate
+  migrate:
+    condition: service_completed_successfully
+  redis:
+    condition: service_healthy
+
+services:
+  # Одноразовый: применяет миграции и выходит. api и worker ждут его успеха.
+  migrate:
+    <<: *app
+    image: ${IMAGE:-ghcr.io/epifanovmd/rest-api-template-app}:${TAG:-latest}
+    command:
+      [
+        "node",
+        "node_modules/typeorm/cli.js",
+        "migration:run",
+        "-d",
+        "build/data-source.js",
+      ]
+    restart: "no"
+
+  api:
+    <<: *app
+    image: ${IMAGE:-ghcr.io/epifanovmd/rest-api-template-app}:${TAG:-latest}-api
+    build:
+      context: .
+      target: api
+      args:
+        APP_VERSION: ${TAG:-latest}
+    environment:
+      <<: *app-env
+      APP_ROLE: api
+    # Несколько реплик: `docker compose up -d --scale api=3` и диапазон
+    # API_PORTS=8181-8183 (или без host-портов — за reverse proxy по имени `api`).
+    ports:
+      - "${API_PORTS:-8181}:8181"
+    volumes:
+      - files:/app/files
+    depends_on: *after-migrate
+    # SIGTERM → drain + in-flight + закрытие БД (SHUTDOWN_TIMEOUT_MS=30s) — с запасом.
+    stop_grace_period: 55s
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+    healthcheck: *ready-check
+    restart: unless-stopped
+
+  worker:
+    <<: *app
+    # Тот же образ использует migrate.
+    image: ${IMAGE:-ghcr.io/epifanovmd/rest-api-template-app}:${TAG:-latest}
+    build:
+      context: .
+      target: worker
+      args:
+        APP_VERSION: ${TAG:-latest}
+    environment:
+      <<: *app-env
+      APP_ROLE: worker
+    volumes:
+      - files:/app/files
+    depends_on: *after-migrate
+    # Активные задачи дорабатывают до JOBS_SHUTDOWN_TIMEOUT_MS (20s).
+    stop_grace_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: 2g
+    healthcheck: *ready-check
+    restart: unless-stopped
+
+  # Внешний воркер на Python (задачи `external`), по профилю.
+  python-worker:
+    profiles: ["python-worker"]
+    image: ${IMAGE:-ghcr.io/epifanovmd/rest-api-template-app}:${TAG:-latest}-python-worker
+    build:
+      context: .
+      dockerfile: Dockerfile.worker-python
+    environment:
+      WORKER_API_URL: ${WORKER_API_URL:-http://api:8181}
+      # Ключ со scope worker:<очередь>: POST /api/v1/api-keys под админом
+      WORKER_API_KEY: ${WORKER_API_KEY:-}
+      WORKER_CONCURRENCY: ${WORKER_CONCURRENCY:-1}
+    depends_on:
+      api:
+        condition: service_healthy
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+    logging: *logging
+
+  redis:
+    image: redis:7-alpine
+    command:
+      [
+        "redis-server",
+        "--save",
+        "",
+        "--appendonly",
+        "no",
+        "--maxmemory",
+        "256mb",
+        "--maxmemory-policy",
+        "allkeys-lru",
+      ]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    restart: unless-stopped
+    logging: *logging
+
+volumes:
+  files:

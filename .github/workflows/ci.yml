@@ -1,0 +1,195 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  # main не отменяется: новый push не должен оборвать деплой посреди миграции.
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: yarn
+      - run: yarn install --frozen-lockfile --ignore-scripts
+      - run: yarn generate
+      - name: Спецификация и маршруты закоммичены актуальными
+        run: git diff --exit-code -- src/routing
+      - run: yarn lint
+      - run: yarn typecheck
+      - run: yarn test
+      - run: yarn build
+
+  python-sdk:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: python
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: python/requirements.txt
+      - run: pip install -r requirements.txt
+      - run: python -m unittest discover -s tests -t .
+
+  migrations:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: ci
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U ci" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      NODE_ENV: development
+      POSTGRES_HOST: localhost
+      POSTGRES_DB: ci
+      POSTGRES_USER: ci
+      POSTGRES_PASSWORD: ci
+      JWT_SECRET_KEY: ci-secret-key-0123456789abcdef0123456789
+      ADMIN_EMAIL: admin@ci.local
+      ADMIN_PASSWORD: ci-admin-password
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: yarn
+      - run: yarn install --frozen-lockfile --ignore-scripts
+      - name: Миграции применяются на чистую БД
+        run: yarn migration:run
+      - name: Сущности не расходятся со схемой (нет незакоммиченной миграции)
+        run: |
+          yarn migration:generate src/migrations/CiDrift && { echo "Схема сущностей отличается от миграций"; exit 1; } || true
+          test -z "$(ls src/migrations | grep CiDrift)" || { echo "Схема сущностей отличается от миграций"; exit 1; }
+
+  e2e:
+    runs-on: ubuntu-latest
+    needs: verify
+    # Оба драйвера хранилища: S3 (прод) и локальный диск (dev, один хост).
+    strategy:
+      fail-fast: false
+      matrix:
+        storage: [s3, local]
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping" --health-interval 5s --health-timeout 3s --health-retries 10
+      mailpit:
+        image: axllent/mailpit
+        ports: ["1025:1025", "8025:8025"]
+    env:
+      E2E_POSTGRES_HOST: localhost
+      E2E_POSTGRES_USER: postgres
+      E2E_POSTGRES_PASSWORD: postgres
+      E2E_POSTGRES_DB: rest_api_e2e
+      E2E_REDIS_URL: redis://localhost:6379/15
+      E2E_SMTP_HOST: localhost
+      E2E_SMTP_PORT: "1025"
+      E2E_MAILPIT_URL: http://localhost:8025
+      E2E_S3_ENDPOINT: http://localhost:8333
+      E2E_S3_BUCKET: e2e
+      E2E_S3_ACCESS_KEY: storage
+      E2E_S3_SECRET_KEY: storage12345
+      E2E_STORAGE_DRIVER: ${{ matrix.storage }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: yarn
+      # Service-контейнеры GitHub не принимают command — S3 (SeaweedFS) запускаем сами.
+      - name: S3 и bucket
+        run: |
+          docker run -d --name s3 -p 8333:8333 -p 9333:9333 \
+            -e AWS_ACCESS_KEY_ID=storage -e AWS_SECRET_ACCESS_KEY=storage12345 \
+            chrislusf/seaweedfs:latest server -s3 -dir=/data -volume.max=0
+          for i in $(seq 1 60); do
+            curl -fs http://localhost:9333/cluster/status >/dev/null && break
+            sleep 1
+          done
+          sleep 3
+          docker run --rm --network host \
+            -e AWS_ACCESS_KEY_ID=storage -e AWS_SECRET_ACCESS_KEY=storage12345 -e AWS_DEFAULT_REGION=us-east-1 \
+            amazon/aws-cli:latest --endpoint-url http://localhost:8333 s3 mb s3://e2e
+      - run: yarn install --frozen-lockfile --ignore-scripts
+      - run: yarn generate
+      - run: yarn test:e2e
+
+  audit:
+    runs-on: ubuntu-latest
+    # yarn v1 audit не умеет игнор-листы: транзитивные high без фикса
+    # (tsoa, typeorm CLI, firebase-admin) краснили бы каждый PR. Отчёт видно в
+    # логе, блокирует — Trivy по образу (только исправимые CRITICAL/HIGH).
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: yarn
+      - name: yarn audit (только production-зависимости)
+        run: yarn audit --level high --groups dependencies
+
+  docker:
+    runs-on: ubuntu-latest
+    needs: verify
+    strategy:
+      matrix:
+        target: [api, worker]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: ${{ matrix.target }}
+          push: false
+          load: true
+          tags: rest-api:ci-${{ matrix.target }}
+          cache-from: type=gha,scope=${{ matrix.target }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.target }}
+      - name: Trivy
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: rest-api:ci-${{ matrix.target }}
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: "1"
+          vuln-type: os,library
+
+  # Деплой main на хост после всех проверок; без настроек (форки шаблона) — пропуск.
+  deploy:
+    needs: [verify, python-sdk, migrations, e2e, docker]
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && vars.DEPLOY_ENV != ''
+    uses: ./.github/workflows/deploy.yml
+    secrets: inherit

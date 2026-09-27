@@ -1,0 +1,32 @@
+# syntax=docker/dockerfile:1.7
+# Внешний воркер очереди задач на Python: SDK `python/worker_sdk` + обработчик.
+# По умолчанию — эталонный `examples/echo_worker.py` (очередь demo.echo);
+# свой воркер — своим образом `FROM` этого или заменой CMD.
+#
+#   docker build -f Dockerfile.worker-python -t worker-python .
+#   docker run --rm -e WORKER_API_URL=http://api:8181 \
+#     -e WORKER_API_KEY=<prefix.secret> worker-python
+ARG PYTHON_VERSION=3.12-slim
+
+FROM python:${PYTHON_VERSION}
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+WORKDIR /app
+
+COPY python/requirements.txt ./
+RUN pip install -r requirements.txt
+
+COPY python/worker_sdk ./worker_sdk
+COPY python/examples ./examples
+
+RUN useradd --system --uid 10001 --home-dir /app worker
+USER worker
+
+# SIGTERM: воркер перестаёт брать задачи и дорабатывает текущие —
+# stop_grace_period оркестратора должен покрывать самую долгую задачу.
+STOPSIGNAL SIGTERM
+CMD ["python", "examples/echo_worker.py"]
