@@ -18,6 +18,11 @@ API-ключи, реальное время. Предметные примеры
 Новый проект начинается с главной ветки или с подходящего примера; исправления
 общего кода делаются в главной ветке и вливаются в примеры.
 
+**Эта ветка — `example/workspaces`:** модуль `workspace` (пространства, участники с
+ролями owner ⊃ admin ⊃ editor ⊃ viewer, приглашения по email, `@WorkspaceRole`,
+комнаты и задачи пространства) и миграция `Workspaces` поверх базовой. Описание —
+[src/modules/workspace/README.md](src/modules/workspace/README.md).
+
 ##### Stack:
 
 - TypeScript, Node.js >= 22.13 (Docker — 24 LTS)

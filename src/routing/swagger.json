@@ -43,6 +43,249 @@
 				"type": "object",
 				"additionalProperties": false
 			},
+			"TWorkspaceRole": {
+				"type": "string",
+				"enum": [
+					"owner",
+					"admin",
+					"editor",
+					"viewer"
+				]
+			},
+			"WorkspaceDto": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"name": {
+						"type": "string"
+					},
+					"slug": {
+						"type": "string"
+					},
+					"description": {
+						"type": "string",
+						"nullable": true
+					},
+					"ownerId": {
+						"type": "string",
+						"nullable": true,
+						"description": "`null` — владелец удалён, владение передаётся."
+					},
+					"createdAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"updatedAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"archivedAt": {
+						"type": "string",
+						"format": "date-time",
+						"nullable": true
+					},
+					"role": {
+						"$ref": "#/components/schemas/TWorkspaceRole",
+						"description": "Роль текущего пользователя в пространстве."
+					}
+				},
+				"required": [
+					"id",
+					"name",
+					"slug",
+					"description",
+					"ownerId",
+					"createdAt",
+					"updatedAt",
+					"archivedAt"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"ICreateWorkspaceBody": {
+				"properties": {
+					"name": {
+						"type": "string"
+					},
+					"slug": {
+						"type": "string",
+						"description": "Латиница, цифры и дефис; без него генерируется из названия."
+					},
+					"description": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"name"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IPaginatedDto_WorkspaceDto_": {
+				"description": "Страница по смещению: списки с известным общим числом.",
+				"properties": {
+					"items": {
+						"items": {
+							"$ref": "#/components/schemas/WorkspaceDto"
+						},
+						"type": "array"
+					},
+					"total": {
+						"type": "number",
+						"format": "double",
+						"description": "Всего элементов, подходящих под фильтр."
+					},
+					"offset": {
+						"type": "number",
+						"format": "double"
+					},
+					"limit": {
+						"type": "number",
+						"format": "double"
+					}
+				},
+				"required": [
+					"items",
+					"total",
+					"offset",
+					"limit"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"UUID": {
+				"type": "string",
+				"description": "Идентификатор сущности в пути или теле запроса. tsoa проверяет формат до\nконтроллера: неверный uuid → 422, а не ошибка Postgres.",
+				"pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
+			},
+			"IUpdateWorkspaceBody": {
+				"properties": {
+					"name": {
+						"type": "string"
+					},
+					"slug": {
+						"type": "string"
+					},
+					"description": {
+						"type": "string",
+						"description": "Пустая строка очищает описание."
+					},
+					"archived": {
+						"type": "boolean",
+						"description": "`true` — архивировать, `false` — вернуть из архива."
+					}
+				},
+				"type": "object",
+				"additionalProperties": false
+			},
+			"ITransferWorkspaceOwnershipBody": {
+				"properties": {
+					"userId": {
+						"type": "string",
+						"description": "Новый владелец — действующий участник."
+					}
+				},
+				"required": [
+					"userId"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"WorkspaceMemberDto": {
+				"properties": {
+					"workspaceId": {
+						"type": "string"
+					},
+					"userId": {
+						"type": "string"
+					},
+					"role": {
+						"$ref": "#/components/schemas/TWorkspaceRole"
+					},
+					"createdAt": {
+						"type": "string",
+						"format": "date-time",
+						"description": "Когда вступил."
+					},
+					"username": {
+						"type": "string",
+						"nullable": true
+					},
+					"firstName": {
+						"type": "string",
+						"nullable": true
+					},
+					"lastName": {
+						"type": "string",
+						"nullable": true
+					}
+				},
+				"required": [
+					"workspaceId",
+					"userId",
+					"role",
+					"createdAt",
+					"username",
+					"firstName",
+					"lastName"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IPaginatedDto_WorkspaceMemberDto_": {
+				"description": "Страница по смещению: списки с известным общим числом.",
+				"properties": {
+					"items": {
+						"items": {
+							"$ref": "#/components/schemas/WorkspaceMemberDto"
+						},
+						"type": "array"
+					},
+					"total": {
+						"type": "number",
+						"format": "double",
+						"description": "Всего элементов, подходящих под фильтр."
+					},
+					"offset": {
+						"type": "number",
+						"format": "double"
+					},
+					"limit": {
+						"type": "number",
+						"format": "double"
+					}
+				},
+				"required": [
+					"items",
+					"total",
+					"offset",
+					"limit"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"TAssignableWorkspaceRole": {
+				"type": "string",
+				"enum": [
+					"admin",
+					"editor",
+					"viewer"
+				],
+				"description": "Роль, которая назначается напрямую; owner — только передачей владения."
+			},
+			"IChangeWorkspaceMemberRoleBody": {
+				"properties": {
+					"role": {
+						"$ref": "#/components/schemas/TAssignableWorkspaceRole"
+					}
+				},
+				"required": [
+					"role"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
 			"EFileStatus": {
 				"description": "Состояние файла.",
 				"enum": [
@@ -182,11 +425,6 @@
 				],
 				"type": "object",
 				"additionalProperties": false
-			},
-			"UUID": {
-				"type": "string",
-				"description": "Идентификатор сущности в пути или теле запроса. tsoa проверяет формат до\nконтроллера: неверный uuid → 422, а не ошибка Postgres.",
-				"pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
 			},
 			"Record_string.string_": {
 				"properties": {},
@@ -879,6 +1117,132 @@
 				"required": [
 					"currentPassword",
 					"newPassword"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IAcceptWorkspaceInviteBody": {
+				"properties": {
+					"token": {
+						"type": "string",
+						"description": "Токен из письма-приглашения."
+					}
+				},
+				"required": [
+					"token"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"TWorkspaceInviteStatus": {
+				"type": "string",
+				"enum": [
+					"pending",
+					"accepted",
+					"revoked",
+					"expired"
+				]
+			},
+			"WorkspaceInviteDto": {
+				"description": "Приглашение без токена: токен есть только в письме.",
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"workspaceId": {
+						"type": "string"
+					},
+					"email": {
+						"type": "string"
+					},
+					"role": {
+						"$ref": "#/components/schemas/TWorkspaceRole"
+					},
+					"invitedBy": {
+						"type": "string",
+						"nullable": true
+					},
+					"status": {
+						"$ref": "#/components/schemas/TWorkspaceInviteStatus"
+					},
+					"expiresAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"acceptedAt": {
+						"type": "string",
+						"format": "date-time",
+						"nullable": true
+					},
+					"revokedAt": {
+						"type": "string",
+						"format": "date-time",
+						"nullable": true
+					},
+					"createdAt": {
+						"type": "string",
+						"format": "date-time"
+					}
+				},
+				"required": [
+					"id",
+					"workspaceId",
+					"email",
+					"role",
+					"invitedBy",
+					"status",
+					"expiresAt",
+					"acceptedAt",
+					"revokedAt",
+					"createdAt"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"ICreateWorkspaceInviteBody": {
+				"properties": {
+					"email": {
+						"type": "string"
+					},
+					"role": {
+						"$ref": "#/components/schemas/TAssignableWorkspaceRole"
+					}
+				},
+				"required": [
+					"email",
+					"role"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IPaginatedDto_WorkspaceInviteDto_": {
+				"description": "Страница по смещению: списки с известным общим числом.",
+				"properties": {
+					"items": {
+						"items": {
+							"$ref": "#/components/schemas/WorkspaceInviteDto"
+						},
+						"type": "array"
+					},
+					"total": {
+						"type": "number",
+						"format": "double",
+						"description": "Всего элементов, подходящих под фильтр."
+					},
+					"offset": {
+						"type": "number",
+						"format": "double"
+					},
+					"limit": {
+						"type": "number",
+						"format": "double"
+					}
+				},
+				"required": [
+					"items",
+					"total",
+					"offset",
+					"limit"
 				],
 				"type": "object",
 				"additionalProperties": false
@@ -2619,6 +2983,530 @@
 		}
 	},
 	"paths": {
+		"/api/v1/workspaces": {
+			"post": {
+				"operationId": "CreateWorkspace",
+				"responses": {
+					"201": {
+						"description": "Created",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/WorkspaceDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Создать рабочее пространство. Создатель становится владельцем. Без\n`slug` адрес генерируется из названия. Занятый `slug` — 409.",
+				"summary": "Создание пространства",
+				"tags": [
+					"Workspace"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/ICreateWorkspaceBody"
+							}
+						}
+					}
+				}
+			},
+			"get": {
+				"operationId": "ListWorkspaces",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IPaginatedDto_WorkspaceDto_"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Пространства текущего пользователя с его ролью. Архивные — только при\n`includeArchived=true`.",
+				"summary": "Мои пространства",
+				"tags": [
+					"Workspace"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "query",
+						"name": "offset",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					},
+					{
+						"in": "query",
+						"name": "limit",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					},
+					{
+						"in": "query",
+						"name": "includeArchived",
+						"required": false,
+						"schema": {
+							"type": "boolean"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/workspaces/{id}": {
+			"get": {
+				"operationId": "GetWorkspace",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/WorkspaceDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Пространство по id. Не участник получает 404 — существование не\nраскрывается.",
+				"summary": "Пространство",
+				"tags": [
+					"Workspace"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					}
+				]
+			},
+			"patch": {
+				"operationId": "UpdateWorkspace",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/WorkspaceDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Изменить название, адрес или архивировать — admin и выше.",
+				"summary": "Изменение пространства",
+				"tags": [
+					"Workspace"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IUpdateWorkspaceBody"
+							}
+						}
+					}
+				}
+			},
+			"delete": {
+				"operationId": "DeleteWorkspace",
+				"responses": {
+					"204": {
+						"description": "No Content"
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Удалить пространство со всеми участниками и приглашениями — только\nвладелец.",
+				"summary": "Удаление пространства",
+				"tags": [
+					"Workspace"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/workspaces/{id}/transfer-ownership": {
+			"post": {
+				"operationId": "TransferOwnership",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/WorkspaceDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Передать владение участнику. Прежний владелец становится admin.",
+				"summary": "Передача владения",
+				"tags": [
+					"Workspace"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/ITransferWorkspaceOwnershipBody"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/workspaces/{id}/members": {
+			"get": {
+				"operationId": "ListMembers",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IPaginatedDto_WorkspaceMemberDto_"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Участники пространства — старшие по времени вступления первыми.",
+				"summary": "Участники",
+				"tags": [
+					"Workspace"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					},
+					{
+						"in": "query",
+						"name": "offset",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					},
+					{
+						"in": "query",
+						"name": "limit",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/workspaces/{id}/members/{userId}": {
+			"patch": {
+				"operationId": "ChangeMemberRole",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/WorkspaceMemberDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Сменить роль участника — admin и выше. Роль не выше своей; владельца\nи участников старше себя менять нельзя; owner — через передачу.",
+				"summary": "Смена роли участника",
+				"tags": [
+					"Workspace"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					},
+					{
+						"in": "path",
+						"name": "userId",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IChangeWorkspaceMemberRoleBody"
+							}
+						}
+					}
+				}
+			},
+			"delete": {
+				"operationId": "RemoveMember",
+				"responses": {
+					"204": {
+						"description": "No Content"
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Удалить участника — admin и выше; себя — то же, что выход.",
+				"summary": "Удаление участника",
+				"tags": [
+					"Workspace"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					},
+					{
+						"in": "path",
+						"name": "userId",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/workspaces/{id}/leave": {
+			"post": {
+				"operationId": "LeaveWorkspace",
+				"responses": {
+					"204": {
+						"description": "No Content"
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Выйти из пространства. Владелец сначала передаёт владение (409).",
+				"summary": "Выход из пространства",
+				"tags": [
+					"Workspace"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					}
+				]
+			}
+		},
 		"/api/v1/file": {
 			"get": {
 				"operationId": "GetMyFiles",
@@ -4342,6 +5230,222 @@
 						"description": "ID пользователя, которого необходимо удалить",
 						"in": "path",
 						"name": "id",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/workspaces/invites/accept": {
+			"post": {
+				"operationId": "AcceptInvite",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/WorkspaceDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Принять приглашение по токену из письма. Email приглашения должен\nсовпасть с подтверждённым email пользователя\n(`WORKSPACE_INVITE_EMAIL_MISMATCH`).",
+				"summary": "Принятие приглашения",
+				"tags": [
+					"WorkspaceInvite"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IAcceptWorkspaceInviteBody"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/workspaces/{id}/invites": {
+			"post": {
+				"operationId": "CreateInvite",
+				"responses": {
+					"201": {
+						"description": "Created",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/WorkspaceInviteDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Пригласить по email — admin и выше, роль не выше своей. Ссылка с\nтокеном уходит только в письме. Прежнее действующее приглашение на этот\nemail отзывается.",
+				"summary": "Приглашение участника",
+				"tags": [
+					"WorkspaceInvite"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/ICreateWorkspaceInviteBody"
+							}
+						}
+					}
+				}
+			},
+			"get": {
+				"operationId": "ListInvites",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IPaginatedDto_WorkspaceInviteDto_"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Приглашения пространства во всех состояниях — admin и выше.",
+				"summary": "Приглашения",
+				"tags": [
+					"WorkspaceInvite"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					},
+					{
+						"in": "query",
+						"name": "offset",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					},
+					{
+						"in": "query",
+						"name": "limit",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/workspaces/{id}/invites/{inviteId}": {
+			"delete": {
+				"operationId": "RevokeInvite",
+				"responses": {
+					"204": {
+						"description": "No Content"
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Отозвать приглашение — admin и выше. Принятое отозвать нельзя (409).",
+				"summary": "Отзыв приглашения",
+				"tags": [
+					"WorkspaceInvite"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					},
+					{
+						"in": "path",
+						"name": "inviteId",
 						"required": true,
 						"schema": {
 							"$ref": "#/components/schemas/UUID"

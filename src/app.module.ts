@@ -16,6 +16,7 @@ import { SessionModule } from "./modules/session/session.module";
 import { SocketModule } from "./modules/socket";
 import { StorageModule } from "./modules/storage";
 import { UserModule } from "./modules/user";
+import { WorkspaceModule } from "./modules/workspace";
 
 /**
  * Корневой модуль приложения.
@@ -45,6 +46,7 @@ import { UserModule } from "./modules/user";
     PasskeysModule,
 
     // Модули проекта
+    WorkspaceModule,
 
     // Socket — последним, чтобы все ISocketHandler / ISocketEventListener были привязаны
     SocketModule,

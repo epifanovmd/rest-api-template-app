@@ -68,6 +68,8 @@ yarn migration:run:prod   # миграции из build/ (в контейнер�
   пачкой до сборки DTO.
 - Security-scope — право (`permission:<домен>:<действие>`), не роль; права модуля —
   `definePermissions` в `<feature>.permissions.ts`.
+- Доступ к данным рабочего пространства — декоратор минимальной роли `@WorkspaceRole`
+  (не участник — 404, роль ниже — 403); задачи пространства — scope `workspace`.
 - Валидация входа — Zod-схемой декоратором на маршруте; длины совпадают с колонками БД.
 - Nullable-колонка → `| null`. Enum-ы — в `<feature>.types.ts`. `@Path()` на каждом
   path-параметре.
