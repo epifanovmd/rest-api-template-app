@@ -18,6 +18,7 @@ src/modules/socket/
 ├── socket-validation.ts             # onValidated(): схема, лимит частоты, ack с кодом ошибки
 ├── socket-rooms.ts                  # asSocketRoomProvider(), asSocketRoomPolicy()
 ├── socket-room.service.ts           # SocketRoomService: подписки на комнаты и их пересмотр
+├── permission-room.policy.ts        # permissionRoomPolicy(): политика комнаты списка по праву
 ├── socket.types.ts                  # Типы TSocket, TServer, ISocketEvents, ISocketEmitEvents
 └── index.ts                         # Публичный API модуля
 ```
@@ -89,6 +90,16 @@ JWT-аутентификация при каждом подключении. И�
 сокет выходит и получает `room:revoked { type, id }`. Вызывают модули при смене прав
 пользователя и смене владельца сущности.
 
+### permissionRoomPolicy — комнаты списков
+
+`permissionRoomPolicy(type, permission)` — фабрика класса политики комнаты списка: одна
+комната на тип (имя комнаты = `type`, `id` подписки игнорируется), вход — по актуальному
+праву через `AccessService`. Регистрация в модуле списка:
+
+```ts
+asSocketRoomPolicy(permissionRoomPolicy(USERS_ROOM, UserPermissions.VIEW));
+```
+
 ### onValidated — входящие события с проверкой
 
 `onValidated(socket, event, schema, handler, { rateLimit? })` — единственный способ
@@ -150,5 +161,19 @@ declare module "../socket/socket.types" {
 | `config.cors`  | `config` | CORS-настройки                |
 
 ## Взаимодействие
+
+Listeners регистрируют auth, user (+ role), profile, session, api-key, audit, file,
+jobs. Room provider-ов нет. Политики комнат:
+
+| Комната     | Политика (модуль)                               | Вход                                |
+| ----------- | ----------------------------------------------- | ----------------------------------- |
+| `users`     | `permissionRoomPolicy` (user)                   | `user:view`                         |
+| `roles`     | `permissionRoomPolicy` (user, провайдеры role)  | `role:view`                         |
+| `api-keys`  | `permissionRoomPolicy` (api-key)                | `apikey:view`                       |
+| `audit`     | `permissionRoomPolicy` (audit)                  | `audit:view`                        |
+| `job_<id>`  | `job` (jobs)                                    | суперпользователь, владелец, policy |
+| `user_<id>` | без политики — входит каждый сокет пользователя | —                                   |
+
+События по комнатам — в README модулей.
 
 Модули регистрируют свои handlers и listeners через `SOCKET_HANDLER` и `SOCKET_EVENT_LISTENER` (`asSocketHandler`, `asSocketListener`), комнаты — через `asSocketRoomProvider` / `asSocketRoomPolicy`. SocketBootstrap собирает их через `@multiInject` и активирует при старте.
