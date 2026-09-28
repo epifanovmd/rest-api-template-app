@@ -89,9 +89,14 @@ IP по умолчанию) → bodyParser → [swagger, tsoa + ROUTE_PROVIDER] 
 
 Сервер → клиент: соединение — `pong`, `authenticated`, `auth_error`, `auth:expired { graceMs }`,
 `error { event, code?, message }`; auth — `auth:2fa-changed`; user — `user:email-verified`, `user:email-changed`,
-`user:password-changed`, `user:privileges-changed`, `user:username-changed`; profile — `profile:updated`
-(комната `profile`), `profile:privacy-changed`, `user:online`, `user:offline`, `presence:init`; session —
-`session:new`, `session:terminated`; file — `file:processed`; jobs — `job:updated`.
+`user:password-changed`, `user:privileges-changed { roles, permissions }` (эффективные права из БД),
+`user:username-changed`; комната `users` (право `user:view`) — `user:updated` (`UserDto`), `user:deleted { id }`;
+комната `roles` (`role:view`) — `role:updated` (`IRoleDto`), `role:deleted { id }`; комната `api-keys`
+(`apikey:view`) — `apikey:updated` (`ApiKeyDto`); комната `audit` (`audit:view`) — `audit:created`
+(`AuditEventDto`, и автору записи); socket — `room:revoked { type, id }` (сокет выведен из комнаты: права
+больше нет); profile — `profile:updated` (комната `profile`), `profile:privacy-changed`, `user:online`,
+`user:offline`, `presence:init`; session — `session:new`, `session:terminated`; file — `file:processed`;
+jobs — `job:updated` (комната задачи, scope-комната и всегда владельцу).
 
 ## Enum-ы и константы
 

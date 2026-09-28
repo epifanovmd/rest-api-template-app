@@ -88,10 +88,20 @@ ApiKey 3, Audit 2. Контроллеров — 12. Вне спецификац�
 ## Сокет
 
 Handlers (2, оба в profile): `ProfileHandler` (`profile:subscribe` → комната `profile`; голый `socket.on`, legacy),
-`PresenceHandler` (`presence:init` из `PRESENCE_AUDIENCE.peers`). Listeners (8 файлов `*.listener.ts`): Auth,
-User, Profile, Presence, Session, File, Audit, JobsSocket. Контракт событий — `socket/socket.types.ts` (только
-соединение) + `*.socket-events.ts` модулей (auth, user, profile, session, file, jobs). Комнаты: `user_<id>`
-(всегда), `profile`, `job_<id>` (policy `job`). Room provider-ов в main нет.
+`PresenceHandler` (`presence:init` из `PRESENCE_AUDIENCE.peers`). Listeners (11 файлов `*.listener.ts`): Auth,
+User, Role, Profile, Presence, Session, File, Audit, AuditFeed, ApiKey, JobsSocket. Контракт событий —
+`socket/socket.types.ts` (соединение, `room:revoked`) + `*.socket-events.ts` модулей (auth, user, role, profile,
+session, file, api-key, audit, jobs). Комнаты: `user_<id>` (всегда, `userSocketRoom`), `profile`, `job_<id>`
+(policy `job`: суперпользователь, владелец, `IJobAccessPolicy`), списки по праву просмотра через
+`permissionRoomPolicy(type, permission)` (id всегда `all`): `users` (user:view), `roles` (role:view, политика и
+`RoleListener` регистрируются в `UserModule`), `api-keys` (apikey:view), `audit` (audit:view). Room provider-ов нет.
+Подписки — `SocketRoomService` (`subscribe/unsubscribe`, запись в `socket.data.subscriptions`, переживает
+`auth:refresh`); `revalidateUser(userId)` (fetchSockets — все реплики) выводит из комнат без права с
+`room:revoked`: вызывается `UserListener` на `UserPrivilegesChangedEvent` (удаление роли →
+`notifyUsersPrivilegesChanged(memberIds)` → тот же путь). Живые списки: `UserChangedEvent` (создание, смена
+контактов) + privileges/email/username/profile события → `user:updated`; `RoleCreated/PermissionsChanged/Deleted`
+→ `role:updated/deleted`; `ApiKeyCreated/Revoked` → `apikey:updated` (`ApiKeyService.get`); `AuditRecordedEvent`
+→ `audit:created`. Списки файлов — без живых обновлений (только `file:processed` владельцу).
 
 ## Итого (25.09.2026)
 

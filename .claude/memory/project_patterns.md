@@ -20,7 +20,7 @@ type: project
 | Entity с индексами/каскадом | `api-key.entity.ts` — `@Index("IDX_API_KEYS_PREFIX", [...], { unique: true })`, `@ManyToOne(() => User, { onDelete: "CASCADE" })`, `timestamptz`                          |
 | Repository                  | `api-key.repository.ts` — `findAndCount` для страницы                                                                                                                     |
 | Service                     | `api-key.service.ts` — `normalizePagination` + `toPage`, `isUniqueViolation` с повтором, `_eventBus.emit` после записи                                                    |
-| Controller                  | `api-key.controller.ts` — `@Route("api/v1/api-keys")`, `@Security("jwt", ["permission:apikey:manage"])`, `@ValidateBody`, `@SuccessResponse(201/204)`, `@Path() id: UUID` |
+| Controller                  | `api-key.controller.ts` — `@Route("api/v1/api-keys")`, `@Security("jwt", ["permission:apikey:create"])`, `@ValidateBody`, `@SuccessResponse(201/204)`, `@Path() id: UUID` |
 | DTO + body                  | `dto/api-key.dto.ts` — `extends BaseDto`, `static fromEntity`, `ICreateApiKeyBody`                                                                                        |
 | Zod-схемы                   | `validation/create-api-key.validate.ts`, `list-api-keys.validate.ts`                                                                                                      |
 | События                     | `events/api-key.events.ts`                                                                                                                                                |
@@ -56,7 +56,11 @@ message } }`). В main **нет ни одного вызова** (описани
   клиент `test/e2e/client.ts`, письма — Mailpit API.
 - Bootstrapper — `src/modules/socket/socket.bootstrap.ts`, `src/modules/user/*bootstrap*` (AdminBootstrap, Seed).
 - Guards на маршруте — поиск `@UseGuards(` в `src/modules/auth/`.
-- Permission-scope: `@Security("jwt", ["permission:user:manage"])` — `src/modules/user/user.controller.ts`.
+- Permission-scope: `@Security("jwt", ["permission:user:update"])` — `src/modules/user/user.controller.ts`; права
+  на отдельные действия (не `manage`), объявление с подписями — `user.permissions.ts`.
+- Комната списка с правом просмотра — `asSocketRoomPolicy(permissionRoomPolicy(ROOM, Perms.VIEW))` +
+  listener, шлющий DTO в комнату (`api-key.module.ts`, `api-key.listener.ts`).
+- Права по userId вне HTTP (политика комнаты, listener) — `AccessService` ядра, не кэш в модуле.
 - Идемпотентная вставка при гонке реплик — `.insert().orIgnore()` (`RoleRepository.grantPermissionsIfMissing`,
   `ensureByName`, `PermissionRepository`, `PrivacySettingsRepository`).
 - Нарушение уникальности → 409 — `isUniqueViolation(err)` из `core/db/pg-errors.ts`.
