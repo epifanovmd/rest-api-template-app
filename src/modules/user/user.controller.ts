@@ -265,7 +265,7 @@ export class UserController extends Controller {
    * @param body Запрос, содержащий роль и разрешения
    * @returns Обновленный пользователь с привилегиями
    */
-  @Security("jwt", ["permission:user:manage"])
+  @Security("jwt", ["permission:user:privileges"])
   @Patch("setPrivileges/{id}")
   @ValidateBody(SetPrivilegesSchema)
   setPrivileges(
@@ -323,15 +323,16 @@ export class UserController extends Controller {
    * @param body Данные для обновления пользователя
    * @returns Обновленный пользователь
    */
-  @Security("jwt", ["permission:user:manage"])
+  @Security("jwt", ["permission:user:update"])
   @Patch("update/{id}")
   @ValidateBody(UserUpdateSchema)
   updateUser(
+    @Request() req: KoaRequest,
     @Path() id: UUID,
     @Body() body: IUserUpdateRequestDto,
   ): Promise<UserDto> {
     return this._userService
-      .updateUser(id, body)
+      .updateUser(getContextUser(req), id, body)
       .then(u => this._userService.toUserDto(u));
   }
 
@@ -366,7 +367,7 @@ export class UserController extends Controller {
    * @summary Удаление другого пользователя
    * @param id ID пользователя, которого необходимо удалить
    */
-  @Security("jwt", ["permission:user:manage"])
+  @Security("jwt", ["permission:user:delete"])
   @SuccessResponse(204, "No Content")
   @Delete("delete/{id}")
   async deleteUser(

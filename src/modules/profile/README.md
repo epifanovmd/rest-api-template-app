@@ -114,10 +114,12 @@ src/modules/profile/
 | -------- | ------------------------------ | ------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------- |
 | `GET`    | `/api/profile/all`             | `@Security("jwt", ["permission:profile:view"])` + `@ValidateQuery(ProfileListQuerySchema)` | `IProfileListDto` = `IPaginatedDto<PublicProfileDto>`; `limit` по умолчанию 20, ≤ 100; `offset` ≥ 0. |
 | `GET`    | `/api/profile/{userId}`        | `@Security("jwt")`                                                                         | Публичный профиль пользователя по `userId`.                                                          |
-| `PATCH`  | `/api/profile/update/{userId}` | `@Security("jwt", ["permission:profile:manage"])` + `@ValidateBody(UpdateProfileSchema)`   | Обновить профиль другого пользователя.                                                               |
-| `DELETE` | `/api/profile/delete/{userId}` | `@Security("jwt", ["permission:profile:manage"])`                                          | Очистить профиль другого пользователя (запись остаётся). 204.                                        |
+| `PATCH`  | `/api/profile/update/{userId}` | `@Security("jwt", ["permission:profile:update"])` + `@ValidateBody(UpdateProfileSchema)`   | Обновить профиль другого пользователя.                                                               |
+| `DELETE` | `/api/profile/delete/{userId}` | `@Security("jwt", ["permission:profile:delete"])`                                          | Очистить профиль другого пользователя (запись остаётся). 204.                                        |
 
-`{userId}` — `UUID` (неверный формат → 422).
+`{userId}` — `UUID` (неверный формат → 422). Профиль суперпользователя через
+`update/{userId}` и `delete/{userId}` меняет только суперпользователь
+(`PROFILE_SUPERUSER_EDIT`, 403).
 
 ### Валидация обновления (`UpdateProfileSchema`)
 
@@ -132,13 +134,15 @@ src/modules/profile/
 
 ### ProfileService
 
-| Метод                          | Описание                                                                                                 |
-| ------------------------------ | -------------------------------------------------------------------------------------------------------- |
-| `getProfiles(offset?, limit?)` | `IPaginatedDto<PublicProfileDto>` через `normalizePagination`/`toPage`; `createdAt DESC`.                |
-| `getProfileByAttr(where)`      | Поиск по произвольным условиям. Нет — `PROFILE_NOT_FOUND` (404).                                         |
-| `getProfileByUserId(userId)`   | Профиль по `userId`. Нет — `PROFILE_NOT_FOUND` (404).                                                    |
-| `updateProfile(userId, body)`  | Обновление профиля. Эмитит `ProfileUpdatedEvent`.                                                        |
-| `deleteProfile(userId)`        | Очистка личных полей профиля (запись остаётся). Эмитит `ProfileUpdatedEvent`. Нет — `PROFILE_NOT_FOUND`. |
+| Метод                                  | Описание                                                                                                 |
+| -------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `getProfiles(offset?, limit?)`         | `IPaginatedDto<PublicProfileDto>` через `normalizePagination`/`toPage`; `createdAt DESC`.                |
+| `getProfileByAttr(where)`              | Поиск по произвольным условиям. Нет — `PROFILE_NOT_FOUND` (404).                                         |
+| `getProfileByUserId(userId)`           | Профиль по `userId`. Нет — `PROFILE_NOT_FOUND` (404).                                                    |
+| `updateProfile(userId, body)`          | Обновление профиля. Эмитит `ProfileUpdatedEvent`.                                                        |
+| `deleteProfile(userId)`                | Очистка личных полей профиля (запись остаётся). Эмитит `ProfileUpdatedEvent`. Нет — `PROFILE_NOT_FOUND`. |
+| `updateProfileOf(actor, userId, body)` | `updateProfile` чужого профиля; цель — суперпользователь, актор нет → `PROFILE_SUPERUSER_EDIT`.          |
+| `clearProfileOf(actor, userId)`        | `deleteProfile` чужого профиля с той же проверкой (`AccessService.isSuperUser`).                         |
 
 ### PrivacySettingsService
 
@@ -161,7 +165,9 @@ src/modules/profile/
 ## Ошибки и права
 
 - `ProfileError.NOT_FOUND` → `PROFILE_NOT_FOUND` (404).
-- `ProfilePermissions = definePermissions("profile", { VIEW: "profile:view", MANAGE: "profile:manage" })`.
+- `ProfileError.SUPERUSER_EDIT` → `PROFILE_SUPERUSER_EDIT` (403).
+- `ProfilePermissions` (группа «Профили», чужие профили): `profile:view` — просмотр,
+  `profile:update` — изменение, `profile:delete` — очистка.
 
 ## События (Events)
 

@@ -248,6 +248,67 @@
 				"type": "object",
 				"additionalProperties": false
 			},
+			"TPermission": {
+				"type": "string",
+				"description": "Право — строка `domain:action` (или `domain:*` — wildcard). Модуль объявляет\nсвои права сам через `definePermissions`; каталог с подписями отдаёт\n`GET /api/v1/permissions`."
+			},
+			"IPermissionCatalogItemDto": {
+				"description": "Право в каталоге: имя и подпись.",
+				"properties": {
+					"name": {
+						"$ref": "#/components/schemas/TPermission"
+					},
+					"label": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"name",
+					"label"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IPermissionCatalogGroupDto": {
+				"description": "Группа прав каталога (обычно — сущность домена).",
+				"properties": {
+					"key": {
+						"type": "string",
+						"description": "`*`, `<домен>` или `<домен>:<сущность>`."
+					},
+					"label": {
+						"type": "string"
+					},
+					"permissions": {
+						"items": {
+							"$ref": "#/components/schemas/IPermissionCatalogItemDto"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"key",
+					"label",
+					"permissions"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IPermissionCatalogDto": {
+				"properties": {
+					"groups": {
+						"items": {
+							"$ref": "#/components/schemas/IPermissionCatalogGroupDto"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"groups"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
 			"ProfileDto": {
 				"description": "Профиль владельца; ссылки на аватар — из карты подписей `files`.",
 				"properties": {
@@ -341,40 +402,6 @@
 					}
 				],
 				"description": "Роль — произвольная строка; предопределённые значения дают автодополнение."
-			},
-			"KnownPermission": {
-				"type": "string",
-				"enum": [
-					"*",
-					"user:view",
-					"user:manage",
-					"role:view",
-					"role:manage",
-					"profile:view",
-					"profile:manage",
-					"apikey:manage",
-					"audit:view"
-				],
-				"description": "Тип для предопределённых permissions (автодополнение в IDE)."
-			},
-			"TPermission": {
-				"anyOf": [
-					{
-						"$ref": "#/components/schemas/KnownPermission"
-					},
-					{
-						"allOf": [
-							{
-								"type": "string"
-							},
-							{
-								"properties": {},
-								"type": "object"
-							}
-						]
-					}
-				],
-				"description": "Permission — произвольная строка; предопределённые значения дают автодополнение."
 			},
 			"IPermissionDto": {
 				"properties": {
@@ -652,7 +679,7 @@
 			},
 			"PermissionName": {
 				"type": "string",
-				"description": "Имя права в теле запроса API (`домен:действие`). Обычная строка: `TPermission`\nс `string & {}` tsoa проверить не может. Известные права — `Permissions`.",
+				"description": "Имя права в теле запроса API (`домен:действие`).",
 				"minLength": 1,
 				"maxLength": 100
 			},
@@ -2920,6 +2947,44 @@
 				]
 			}
 		},
+		"/api/v1/permissions": {
+			"get": {
+				"operationId": "GetPermissionCatalog",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IPermissionCatalogDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Каталог прав по группам с подписями — для редакторов ролей и прав\nпользователей. Первая группа — «Система» (полный доступ `*`).",
+				"summary": "Каталог прав",
+				"tags": [
+					"Permission"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": []
+			}
+		},
 		"/api/v1/profile/my": {
 			"get": {
 				"operationId": "GetMyProfile",
@@ -3276,7 +3341,7 @@
 				"security": [
 					{
 						"jwt": [
-							"permission:profile:manage"
+							"permission:profile:update"
 						]
 					}
 				],
@@ -3331,7 +3396,7 @@
 				"security": [
 					{
 						"jwt": [
-							"permission:profile:manage"
+							"permission:profile:delete"
 						]
 					}
 				],
@@ -3422,7 +3487,7 @@
 				"security": [
 					{
 						"jwt": [
-							"permission:role:manage"
+							"permission:role:create"
 						]
 					}
 				],
@@ -3459,7 +3524,7 @@
 						}
 					}
 				},
-				"description": "Удалить роль.",
+				"description": "Удалить роль. Системные роли (`admin`, `user`, `guest`) не удаляются,\nсобственную роль удаляет только суперпользователь.",
 				"summary": "Удаление роли",
 				"tags": [
 					"Role"
@@ -3467,7 +3532,7 @@
 				"security": [
 					{
 						"jwt": [
-							"permission:role:manage"
+							"permission:role:delete"
 						]
 					}
 				],
@@ -3509,7 +3574,7 @@
 						}
 					}
 				},
-				"description": "Установить права для роли.\nЗаменяет текущий набор прав роли указанным. Роль `admin`, право `*` и\nсобственную роль меняет только суперпользователь. Все пользователи роли\nполучают `user:privileges-changed`, их сессии завершаются.",
+				"description": "Установить права для роли.\nЗаменяет текущий набор прав роли указанным. Роль `admin`, право `*` и\nсобственную роль меняет только суперпользователь. Все пользователи роли\nполучают `user:privileges-changed` с новыми правами; их прежние\naccess-токены отклоняются (`AUTH_PRIVILEGES_CHANGED`), сессии остаются.",
 				"summary": "Установка прав роли",
 				"tags": [
 					"Role"
@@ -3517,7 +3582,7 @@
 				"security": [
 					{
 						"jwt": [
-							"permission:role:manage"
+							"permission:role:update"
 						]
 					}
 				],
@@ -4099,7 +4164,7 @@
 				"security": [
 					{
 						"jwt": [
-							"permission:user:manage"
+							"permission:user:privileges"
 						]
 					}
 				],
@@ -4235,7 +4300,7 @@
 				"security": [
 					{
 						"jwt": [
-							"permission:user:manage"
+							"permission:user:update"
 						]
 					}
 				],
@@ -4333,7 +4398,7 @@
 				"security": [
 					{
 						"jwt": [
-							"permission:user:manage"
+							"permission:user:delete"
 						]
 					}
 				],
@@ -5415,7 +5480,7 @@
 				"security": [
 					{
 						"jwt": [
-							"permission:jobs:manage"
+							"permission:jobs:demo"
 						]
 					}
 				],
@@ -6081,7 +6146,7 @@
 				"security": [
 					{
 						"jwt": [
-							"permission:apikey:manage"
+							"permission:apikey:create"
 						]
 					}
 				],
@@ -6129,7 +6194,7 @@
 				"security": [
 					{
 						"jwt": [
-							"permission:apikey:manage"
+							"permission:apikey:view"
 						]
 					}
 				],
@@ -6181,7 +6246,7 @@
 				"security": [
 					{
 						"jwt": [
-							"permission:apikey:manage"
+							"permission:apikey:revoke"
 						]
 					}
 				],
