@@ -61,6 +61,10 @@ message } }`). В main **нет ни одного вызова** (описани
 - Комната списка с правом просмотра — `asSocketRoomPolicy(permissionRoomPolicy(ROOM, Perms.VIEW))` +
   listener, шлющий DTO в комнату (`api-key.module.ts`, `api-key.listener.ts`).
 - Права по userId вне HTTP (политика комнаты, listener) — `AccessService` ядра, не кэш в модуле.
+- Права «все / свои» на сущность с владельцем — модуль file: `definePermissions` с `scoped: true`,
+  `<feature>.access.ts` (`OwnedAccess`), `@Security("jwt", ["permission:<p>:own"])`, сервис `_findFor(actor, id, p)`
+  (404/403), список — `listFilter` → репозиторий `findPage({ ownedBy })` через `ownedWhere`; e2e — роль без прав +
+  `setPrivileges` + повторный вход (`platform.e2e.ts`, «области прав»). Смена смысла прав — миграция данных.
 - Идемпотентная вставка при гонке реплик — `.insert().orIgnore()` (`RoleRepository.grantPermissionsIfMissing`,
   `ensureByName`, `PermissionRepository`, `PrivacySettingsRepository`).
 - Нарушение уникальности → 409 — `isUniqueViolation(err)` из `core/db/pg-errors.ts`.
@@ -98,7 +102,9 @@ userIds)` → кто из `userIds` держит viewer в принятых ко
    полноты (`mail-renderer.test.ts`) берёт имена из `*.subject.ejs` и требует одинаковые наборы в ru/en.
 5. **Права.** Справочник `permission.types.ts` содержит только базовые (`*`, user, role, profile, apikey, audit);
    модуль объявляет свои `definePermissions` в `<feature>.permissions.ts` и экспортирует из `index.ts`
-   (регистрация — при импорте); засев ролей берёт `getRegisteredPermissions()`.
+   (регистрация — при импорте); засев ролей берёт `getRegisteredPermissions()`. Действие над своими сущностями —
+   `scoped: true` (появляется `<p>:own`); базовые права ролей — `ROLE_DEFAULT_PERMISSIONS` (литералами) или
+   миграция данных для существующих баз.
 6. Остальные реестры (`asSocketListener/Handler`, `asSocketRoomProvider/Policy`, `asJobHandler`,
    `asJobAccessPolicy`, `asSecurityScheme`, `asHealthIndicator`, `FILE_USAGE_PROBE`, `ROUTE_PROVIDER`) —
    project_architecture.md «Реестры расширения».

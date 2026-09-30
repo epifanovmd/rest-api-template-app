@@ -4,9 +4,9 @@
 import type { TsoaRoute } from '@tsoa/runtime';
 import { fetchMiddlewares, KoaTemplateService } from '@tsoa/runtime';
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-import { FileController } from './../modules/file/file.controller';
-// WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 import { PermissionController } from './../modules/permission/permission.controller';
+// WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+import { FileController } from './../modules/file/file.controller';
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 import { ProfileController } from './../modules/profile/profile.controller';
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
@@ -51,6 +51,39 @@ const models: TsoaRoute.Models = {
             "details": {"dataType":"any"},
             "requestId": {"dataType":"string"},
             "stack": {"dataType":"string"},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "TPermission": {
+        "dataType": "refAlias",
+        "type": {"dataType":"string","validators":{}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "IPermissionCatalogItemDto": {
+        "dataType": "refObject",
+        "properties": {
+            "name": {"ref":"TPermission","required":true},
+            "label": {"dataType":"string","required":true},
+            "own": {"ref":"TPermission"},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "IPermissionCatalogGroupDto": {
+        "dataType": "refObject",
+        "properties": {
+            "key": {"dataType":"string","required":true},
+            "label": {"dataType":"string","required":true},
+            "permissions": {"dataType":"array","array":{"dataType":"refObject","ref":"IPermissionCatalogItemDto"},"required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "IPermissionCatalogDto": {
+        "dataType": "refObject",
+        "properties": {
+            "groups": {"dataType":"array","array":{"dataType":"refObject","ref":"IPermissionCatalogGroupDto"},"required":true},
         },
         "additionalProperties": false,
     },
@@ -122,39 +155,6 @@ const models: TsoaRoute.Models = {
             "name": {"dataType":"string","required":true},
             "size": {"dataType":"double","required":true},
             "contentType": {"dataType":"string","required":true},
-        },
-        "additionalProperties": false,
-    },
-    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "TPermission": {
-        "dataType": "refAlias",
-        "type": {"dataType":"string","validators":{}},
-    },
-    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "IPermissionCatalogItemDto": {
-        "dataType": "refObject",
-        "properties": {
-            "name": {"ref":"TPermission","required":true},
-            "label": {"dataType":"string","required":true},
-            "own": {"ref":"TPermission"},
-        },
-        "additionalProperties": false,
-    },
-    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "IPermissionCatalogGroupDto": {
-        "dataType": "refObject",
-        "properties": {
-            "key": {"dataType":"string","required":true},
-            "label": {"dataType":"string","required":true},
-            "permissions": {"dataType":"array","array":{"dataType":"refObject","ref":"IPermissionCatalogItemDto"},"required":true},
-        },
-        "additionalProperties": false,
-    },
-    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "IPermissionCatalogDto": {
-        "dataType": "refObject",
-        "properties": {
-            "groups": {"dataType":"array","array":{"dataType":"refObject","ref":"IPermissionCatalogGroupDto"},"required":true},
         },
         "additionalProperties": false,
     },
@@ -1148,13 +1148,49 @@ export function RegisterRoutes(router: KoaRouter,opts?:{multer?:ReturnType<typeo
 
     const upload = opts?.multer ||  multer({"limits":{"fileSize":8388608}});
 
+        const argsPermissionController_getPermissionCatalog: Record<string, TsoaRoute.ParameterSchema> = {
+        };
+        router.get('/api/v1/permissions',
+            authenticateMiddleware([{"jwt":[]}]),
+            ...(fetchMiddlewares<Middleware>(PermissionController)),
+            ...(fetchMiddlewares<Middleware>(PermissionController.prototype.getPermissionCatalog)),
+
+            async function PermissionController_getPermissionCatalog(context: Context, next: Next) {
+
+            let validatedArgs: any[] = [];
+            try {
+              validatedArgs = templateService.getValidatedArgs({ args: argsPermissionController_getPermissionCatalog, context, next });
+            } catch (err) {
+              const error = err as any;
+              error.message ||= JSON.stringify({ fields: error.fields });
+              context.status = error.status;
+              context.throw(context.status, error.message, error);
+            }
+
+            const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(context.request) : iocContainer;
+
+            const controller: any = await container.get<PermissionController>(PermissionController);
+            if (typeof controller['setStatus'] === 'function') {
+                controller.setStatus(undefined);
+            }
+
+            return templateService.apiHandler({
+              methodName: 'getPermissionCatalog',
+              controller,
+              context,
+              validatedArgs,
+              successStatus: undefined,
+            });
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         const argsFileController_getMyFiles: Record<string, TsoaRoute.ParameterSchema> = {
                 req: {"in":"request","name":"req","required":true,"dataType":"object"},
+                mine: {"in":"query","name":"mine","dataType":"boolean"},
                 offset: {"in":"query","name":"offset","dataType":"double"},
                 limit: {"in":"query","name":"limit","dataType":"double"},
         };
         router.get('/api/v1/file',
-            authenticateMiddleware([{"jwt":[]}]),
+            authenticateMiddleware([{"jwt":["permission:file:view:own"]}]),
             ...(fetchMiddlewares<Middleware>(FileController)),
             ...(fetchMiddlewares<Middleware>(FileController.prototype.getMyFiles)),
 
@@ -1187,10 +1223,11 @@ export function RegisterRoutes(router: KoaRouter,opts?:{multer?:ReturnType<typeo
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         const argsFileController_getFileById: Record<string, TsoaRoute.ParameterSchema> = {
+                req: {"in":"request","name":"req","required":true,"dataType":"object"},
                 id: {"in":"path","name":"id","required":true,"ref":"UUID"},
         };
         router.get('/api/v1/file/:id',
-            authenticateMiddleware([{"jwt":[]}]),
+            authenticateMiddleware([{"jwt":["permission:file:view:own"]}]),
             ...(fetchMiddlewares<Middleware>(FileController)),
             ...(fetchMiddlewares<Middleware>(FileController.prototype.getFileById)),
 
@@ -1344,7 +1381,7 @@ export function RegisterRoutes(router: KoaRouter,opts?:{multer?:ReturnType<typeo
                 id: {"in":"path","name":"id","required":true,"ref":"UUID"},
         };
         router.delete('/api/v1/file/:id',
-            authenticateMiddleware([{"jwt":[]}]),
+            authenticateMiddleware([{"jwt":["permission:file:delete:own"]}]),
             ...(fetchMiddlewares<Middleware>(FileController)),
             ...(fetchMiddlewares<Middleware>(FileController.prototype.deleteFile)),
 
@@ -1373,41 +1410,6 @@ export function RegisterRoutes(router: KoaRouter,opts?:{multer?:ReturnType<typeo
               context,
               validatedArgs,
               successStatus: 204,
-            });
-        });
-        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-        const argsPermissionController_getPermissionCatalog: Record<string, TsoaRoute.ParameterSchema> = {
-        };
-        router.get('/api/v1/permissions',
-            authenticateMiddleware([{"jwt":[]}]),
-            ...(fetchMiddlewares<Middleware>(PermissionController)),
-            ...(fetchMiddlewares<Middleware>(PermissionController.prototype.getPermissionCatalog)),
-
-            async function PermissionController_getPermissionCatalog(context: Context, next: Next) {
-
-            let validatedArgs: any[] = [];
-            try {
-              validatedArgs = templateService.getValidatedArgs({ args: argsPermissionController_getPermissionCatalog, context, next });
-            } catch (err) {
-              const error = err as any;
-              error.message ||= JSON.stringify({ fields: error.fields });
-              context.status = error.status;
-              context.throw(context.status, error.message, error);
-            }
-
-            const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(context.request) : iocContainer;
-
-            const controller: any = await container.get<PermissionController>(PermissionController);
-            if (typeof controller['setStatus'] === 'function') {
-                controller.setStatus(undefined);
-            }
-
-            return templateService.apiHandler({
-              methodName: 'getPermissionCatalog',
-              controller,
-              context,
-              validatedArgs,
-              successStatus: undefined,
             });
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa

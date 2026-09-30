@@ -43,6 +43,71 @@
 				"type": "object",
 				"additionalProperties": false
 			},
+			"TPermission": {
+				"type": "string",
+				"description": "Право — строка `domain:action` (или `domain:*` — wildcard). Модуль объявляет\nсвои права сам через `definePermissions`; каталог с подписями отдаёт\n`GET /api/v1/permissions`."
+			},
+			"IPermissionCatalogItemDto": {
+				"description": "Право в каталоге: имя и подпись.",
+				"properties": {
+					"name": {
+						"$ref": "#/components/schemas/TPermission"
+					},
+					"label": {
+						"type": "string"
+					},
+					"own": {
+						"$ref": "#/components/schemas/TPermission",
+						"description": "Право «только на свои» (владелец или создатель) для этого действия;\nнет — действие без области."
+					}
+				},
+				"required": [
+					"name",
+					"label"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IPermissionCatalogGroupDto": {
+				"description": "Группа прав каталога (обычно — сущность домена).",
+				"properties": {
+					"key": {
+						"type": "string",
+						"description": "`*`, `<домен>` или `<домен>:<сущность>`."
+					},
+					"label": {
+						"type": "string"
+					},
+					"permissions": {
+						"items": {
+							"$ref": "#/components/schemas/IPermissionCatalogItemDto"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"key",
+					"label",
+					"permissions"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IPermissionCatalogDto": {
+				"properties": {
+					"groups": {
+						"items": {
+							"$ref": "#/components/schemas/IPermissionCatalogGroupDto"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"groups"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
 			"EFileStatus": {
 				"description": "Состояние файла.",
 				"enum": [
@@ -244,71 +309,6 @@
 					"name",
 					"size",
 					"contentType"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"TPermission": {
-				"type": "string",
-				"description": "Право — строка `domain:action` (или `domain:*` — wildcard). Модуль объявляет\nсвои права сам через `definePermissions`; каталог с подписями отдаёт\n`GET /api/v1/permissions`."
-			},
-			"IPermissionCatalogItemDto": {
-				"description": "Право в каталоге: имя и подпись.",
-				"properties": {
-					"name": {
-						"$ref": "#/components/schemas/TPermission"
-					},
-					"label": {
-						"type": "string"
-					},
-					"own": {
-						"$ref": "#/components/schemas/TPermission",
-						"description": "Право «только на свои» (владелец или создатель) для этого действия;\nнет — действие без области."
-					}
-				},
-				"required": [
-					"name",
-					"label"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"IPermissionCatalogGroupDto": {
-				"description": "Группа прав каталога (обычно — сущность домена).",
-				"properties": {
-					"key": {
-						"type": "string",
-						"description": "`*`, `<домен>` или `<домен>:<сущность>`."
-					},
-					"label": {
-						"type": "string"
-					},
-					"permissions": {
-						"items": {
-							"$ref": "#/components/schemas/IPermissionCatalogItemDto"
-						},
-						"type": "array"
-					}
-				},
-				"required": [
-					"key",
-					"label",
-					"permissions"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"IPermissionCatalogDto": {
-				"properties": {
-					"groups": {
-						"items": {
-							"$ref": "#/components/schemas/IPermissionCatalogGroupDto"
-						},
-						"type": "array"
-					}
-				},
-				"required": [
-					"groups"
 				],
 				"type": "object",
 				"additionalProperties": false
@@ -2650,6 +2650,44 @@
 		}
 	},
 	"paths": {
+		"/api/v1/permissions": {
+			"get": {
+				"operationId": "GetPermissionCatalog",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IPermissionCatalogDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Каталог прав по группам с подписями — для редакторов ролей и прав\nпользователей. Первая группа — «Система» (полный доступ `*`).",
+				"summary": "Каталог прав",
+				"tags": [
+					"Permission"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": []
+			}
+		},
 		"/api/v1/file": {
 			"get": {
 				"operationId": "GetMyFiles",
@@ -2675,17 +2713,28 @@
 						}
 					}
 				},
-				"description": "Файлы текущего пользователя, новые первыми. Ссылки в ответе подписаны\nи действуют ограниченное время.",
-				"summary": "Мои файлы",
+				"description": "Файлы, новые первыми. По умолчанию — свои; `mine=false` при праве\n`file:view` — все файлы (с правом только на свои — по-прежнему свои).\nСсылки в ответе подписаны и действуют ограниченное время.",
+				"summary": "Файлы (по умолчанию — свои)",
 				"tags": [
 					"Files"
 				],
 				"security": [
 					{
-						"jwt": []
+						"jwt": [
+							"permission:file:view:own"
+						]
 					}
 				],
 				"parameters": [
+					{
+						"description": "Только свои файлы (по умолчанию `true`)",
+						"in": "query",
+						"name": "mine",
+						"required": false,
+						"schema": {
+							"type": "boolean"
+						}
+					},
 					{
 						"description": "Смещение",
 						"in": "query",
@@ -2793,14 +2842,16 @@
 						}
 					}
 				},
-				"description": "Метаданные файла и подписанные ссылки на него.",
+				"description": "Метаданные файла и подписанные ссылки на него. Свой файл — с правом\n`file:view:own`, любой — с `file:view`; недоступный файл — 404.",
 				"summary": "Получение файла по ID",
 				"tags": [
 					"Files"
 				],
 				"security": [
 					{
-						"jwt": []
+						"jwt": [
+							"permission:file:view:own"
+						]
 					}
 				],
 				"parameters": [
@@ -2832,14 +2883,16 @@
 						}
 					}
 				},
-				"description": "Удалить файл вместе с производными версиями. Доступно владельцу и\nсуперпользователю; файл, прикреплённый к сообщению, удалить нельзя (409).",
+				"description": "Удалить файл вместе с производными версиями. Свой — с правом\n`file:delete:own`, любой — с `file:delete`; недоступный файл — 404,\nвидимый без права на удаление — 403; используемый файл (вложение) — 409.",
 				"summary": "Удаление файла",
 				"tags": [
 					"Files"
 				],
 				"security": [
 					{
-						"jwt": []
+						"jwt": [
+							"permission:file:delete:own"
+						]
 					}
 				],
 				"parameters": [
@@ -2949,44 +3002,6 @@
 						}
 					}
 				]
-			}
-		},
-		"/api/v1/permissions": {
-			"get": {
-				"operationId": "GetPermissionCatalog",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/IPermissionCatalogDto"
-								}
-							}
-						}
-					},
-					"default": {
-						"description": "Ошибка",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/IErrorResponseDto"
-								}
-							}
-						}
-					}
-				},
-				"description": "Каталог прав по группам с подписями — для редакторов ролей и прав\nпользователей. Первая группа — «Система» (полный доступ `*`).",
-				"summary": "Каталог прав",
-				"tags": [
-					"Permission"
-				],
-				"security": [
-					{
-						"jwt": []
-					}
-				],
-				"parameters": []
 			}
 		},
 		"/api/v1/profile/my": {

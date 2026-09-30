@@ -116,6 +116,7 @@ scopes API-ключей; down собирает `manage` обратно у име
 | `apikey` «API-ключи»          | `apikey:view`, `apikey:create`, `apikey:revoke`                                        |
 | `audit` «Журнал безопасности» | `audit:view`                                                                           |
 | `jobs` «Фоновые задачи»       | `jobs:demo` (демо-задача проверки внешних воркеров)                                    |
+| `file` «Файлы»                | `file:view`, `file:delete` — scoped, есть `file:view:own`, `file:delete:own`           |
 
 Засев ролей (`RoleService.seedDefaultPermissions`) берёт `getRegisteredPermissions()`. Страж —
 `src/routing/spec.test.ts`: каждое `permission:`-право в security спецификации объявлено.
@@ -188,8 +189,9 @@ Scope API-ключа: точное совпадение, wildcard (`worker:*`, `
 
 ## Доступ к данным предметных модулей
 
-В main нет ролей внутри сущностей: доступ — глобальные роли/права + владелец (`ownerId`) + суперпользователь;
-задачи — владелец/суперпользователь или `IJobAccessPolicy` по scope (в main политик нет). Роли участника
+В main нет ролей внутри сущностей: доступ — глобальные роли/права, для сущностей с владельцем — области
+«все / свои» (`OwnedAccess`; образец — модуль file: `file.permissions.ts`, `file.access.ts`, `FileService._findFor`);
+задачи — пока владелец/суперпользователь или `IJobAccessPolicy` по scope (в main политик нет), на области не переведены. Роли участника
 пространства (`owner ⊃ admin ⊃ editor ⊃ viewer`, `WorkspaceAccessService`, `@WorkspaceRole`) — ветка
 `example/workspaces`.
 

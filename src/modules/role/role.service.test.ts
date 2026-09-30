@@ -4,6 +4,7 @@ import { expect } from "chai";
 import sinon from "sinon";
 import { QueryFailedError } from "typeorm";
 
+import { ownPermission } from "../../core/auth/has-permission";
 import { ALL_PERMISSIONS } from "../../core/auth/superuser";
 import {
   createMockEventBus,
@@ -13,6 +14,7 @@ import {
 } from "../../test/helpers";
 import { ApiKeyPermissions } from "../api-key/api-key.permissions";
 import { AuditPermissions } from "../audit/audit.permissions";
+import { FilePermissions } from "../file/file.permissions";
 import {
   definePermissions,
   getRegisteredPermissions,
@@ -24,7 +26,7 @@ import {
   RolePermissionsChangedEvent,
 } from "./events";
 import { RoleError } from "./role.errors";
-import { RoleService } from "./role.service";
+import { ROLE_DEFAULT_PERMISSIONS, RoleService } from "./role.service";
 import { Roles } from "./role.types";
 
 describe("RoleService", () => {
@@ -376,6 +378,25 @@ describe("RoleService", () => {
 
       expect(ids).to.not.include(`perm-${"user:view"}`);
       expect(ids).to.not.include(`perm-${"user:privileges"}`);
+    });
+
+    it("USER и GUEST получают права на свои файлы", async () => {
+      await service.seedDefaultPermissions();
+
+      const ownFiles = [FilePermissions.VIEW, FilePermissions.DELETE].map(
+        name => `perm-${ownPermission(name)}`,
+      );
+
+      expect(grantedTo(Roles.USER)).to.have.members(ownFiles);
+      expect(grantedTo(Roles.GUEST)).to.have.members(ownFiles);
+    });
+
+    it("права ролей по умолчанию объявлены в реестре", () => {
+      const registered = getRegisteredPermissions();
+
+      Object.values(ROLE_DEFAULT_PERMISSIONS)
+        .flat()
+        .forEach(name => expect(registered).to.include(name));
     });
 
     it("should grant «*» to ADMIN", async () => {

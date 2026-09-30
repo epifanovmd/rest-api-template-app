@@ -10,7 +10,6 @@ import {
   FileStorage,
   Injectable,
   IPaginatedDto,
-  isSuperUser,
   JobQueue,
   logger,
   normalizePagination,
@@ -19,9 +18,11 @@ import {
 import { AuthContext } from "../../types/koa";
 import type { ISignedPutUrlOptions } from "../storage";
 import { FileDeletedEvent, FileUploadedEvent } from "./events";
+import { FileAccess } from "./file.access";
 import { ICreateUploadBody, IDirectUploadDto, IFileDto } from "./file.dto";
 import { File } from "./file.entity";
 import { FileError } from "./file.errors";
+import { FilePermissions } from "./file.permissions";
 import { FileRepository } from "./file.repository";
 import {
   DIRECT_UPLOAD_MAX_BYTES,
@@ -69,21 +70,34 @@ export class FileService {
     @inject(FileUsageChecker) private _usage: FileUsageChecker,
   ) {}
 
+  /** Файл по id без проверки доступа — для слушателей и внутренних вызовов. */
   async getFileById(id: string): Promise<IFileDto> {
     return this._urls.toDto(await this._getFile(id));
   }
 
-  /** Файлы пользователя постранично, новые первыми. */
-  async getMyFiles(
-    userId: string,
+  /** Файл для пользователя: нужен просмотр этого файла (свой или право на все). */
+  async getFile(actor: AuthContext, id: string): Promise<IFileDto> {
+    return this._urls.toDto(
+      await this._findFor(actor, id, FilePermissions.VIEW),
+    );
+  }
+
+  /**
+   * Файлы постранично, новые первыми. `mine` — только свои; без него
+   * держатель права на все видит все файлы, остальные — свои.
+   */
+  async listFiles(
+    actor: AuthContext,
+    mine: boolean,
     offset?: number,
     limit?: number,
   ): Promise<IPaginatedDto<IFileDto>> {
+    const filter = FileAccess.listFilter(actor, FilePermissions.VIEW, mine);
+
+    if (!filter) throw FileError.FORBIDDEN();
+
     const page = normalizePagination(offset, limit);
-    const [files, total] = await this._fileRepository.findPageByOwner(
-      userId,
-      page,
-    );
+    const [files, total] = await this._fileRepository.findPage(filter, page);
 
     return toPage(await this._urls.toDtos(files), total, page);
   }
@@ -210,16 +224,12 @@ export class FileService {
   }
 
   /**
-   * Удаляет владелец или суперпользователь. Используемый файл (вложение
+   * Удаление: право на все файлы или на свои. Используемый файл (вложение
    * сообщения) удалить нельзя — 409. Объекты хранилища удаляются после
    * записи; сбой только логируется.
    */
-  async deleteFile(id: string, user: AuthContext): Promise<void> {
-    const file = await this._getFile(id);
-
-    if (file.ownerId !== user.userId && !isSuperUser(user)) {
-      throw FileError.FORBIDDEN();
-    }
+  async deleteFile(actor: AuthContext, id: string): Promise<void> {
+    const file = await this._findFor(actor, id, FilePermissions.DELETE);
 
     if ((await this._usage.inUse([id])).size) throw FileError.IN_USE();
 
@@ -413,6 +423,22 @@ export class FileService {
     const file = await this._fileRepository.findById(id);
 
     if (!file) throw FileError.NOT_FOUND();
+
+    return file;
+  }
+
+  /** Файл для действия: невидимый — 404, видимый без права на действие — 403. */
+  private async _findFor(
+    actor: AuthContext,
+    id: string,
+    permission: string,
+  ): Promise<File> {
+    const file = await this._getFile(id);
+
+    if (!FileAccess.can(actor, FilePermissions.VIEW, file)) {
+      throw FileError.NOT_FOUND();
+    }
+    if (!FileAccess.can(actor, permission, file)) throw FileError.FORBIDDEN();
 
     return file;
   }

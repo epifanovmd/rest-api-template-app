@@ -53,11 +53,18 @@ describe("FileService", () => {
   const ownerId = uuid();
   const strangerId = uuid2();
 
-  const makeUser = (userId: string, roles: string[] = ["user"]) => ({
+  /** Пользователь с правами на свои файлы (как роль `user` после засева). */
+  const OWN_FILE_PERMISSIONS = ["file:view:own", "file:delete:own"];
+
+  const makeUser = (
+    userId: string,
+    roles: string[] = ["user"],
+    permissions: string[] = OWN_FILE_PERMISSIONS,
+  ) => ({
     userId,
     sessionId: "s-1",
     roles,
-    permissions: [],
+    permissions,
     emailVerified: true,
   });
 
@@ -108,7 +115,7 @@ describe("FileService", () => {
     );
     fileRepo = createMockRepository() as any;
     fileRepo.findById = sinon.stub().resolves(null);
-    fileRepo.findPageByOwner = sinon.stub().resolves([[], 0]);
+    fileRepo.findPage = sinon.stub().resolves([[], 0]);
     fileRepo.transitionStatus = sinon.stub().resolves(true);
     txRepo = createMockRepository();
     txRepo.save.callsFake(async (entity: any) => entity);
@@ -179,18 +186,71 @@ describe("FileService", () => {
     });
   });
 
-  describe("getMyFiles", () => {
+  describe("getFile", () => {
+    it("свой файл — с правом на свои", async () => {
+      fileRepo.findById.resolves(makeFile());
+
+      const dto = await service.getFile(makeUser(ownerId), fileId);
+
+      expect(dto.id).to.equal(fileId);
+    });
+
+    it("чужой файл без права на все — FILE_NOT_FOUND, с правом — виден", async () => {
+      fileRepo.findById.resolves(makeFile());
+
+      expect(
+        await codeOf(service.getFile(makeUser(strangerId), fileId)),
+      ).to.equal("FILE_NOT_FOUND");
+      expect(
+        (await service.getFile(makeUser(strangerId, [], ["file:view"]), fileId))
+          .id,
+      ).to.equal(fileId);
+      expect(
+        (await service.getFile(makeUser(strangerId, ["admin"], []), fileId)).id,
+      ).to.equal(fileId);
+    });
+
+    it("файл домена (без владельца) — только с правом на все", async () => {
+      fileRepo.findById.resolves(makeFile({ ownerId: null }));
+
+      expect(await codeOf(service.getFile(makeUser(ownerId), fileId))).to.equal(
+        "FILE_NOT_FOUND",
+      );
+      expect(
+        (await service.getFile(makeUser(ownerId, [], ["file:*"]), fileId)).id,
+      ).to.equal(fileId);
+    });
+  });
+
+  describe("listFiles", () => {
     it("страница IPaginatedDto с нормализованными offset/limit", async () => {
-      fileRepo.findPageByOwner.resolves([[makeFile()], 41]);
+      fileRepo.findPage.resolves([[makeFile()], 41]);
 
-      const page = await service.getMyFiles(ownerId, -5, 1000);
+      const page = await service.listFiles(makeUser(ownerId), true, -5, 1000);
 
-      expect(fileRepo.findPageByOwner.firstCall.args).to.deep.equal([
-        ownerId,
+      expect(fileRepo.findPage.firstCall.args).to.deep.equal([
+        { ownedBy: ownerId },
         { offset: 0, limit: 100 },
       ]);
       expect(page).to.include({ total: 41, offset: 0, limit: 100 });
       expect(page.items).to.have.length(1);
+    });
+
+    it("право на все без «Мои» — все файлы; право на свои — всегда свои", async () => {
+      await service.listFiles(makeUser(ownerId, [], ["file:view"]), false);
+      await service.listFiles(makeUser(ownerId), false);
+
+      expect(fileRepo.findPage.firstCall.args[0]).to.deep.equal({});
+      expect(fileRepo.findPage.secondCall.args[0]).to.deep.equal({
+        ownedBy: ownerId,
+      });
+    });
+
+    it("нет права просмотра — FILE_FORBIDDEN", async () => {
+      expect(
+        await codeOf(service.listFiles(makeUser(ownerId, [], []), true)),
+      ).to.equal("FILE_FORBIDDEN");
+      expect(fileRepo.findPage.called).to.equal(false);
     });
   });
 
@@ -402,7 +462,7 @@ describe("FileService", () => {
       await storage.put(`files/${fileId}/original.pdf`, PDF_HEADER);
       await storage.put(`files/${fileId}/thumbnail.webp`, Buffer.from("t"));
 
-      await service.deleteFile(fileId, makeUser(ownerId) as any);
+      await service.deleteFile(makeUser(ownerId), fileId);
 
       expect(fileRepo.delete.calledOnceWith(fileId)).to.equal(true);
       const event = eventBus.emit.firstCall.args[0];
@@ -416,15 +476,45 @@ describe("FileService", () => {
       );
     });
 
-    it("чужой файл — FILE_FORBIDDEN; суперпользователь — можно", async () => {
+    it("чужой невидимый файл — FILE_NOT_FOUND; суперпользователь — можно", async () => {
       fileRepo.findById.resolves(makeFile());
 
       expect(
-        await codeOf(service.deleteFile(fileId, makeUser(strangerId) as any)),
-      ).to.equal("FILE_FORBIDDEN");
+        await codeOf(service.deleteFile(makeUser(strangerId), fileId)),
+      ).to.equal("FILE_NOT_FOUND");
       expect(fileRepo.delete.called).to.equal(false);
 
-      await service.deleteFile(fileId, makeUser(strangerId, ["admin"]) as any);
+      await service.deleteFile(makeUser(strangerId, ["admin"], []), fileId);
+      expect(fileRepo.delete.calledOnceWith(fileId)).to.equal(true);
+    });
+
+    it("видимый файл без права на удаление — FILE_FORBIDDEN", async () => {
+      fileRepo.findById.resolves(makeFile());
+
+      expect(
+        await codeOf(
+          service.deleteFile(
+            makeUser(strangerId, [], ["file:view", "file:delete:own"]),
+            fileId,
+          ),
+        ),
+      ).to.equal("FILE_FORBIDDEN");
+      expect(
+        await codeOf(
+          service.deleteFile(makeUser(ownerId, [], ["file:view:own"]), fileId),
+        ),
+      ).to.equal("FILE_FORBIDDEN");
+      expect(fileRepo.delete.called).to.equal(false);
+    });
+
+    it("право на удаление всех — чужой файл удаляется", async () => {
+      fileRepo.findById.resolves(makeFile());
+
+      await service.deleteFile(
+        makeUser(strangerId, [], ["file:view", "file:delete"]),
+        fileId,
+      );
+
       expect(fileRepo.delete.calledOnceWith(fileId)).to.equal(true);
     });
 
@@ -433,7 +523,7 @@ describe("FileService", () => {
       usageProbe.filesInUse.resolves([fileId]);
 
       expect(
-        await codeOf(service.deleteFile(fileId, makeUser(ownerId) as any)),
+        await codeOf(service.deleteFile(makeUser(ownerId), fileId)),
       ).to.equal("FILE_IN_USE");
       expect(fileRepo.delete.called).to.equal(false);
       expect(eventBus.emit.called).to.equal(false);

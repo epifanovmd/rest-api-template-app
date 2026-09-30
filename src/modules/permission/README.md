@@ -61,7 +61,8 @@ export const ReportPermissions = definePermissions(
 
 Объявления в модулях: `UserPermissions` (user), `RolePermissions` (role),
 `ProfilePermissions` (profile), `ApiKeyPermissions` (apikey), `AuditPermissions`
-(audit), `JobsPermissions` (jobs).
+(audit), `JobsPermissions` (jobs), `FilePermissions` (file — пример scoped-прав:
+`file:view`, `file:delete` и их `:own`).
 
 Строки в `@Security("jwt", ["permission:…"])` остаются литералами: генератор
 маршрутов читает декораторы статически. Тест `src/routing/spec.test.ts` проверяет, что

@@ -116,7 +116,8 @@ session, file, api-key, audit, jobs). Комнаты: `user_<id>` (всегда,
   в БД только sha256 (`sessions.refresh_token_hash`), атомарная ротация, повтор старого refresh → сессия
   завершается. Reset-пароля — opaque 32 байта (хеш в БД). 2FA: throttle + `AuthAttemptsStore`
   (5 неудач/15 мин), одноразовый `jti`. Сессий максимум 10, `expiresAt`, фоновая очистка.
-- **Роли**: `user`/`guest` без прав, `admin` — `*`. `setPrivileges` только существующие роли/права, не себе,
+- **Роли**: `user`/`guest` — только `file:view:own`, `file:delete:own` (засев `ROLE_DEFAULT_PERMISSIONS`,
+  литералы + тест объявленности), `admin` — `*`. Новая роль отдаётся с `permissions: []`. `setPrivileges` только существующие роли/права, не себе,
   `admin`/`*` выдаёт только суперпользователь. Засев идемпотентен (гонка реплик).
 - **Пользователь**: `POST /api/v1/user/verify-email` (+ `/request`, cooldown 60 с), смена пароля с `currentPassword`
   (`changeOwnPassword`; `changePassword` — только для reset), `POST my/delete` с паролем, смена email сбрасывает
@@ -126,7 +127,11 @@ session, file, api-key, audit, jobs). Комнаты: `user_<id>` (всегда,
   провайдеры `CONTACT_RELATION`, аудиторию `user:online`/`user:offline` и `presence:init` — `PRESENCE_AUDIENCE`
   (`profile.relations.ts`). **В main провайдеров нет**: `contacts` открывает поле только самому пользователю,
   presence не рассылается никому. В `example/messenger` их регистрируют contact и chat.
-- **Файлы**: `files.owner_id`, удаляет владелец/суперпользователь, прикреплённый (по `FILE_USAGE_PROBE`) — 409;
+- **Файлы**: `files.owner_id`; права с областью `file:view`/`file:delete` (+`:own`), `FileAccess`
+  (`OwnedAccess` по `ownerId`, без создателя); маршруты `permission:file:<действие>:own`; невидимый — 404, без права
+  на действие — 403; `GET /file?mine=false` с `file:view` — все файлы (по умолчанию `mine=true`, operationId
+  `getMyFiles` сохранён); загрузка — только jwt. Миграция `OwnFilePermissions` выдала `:own` всем ролям без `*` и
+  пользователям без ролей. Прикреплённый (по `FILE_USAGE_PROBE`) — 409;
   в main проб нет. Ключи `files/<id>/…` в `FileStorage`, раздача — подписанные ссылки (`StorageRouteProvider`
   `/files/*` для local, presigned для s3); проверка сигнатуры `file-type`; медиа — задача `file.process`; прямая
   загрузка `POST /file/uploads` + `complete`. Карта подписанных DTO — `file/signed-files.ts` (`TSignedFiles`,

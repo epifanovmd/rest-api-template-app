@@ -380,6 +380,12 @@ describe("user и profile", () => {
         "user:update",
         "user:privileges",
       ]);
+
+      const files = groups.find(g => g.key === "file");
+
+      expect(
+        files.permissions.find((p: any) => p.name === "file:view"),
+      ).to.have.property("own", "file:view:own");
       expect(await call(null, "GET", "/api/v1/permissions")).to.have.property(
         "status",
         401,
@@ -454,7 +460,7 @@ describe("user и profile", () => {
       );
     });
 
-    it("роли: у user нет прав, создание, дубль — 409, права, удаление", async () => {
+    it("роли: у user — только права на свои файлы, создание, дубль — 409, права, удаление", async () => {
       expectStatus(await call(alice, "GET", "/api/v1/roles"), 403);
 
       const roles = expectStatus(
@@ -464,8 +470,10 @@ describe("user и profile", () => {
       const list = Array.isArray(roles.data) ? roles.data : items(roles.data);
 
       expect(
-        list.find((r: any) => r.name === "user")?.permissions,
-      ).to.deep.equal([]);
+        list
+          .find((r: any) => r.name === "user")
+          ?.permissions.map((p: any) => p.name),
+      ).to.have.members(["file:view:own", "file:delete:own"]);
 
       const name = `moderator_${Date.now().toString(36)}`;
       const role = expectStatus(

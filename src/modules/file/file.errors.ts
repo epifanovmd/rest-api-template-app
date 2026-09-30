@@ -8,7 +8,7 @@ export const FileError = defineErrors("FILE", {
   NOT_FOUND: { status: 404, message: "Файл не найден" },
   FORBIDDEN: {
     status: 403,
-    message: "Действие с файлом доступно только владельцу",
+    message: "Недостаточно прав для действия с файлом",
   },
   IN_USE: {
     status: 409,

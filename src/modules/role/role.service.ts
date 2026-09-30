@@ -25,14 +25,21 @@ import { KnownRole, Roles, TRole } from "./role.types";
 
 const SYSTEM_ROLES = new Set<string>(Object.values(Roles));
 
+/** Базовые права любого пользователя: свои файлы. */
+const OWN_FILES: TPermission[] = ["file:view:own", "file:delete:own"];
+
 /**
  * Права ролей по умолчанию. Обычным ролям просмотр и управление
- * пользователями не выдаются — это делается точечно.
+ * пользователями не выдаются — это делается точечно. Имена — литералами,
+ * как в `@Security`: базовый модуль не зависит от предметных; что они
+ * объявлены в реестре, проверяет тест.
  */
-const ROLE_DEFAULT_PERMISSIONS: Record<KnownRole, TPermission[]> = {
+export const ROLE_DEFAULT_PERMISSIONS: Readonly<
+  Record<KnownRole, TPermission[]>
+> = {
   [Roles.ADMIN]: [ALL_PERMISSIONS],
-  [Roles.USER]: [],
-  [Roles.GUEST]: [],
+  [Roles.USER]: OWN_FILES,
+  [Roles.GUEST]: OWN_FILES,
 };
 
 /** Сервис для управления ролями и их разрешениями. */

@@ -1,6 +1,7 @@
 import { EntityManager, IsNull, LessThan, MoreThan, Not } from "typeorm";
 
 import { BaseRepository, InjectableRepository, Pagination } from "../../core";
+import { FileAccess } from "./file.access";
 import { File } from "./file.entity";
 import { EFileStatus } from "./file.types";
 
@@ -10,13 +11,13 @@ export class FileRepository extends BaseRepository<File> {
     return this.findOne({ where: { id } });
   }
 
-  /** Файлы владельца, новые первыми. */
-  findPageByOwner(
-    ownerId: string,
+  /** Файлы, новые первыми; `ownedBy` — только файлы этого владельца. */
+  findPage(
+    { ownedBy }: { ownedBy?: string },
     { offset, limit }: Pagination,
   ): Promise<[File[], number]> {
     return this.findAndCount({
-      where: { ownerId },
+      where: ownedBy ? FileAccess.ownedWhere(ownedBy) : {},
       order: { createdAt: "DESC", id: "DESC" },
       skip: offset,
       take: limit,
