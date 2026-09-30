@@ -217,7 +217,8 @@ API масштабируется репликами за балансировщ�
 HTTP-протоколу `claim → heartbeat → complete | fail` под `/api/v1/worker` с API-ключом
 сервиса (scope `worker:<queue>`); файлы получают и отдают по подписанным ссылкам.
 Эталонный SDK и пример — `python/`, образ — `Dockerfile.worker-python`. Протокол —
-[python/README.md](python/README.md).
+[python/README.md](python/README.md). Как устроены воркеры (Node и внешние), где их код и
+как добавить свою очередь (с примером) — [docs/WORKERS.md](docs/WORKERS.md).
 
 ### Build
 
