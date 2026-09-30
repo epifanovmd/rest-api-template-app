@@ -48,6 +48,7 @@ type TJobRunPatch = Partial<
     | "attempt"
     | "cancelRequested"
     | "stopRequested"
+    | "eventSeq"
     | "leaseUntil"
     | "files"
     | "startedAt"
@@ -131,6 +132,8 @@ export class JobRunTracker {
     const startedAt = new Date();
     const patch = {
       attempt: params.attempt,
+      // Новая попытка — события воркера нумеруются заново.
+      eventSeq: 0,
       startedAt,
       leaseUntil: secondsFromNow(params.leaseSeconds),
     };

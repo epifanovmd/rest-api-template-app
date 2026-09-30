@@ -15,7 +15,7 @@ import {
 
 import type { IErrorResponseDto } from "../../core";
 import { getContextUser, Injectable, ValidateBody } from "../../core";
-import { LONG_POLL_STATE, UUID } from "../../core/http";
+import { longPollSignal, UUID } from "../../core/http";
 import { KoaRequest } from "../../types/koa";
 import {
   IClaimedJobDto,
@@ -24,6 +24,7 @@ import {
   IFailJobBody,
   IHeartbeatJobBody,
   IHeartbeatResultDto,
+  ISignalJobBody,
   IWorkerQueueStatusDto,
 } from "./dto/worker.dto";
 import { IWorkerCaller, JobsWorkerService } from "./jobs-worker.service";
@@ -32,22 +33,13 @@ import {
   CompleteJobSchema,
   FailJobSchema,
   HeartbeatJobSchema,
+  SignalJobSchema,
 } from "./validation";
 
 const callerOf = (req: KoaRequest): IWorkerCaller => ({
   scopes: getContextUser(req).permissions,
   keyId: getContextUser(req).sessionId ?? null,
 });
-
-/** Сигнал обрыва соединения: long-poll перестаёт ждать. */
-const disconnectSignal = (req: KoaRequest): AbortSignal => {
-  const controller = new AbortController();
-
-  req.ctx.state[LONG_POLL_STATE] = true;
-  req.ctx.req.once("close", () => controller.abort());
-
-  return controller.signal;
-};
 
 /**
  * API внешних воркеров (любой язык). Аутентификация — API-ключ со scope
@@ -89,7 +81,24 @@ export class JobsWorkerController extends Controller {
     @Request() req: KoaRequest,
     @Body() body: IClaimJobsBody,
   ): Promise<IClaimedJobDto[]> {
-    return this._worker.claim(callerOf(req), body, disconnectSignal(req));
+    return this._worker.claim(callerOf(req), body, longPollSignal(req));
+  }
+
+  /**
+   * Ждать сигнала задачи (long-poll до `waitSeconds`, не больше 25 с): ответ
+   * приходит сразу, как только задачу отменили или попросили остановить.
+   * Без сигнала — `{ cancel: false, stop: false }`, воркер спрашивает снова.
+   * @summary Сигналы задачи
+   */
+  @Security("apiKey", ["worker"])
+  @ValidateBody(SignalJobSchema)
+  @Post("jobs/{id}/signal")
+  signal(
+    @Request() req: KoaRequest,
+    @Path() id: UUID,
+    @Body() body: ISignalJobBody,
+  ): Promise<IHeartbeatResultDto> {
+    return this._worker.signal(callerOf(req), id, body, longPollSignal(req));
   }
 
   /**

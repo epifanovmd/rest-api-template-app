@@ -36,6 +36,8 @@ export interface IJobRunFiles {
 export const PGBOSS_SCHEMA = "pgboss";
 /** Канал NOTIFY об отмене задачи; payload — id задачи. */
 export const JOB_CANCEL_CHANNEL = "job_cancel";
+/** Канал NOTIFY о запросе штатной остановки задачи; payload — id задачи. */
+export const JOB_STOP_CHANNEL = "job_stop";
 /** Канал NOTIFY о завершении видимой задачи; payload — id задачи. */
 export const JOB_SETTLED_CHANNEL = "job_settled";
 /** Канал NOTIFY о новой задаче внешней очереди; payload — имя очереди. */
@@ -43,6 +45,7 @@ export const JOB_AVAILABLE_CHANNEL = "job_available";
 /** Все каналы сигналов задач: слушаются одним соединением. */
 export const JOB_SIGNAL_CHANNELS = [
   JOB_CANCEL_CHANNEL,
+  JOB_STOP_CHANNEL,
   JOB_SETTLED_CHANNEL,
   JOB_AVAILABLE_CHANNEL,
 ] as const;
@@ -73,6 +76,12 @@ export const WORKER_FORGET_DAYS = 7;
 export const JOB_EXTERNAL_LEASE_SECONDS = 60;
 /** Long-poll claim внешнего воркера — не дольше (прокси рвут дольше 30 с). */
 export const WORKER_CLAIM_MAX_WAIT_SECONDS = 25;
+/** Long-poll ожидания итога задачи клиентом (`GET /jobs/{id}?waitSeconds=`) — не дольше. */
+export const JOB_WAIT_MAX_SECONDS = 25;
+/** Long-poll сигналов задачи воркером — не дольше (как у claim). */
+export const WORKER_SIGNAL_MAX_WAIT_SECONDS = 25;
+/** Страховочная проверка записи во время ожидания сигнала задачи. */
+export const WORKER_SIGNAL_POLL_MS = 5_000;
 /** Пауза между проверками очередей во время long-poll. */
 export const WORKER_CLAIM_POLL_MS = 1_000;
 /** Задач за один claim — не больше. */

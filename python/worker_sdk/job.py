@@ -21,6 +21,12 @@ log = logging.getLogger("worker_sdk")
 
 #: Прогресс уходит на сервер не чаще этого (сервер тоже троттлит).
 PROGRESS_MIN_INTERVAL = 0.5
+#: Long-poll сигналов задачи: сколько сервер держит запрос (не больше 25 с).
+SIGNAL_WAIT_SECONDS = 25
+#: Пауза перед повтором ожидания сигналов после сбоя сети.
+SIGNAL_RETRY_SECONDS = 3
+#: Задача не найдена на сервере — её больше нет, работу прекратить.
+JOB_NOT_FOUND = "JOB_NOT_FOUND"
 #: Размер блока при скачивании и загрузке файлов.
 CHUNK = 1024 * 1024
 
@@ -34,6 +40,9 @@ class Job:
     ``Cancelled``. ``stop: true`` — просьба завершиться досрочно, но штатно:
     ``job.stop_requested`` становится ``True``, обработчик доводит шаг и
     возвращает результат как обычно.
+
+    Отмену и остановку второй поток узнаёт сразу — long-poll сигналов задачи;
+    heartbeat остаётся запасным каналом (сервер без long-poll сигналов).
     """
 
     def __init__(self, client: "ApiClient", payload: Dict[str, Any]) -> None:
@@ -52,6 +61,8 @@ class Job:
         self._text: Optional[str] = None
         self._log: List[str] = []
         self._events: List[Dict[str, Any]] = []
+        #: Номер последнего события: сервер по нему отбрасывает повторы.
+        self._event_seq = 0
         self._cancelled = threading.Event()
         self._stop_requested = threading.Event()
         self._wake = threading.Event()
@@ -59,6 +70,9 @@ class Job:
         self._tmp = Path(tempfile.mkdtemp(prefix=f"job-{self.id[:8]}-"))
         self._thread = threading.Thread(
             target=self._heartbeat_loop, name=f"heartbeat-{self.id[:8]}", daemon=True
+        )
+        self._signal_thread = threading.Thread(
+            target=self._signal_loop, name=f"signal-{self.id[:8]}", daemon=True
         )
 
     # ── для обработчика ─────────────────────────────────────────────────
@@ -93,10 +107,13 @@ class Job:
     def event(self, type: str, data: Any = None) -> None:
         """Событие для хука очереди на сервере (``onEvent``): метрики эпохи и т. п.
 
-        События уходят с ближайшим heartbeat по порядку.
+        События уходят с ближайшим heartbeat по порядку и остаются в очереди
+        до подтверждения сервером: сбой сети их не теряет, повтор сервер
+        отбрасывает по номеру ``seq``.
         """
         with self._lock:
-            self._events.append({"type": type[:50], "data": data})
+            self._event_seq += 1
+            self._events.append({"seq": self._event_seq, "type": type[:50], "data": data})
         self._wake.set()
 
     @property
@@ -165,6 +182,7 @@ class Job:
 
     def start(self) -> None:
         self._thread.start()
+        self._signal_thread.start()
 
     def finish(self) -> None:
         """Остановить heartbeat и отправить последний прогресс."""
@@ -192,6 +210,44 @@ class Job:
         if self._has_pending() and not self._cancelled.is_set():
             self._send_heartbeat()
 
+    def _signal_loop(self) -> None:
+        while not self._stop.is_set() and self._poll_signal():
+            pass
+
+    def _poll_signal(self) -> bool:
+        """Один long-poll сигналов задачи; ``False`` — дальше не ждать."""
+        try:
+            answer = self._client.post(
+                f"/jobs/{self.id}/signal",
+                {"attempt": self.attempt, "waitSeconds": SIGNAL_WAIT_SECONDS},
+                timeout=SIGNAL_WAIT_SECONDS + 10,
+                retries=0,
+            )
+        except ApiError as err:
+            if err.code == JOB_NOT_FOUND:
+                self._cancelled.set()
+            elif err.status != 404:
+                log.warning("сигналы задачи %s: %s", self.id, err)
+            # 404 без кода задачи — сервер без long-poll сигналов: остаётся heartbeat.
+            return False
+        except Exception as err:  # noqa: BLE001 — сеть: подождать и спросить снова
+            log.debug("сигналы задачи %s: %s", self.id, err)
+            return not self._stop.wait(SIGNAL_RETRY_SECONDS)
+        # Задача уже сдана: сервер разбудил ожидание её завершением.
+        if self._stop.is_set():
+            return False
+        if answer and answer.get("cancel"):
+            if not self._cancelled.is_set():
+                log.info("задача %s отменена сервером", self.id)
+            self._cancelled.set()
+            return False
+        if answer and answer.get("stop"):
+            if not self._stop_requested.is_set():
+                log.info("задачу %s просят завершить досрочно", self.id)
+            self._stop_requested.set()
+            return False
+        return True
+
     def _has_pending(self) -> bool:
         with self._lock:
             return (
@@ -202,31 +258,40 @@ class Job:
             )
 
     def _send_heartbeat(self) -> None:
+        # Отправленное убирается из буферов только после ответа сервера:
+        # при сбое сети оно уйдёт со следующим heartbeat.
         with self._lock:
             body: Dict[str, Any] = {"attempt": self.attempt}
-            if self._progress is not None:
-                body["progress"] = self._progress
-            if self._text is not None:
-                body["text"] = self._text
-            if self._log:
-                body["log"] = self._log[:100]
-            if self._events:
-                body["events"] = self._events[:100]
-            sent_log = len(body.get("log", []))
-            sent_events = len(body.get("events", []))
-            self._progress = None
-            self._text = None
-            self._log = self._log[sent_log:]
-            self._events = self._events[sent_events:]
+            progress, text = self._progress, self._text
+            if progress is not None:
+                body["progress"] = progress
+            if text is not None:
+                body["text"] = text
+            log_lines = self._log[:100]
+            events = self._events[:100]
+            if log_lines:
+                body["log"] = log_lines
+            if events:
+                body["events"] = events
         try:
             answer = self._client.post(f"/jobs/{self.id}/heartbeat", body, retries=2)
         except ApiError as err:
             log.warning("heartbeat %s отклонён: %s — задача прекращается", self.id, err)
             self._cancelled.set()
             return
-        except Exception as err:  # noqa: BLE001 — сеть: следующий heartbeat повторит
+        except Exception as err:  # noqa: BLE001 — сеть: отправится со следующим heartbeat
             log.warning("heartbeat %s не дошёл: %s", self.id, err)
             return
+        with self._lock:
+            # Новые значения, записанные во время запроса, не затираются.
+            if self._progress == progress:
+                self._progress = None
+            if self._text == text:
+                self._text = None
+            self._log = self._log[len(log_lines):]
+            if events:
+                sent = events[-1]["seq"]
+                self._events = [event for event in self._events if event["seq"] > sent]
         if answer and answer.get("cancel"):
             if not self._cancelled.is_set():
                 log.info("задача %s отменена сервером", self.id)

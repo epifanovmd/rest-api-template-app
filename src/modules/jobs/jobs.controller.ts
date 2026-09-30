@@ -22,7 +22,7 @@ import {
   ValidateBody,
   ValidateQuery,
 } from "../../core";
-import { UUID } from "../../core/http";
+import { longPollSignal, UUID } from "../../core/http";
 import { KoaRequest } from "../../types/koa";
 import { IDemoEchoData } from "./demo-echo.handler";
 import { JobRunDto } from "./dto/job-run.dto";
@@ -72,12 +72,25 @@ export class JobsController extends Controller {
 
   /**
    * Задача: статус, прогресс, хвост лога, результат или ошибка.
+   *
+   * `waitSeconds` (0–25) — long-poll: незавершённую задачу сервер держит
+   * запрос открытым и отвечает, как только она завершится, или через
+   * `waitSeconds` — с текущим прогрессом. Клиент повторяет запрос, пока статус
+   * не итоговый: так результат ждут сколько угодно без таймаутов прокси.
    * @summary Задача
+   * @param waitSeconds Сколько ждать завершения, секунд (0 — не ждать, не больше 25)
    */
   @Security("jwt")
   @Get("{id}")
-  getJob(@Request() req: KoaRequest, @Path() id: UUID): Promise<JobRunDto> {
-    return this._jobs.get(viewerOf(req), id);
+  getJob(
+    @Request() req: KoaRequest,
+    @Path() id: UUID,
+    @Query() waitSeconds?: number,
+  ): Promise<JobRunDto> {
+    return this._jobs.get(viewerOf(req), id, {
+      waitSeconds,
+      signal: waitSeconds ? longPollSignal(req) : undefined,
+    });
   }
 
   /**

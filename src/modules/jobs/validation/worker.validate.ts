@@ -4,6 +4,7 @@ import {
   WORKER_CLAIM_MAX_JOBS,
   WORKER_CLAIM_MAX_WAIT_SECONDS,
   WORKER_HEARTBEAT_MAX_EVENTS,
+  WORKER_SIGNAL_MAX_WAIT_SECONDS,
 } from "../jobs.types";
 
 const queueName = z
@@ -38,6 +39,11 @@ export const ClaimJobsSchema = z.object({
   worker: WorkerInfoSchema.optional(),
 });
 
+export const SignalJobSchema = z.object({
+  attempt,
+  waitSeconds: z.number().min(0).max(WORKER_SIGNAL_MAX_WAIT_SECONDS).optional(),
+});
+
 export const HeartbeatJobSchema = z.object({
   attempt,
   progress: z.number().min(0).max(1).optional(),
@@ -49,6 +55,7 @@ export const HeartbeatJobSchema = z.object({
   events: z
     .array(
       z.object({
+        seq: z.number().int().min(1).optional(),
         type: z
           .string()
           .min(1, "Тип события обязателен")

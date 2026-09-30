@@ -31,6 +31,7 @@ const createRun = (overrides: Record<string, unknown> = {}) => ({
   attempt: 1,
   cancelRequested: false,
   stopRequested: false,
+  eventSeq: 0,
   logTail: [] as string[],
   files: null as unknown,
   ...overrides,
@@ -281,6 +282,75 @@ describe("JobsWorkerService", () => {
     });
   });
 
+  describe("signal", () => {
+    it("остановку уже запросили — stop: true сразу", async () => {
+      tracker.find.resolves(createRun({ stopRequested: true }));
+
+      expect(
+        await service.signal(caller, "job-1", { attempt: 1, waitSeconds: 5 }),
+      ).to.deep.equal({ cancel: false, stop: true });
+    });
+
+    it("отменена или аренда ушла — cancel: true сразу", async () => {
+      tracker.find.resolves(createRun({ cancelRequested: true }));
+      expect(
+        await service.signal(caller, "job-1", { attempt: 1, waitSeconds: 5 }),
+      ).to.deep.equal({ cancel: true, stop: false });
+
+      tracker.find.resolves(createRun());
+      expect(
+        await service.signal(caller, "job-1", { attempt: 0, waitSeconds: 5 }),
+      ).to.deep.equal({ cancel: true, stop: false });
+    });
+
+    it("ждёт сигнала: остановка приходит сразу, не через heartbeat", async () => {
+      const started = Date.now();
+      const pending = service.signal(caller, "job-1", {
+        attempt: 1,
+        waitSeconds: 20,
+      });
+
+      await new Promise(resolve => setTimeout(resolve, 20));
+      tracker.find.resolves(createRun({ stopRequested: true }));
+      (signals as any).dispatch("job_stop", "job-1");
+
+      expect(await pending).to.deep.equal({ cancel: false, stop: true });
+      expect(Date.now() - started).to.be.below(1_000);
+    });
+
+    it("сигнал другой задачи не будит", async () => {
+      const pending = service.signal(caller, "job-1", {
+        attempt: 1,
+        waitSeconds: 0.2,
+      });
+
+      (signals as any).dispatch("job_cancel", "job-2");
+
+      expect(await pending).to.deep.equal({ cancel: false, stop: false });
+    });
+
+    it("клиент отключился — ожидание снимается", async () => {
+      const controller = new AbortController();
+      const pending = service.signal(
+        caller,
+        "job-1",
+        { attempt: 1, waitSeconds: 20 },
+        controller.signal,
+      );
+
+      controller.abort();
+
+      expect(await pending).to.deep.equal({ cancel: false, stop: false });
+    });
+
+    it("чужая очередь по scope — 403", async () => {
+      await expectCode(
+        service.signal({ scopes: ["worker:x"] }, "job-1", {}),
+        JobsError.codes.QUEUE_FORBIDDEN,
+      );
+    });
+  });
+
   describe("heartbeat", () => {
     it("продлевает аренду и пишет прогресс", async () => {
       const result = await service.heartbeat(caller, "job-1", {
@@ -343,6 +413,39 @@ describe("JobsWorkerService", () => {
       expect(info).to.include({ id: "job-1", queue: "demo.echo" });
       expect(info.data).to.deep.equal({ text: "hi" });
       expect(event).to.deep.equal({ type: "epoch", data: { epoch: 2 } });
+    });
+
+    it("повтор событий (ответ heartbeat потерялся) — хуку только новые, номер сохраняется", async () => {
+      tracker.find.resolves(createRun({ eventSeq: 2 }));
+
+      await service.heartbeat(caller, "job-1", {
+        attempt: 1,
+        events: [
+          { seq: 2, type: "epoch", data: { epoch: 2 } },
+          { seq: 3, type: "epoch", data: { epoch: 3 } },
+          { seq: 4, type: "epoch", data: { epoch: 4 } },
+        ],
+      });
+
+      expect(
+        external.onEvent.getCalls().map(call => call.args[1]),
+      ).to.deep.equal([
+        { type: "epoch", data: { epoch: 3 } },
+        { type: "epoch", data: { epoch: 4 } },
+      ]);
+      expect(
+        tracker.update.getCalls().some(call => call.args[1].eventSeq === 4),
+      ).to.be.true;
+    });
+
+    it("все события уже приняты — хук не вызывается", async () => {
+      tracker.find.resolves(createRun({ eventSeq: 5 }));
+
+      await service.heartbeat(caller, "job-1", {
+        events: [{ seq: 5, type: "epoch", data: { epoch: 5 } }],
+      });
+
+      expect(external.onEvent.called).to.be.false;
     });
 
     it("чужая очередь по scope — 403", async () => {

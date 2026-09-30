@@ -45,6 +45,7 @@ describe("JobsService", () => {
   let runs: { findById: sinon.SinonStub; findPage: sinon.SinonStub };
   let jobQueue: ReturnType<typeof createMockJobQueue>;
   let policy: { scopeType: string; canAccess: sinon.SinonStub };
+  let waiter: { wait: sinon.SinonStub };
   let service: JobsService;
 
   beforeEach(() => {
@@ -57,7 +58,10 @@ describe("JobsService", () => {
       scopeType: "workspace",
       canAccess: sinon.stub().resolves(false),
     };
-    service = new JobsService(runs as any, jobQueue as any, [policy]);
+    waiter = { wait: sinon.stub().resolves(null) };
+    service = new JobsService(runs as any, jobQueue as any, waiter as any, [
+      policy,
+    ]);
   });
 
   describe("list", () => {
@@ -102,6 +106,62 @@ describe("JobsService", () => {
         service.list(stranger, { scopeType: "project", scopeId: "p1" }),
         JobsError.codes.FORBIDDEN,
       );
+    });
+  });
+
+  describe("get с ожиданием (long-poll)", () => {
+    it("завершённая — сразу, без ожидания", async () => {
+      runs.findById.resolves(run({ status: EJobRunStatus.COMPLETED }));
+
+      const dto = await service.get(owner, "job-1", { waitSeconds: 20 });
+
+      expect(dto.status).to.equal(EJobRunStatus.COMPLETED);
+      expect(waiter.wait.called).to.be.false;
+    });
+
+    it("выполняется — ждёт итога и отдаёт его", async () => {
+      const controller = new AbortController();
+
+      waiter.wait.resolves(
+        run({ status: EJobRunStatus.COMPLETED, result: { ok: true } }),
+      );
+
+      const dto = await service.get(owner, "job-1", {
+        waitSeconds: 5,
+        signal: controller.signal,
+      });
+
+      expect(waiter.wait.calledOnceWith("job-1", 5_000, controller.signal)).to
+        .be.true;
+      expect(dto.status).to.equal(EJobRunStatus.COMPLETED);
+      expect(dto.result).to.deep.equal({ ok: true });
+    });
+
+    it("не дождались — текущее состояние с прогрессом", async () => {
+      runs.findById
+        .onFirstCall()
+        .resolves(run())
+        .onSecondCall()
+        .resolves(run({ progress: 0.7 }));
+
+      const dto = await service.get(owner, "job-1", { waitSeconds: 1 });
+
+      expect(dto.status).to.equal(EJobRunStatus.RUNNING);
+      expect(dto.progress).to.equal(0.7);
+    });
+
+    it("ожидание не дольше 25 с", async () => {
+      await service.get(owner, "job-1", { waitSeconds: 600 });
+
+      expect(waiter.wait.firstCall.args[1]).to.equal(25_000);
+    });
+
+    it("без права просмотра — 403 без ожидания", async () => {
+      await expectCode(
+        service.get(stranger, "job-1", { waitSeconds: 20 }),
+        JobsError.codes.FORBIDDEN,
+      );
+      expect(waiter.wait.called).to.be.false;
     });
   });
 

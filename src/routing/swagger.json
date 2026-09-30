@@ -2544,9 +2544,30 @@
 				"type": "object",
 				"additionalProperties": false
 			},
+			"ISignalJobBody": {
+				"description": "Ожидание сигнала задачи: отменить или остановить.",
+				"properties": {
+					"attempt": {
+						"type": "number",
+						"format": "double"
+					},
+					"waitSeconds": {
+						"type": "number",
+						"format": "double",
+						"description": "Сколько ждать сигнала, секунд (0–25); без сигнала — `{ cancel: false, stop: false }`."
+					}
+				},
+				"type": "object",
+				"additionalProperties": false
+			},
 			"IWorkerEventBody": {
 				"description": "Событие воркера.",
 				"properties": {
+					"seq": {
+						"type": "number",
+						"format": "double",
+						"description": "Номер события в попытке (1, 2, …): повторно присланные сервер отбрасывает.\nБез номера событие принимается всегда."
+					},
 					"type": {
 						"type": "string",
 						"description": "Тип события в пределах очереди: `epoch`."
@@ -6500,7 +6521,7 @@
 						}
 					}
 				},
-				"description": "Задача: статус, прогресс, хвост лога, результат или ошибка.",
+				"description": "Задача: статус, прогресс, хвост лога, результат или ошибка.\n\n`waitSeconds` (0–25) — long-poll: незавершённую задачу сервер держит\nзапрос открытым и отвечает, как только она завершится, или через\n`waitSeconds` — с текущим прогрессом. Клиент повторяет запрос, пока статус\nне итоговый: так результат ждут сколько угодно без таймаутов прокси.",
 				"summary": "Задача",
 				"tags": [
 					"Jobs"
@@ -6517,6 +6538,16 @@
 						"required": true,
 						"schema": {
 							"$ref": "#/components/schemas/UUID"
+						}
+					},
+					{
+						"description": "Сколько ждать завершения, секунд (0 — не ждать, не больше 25)",
+						"in": "query",
+						"name": "waitSeconds",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
 						}
 					}
 				]
@@ -6708,6 +6739,65 @@
 						"application/json": {
 							"schema": {
 								"$ref": "#/components/schemas/IClaimJobsBody"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/worker/jobs/{id}/signal": {
+			"post": {
+				"operationId": "Signal",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IHeartbeatResultDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Ждать сигнала задачи (long-poll до `waitSeconds`, не больше 25 с): ответ\nприходит сразу, как только задачу отменили или попросили остановить.\nБез сигнала — `{ cancel: false, stop: false }`, воркер спрашивает снова.",
+				"summary": "Сигналы задачи",
+				"tags": [
+					"Worker"
+				],
+				"security": [
+					{
+						"apiKey": [
+							"worker"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/ISignalJobBody"
 							}
 						}
 					}

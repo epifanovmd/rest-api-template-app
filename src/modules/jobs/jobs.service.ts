@@ -12,10 +12,24 @@ import {
 } from "../../core";
 import { DEMO_ECHO_QUEUE, IDemoEchoData } from "./demo-echo.handler";
 import { JobRunDto } from "./dto/job-run.dto";
+import { JobResultWaiter } from "./job-result.waiter";
 import { JobRun } from "./job-run.entity";
 import { JobRunRepository } from "./job-run.repository";
 import { JobsError } from "./jobs.errors";
-import { ACTIVE_JOB_RUN_STATUSES, EJobRunStatus } from "./jobs.types";
+import {
+  ACTIVE_JOB_RUN_STATUSES,
+  EJobRunStatus,
+  JOB_WAIT_MAX_SECONDS,
+  SETTLED_JOB_RUN_STATUSES,
+} from "./jobs.types";
+
+/** Ожидание итога задачи при чтении (long-poll). */
+export interface IJobWaitOptions {
+  /** Сколько ждать итога, секунд (0 — не ждать; не больше 25). */
+  waitSeconds?: number;
+  /** Клиент закрыл соединение — ожидание снимается. */
+  signal?: AbortSignal;
+}
 
 /** Кто смотрит задачи. */
 export interface IJobViewer {
@@ -41,6 +55,7 @@ export class JobsService {
   constructor(
     @inject(JobRunRepository) private readonly _runs: JobRunRepository,
     @inject(JobQueue) private readonly _queue: JobQueue,
+    @inject(JobResultWaiter) private readonly _waiter: JobResultWaiter,
     @multiInject(JOB_ACCESS_POLICY)
     @optional()
     private readonly _policies: IJobAccessPolicy[] = [],
@@ -74,10 +89,28 @@ export class JobsService {
     return toPage(runs.map(JobRunDto.fromEntity), total, page);
   }
 
-  async get(viewer: IJobViewer, id: string): Promise<JobRunDto> {
+  /**
+   * Задача; с `waitSeconds` — long-poll: незавершённая отдаётся, как только
+   * завершится, иначе через `waitSeconds` — с текущим прогрессом. Клиент
+   * повторяет запрос, пока статус не итоговый: общее ожидание не ограничено.
+   */
+  async get(
+    viewer: IJobViewer,
+    id: string,
+    { waitSeconds = 0, signal }: IJobWaitOptions = {},
+  ): Promise<JobRunDto> {
     const run = await this.findAccessible(viewer, id, "view");
+    const waitMs =
+      Math.min(Math.max(waitSeconds, 0), JOB_WAIT_MAX_SECONDS) * 1000;
 
-    return JobRunDto.fromEntity(run);
+    if (waitMs === 0 || SETTLED_JOB_RUN_STATUSES.includes(run.status)) {
+      return JobRunDto.fromEntity(run);
+    }
+
+    const settled = await this._waiter.wait(id, waitMs, signal);
+    const current = settled ?? (await this._runs.findById(id)) ?? run;
+
+    return JobRunDto.fromEntity(current);
   }
 
   /**
