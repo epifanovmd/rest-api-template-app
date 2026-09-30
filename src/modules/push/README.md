@@ -149,7 +149,8 @@ push отключён (задачи не ставятся).
 
 ## Права
 
-`PushPermissions = definePermissions("push", { MANAGE: "push:manage" })`.
+`PushPermissions` — группа «Push-уведомления» (`push`): `push:manage` «Управление push-уведомлениями».
+Пока ни одним маршрутом не требуется.
 
 ## Конфиг
 

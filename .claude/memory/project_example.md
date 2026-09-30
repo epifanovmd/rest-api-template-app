@@ -92,10 +92,18 @@ burst 100). Размеры: `MAX_TYPING_ROOMS` 200, `MAX_RECEIPT_BATCH` 200, `MA
 
 ### Права (`definePermissions`, экспорт из `index.ts`)
 
-`chat/chat.permissions.ts` — `chat:view`, `chat:manage`, `chat:*`; `contact/contact.permissions.ts` —
-`contact:view|manage|*`; `message/message.permissions.ts` — `message:view|manage|*`;
-`push/push.permissions.ts` — `push:manage`. Только регистрируются в реестре (по умолчанию — у admin через `*`),
-ни один контроллер их в `@Security` не использует.
+Сигнатура main — `definePermissions(domain, { key, label }, { KEY: { name, label } })` (группа и подписи для
+каталога `GET /api/v1/permissions`). `chat/chat.permissions.ts` — группа «Чаты»: `chat:view`, `chat:manage`, `chat:*`;
+`contact/contact.permissions.ts` — «Контакты»: `contact:view|manage|*`; `message/message.permissions.ts` —
+«Сообщения»: `message:view|manage|*`; `push/push.permissions.ts` — «Push-уведомления»: `push:manage`. Только
+регистрируются в реестре (по умолчанию — у admin через `*`), ни один контроллер их в `@Security` не использует;
+при появлении проверок — разбить `manage` на действия (как `SplitManagePermissions` в main).
+
+Файлы — права main с областью «все / свои» (`file:view|delete` + `:own`, у `user`/`guest` по умолчанию `:own`):
+чужой файл (даже вложение общего чата) через `/api/v1/file/{id}` невидим — 404, не 403. Кандидаты на `OwnedAccess`
+(ручная проверка владельца): `BotService.getBotById` (`bot.ownerId !== ownerId` → `BOT_ACCESS_DENIED`, без
+суперпользователя), `ContactService` (`contact.userId !== userId` → 404). Правка/удаление сообщения автором
+(`message.senderId`) и участие в звонке — доменные правила, не области прав.
 
 ### Конфиг модуля (`push/push.config.ts`)
 
