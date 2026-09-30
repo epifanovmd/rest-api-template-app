@@ -666,7 +666,7 @@ describe("мессенджер", () => {
         }),
         400,
       );
-      expectStatus(await call(bob, "DELETE", `/api/v1/file/${file.id}`), 403);
+      expectStatus(await call(bob, "DELETE", `/api/v1/file/${file.id}`), 404);
       expectStatus(await call(alice, "DELETE", `/api/v1/file/${file.id}`), 409);
       expectStatus(
         await call(carol, "GET", `/api/v1/chat/${groupId}/media?type=image`),
