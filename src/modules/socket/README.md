@@ -19,6 +19,7 @@ src/modules/socket/
 ├── socket-rooms.ts                  # asSocketRoomProvider(), asSocketRoomPolicy()
 ├── socket-room.service.ts           # SocketRoomService: подписки на комнаты и их пересмотр
 ├── permission-room.policy.ts        # permissionRoomPolicy(): политика комнаты списка по праву
+├── owned-entity-emitter.ts          # OwnedEntityEmitter: события сущностей с владельцем «своим»
 ├── socket.types.ts                  # Типы TSocket, TServer, ISocketEvents, ISocketEmitEvents
 └── index.ts                         # Публичный API модуля
 ```
@@ -99,6 +100,18 @@ JWT-аутентификация при каждом подключении. И�
 ```ts
 asSocketRoomPolicy(permissionRoomPolicy(USERS_ROOM, UserPermissions.VIEW));
 ```
+
+### OwnedEntityEmitter — события сущностей с владельцем
+
+Для сущностей с правами «все / свои» (`OwnedAccess` ядра). Держатели права на все
+получают изменения в комнате списка (`permissionRoomPolicy`), остальным — лично:
+
+- `toOwners(userIds, viewPermission, event, ...args)` — владельцу и создателю (повторы и
+  `null` отбрасываются), только если их область права просмотра — `own`
+  (`AccessService.scope`); ошибка проверки одного получателя логируется и не мешает
+  остальным.
+- `detach(userId, event, ...args)` — сущность перестала быть своей (сменился владелец):
+  событие бывшему владельцу (убрать из списков) и `SocketRoomService.revalidateUser`.
 
 ### onValidated — входящие события с проверкой
 

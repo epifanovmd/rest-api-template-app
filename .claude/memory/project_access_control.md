@@ -135,6 +135,27 @@ scopes API-ключей; down собирает `manage` обратно у име
 - `ProfileService.updateProfileOf/clearProfileOf(actor, userId, …)`: то же → 403 `PROFILE_SUPERUSER_EDIT`.
 - `JobRoomPolicy` передаёт реальный флаг суперпользователя: `JobsService.canView(userId, id, isSuperUser)`.
 
+**Области прав «все / свои» (scoped):**
+
+- `definePermissions(..., { KEY: { name, label, scoped: true } })` → регистрируется и `<name>:own`
+  (засев создаёт оба); каталог отдаёт `{ name, label, own }`. Имя с `:own` в конце напрямую — ошибка;
+  scoped-wildcard — ошибка; длина ≤ 100 с учётом `:own`.
+- `hasPermission`: право на все (и `x:*`, `*`) покрывает `<право>:own`; `:own` не даёт права на все.
+  `OWN_SCOPE_SUFFIX = "own"`, `ownPermission(p)` (`core/auth/has-permission.ts`).
+- `core/auth/access-scope.ts`: `AccessScope = "all" | "own"`, `resolveScope(roles, perms, p)`,
+  `OwnedAccess<T>({ owner, creator? })` — `scope`, `isOwn`, `can`, `filter` (`{}` / `{ ownedBy }` / `null`),
+  `listFilter(actor, p, mine?)`, `ownedCondition(alias)` (`:ownedBy`), `ownedWhere(userId)`; без `creator` —
+  «своя» только по владельцу. `AccessService.scope(userId, p)` — по БД.
+- Паттерн модуля: `<feature>.access.ts` с `OwnedAccess`; маршрут `@Security("jwt", ["permission:<p>:own"])`
+  (его проходит и право на все); сервис `_findFor(actor, id, p)`: нет права просмотра на сущность → 404,
+  видима без права на действие → 403; списки — `listFilter`/`filter` → `ownedWhere`.
+- Сокет: `OwnedEntityEmitter` (модуль socket, в `SocketModule.providers`): `toOwners(userIds, viewPerm, event, …)`
+  лично тем, у кого область `own` (право на все — через комнату списка), `detach(userId, …)` + `revalidateUser`.
+- `userDisplayName(user)` (`modules/user/user-name.ts`) — единая функция имени (профиль, иначе email);
+  её использует `UserRepository.findOptions`.
+- Смена смысла прав — миграция данных (роли, `user_permissions`, scopes `api_keys`), как
+  `SplitManagePermissions`.
+
 **Wildcard иерархия:**
 
 - `a:b:c` → exact match

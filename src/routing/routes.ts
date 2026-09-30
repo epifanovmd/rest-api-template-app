@@ -136,6 +136,7 @@ const models: TsoaRoute.Models = {
         "properties": {
             "name": {"ref":"TPermission","required":true},
             "label": {"dataType":"string","required":true},
+            "own": {"ref":"TPermission"},
         },
         "additionalProperties": false,
     },

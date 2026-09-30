@@ -27,6 +27,7 @@ src/modules/user/
 ├── user.listener.ts                    # EventBus → socket (адресно и комната users); права роли → события пользователей
 ├── user.socket-events.ts               # user:* в контракте сокета
 ├── user-grant.resolver.ts              # grantOfUser, UserGrantResolver (IGrantResolver ядра)
+├── user-name.ts                        # userDisplayName — отображаемое имя (имя профиля или email)
 ├── user.module.ts
 ├── dto/                                # UserDto, PublicUserDto, тела запросов
 ├── events/                             # Доменные события
@@ -114,6 +115,8 @@ src/modules/user/
 Списки — единый контракт `IPaginatedDto { items, total, offset, limit }`: `limit` по
 умолчанию 20, максимум 100; без параметров — первая страница, не вся таблица.
 `{id}` — `UUID` (неверный формат → 422).
+`options` отдаёт `name` — `userDisplayName` (имя и фамилия профиля, иначе email); та же
+функция — для имён пользователей в DTO других модулей.
 
 ---
 
@@ -282,5 +285,6 @@ HTTP-контекста (политики сокет-комнат, слушат�
   пагинация списков, поиск и видимость телефона.
 - `email-change.service.test.ts` — запрос (хеш кода, письма в транзакции, cooldown,
   занятость, гонки) и подтверждение (истечение, попытки, занятость, гонки).
+- `user-name.test.ts` — отображаемое имя: имя профиля, иначе email, иначе `null`.
 - `user.listener.test.ts`, `admin.bootstrap.test.ts`, `dto/user.dto.test.ts`,
   `validation/user.validation.test.ts`.
