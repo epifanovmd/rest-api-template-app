@@ -78,6 +78,13 @@ export class JobRun {
   @Column({ name: "stop_requested", type: "boolean", default: false })
   stopRequested!: boolean;
 
+  /**
+   * Номер последнего принятого события внешнего воркера в текущей попытке:
+   * повторно присланные (ответ heartbeat потерялся) отбрасываются.
+   */
+  @Column({ name: "event_seq", type: "int", default: 0 })
+  eventSeq!: number;
+
   /** До какого момента воркер держит задачу; дальше её забирает reaper. */
   @Column({ name: "lease_until", type: "timestamptz", nullable: true })
   leaseUntil!: Date | null;

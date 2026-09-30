@@ -272,6 +272,20 @@ describe("платформа", () => {
 
       expect(beat.data.cancel).to.equal(false);
 
+      // Сигналы задачи без ожидания: ничего не запрошено.
+      const quiet = expectStatus(
+        await call(
+          key,
+          "POST",
+          `/api/v1/worker/jobs/${claimed.jobId}/signal`,
+          { waitSeconds: 0 },
+          { scheme: "ApiKey" },
+        ),
+        200,
+      );
+
+      expect(quiet.data).to.deep.equal({ cancel: false, stop: false });
+
       const running = expectStatus(
         await call(admin, "GET", `/api/v1/jobs/${claimed.jobId}`),
         200,
@@ -288,6 +302,16 @@ describe("платформа", () => {
       });
 
       expect(out.status).to.be.oneOf([200, 201, 204]);
+
+      // Клиент ждёт итога long-poll: ответ приходит в момент завершения.
+      const waitStarted = Date.now();
+      const waitingResult = call(
+        admin,
+        "GET",
+        `/api/v1/jobs/${claimed.jobId}?waitSeconds=20`,
+      );
+
+      await new Promise(resolve => setTimeout(resolve, 300));
       expectStatus(
         await call(
           key,
@@ -299,16 +323,11 @@ describe("платформа", () => {
         204,
       );
 
-      const done = await eventually(
-        async () => {
-          const res = await call(admin, "GET", `/api/v1/jobs/${claimed.jobId}`);
+      const done = expectStatus(await waitingResult, 200).data;
 
-          return res.data?.status === "completed" ? res.data : undefined;
-        },
-        { what: "завершение задачи" },
-      );
-
+      expect(done.status).to.equal("completed");
       expect(done.result.echo).to.equal("привет");
+      expect(Date.now() - waitStarted, "итог пришёл сразу").to.be.below(5_000);
       expectStatus(await call(admin, "GET", "/api/v1/jobs?limit=5"), 200);
 
       // Ошибка без повтора → failed
@@ -349,6 +368,50 @@ describe("платформа", () => {
           return res.data?.status === "failed";
         },
         { what: "провал задачи" },
+      );
+
+      // Отмена выполняющейся задачи доходит до воркера сразу (long-poll сигналов).
+      const signalled = expectStatus(
+        await call(admin, "POST", "/api/v1/jobs/demo/echo", { text: "signal" }),
+        201,
+      );
+      const third = await eventually(
+        async () => {
+          const res = await call(
+            key,
+            "POST",
+            "/api/v1/worker/jobs/claim",
+            { queues: ["demo.echo"], max: 1, waitSeconds: 1 },
+            { scheme: "ApiKey" },
+          );
+
+          return (res.data?.items ?? res.data ?? [])[0];
+        },
+        { what: "claim задачи для сигнала" },
+      );
+
+      expect(third.jobId).to.equal(signalled.data.jobId);
+
+      const signalStarted = Date.now();
+      const waiting = call(
+        key,
+        "POST",
+        `/api/v1/worker/jobs/${third.jobId}/signal`,
+        { waitSeconds: 20 },
+        { scheme: "ApiKey" },
+      );
+
+      await new Promise(resolve => setTimeout(resolve, 300));
+      expectStatus(
+        await call(admin, "POST", `/api/v1/jobs/${third.jobId}/cancel`),
+        204,
+      );
+
+      const signal = expectStatus(await waiting, 200);
+
+      expect(signal.data.cancel).to.equal(true);
+      expect(Date.now() - signalStarted, "отмена пришла сразу").to.be.below(
+        5_000,
       );
 
       // Отмена ждущей задачи и чужой ключ

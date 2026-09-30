@@ -24,8 +24,17 @@ export class JobResultWaiter {
     @inject(JobRunRepository) private readonly _runs: JobRunRepository,
   ) {}
 
-  /** Запись в итоговом статусе; `null` — не дождались за `timeoutMs`. */
-  wait(id: string, timeoutMs: number): Promise<JobRun | null> {
+  /**
+   * Запись в итоговом статусе; `null` — не дождались за `timeoutMs` или
+   * ожидание прервано (`abort`: клиент long-poll отключился).
+   */
+  wait(
+    id: string,
+    timeoutMs: number,
+    abort?: AbortSignal,
+  ): Promise<JobRun | null> {
+    if (abort?.aborted) return Promise.resolve(null);
+
     return new Promise(resolve => {
       let settled = false;
       let checking = false;
@@ -37,6 +46,7 @@ export class JobResultWaiter {
         unsubscribe();
         clearInterval(poll);
         clearTimeout(deadline);
+        abort?.removeEventListener("abort", onAbort);
         resolve(run);
       };
 
@@ -63,6 +73,9 @@ export class JobResultWaiter {
         this._signals.isListening ? SAFETY_POLL_MS : JOB_RESULT_POLL_MS,
       );
       const deadline = setTimeout(() => finish(null), timeoutMs);
+      const onAbort = () => finish(null);
+
+      abort?.addEventListener("abort", onAbort, { once: true });
 
       poll.unref();
       void check();

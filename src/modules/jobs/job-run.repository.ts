@@ -48,7 +48,7 @@ export class JobRunRepository extends BaseRepository<JobRun> {
   /** Взять задачу в работу, если она не завершена и не отменена. */
   async markRunning(
     id: string,
-    patch: Pick<JobRun, "attempt" | "startedAt" | "leaseUntil">,
+    patch: Pick<JobRun, "attempt" | "eventSeq" | "startedAt" | "leaseUntil">,
   ): Promise<boolean> {
     const { affected } = await this.update(
       { id, status: Not(In(FINAL_STATUSES)) },

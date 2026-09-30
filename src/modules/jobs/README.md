@@ -177,12 +177,12 @@ prom-client не использует.
 
 ## REST (jwt)
 
-| Метод | Путь                       | Описание                                                                                                      |
-| ----- | -------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| GET   | `/api/v1/jobs`             | Свои задачи или задачи scope (`scopeType`+`scopeId`), `status`, `offset`/`limit` → `IPaginatedDto<JobRunDto>` |
-| GET   | `/api/v1/jobs/{id}`        | Задача                                                                                                        |
-| POST  | `/api/v1/jobs/{id}/cancel` | Отмена (204); завершённая — 409 `JOB_NOT_CANCELLABLE`                                                         |
-| POST  | `/api/v1/jobs/demo/echo`   | Демо-задача `demo.echo` внешнему воркеру → 201 `{ jobId }`; право `jobs:demo`                                 |
+| Метод | Путь                       | Описание                                                                                                        |
+| ----- | -------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| GET   | `/api/v1/jobs`             | Свои задачи или задачи scope (`scopeType`+`scopeId`), `status`, `offset`/`limit` → `IPaginatedDto<JobRunDto>`   |
+| GET   | `/api/v1/jobs/{id}`        | Задача; `?waitSeconds=0–25` — long-poll: ответ в момент завершения или через `waitSeconds` с текущим прогрессом |
+| POST  | `/api/v1/jobs/{id}/cancel` | Отмена (204); завершённая — 409 `JOB_NOT_CANCELLABLE`                                                           |
+| POST  | `/api/v1/jobs/demo/echo`   | Демо-задача `demo.echo` внешнему воркеру → 201 `{ jobId }`; право `jobs:demo`                                   |
 
 Доступ: владелец, суперпользователь или `IJobAccessPolicy` scope — токен
 `JOB_ACCESS_POLICY` (`asJobAccessPolicy(Cls)`): модуль-владелец scope решает,
@@ -197,12 +197,13 @@ prom-client не использует.
 `@Security("apiKey", ["worker"])` + проверка очереди по scope ключа
 `worker:<queue>` (или `worker:*`). Очередь должна быть объявлена `external`.
 
-| Метод | Путь                                 | Тело → ответ                                                                        |
-| ----- | ------------------------------------ | ----------------------------------------------------------------------------------- |
-| POST  | `/api/v1/worker/jobs/claim`          | `{ queues[], max?, waitSeconds?, worker? }` → `IClaimedJobDto[]` (long-poll ≤ 25 с) |
-| POST  | `/api/v1/worker/jobs/{id}/heartbeat` | `{ attempt?, progress?, text?, log?, events? }` → `{ cancel, stop }`                |
-| POST  | `/api/v1/worker/jobs/{id}/complete`  | `{ attempt?, result }` → 204; аренда потеряна — 409 `JOB_LEASE_LOST`                |
-| POST  | `/api/v1/worker/jobs/{id}/fail`      | `{ attempt?, code, message, retryable? }` → 204                                     |
+| Метод | Путь                                 | Тело → ответ                                                                                               |
+| ----- | ------------------------------------ | ---------------------------------------------------------------------------------------------------------- |
+| POST  | `/api/v1/worker/jobs/claim`          | `{ queues[], max?, waitSeconds?, worker? }` → `IClaimedJobDto[]` (long-poll ≤ 25 с)                        |
+| POST  | `/api/v1/worker/jobs/{id}/heartbeat` | `{ attempt?, progress?, text?, log?, events? }` → `{ cancel, stop }`                                       |
+| POST  | `/api/v1/worker/jobs/{id}/signal`    | `{ attempt?, waitSeconds? }` → `{ cancel, stop }` (long-poll ≤ 25 с: ответ сразу при отмене или остановке) |
+| POST  | `/api/v1/worker/jobs/{id}/complete`  | `{ attempt?, result }` → 204; аренда потеряна — 409 `JOB_LEASE_LOST`                                       |
+| POST  | `/api/v1/worker/jobs/{id}/fail`      | `{ attempt?, code, message, retryable? }` → 204                                                            |
 
 `GET /api/v1/worker/status` (jwt) — внешние очереди и воркеры: `claim` с
 `worker: { name, meta }` отмечает воркера в `job_workers`; на связи — брал задачи в
@@ -218,7 +219,10 @@ prom-client не использует.
 в одной транзакции с завершением задачи (`ctx.manager`). Ошибка `onComplete` —
 попытка проваливается с повтором. `onFail` — по желанию. `onEvent(job, event)` —
 события воркера из heartbeat по порядку (ошибка хука логируется, задачу не
-прерывает). Протокол целиком —
+прерывает); повторы отбрасываются по номеру `seq` (`job_runs.event_seq`,
+сбрасывается при новой попытке), так что до хука каждое событие доходит один раз,
+если между доставкой и записью номера процесс не упал — хук должен быть
+идемпотентным. Протокол целиком —
 `python/README.md`.
 
 ## События

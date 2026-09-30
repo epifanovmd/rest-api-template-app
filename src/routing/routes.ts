@@ -1617,9 +1617,19 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "ISignalJobBody": {
+        "dataType": "refObject",
+        "properties": {
+            "attempt": {"dataType":"double"},
+            "waitSeconds": {"dataType":"double"},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "IWorkerEventBody": {
         "dataType": "refObject",
         "properties": {
+            "seq": {"dataType":"double"},
             "type": {"dataType":"string","required":true},
             "data": {"dataType":"any"},
         },
@@ -6432,6 +6442,7 @@ export function RegisterRoutes(router: KoaRouter,opts?:{multer?:ReturnType<typeo
         const argsJobsController_getJob: Record<string, TsoaRoute.ParameterSchema> = {
                 req: {"in":"request","name":"req","required":true,"dataType":"object"},
                 id: {"in":"path","name":"id","required":true,"ref":"UUID"},
+                waitSeconds: {"in":"query","name":"waitSeconds","dataType":"double"},
         };
         router.get('/api/v1/jobs/:id',
             authenticateMiddleware([{"jwt":[]}]),
@@ -6605,6 +6616,44 @@ export function RegisterRoutes(router: KoaRouter,opts?:{multer?:ReturnType<typeo
 
             return templateService.apiHandler({
               methodName: 'claim',
+              controller,
+              context,
+              validatedArgs,
+              successStatus: undefined,
+            });
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        const argsJobsWorkerController_signal: Record<string, TsoaRoute.ParameterSchema> = {
+                req: {"in":"request","name":"req","required":true,"dataType":"object"},
+                id: {"in":"path","name":"id","required":true,"ref":"UUID"},
+                body: {"in":"body","name":"body","required":true,"ref":"ISignalJobBody"},
+        };
+        router.post('/api/v1/worker/jobs/:id/signal',
+            authenticateMiddleware([{"apiKey":["worker"]}]),
+            ...(fetchMiddlewares<Middleware>(JobsWorkerController)),
+            ...(fetchMiddlewares<Middleware>(JobsWorkerController.prototype.signal)),
+
+            async function JobsWorkerController_signal(context: Context, next: Next) {
+
+            let validatedArgs: any[] = [];
+            try {
+              validatedArgs = templateService.getValidatedArgs({ args: argsJobsWorkerController_signal, context, next });
+            } catch (err) {
+              const error = err as any;
+              error.message ||= JSON.stringify({ fields: error.fields });
+              context.status = error.status;
+              context.throw(context.status, error.message, error);
+            }
+
+            const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(context.request) : iocContainer;
+
+            const controller: any = await container.get<JobsWorkerController>(JobsWorkerController);
+            if (typeof controller['setStatus'] === 'function') {
+                controller.setStatus(undefined);
+            }
+
+            return templateService.apiHandler({
+              methodName: 'signal',
               controller,
               context,
               validatedArgs,

@@ -256,6 +256,8 @@ describe("PgBossJobQueue", () => {
       expect(tracker.update.calledOnceWith(run, { stopRequested: true })).to.be
         .true;
       expect(boss.cancel.called).to.be.false;
+      // Воркер, ждущий сигналов задачи, узнаёт сразу.
+      expect(signals.notify.calledWith("job_stop", "job-1")).to.be.true;
     });
 
     it("ждущая задача — обычная отмена", async () => {
