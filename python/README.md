@@ -21,6 +21,16 @@ python/
 
 ## Быстрый старт
 
+На этой машине, к API из `.env.development` (ключ — `WORKER_API_KEY` там же):
+
+```bash
+yarn worker:setup                        # окружение .venv
+yarn worker                              # пример: очередь demo.echo
+yarn worker python/my_worker.py          # свой обработчик
+```
+
+Вручную:
+
 ```bash
 pip install -r python/requirements.txt
 WORKER_API_URL=http://localhost:8181 WORKER_API_KEY=<prefix.secret> \

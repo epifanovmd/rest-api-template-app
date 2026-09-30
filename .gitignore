@@ -17,3 +17,6 @@ __pycache__/
 
 # Ключи сервисных аккаунтов (Firebase и т. п.) — не в репозиторий и не в образ
 firebaseAccount.json
+
+# Python-окружение внешнего воркера (yarn worker:setup)
+.venv/
