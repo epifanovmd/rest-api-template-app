@@ -24,6 +24,7 @@ import {
   IFailJobBody,
   IHeartbeatJobBody,
   IHeartbeatResultDto,
+  ISignalJobBody,
   IWorkerQueueStatusDto,
 } from "./dto/worker.dto";
 import { IWorkerCaller, JobsWorkerService } from "./jobs-worker.service";
@@ -32,6 +33,7 @@ import {
   CompleteJobSchema,
   FailJobSchema,
   HeartbeatJobSchema,
+  SignalJobSchema,
 } from "./validation";
 
 const callerOf = (req: KoaRequest): IWorkerCaller => ({
@@ -90,6 +92,23 @@ export class JobsWorkerController extends Controller {
     @Body() body: IClaimJobsBody,
   ): Promise<IClaimedJobDto[]> {
     return this._worker.claim(callerOf(req), body, disconnectSignal(req));
+  }
+
+  /**
+   * Ждать сигнала задачи (long-poll до `waitSeconds`, не больше 25 с): ответ
+   * приходит сразу, как только задачу отменили или попросили остановить.
+   * Без сигнала — `{ cancel: false, stop: false }`, воркер спрашивает снова.
+   * @summary Сигналы задачи
+   */
+  @Security("apiKey", ["worker"])
+  @ValidateBody(SignalJobSchema)
+  @Post("jobs/{id}/signal")
+  signal(
+    @Request() req: KoaRequest,
+    @Path() id: UUID,
+    @Body() body: ISignalJobBody,
+  ): Promise<IHeartbeatResultDto> {
+    return this._worker.signal(callerOf(req), id, body, disconnectSignal(req));
   }
 
   /**

@@ -197,12 +197,13 @@ prom-client не использует.
 `@Security("apiKey", ["worker"])` + проверка очереди по scope ключа
 `worker:<queue>` (или `worker:*`). Очередь должна быть объявлена `external`.
 
-| Метод | Путь                                 | Тело → ответ                                                                        |
-| ----- | ------------------------------------ | ----------------------------------------------------------------------------------- |
-| POST  | `/api/v1/worker/jobs/claim`          | `{ queues[], max?, waitSeconds?, worker? }` → `IClaimedJobDto[]` (long-poll ≤ 25 с) |
-| POST  | `/api/v1/worker/jobs/{id}/heartbeat` | `{ attempt?, progress?, text?, log?, events? }` → `{ cancel, stop }`                |
-| POST  | `/api/v1/worker/jobs/{id}/complete`  | `{ attempt?, result }` → 204; аренда потеряна — 409 `JOB_LEASE_LOST`                |
-| POST  | `/api/v1/worker/jobs/{id}/fail`      | `{ attempt?, code, message, retryable? }` → 204                                     |
+| Метод | Путь                                 | Тело → ответ                                                                                               |
+| ----- | ------------------------------------ | ---------------------------------------------------------------------------------------------------------- |
+| POST  | `/api/v1/worker/jobs/claim`          | `{ queues[], max?, waitSeconds?, worker? }` → `IClaimedJobDto[]` (long-poll ≤ 25 с)                        |
+| POST  | `/api/v1/worker/jobs/{id}/heartbeat` | `{ attempt?, progress?, text?, log?, events? }` → `{ cancel, stop }`                                       |
+| POST  | `/api/v1/worker/jobs/{id}/signal`    | `{ attempt?, waitSeconds? }` → `{ cancel, stop }` (long-poll ≤ 25 с: ответ сразу при отмене или остановке) |
+| POST  | `/api/v1/worker/jobs/{id}/complete`  | `{ attempt?, result }` → 204; аренда потеряна — 409 `JOB_LEASE_LOST`                                       |
+| POST  | `/api/v1/worker/jobs/{id}/fail`      | `{ attempt?, code, message, retryable? }` → 204                                                            |
 
 `GET /api/v1/worker/status` (jwt) — внешние очереди и воркеры: `claim` с
 `worker: { name, meta }` отмечает воркера в `job_workers`; на связи — брал задачи в

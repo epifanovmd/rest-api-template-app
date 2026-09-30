@@ -282,6 +282,75 @@ describe("JobsWorkerService", () => {
     });
   });
 
+  describe("signal", () => {
+    it("остановку уже запросили — stop: true сразу", async () => {
+      tracker.find.resolves(createRun({ stopRequested: true }));
+
+      expect(
+        await service.signal(caller, "job-1", { attempt: 1, waitSeconds: 5 }),
+      ).to.deep.equal({ cancel: false, stop: true });
+    });
+
+    it("отменена или аренда ушла — cancel: true сразу", async () => {
+      tracker.find.resolves(createRun({ cancelRequested: true }));
+      expect(
+        await service.signal(caller, "job-1", { attempt: 1, waitSeconds: 5 }),
+      ).to.deep.equal({ cancel: true, stop: false });
+
+      tracker.find.resolves(createRun());
+      expect(
+        await service.signal(caller, "job-1", { attempt: 0, waitSeconds: 5 }),
+      ).to.deep.equal({ cancel: true, stop: false });
+    });
+
+    it("ждёт сигнала: остановка приходит сразу, не через heartbeat", async () => {
+      const started = Date.now();
+      const pending = service.signal(caller, "job-1", {
+        attempt: 1,
+        waitSeconds: 20,
+      });
+
+      await new Promise(resolve => setTimeout(resolve, 20));
+      tracker.find.resolves(createRun({ stopRequested: true }));
+      (signals as any).dispatch("job_stop", "job-1");
+
+      expect(await pending).to.deep.equal({ cancel: false, stop: true });
+      expect(Date.now() - started).to.be.below(1_000);
+    });
+
+    it("сигнал другой задачи не будит", async () => {
+      const pending = service.signal(caller, "job-1", {
+        attempt: 1,
+        waitSeconds: 0.2,
+      });
+
+      (signals as any).dispatch("job_cancel", "job-2");
+
+      expect(await pending).to.deep.equal({ cancel: false, stop: false });
+    });
+
+    it("клиент отключился — ожидание снимается", async () => {
+      const controller = new AbortController();
+      const pending = service.signal(
+        caller,
+        "job-1",
+        { attempt: 1, waitSeconds: 20 },
+        controller.signal,
+      );
+
+      controller.abort();
+
+      expect(await pending).to.deep.equal({ cancel: false, stop: false });
+    });
+
+    it("чужая очередь по scope — 403", async () => {
+      await expectCode(
+        service.signal({ scopes: ["worker:x"] }, "job-1", {}),
+        JobsError.codes.QUEUE_FORBIDDEN,
+      );
+    });
+  });
+
   describe("heartbeat", () => {
     it("продлевает аренду и пишет прогресс", async () => {
       const result = await service.heartbeat(caller, "job-1", {

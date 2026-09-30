@@ -9,6 +9,7 @@ import {
   JOB_AVAILABLE_CHANNEL,
   JOB_CANCEL_CHANNEL,
   JOB_SETTLED_CHANNEL,
+  JOB_STOP_CHANNEL,
 } from "./jobs.types";
 
 class FakeClient extends EventEmitter {
@@ -43,6 +44,7 @@ describe("JobSignals", () => {
 
     expect(listened).to.deep.equal([
       `LISTEN ${JOB_CANCEL_CHANNEL}`,
+      `LISTEN ${JOB_STOP_CHANNEL}`,
       `LISTEN ${JOB_SETTLED_CHANNEL}`,
       `LISTEN ${JOB_AVAILABLE_CHANNEL}`,
     ]);

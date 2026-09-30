@@ -76,6 +76,13 @@ export interface IWorkerEventBody {
   data?: unknown;
 }
 
+/** Ожидание сигнала задачи: отменить или остановить. */
+export interface ISignalJobBody {
+  attempt?: number;
+  /** Сколько ждать сигнала, секунд (0–25); без сигнала — `{ cancel: false, stop: false }`. */
+  waitSeconds?: number;
+}
+
 export interface IHeartbeatResultDto {
   /** Задачу отменили или аренда потеряна — прекратить работу. */
   cancel: boolean;

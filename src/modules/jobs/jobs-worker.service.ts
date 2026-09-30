@@ -21,6 +21,7 @@ import {
   IFailJobBody,
   IHeartbeatJobBody,
   IHeartbeatResultDto,
+  ISignalJobBody,
   IWorkerQueueStatusDto,
 } from "./dto/worker.dto";
 import { toJobOutput } from "./job.runner";
@@ -39,8 +40,14 @@ import {
   EJobRunStatus,
   IJobRunFiles,
   JOB_AVAILABLE_CHANNEL,
+  JOB_CANCEL_CHANNEL,
+  JOB_SETTLED_CHANNEL,
+  JOB_STOP_CHANNEL,
+  TJobSignalChannel,
   WORKER_CLAIM_MAX_WAIT_SECONDS,
   WORKER_CLAIM_POLL_MS,
+  WORKER_SIGNAL_MAX_WAIT_SECONDS,
+  WORKER_SIGNAL_POLL_MS,
 } from "./jobs.types";
 import { managerDb, PgBossService } from "./pg-boss.service";
 
@@ -199,6 +206,81 @@ export class JobsWorkerService {
     }
 
     return { cancel: false, stop: run.stopRequested };
+  }
+
+  /**
+   * Long-poll сигналов задачи: отвечает сразу, как только задачу отменили,
+   * забрали у воркера или попросили остановить, иначе — через `waitSeconds`.
+   * Будят сигналы NOTIFY, страхует редкая проверка записи.
+   */
+  async signal(
+    caller: IWorkerCaller,
+    id: string,
+    body: ISignalJobBody,
+    abort?: AbortSignal,
+  ): Promise<IHeartbeatResultDto> {
+    const first = await this.findRun(caller, id);
+    const waitMs =
+      Math.min(body.waitSeconds ?? 0, WORKER_SIGNAL_MAX_WAIT_SECONDS) * 1000;
+    const verdict = (run: JobRun | null): IHeartbeatResultDto | null => {
+      if (!run || !this.isHeld(run, body.attempt)) {
+        return { cancel: true, stop: false };
+      }
+
+      return run.stopRequested ? { cancel: false, stop: true } : null;
+    };
+    const ready = verdict(first.run);
+
+    if (ready || waitMs === 0 || abort?.aborted) {
+      return ready ?? { cancel: false, stop: false };
+    }
+
+    return new Promise(resolve => {
+      let done = false;
+      let checking = false;
+      const finish = (result: IHeartbeatResultDto) => {
+        if (done) return;
+
+        done = true;
+        clearTimeout(deadline);
+        clearInterval(poll);
+        unsubscribe.forEach(fn => fn());
+        abort?.removeEventListener("abort", onAbort);
+        resolve(result);
+      };
+      const check = async () => {
+        if (done || checking) return;
+
+        checking = true;
+        try {
+          const result = verdict(await this._tracker.find(id));
+
+          if (result) finish(result);
+        } finally {
+          checking = false;
+        }
+      };
+      const onSignal = (payload: string) => {
+        if (payload === id) void check();
+      };
+      const channels: TJobSignalChannel[] = [
+        JOB_CANCEL_CHANNEL,
+        JOB_STOP_CHANNEL,
+        JOB_SETTLED_CHANNEL,
+      ];
+      const unsubscribe = channels.map(channel =>
+        this._signals.on(channel, onSignal),
+      );
+      const onAbort = () => finish({ cancel: false, stop: false });
+      const deadline = setTimeout(
+        () => finish({ cancel: false, stop: false }),
+        waitMs,
+      );
+      const poll = setInterval(() => void check(), WORKER_SIGNAL_POLL_MS);
+
+      poll.unref();
+      abort?.addEventListener("abort", onAbort, { once: true });
+    });
   }
 
   async complete(

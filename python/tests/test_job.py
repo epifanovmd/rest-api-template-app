@@ -1,6 +1,7 @@
 """Heartbeat задачи: события, отмена и штатная остановка."""
 
 import unittest
+import unittest.mock
 from typing import Any, Dict, List
 
 from worker_sdk.job import Job
@@ -13,7 +14,9 @@ class FakeClient:
         self.answers = answers
         self.sent: List[Dict[str, Any]] = []
 
-    def post(self, path: str, body: Dict[str, Any], retries: int = 0) -> Dict[str, Any]:
+    def post(
+        self, path: str, body: Dict[str, Any], *, timeout: Any = None, retries: int = 0
+    ) -> Dict[str, Any]:
         self.sent.append({"path": path, "body": body})
         answer = self.answers.pop(0) if self.answers else {"cancel": False, "stop": False}
         if isinstance(answer, Exception):
@@ -145,3 +148,61 @@ class WorkerTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class SignalTest(unittest.TestCase):
+    """Long-poll сигналов задачи: отмена и остановка приходят сразу, а не с heartbeat."""
+
+    def test_cancel_signal_cancels_job_and_ends_waiting(self) -> None:
+        client = FakeClient([{"cancel": True, "stop": False}])
+        job = make_job(client)
+
+        self.assertFalse(job._poll_signal())
+        self.assertTrue(job.cancelled)
+        self.assertEqual(client.sent[0]["path"], "/jobs/job-1/signal")
+        self.assertEqual(client.sent[0]["body"]["attempt"], 2)
+        self.assertGreater(client.sent[0]["body"]["waitSeconds"], 0)
+
+    def test_stop_signal_sets_flag_and_ends_waiting(self) -> None:
+        job = make_job(FakeClient([{"cancel": False, "stop": True}]))
+
+        self.assertFalse(job._poll_signal())
+        self.assertTrue(job.stop_requested)
+        self.assertFalse(job.cancelled)
+
+    def test_no_signal_keeps_waiting(self) -> None:
+        job = make_job(FakeClient([{"cancel": False, "stop": False}]))
+
+        self.assertTrue(job._poll_signal())
+        self.assertFalse(job.cancelled)
+
+    def test_server_without_signal_endpoint_falls_back_to_heartbeat(self) -> None:
+        from worker_sdk.errors import ApiError
+
+        job = make_job(FakeClient([ApiError(404, "ROUTE_NOT_FOUND", "нет маршрута")]))
+
+        self.assertFalse(job._poll_signal())
+        self.assertFalse(job.cancelled)
+
+    def test_unknown_job_cancels(self) -> None:
+        from worker_sdk.errors import ApiError
+
+        job = make_job(FakeClient([ApiError(404, "JOB_NOT_FOUND", "Задача не найдена")]))
+
+        self.assertFalse(job._poll_signal())
+        self.assertTrue(job.cancelled)
+
+    def test_finished_job_ignores_late_answer(self) -> None:
+        job = make_job(FakeClient([{"cancel": True, "stop": False}]))
+        job._stop.set()  # задача уже сдана: сервер будит ожидание завершением
+
+        self.assertFalse(job._poll_signal())
+        self.assertFalse(job.cancelled)
+
+    def test_network_error_keeps_waiting(self) -> None:
+        job = make_job(FakeClient([ConnectionError("сеть")]))
+
+        # Пауза перед повтором — без реального ожидания.
+        with unittest.mock.patch.object(job._stop, "wait", return_value=False):
+            self.assertTrue(job._poll_signal())
+        self.assertFalse(job.cancelled)

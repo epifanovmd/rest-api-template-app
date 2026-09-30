@@ -2180,6 +2180,22 @@
 				"type": "object",
 				"additionalProperties": false
 			},
+			"ISignalJobBody": {
+				"description": "Ожидание сигнала задачи: отменить или остановить.",
+				"properties": {
+					"attempt": {
+						"type": "number",
+						"format": "double"
+					},
+					"waitSeconds": {
+						"type": "number",
+						"format": "double",
+						"description": "Сколько ждать сигнала, секунд (0–25); без сигнала — `{ cancel: false, stop: false }`."
+					}
+				},
+				"type": "object",
+				"additionalProperties": false
+			},
 			"IWorkerEventBody": {
 				"description": "Событие воркера.",
 				"properties": {
@@ -5609,6 +5625,65 @@
 						"application/json": {
 							"schema": {
 								"$ref": "#/components/schemas/IClaimJobsBody"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/worker/jobs/{id}/signal": {
+			"post": {
+				"operationId": "Signal",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IHeartbeatResultDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Ждать сигнала задачи (long-poll до `waitSeconds`, не больше 25 с): ответ\nприходит сразу, как только задачу отменили или попросили остановить.\nБез сигнала — `{ cancel: false, stop: false }`, воркер спрашивает снова.",
+				"summary": "Сигналы задачи",
+				"tags": [
+					"Worker"
+				],
+				"security": [
+					{
+						"apiKey": [
+							"worker"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/ISignalJobBody"
 							}
 						}
 					}

@@ -21,6 +21,7 @@ import {
   EJobRunStatus,
   JOB_AVAILABLE_CHANNEL,
   JOB_REQUEST_TIMEOUT_MS,
+  JOB_STOP_CHANNEL,
 } from "./jobs.types";
 import { managerDb, PgBossService } from "./pg-boss.service";
 
@@ -151,8 +152,15 @@ export class PgBossJobQueue extends JobQueue {
       run.status === EJobRunStatus.RUNNING &&
       this._registry.external(run.queue) !== undefined;
 
-    if (graceful) await this._tracker.update(run, { stopRequested: true });
-    else await this.cancel(jobId);
+    if (graceful) {
+      await this._tracker.update(run, { stopRequested: true });
+      // Воркер, ждущий сигналов задачи, узнает сразу, а не с heartbeat.
+      await this._signals
+        .notify(JOB_STOP_CHANNEL, jobId)
+        .catch(err =>
+          logger.warn({ err, jobId }, "[Jobs] Сигнал остановки не отправлен"),
+        );
+    } else await this.cancel(jobId);
   }
 
   async cancel(jobId: string): Promise<void> {
