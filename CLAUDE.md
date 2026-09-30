@@ -26,6 +26,8 @@ yarn typecheck            # проверка типов (yarn dev:types — watc
 yarn test                 # юнит, src/**/*.test.ts (один файл: yarn test:file <path>)
 yarn test:e2e             # интеграционный набор test/e2e/*.e2e.ts (нужен dev-compose)
 yarn gen:module <name>    # каркас модуля по конвенциям (--dry-run — список файлов)
+yarn worker:setup         # Python-окружение внешнего воркера (.venv)
+yarn worker [файл]        # Python-воркер на этой машине (по умолчанию пример demo.echo; ключ — WORKER_API_KEY)
 yarn migration:generate src/migrations/<Name> | migration:run | migration:revert
 yarn migration:run:prod   # миграции из build/ (в контейнере)
 ```
