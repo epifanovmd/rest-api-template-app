@@ -66,6 +66,11 @@ export interface IHeartbeatJobBody {
 
 /** Событие воркера. */
 export interface IWorkerEventBody {
+  /**
+   * Номер события в попытке (1, 2, …): повторно присланные сервер отбрасывает.
+   * Без номера событие принимается всегда.
+   */
+  seq?: number;
   /** Тип события в пределах очереди: `epoch`. */
   type: string;
   data?: unknown;

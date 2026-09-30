@@ -49,6 +49,7 @@ export const HeartbeatJobSchema = z.object({
   events: z
     .array(
       z.object({
+        seq: z.number().int().min(1).optional(),
         type: z
           .string()
           .min(1, "Тип события обязателен")

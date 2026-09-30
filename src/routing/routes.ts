@@ -945,6 +945,7 @@ const models: TsoaRoute.Models = {
     "IWorkerEventBody": {
         "dataType": "refObject",
         "properties": {
+            "seq": {"dataType":"double"},
             "type": {"dataType":"string","required":true},
             "data": {"dataType":"any"},
         },

@@ -2183,6 +2183,11 @@
 			"IWorkerEventBody": {
 				"description": "Событие воркера.",
 				"properties": {
+					"seq": {
+						"type": "number",
+						"format": "double",
+						"description": "Номер события в попытке (1, 2, …): повторно присланные сервер отбрасывает.\nБез номера событие принимается всегда."
+					},
 					"type": {
 						"type": "string",
 						"description": "Тип события в пределах очереди: `epoch`."

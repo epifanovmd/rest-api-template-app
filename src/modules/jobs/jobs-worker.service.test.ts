@@ -31,6 +31,7 @@ const createRun = (overrides: Record<string, unknown> = {}) => ({
   attempt: 1,
   cancelRequested: false,
   stopRequested: false,
+  eventSeq: 0,
   logTail: [] as string[],
   files: null as unknown,
   ...overrides,
@@ -343,6 +344,39 @@ describe("JobsWorkerService", () => {
       expect(info).to.include({ id: "job-1", queue: "demo.echo" });
       expect(info.data).to.deep.equal({ text: "hi" });
       expect(event).to.deep.equal({ type: "epoch", data: { epoch: 2 } });
+    });
+
+    it("повтор событий (ответ heartbeat потерялся) — хуку только новые, номер сохраняется", async () => {
+      tracker.find.resolves(createRun({ eventSeq: 2 }));
+
+      await service.heartbeat(caller, "job-1", {
+        attempt: 1,
+        events: [
+          { seq: 2, type: "epoch", data: { epoch: 2 } },
+          { seq: 3, type: "epoch", data: { epoch: 3 } },
+          { seq: 4, type: "epoch", data: { epoch: 4 } },
+        ],
+      });
+
+      expect(
+        external.onEvent.getCalls().map(call => call.args[1]),
+      ).to.deep.equal([
+        { type: "epoch", data: { epoch: 3 } },
+        { type: "epoch", data: { epoch: 4 } },
+      ]);
+      expect(
+        tracker.update.getCalls().some(call => call.args[1].eventSeq === 4),
+      ).to.be.true;
+    });
+
+    it("все события уже приняты — хук не вызывается", async () => {
+      tracker.find.resolves(createRun({ eventSeq: 5 }));
+
+      await service.heartbeat(caller, "job-1", {
+        events: [{ seq: 5, type: "epoch", data: { epoch: 5 } }],
+      });
+
+      expect(external.onEvent.called).to.be.false;
     });
 
     it("чужая очередь по scope — 403", async () => {

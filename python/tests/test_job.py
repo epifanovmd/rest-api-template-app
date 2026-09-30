@@ -9,13 +9,16 @@ from worker_sdk.job import Job
 class FakeClient:
     timeout = 5
 
-    def __init__(self, answers: List[Dict[str, Any]]) -> None:
+    def __init__(self, answers: List[Any]) -> None:
         self.answers = answers
         self.sent: List[Dict[str, Any]] = []
 
     def post(self, path: str, body: Dict[str, Any], retries: int = 0) -> Dict[str, Any]:
         self.sent.append({"path": path, "body": body})
-        return self.answers.pop(0) if self.answers else {"cancel": False, "stop": False}
+        answer = self.answers.pop(0) if self.answers else {"cancel": False, "stop": False}
+        if isinstance(answer, Exception):
+            raise answer
+        return answer
 
 
 def make_job(client: FakeClient) -> Job:
@@ -38,9 +41,42 @@ class HeartbeatTest(unittest.TestCase):
         self.assertEqual(body["progress"], 0.5)
         self.assertEqual(
             body["events"],
-            [{"type": "epoch", "data": {"epoch": 1}}, {"type": "epoch", "data": {"epoch": 2}}],
+            [
+                {"seq": 1, "type": "epoch", "data": {"epoch": 1}},
+                {"seq": 2, "type": "epoch", "data": {"epoch": 2}},
+            ],
         )
         self.assertFalse(job._has_pending())
+
+    def test_network_failure_keeps_events_log_and_progress_for_next_heartbeat(self) -> None:
+        client = FakeClient([ConnectionError("сеть")])
+        job = make_job(client)
+
+        job.progress(0.3, "эпоха 1")
+        job.log("строка 1")
+        job.event("epoch", {"epoch": 1})
+        job._send_heartbeat()  # не дошёл
+
+        job.event("epoch", {"epoch": 2})
+        job._send_heartbeat()  # дошёл
+
+        retry = client.sent[1]["body"]
+        self.assertEqual([e["seq"] for e in retry["events"]], [1, 2])
+        self.assertEqual(retry["log"], ["строка 1"])
+        self.assertEqual(retry["progress"], 0.3)
+        self.assertFalse(job._has_pending())
+
+    def test_newer_progress_wins_over_unsent(self) -> None:
+        client = FakeClient([ConnectionError("сеть")])
+        job = make_job(client)
+
+        job.progress(0.3, "эпоха 1")
+        job._send_heartbeat()  # не дошёл
+        job.progress(0.6, "эпоха 2")
+        job._send_heartbeat()
+
+        self.assertEqual(client.sent[1]["body"]["progress"], 0.6)
+        self.assertEqual(client.sent[1]["body"]["text"], "эпоха 2")
 
     def test_stop_sets_flag_without_cancelling(self) -> None:
         job = make_job(FakeClient([{"cancel": False, "stop": True}]))

@@ -52,6 +52,8 @@ class Job:
         self._text: Optional[str] = None
         self._log: List[str] = []
         self._events: List[Dict[str, Any]] = []
+        #: Номер последнего события: сервер по нему отбрасывает повторы.
+        self._event_seq = 0
         self._cancelled = threading.Event()
         self._stop_requested = threading.Event()
         self._wake = threading.Event()
@@ -93,10 +95,13 @@ class Job:
     def event(self, type: str, data: Any = None) -> None:
         """Событие для хука очереди на сервере (``onEvent``): метрики эпохи и т. п.
 
-        События уходят с ближайшим heartbeat по порядку.
+        События уходят с ближайшим heartbeat по порядку и остаются в очереди
+        до подтверждения сервером: сбой сети их не теряет, повтор сервер
+        отбрасывает по номеру ``seq``.
         """
         with self._lock:
-            self._events.append({"type": type[:50], "data": data})
+            self._event_seq += 1
+            self._events.append({"seq": self._event_seq, "type": type[:50], "data": data})
         self._wake.set()
 
     @property
@@ -202,31 +207,40 @@ class Job:
             )
 
     def _send_heartbeat(self) -> None:
+        # Отправленное убирается из буферов только после ответа сервера:
+        # при сбое сети оно уйдёт со следующим heartbeat.
         with self._lock:
             body: Dict[str, Any] = {"attempt": self.attempt}
-            if self._progress is not None:
-                body["progress"] = self._progress
-            if self._text is not None:
-                body["text"] = self._text
-            if self._log:
-                body["log"] = self._log[:100]
-            if self._events:
-                body["events"] = self._events[:100]
-            sent_log = len(body.get("log", []))
-            sent_events = len(body.get("events", []))
-            self._progress = None
-            self._text = None
-            self._log = self._log[sent_log:]
-            self._events = self._events[sent_events:]
+            progress, text = self._progress, self._text
+            if progress is not None:
+                body["progress"] = progress
+            if text is not None:
+                body["text"] = text
+            log_lines = self._log[:100]
+            events = self._events[:100]
+            if log_lines:
+                body["log"] = log_lines
+            if events:
+                body["events"] = events
         try:
             answer = self._client.post(f"/jobs/{self.id}/heartbeat", body, retries=2)
         except ApiError as err:
             log.warning("heartbeat %s отклонён: %s — задача прекращается", self.id, err)
             self._cancelled.set()
             return
-        except Exception as err:  # noqa: BLE001 — сеть: следующий heartbeat повторит
+        except Exception as err:  # noqa: BLE001 — сеть: отправится со следующим heartbeat
             log.warning("heartbeat %s не дошёл: %s", self.id, err)
             return
+        with self._lock:
+            # Новые значения, записанные во время запроса, не затираются.
+            if self._progress == progress:
+                self._progress = None
+            if self._text == text:
+                self._text = None
+            self._log = self._log[len(log_lines):]
+            if events:
+                sent = events[-1]["seq"]
+                self._events = [event for event in self._events if event["seq"] > sent]
         if answer and answer.get("cancel"):
             if not self._cancelled.is_set():
                 log.info("задача %s отменена сервером", self.id)

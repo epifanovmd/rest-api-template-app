@@ -179,8 +179,24 @@ export class JobsWorkerService {
         }),
     });
 
-    if (body.events?.length)
-      await this.deliverEvents(run, handler, body.events);
+    // Повторно присланные события (ответ прошлого heartbeat потерялся) — мимо.
+    const events = (body.events ?? []).filter(
+      event => event.seq === undefined || event.seq > run.eventSeq,
+    );
+
+    if (events.length) {
+      await this.deliverEvents(
+        run,
+        handler,
+        events.map(({ type, data }) => ({ type, data })),
+      );
+
+      const lastSeq = Math.max(...events.map(event => event.seq ?? 0));
+
+      if (lastSeq > run.eventSeq) {
+        await this._tracker.update(run, { eventSeq: lastSeq });
+      }
+    }
 
     return { cancel: false, stop: run.stopRequested };
   }
