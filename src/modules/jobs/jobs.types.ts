@@ -76,6 +76,8 @@ export const WORKER_FORGET_DAYS = 7;
 export const JOB_EXTERNAL_LEASE_SECONDS = 60;
 /** Long-poll claim внешнего воркера — не дольше (прокси рвут дольше 30 с). */
 export const WORKER_CLAIM_MAX_WAIT_SECONDS = 25;
+/** Long-poll ожидания итога задачи клиентом (`GET /jobs/{id}?waitSeconds=`) — не дольше. */
+export const JOB_WAIT_MAX_SECONDS = 25;
 /** Long-poll сигналов задачи воркером — не дольше (как у claim). */
 export const WORKER_SIGNAL_MAX_WAIT_SECONDS = 25;
 /** Страховочная проверка записи во время ожидания сигнала задачи. */

@@ -302,6 +302,16 @@ describe("платформа", () => {
       });
 
       expect(out.status).to.be.oneOf([200, 201, 204]);
+
+      // Клиент ждёт итога long-poll: ответ приходит в момент завершения.
+      const waitStarted = Date.now();
+      const waitingResult = call(
+        admin,
+        "GET",
+        `/api/v1/jobs/${claimed.jobId}?waitSeconds=20`,
+      );
+
+      await new Promise(resolve => setTimeout(resolve, 300));
       expectStatus(
         await call(
           key,
@@ -313,16 +323,11 @@ describe("платформа", () => {
         204,
       );
 
-      const done = await eventually(
-        async () => {
-          const res = await call(admin, "GET", `/api/v1/jobs/${claimed.jobId}`);
+      const done = expectStatus(await waitingResult, 200).data;
 
-          return res.data?.status === "completed" ? res.data : undefined;
-        },
-        { what: "завершение задачи" },
-      );
-
+      expect(done.status).to.equal("completed");
       expect(done.result.echo).to.equal("привет");
+      expect(Date.now() - waitStarted, "итог пришёл сразу").to.be.below(5_000);
       expectStatus(await call(admin, "GET", "/api/v1/jobs?limit=5"), 200);
 
       // Ошибка без повтора → failed
@@ -387,7 +392,7 @@ describe("платформа", () => {
 
       expect(third.jobId).to.equal(signalled.data.jobId);
 
-      const waitStarted = Date.now();
+      const signalStarted = Date.now();
       const waiting = call(
         key,
         "POST",

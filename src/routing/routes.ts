@@ -3226,6 +3226,7 @@ export function RegisterRoutes(router: KoaRouter,opts?:{multer?:ReturnType<typeo
         const argsJobsController_getJob: Record<string, TsoaRoute.ParameterSchema> = {
                 req: {"in":"request","name":"req","required":true,"dataType":"object"},
                 id: {"in":"path","name":"id","required":true,"ref":"UUID"},
+                waitSeconds: {"in":"query","name":"waitSeconds","dataType":"double"},
         };
         router.get('/api/v1/jobs/:id',
             authenticateMiddleware([{"jwt":[]}]),

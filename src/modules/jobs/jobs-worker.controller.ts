@@ -15,7 +15,7 @@ import {
 
 import type { IErrorResponseDto } from "../../core";
 import { getContextUser, Injectable, ValidateBody } from "../../core";
-import { LONG_POLL_STATE, UUID } from "../../core/http";
+import { longPollSignal, UUID } from "../../core/http";
 import { KoaRequest } from "../../types/koa";
 import {
   IClaimedJobDto,
@@ -40,16 +40,6 @@ const callerOf = (req: KoaRequest): IWorkerCaller => ({
   scopes: getContextUser(req).permissions,
   keyId: getContextUser(req).sessionId ?? null,
 });
-
-/** Сигнал обрыва соединения: long-poll перестаёт ждать. */
-const disconnectSignal = (req: KoaRequest): AbortSignal => {
-  const controller = new AbortController();
-
-  req.ctx.state[LONG_POLL_STATE] = true;
-  req.ctx.req.once("close", () => controller.abort());
-
-  return controller.signal;
-};
 
 /**
  * API внешних воркеров (любой язык). Аутентификация — API-ключ со scope
@@ -91,7 +81,7 @@ export class JobsWorkerController extends Controller {
     @Request() req: KoaRequest,
     @Body() body: IClaimJobsBody,
   ): Promise<IClaimedJobDto[]> {
-    return this._worker.claim(callerOf(req), body, disconnectSignal(req));
+    return this._worker.claim(callerOf(req), body, longPollSignal(req));
   }
 
   /**
@@ -108,7 +98,7 @@ export class JobsWorkerController extends Controller {
     @Path() id: UUID,
     @Body() body: ISignalJobBody,
   ): Promise<IHeartbeatResultDto> {
-    return this._worker.signal(callerOf(req), id, body, disconnectSignal(req));
+    return this._worker.signal(callerOf(req), id, body, longPollSignal(req));
   }
 
   /**
