@@ -274,7 +274,9 @@ E2E: `yarn test:e2e` (`.mocharc.e2e.yml`: `test/e2e/**/*.e2e.ts`, `setup.ts` —
   `APP_VERSION` build-arg. `Dockerfile.worker-python` — python 3.12-slim, SDK + `examples/echo_worker.py`.
   На машине: `scripts/python-worker.sh` — `yarn worker:setup` (`.venv`, в .gitignore/.dockerignore),
   `yarn worker [файл]` (по умолчанию echo_worker; `WORKER_API_KEY` и `SERVER_PORT` из `ENV_FILE`, по умолчанию
-  `.env.development`; `PYTHONPATH=python`).
+  `.env.development`; `PYTHONPATH=python`). Фон: `yarn worker:start [файл]` / `worker:stop [--force]` (SIGTERM — задача
+  дорабатывается, `STOP_TIMEOUT`=30 с; --force — SIGKILL) / `worker:status` / `worker:logs` (`.worker/`, в .gitignore).
+  В Makefile воркеров нет — он для деплоя; на сервере Python-воркер — профиль `python-worker`.
 - `docker-compose.yml` (prod, только образы): `migrate` (одноразовый `typeorm migration:run -d build/data-source.js`),
   `api` (`:TAG-api`, `APP_ROLE=api`, масштабируется, `API_PORTS`), `worker` (`:TAG`, `APP_ROLE=worker`), профиль
   `python-worker`, `postgres:16`, `redis:7` (без persistence, allkeys-lru), `s3` (SeaweedFS `:8333`) + `s3-init`

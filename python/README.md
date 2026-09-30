@@ -23,10 +23,15 @@ python/
 
 На этой машине, к API из `.env.development` (ключ — `WORKER_API_KEY` там же):
 
+Воркер — долгоживущий процесс: пока работает, сам забирает задачи своих очередей.
+
 ```bash
-yarn worker:setup                        # окружение .venv
-yarn worker                              # пример: очередь demo.echo
+yarn worker:setup                        # один раз: окружение .venv
+yarn worker                              # на переднем плане, пример demo.echo (Ctrl+C — стоп)
 yarn worker python/my_worker.py          # свой обработчик
+yarn worker:start [файл]                 # то же в фоне (.worker/worker.pid, .worker/worker.log)
+yarn worker:stop [--force]               # остановить: текущая задача дорабатывается; --force — сразу
+yarn worker:status | worker:logs
 ```
 
 Вручную:
