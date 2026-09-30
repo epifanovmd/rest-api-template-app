@@ -8,13 +8,15 @@ API-ключи сервисов (внешние воркеры, интеграц
 
 ```
 src/modules/api-key/
-├── api-key.module.ts      # @Module: провайдеры, asSecurityScheme(ApiKeySecurityScheme)
+├── api-key.module.ts      # @Module: провайдеры, asSecurityScheme, listener и политика комнаты
 ├── api-key.entity.ts      # ApiKey (таблица api_keys)
 ├── api-key.repository.ts  # Поиск по префиксу, страница, touch lastUsedAt
-├── api-key.service.ts     # Выпуск, список, отзыв, проверка ключа
+├── api-key.service.ts     # Выпуск, список, ключ по id, отзыв, проверка ключа
+├── api-key.listener.ts    # ApiKeyListener: выпуск/отзыв → комната api-keys
+├── api-key.socket-events.ts # apikey:updated в контракте сокета
 ├── api-key.scheme.ts      # Схема apiKey: X-Api-Key / Authorization: ApiKey
 ├── api-key.scopes.ts      # scopeSatisfied: сопоставление scope с wildcard
-├── api-key.controller.ts  # REST /api/v1/api-keys (jwt + apikey:manage)
+├── api-key.controller.ts  # REST /api/v1/api-keys (jwt + apikey:*)
 ├── api-key.errors.ts      # ApiKeyError (APIKEY_*)
 ├── api-key.permissions.ts # ApiKeyPermissions (definePermissions)
 ├── api-key.types.ts       # Константы формата ключа
@@ -55,16 +57,22 @@ src/modules/api-key/
 "apikey:<id>"`, `roles: []`, `permissions` — scopes ключа.
 - `lastUsedAt` — условный `UPDATE` (старше минуты), не задерживает запрос.
 
-## REST (jwt, право `apikey:manage`)
+## REST (jwt)
 
-| Метод | Путь                           | Описание                                                                   |
-| ----- | ------------------------------ | -------------------------------------------------------------------------- |
-| POST  | `/api/v1/api-keys`             | `{ name, scopes[], expiresAt? }` → 201 `{ apiKey, key }` (ключ — один раз) |
-| GET   | `/api/v1/api-keys`             | `offset`/`limit` → `IPaginatedDto<ApiKeyDto>`                              |
-| POST  | `/api/v1/api-keys/{id}/revoke` | Отзыв, 204 (повторный — тоже 204)                                          |
+| Метод | Путь                           | Право           | Описание                                                                   |
+| ----- | ------------------------------ | --------------- | -------------------------------------------------------------------------- |
+| POST  | `/api/v1/api-keys`             | `apikey:create` | `{ name, scopes[], expiresAt? }` → 201 `{ apiKey, key }` (ключ — один раз) |
+| GET   | `/api/v1/api-keys`             | `apikey:view`   | `offset`/`limit` → `IPaginatedDto<ApiKeyDto>`                              |
+| POST  | `/api/v1/api-keys/{id}/revoke` | `apikey:revoke` | Отзыв, 204 (повторный — тоже 204)                                          |
 
-Право `apikey:manage` объявлено `definePermissions("apikey", …)`; по
-умолчанию есть только у admin (через `*`).
+Права объявлены `definePermissions("apikey", …)` (группа «API-ключи»); по умолчанию
+есть только у admin (через `*`).
+
+## Сокет
+
+Комната списка ключей `api-keys` (`API_KEYS_ROOM`, `permissionRoomPolicy`, право
+`apikey:view`). `ApiKeyListener`: `ApiKeyCreatedEvent`, `ApiKeyRevokedEvent` →
+`apikey:updated` (`ApiKeyDto` из `ApiKeyService.get(id)`, без секрета).
 
 ## Конфиг
 

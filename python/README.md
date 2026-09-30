@@ -54,7 +54,7 @@ worker.run()
 
 База: `<API>/api/v1/worker`, JSON, ключ в `X-Api-Key: <prefix>.<secret>` (или
 `Authorization: ApiKey <key>`). Ключ выпускает администратор
-(`POST /api/v1/api-keys`, право `apikey:manage`) со scope `worker:<queue>` или
+(`POST /api/v1/api-keys`, право `apikey:create`) со scope `worker:<queue>` или
 `worker:*`.
 
 ### 1. Взять задачи — `POST /jobs/claim`

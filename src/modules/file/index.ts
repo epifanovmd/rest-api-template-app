@@ -4,6 +4,7 @@ export * from "./file.dto";
 export * from "./file.entity";
 export * from "./file.errors";
 export * from "./file.module";
+export * from "./file.permissions";
 export * from "./file.repository";
 export * from "./file.service";
 export * from "./file.socket-events";

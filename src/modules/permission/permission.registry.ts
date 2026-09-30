@@ -1,5 +1,9 @@
+import {
+  OWN_SCOPE_SUFFIX,
+  ownPermission,
+} from "../../core/auth/has-permission";
+import { ALL_PERMISSIONS } from "../../core/auth/superuser";
 import { defineErrors } from "../../core/http";
-import { Permissions } from "./permission.types";
 
 export const PermissionError = defineErrors("PERMISSION", {
   INVALID_DEFINITION: {
@@ -8,73 +12,188 @@ export const PermissionError = defineErrors("PERMISSION", {
   },
 });
 
+/** Право в объявлении модуля: имя и подпись для редакторов ролей. */
+export interface IPermissionDefinition {
+  name: string;
+  label: string;
+  /**
+   * Действие над сущностью с владельцем: кроме права на все сущности
+   * объявляется `<name>:own` — только на свои (владелец или создатель).
+   */
+  scoped?: boolean;
+}
+
+/** Право в каталоге; `own` — имя права «только на свои», если оно есть. */
+export interface IPermissionCatalogItem {
+  name: string;
+  label: string;
+  own?: string;
+}
+
+/** Группа прав в каталоге (обычно — одна сущность домена). */
+export interface IPermissionGroupDefinition {
+  /** `<domain>` или `<domain>:<сущность>`; права группы начинаются с него. */
+  key: string;
+  label: string;
+}
+
+/** Группа каталога: подпись и права в порядке объявления. */
+export interface IPermissionCatalogGroup extends IPermissionGroupDefinition {
+  permissions: IPermissionCatalogItem[];
+}
+
 const DOMAIN_RE = /^[a-z][a-z0-9-]*$/;
 const NAME_RE = /^[a-z][a-z0-9-]*(:([a-z0-9-]+|\*))+$/;
 const MAX_NAME_LENGTH = 100;
 
-/** Домен → права, объявленные модулями через `definePermissions`. */
-const registry = new Map<string, Set<string>>();
+/** Группа «Система»: полный доступ. */
+const SYSTEM_GROUP: IPermissionCatalogGroup = {
+  key: "*",
+  label: "Система",
+  permissions: [{ name: ALL_PERMISSIONS, label: "Полный доступ" }],
+};
 
-/**
- * Объявить права модуля. Модуль держит свои права у себя, засев ролей
- * (`RoleService.seedDefaultPermissions`) собирает все объявленные — общий
- * файл при добавлении модуля не правится.
- *
- * Каждое право — `<domain>:<действие>` (или `<domain>:*`). Повторное
- * объявление тех же имён идемпотентно.
- *
- * @example
- * export const ChatPermissions = definePermissions("chat", {
- *   VIEW: "chat:view",
- *   MANAGE: "chat:manage",
- * });
- */
-export const definePermissions = <const T extends Record<string, string>>(
+interface IRegisteredPermission {
+  label: string;
+  scoped: boolean;
+}
+
+interface IRegisteredGroup {
+  domain: string;
+  label: string;
+  permissions: Map<string, IRegisteredPermission>;
+}
+
+/** Ключ группы → права, объявленные модулями через `definePermissions`. */
+const registry = new Map<string, IRegisteredGroup>();
+
+type PermissionNames<T extends Record<string, IPermissionDefinition>> = {
+  readonly [K in keyof T]: T[K]["name"];
+};
+
+const assertValid = (
   domain: string,
-  permissions: T,
-): Readonly<T> => {
-  if (!DOMAIN_RE.test(domain)) {
-    throw PermissionError.INVALID_DEFINITION({ domain });
+  group: IPermissionGroupDefinition,
+  definitions: IPermissionDefinition[],
+): void => {
+  const groupValid =
+    DOMAIN_RE.test(domain) &&
+    (group.key === domain || group.key.startsWith(`${domain}:`)) &&
+    group.label.trim().length > 0;
+
+  if (!groupValid) {
+    throw PermissionError.INVALID_DEFINITION({ domain, group: group.key });
   }
 
-  const names = Object.values(permissions);
+  for (const { name, scoped } of definitions) {
+    const longest = scoped ? ownPermission(name) : name;
 
-  for (const name of names) {
     if (
-      !name.startsWith(`${domain}:`) ||
+      !name.startsWith(`${group.key}:`) ||
       !NAME_RE.test(name) ||
-      name.length > MAX_NAME_LENGTH
+      longest.length > MAX_NAME_LENGTH ||
+      name.endsWith(`:${OWN_SCOPE_SUFFIX}`) ||
+      (scoped && name.endsWith(":*"))
     ) {
       throw PermissionError.INVALID_DEFINITION({ domain, name });
     }
   }
-
-  const declared = registry.get(domain) ?? new Set<string>();
-
-  names.forEach(name => declared.add(name));
-  registry.set(domain, declared);
-
-  return Object.freeze({ ...permissions });
 };
 
 /**
- * Все известные права: `*`, совместимый справочник `Permissions` и
- * объявленные модулями. Отсортированы, без повторов.
+ * Объявить права модуля с подписями. Модуль держит свои права у себя: засев
+ * (`RoleService.seedDefaultPermissions`) и каталог для редакторов ролей
+ * собирают все объявленные — общий файл при добавлении модуля не правится.
+ *
+ * Каждое право — `<group.key>:<действие>`. Право с `scoped: true` объявляет
+ * и `<имя>:own` — действие только над своими сущностями; сегмент `:own` в конце
+ * имени зарезервирован за областью и напрямую не объявляется. Повторное объявление
+ * тех же имён идемпотентно; подпись — последняя объявленная.
+ *
+ * @example
+ * export const ReportPermissions = definePermissions(
+ *   "report",
+ *   { key: "report", label: "Отчёты" },
+ *   {
+ *     VIEW: { name: "report:view", label: "Просмотр" },
+ *     EXPORT: { name: "report:export", label: "Выгрузка" },
+ *   },
+ * );
+ */
+export const definePermissions = <
+  const T extends Record<string, IPermissionDefinition>,
+>(
+  domain: string,
+  group: IPermissionGroupDefinition,
+  permissions: T,
+): PermissionNames<T> => {
+  const entries = Object.entries(permissions);
+
+  assertValid(
+    domain,
+    group,
+    entries.map(([, def]) => def),
+  );
+
+  const registered = registry.get(group.key) ?? {
+    domain,
+    label: group.label,
+    permissions: new Map<string, IRegisteredPermission>(),
+  };
+
+  registered.label = group.label;
+  entries.forEach(([, def]) =>
+    registered.permissions.set(def.name, {
+      label: def.label,
+      scoped: def.scoped ?? false,
+    }),
+  );
+  registry.set(group.key, registered);
+
+  return Object.freeze(
+    Object.fromEntries(entries.map(([key, def]) => [key, def.name])),
+  ) as PermissionNames<T>;
+};
+
+const namesOf = (group: IRegisteredGroup): string[] =>
+  [...group.permissions.entries()].flatMap(([name, { scoped }]) =>
+    scoped ? [name, ownPermission(name)] : [name],
+  );
+
+/**
+ * Все известные права: `*`, объявленные модулями и их варианты `:own`.
+ * Отсортированы, без повторов.
  */
 export const getRegisteredPermissions = (): string[] =>
   [
     ...new Set<string>([
-      ...Object.values(Permissions),
-      ...[...registry.values()].flatMap(names => [...names]),
+      ALL_PERMISSIONS,
+      ...[...registry.values()].flatMap(namesOf),
     ]),
   ].sort();
 
-/** Права, объявленные для домена (без совместимого справочника). */
-export const getDomainPermissions = (domain: string): string[] => [
-  ...(registry.get(domain) ?? []),
+/** Каталог прав по группам в порядке объявления; первая — «Система». */
+export const getPermissionCatalog = (): IPermissionCatalogGroup[] => [
+  SYSTEM_GROUP,
+  ...[...registry.entries()].map(([key, group]) => ({
+    key,
+    label: group.label,
+    permissions: [...group.permissions.entries()].map(
+      ([name, { label, scoped }]) =>
+        scoped ? { name, label, own: ownPermission(name) } : { name, label },
+    ),
+  })),
 ];
+
+/** Права, объявленные для домена. */
+export const getDomainPermissions = (domain: string): string[] =>
+  [...registry.values()]
+    .filter(group => group.domain === domain)
+    .flatMap(namesOf);
 
 /** Снять объявление домена. Только для тестов: реестр — глобальное состояние. */
 export const unregisterPermissionDomain = (domain: string): void => {
-  registry.delete(domain);
+  for (const [key, group] of registry) {
+    if (group.domain === domain) registry.delete(key);
+  }
 };

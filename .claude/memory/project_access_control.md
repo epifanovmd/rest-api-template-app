@@ -57,14 +57,21 @@ POST /refresh
 - Access-токен проверяется без БД, но с отзывом: `SessionService._terminate` удаляет сессии и
   сразу `TokenService.revokeSessions(ids)` → `core/auth/session-revocation.ts`
   (`revoked:session:<id>`, TTL = `JWT_ACCESS_TTL`; без Redis — память). `verify` делает один
-  `MGET revoked:session:<sid> revoked:user:<uid>` + локальный кэш 1 с → 401 `AUTH_SESSION_REVOKED`.
-  `UserDeletedEvent` → `revokeUser` (токены с `iat` ≤ отметки). Redis недоступен → fail-open + лог.
+  `MGET revoked:session:<sid> revoked:user:<uid> privileges:changed:<uid>` + локальный кэш 1 с →
+  `SessionRevocationList.check()` → `"revoked"` (401 `AUTH_SESSION_REVOKED`) | `"privileges-changed"`
+  (401 `AUTH_PRIVILEGES_CHANGED`) | `null`. `UserDeletedEvent` → `revokeUser` (токены с `iat` ≤ отметки).
+  Redis недоступен → fail-open + лог.
+- Смена прав без разлогина: access-токен несёт `pat` (мс выдачи); `UserPrivilegesChangedEvent` →
+  `TokenService.markPrivilegesChanged(userId)` (ключ `privileges:changed:<id>`, TTL = `JWT_ACCESS_TTL`);
+  токены с `pat` ≤ отметки (без `pat` — по `iat` в секундах, с запасом) → `AUTH_PRIVILEGES_CHANGED`;
+  клиент делает refresh, сессия остаётся. Отзыв сессии важнее смены прав.
 - `SessionCleanupJob` (cron `0 * * * *`, очередь `session.cleanup`) — удаляет просроченные сессии.
 - `SessionTerminatedEvent(sessionId, userId, reason)`; reason: sign-out, sign-out-all, terminated,
-  others-terminated, evicted, expired, refresh-reuse, password-changed, privileges-changed.
+  others-terminated, evicted, expired, refresh-reuse, password-changed.
 - `SessionListener`: `SessionTerminatedEvent` → `session:terminated` + `disconnectSession`;
   `PasswordChangedEvent` → `terminateAllOther` (есть currentSessionId) или `terminateAllByUser`;
-  `UserPrivilegesChangedEvent` → `terminateAllByUser`; `UserDeletedEvent` → `disconnectUser`.
+  `UserPrivilegesChangedEvent` → `markPrivilegesChanged` (сессии не завершаются); `UserDeletedEvent` →
+  `revokeUser` + `disconnectUser`.
 - `resetPassword` — единственная точка: `update2FA(null)` + `UserService.changePassword` (без
   события) + `PasswordChangedEvent(userId, "reset")`.
 
@@ -90,17 +97,65 @@ nonce гасится атомарно до проверки подписи (`Bio
 
 ## Permission System
 
-**Формат:** `module:action` — например `user:manage`, `profile:view`, `jobs:manage`
+**Формат:** `module:action` — права на отдельные действия, общего `manage` нет (разбит миграцией
+`1790600000000-SplitManagePermissions`: обладатели `manage` получили все действия — роли, прямые права,
+scopes API-ключей; down собирает `manage` обратно у имеющих все действия).
 
-**Справочник `Permissions`** (`modules/permission/permission.types.ts`, «совместимость»): `*`, `user:view/manage`,
-`role:view/manage`, `profile:view/manage`, `apikey:manage`, `audit:view` — только базовые; права
-мессенджера/пространств из него убраны (объявляются модулями веток). Тип `TPermission` — только в модуле
-permission; в теле запросов — `PermissionName = string`.
+**Права модулей — `definePermissions(domain, { key, label }, { KEY: { name, label } })`**
+(`permission.registry.ts`; ключ группы — `<domain>` или `<domain>:<сущность>`, право — `<ключ>:<действие>`,
+идемпотентно, возвращает замороженный `KEY → имя`). Каталог — `getPermissionCatalog()`, REST
+`GET /api/v1/permissions` (jwt) → `{ groups: [{ key, label, permissions: [{ name, label }] }] }`, первая группа
+`*` «Система». `PermissionController` зарегистрирован в `UserModule`. Совместимого `Permissions`/`KnownPermission`
+нет: `TPermission = string`, `*` — `ALL_PERMISSIONS` из `core/auth/superuser.ts`.
 
-**Права модулей — `definePermissions`** (`permission.registry.ts`, валидация формата `<domain>:<action>`,
-идемпотентно): `apikey:manage`, `audit:view`, `jobs:manage`, `profile:view/manage`, `role:view/manage`,
-`user:view/manage` (файлы `<module>.permissions.ts`, экспорт из `index.ts`). Засев ролей (`RoleService.seedDefaultPermissions`) берёт
-`getRegisteredPermissions()`; новый модуль общий список не правит.
+| Группа                        | Права                                                                                  |
+| ----------------------------- | -------------------------------------------------------------------------------------- |
+| `user` «Пользователи»         | `user:view`, `user:update` (контакты), `user:delete`, `user:privileges` (роли и права) |
+| `role` «Роли»                 | `role:view`, `role:create`, `role:update` (права роли), `role:delete`                  |
+| `profile` «Профили»           | `profile:view`, `profile:update`, `profile:delete` (очистка)                           |
+| `apikey` «API-ключи»          | `apikey:view`, `apikey:create`, `apikey:revoke`                                        |
+| `audit` «Журнал безопасности» | `audit:view`                                                                           |
+| `jobs` «Фоновые задачи»       | `jobs:demo` (демо-задача проверки внешних воркеров)                                    |
+| `file` «Файлы»                | `file:view`, `file:delete` — scoped, есть `file:view:own`, `file:delete:own`           |
+
+Засев ролей (`RoleService.seedDefaultPermissions`) берёт `getRegisteredPermissions()`. Страж —
+`src/routing/spec.test.ts`: каждое `permission:`-право в security спецификации объявлено.
+
+**Права по userId без HTTP-контекста** — `AccessService` ядра (`core/auth/access.ts`: `grantOf`, `can`,
+`isSuperUser`, статический `allows`), без кэша, источник — `GRANT_RESOLVER` (`asGrantResolver`), реализует
+`UserGrantResolver` модуля user (`grantOfUser(user)` — его же использует `toTokenSubject`). Используют:
+политики сокет-комнат (`JobRoomPolicy`, `permissionRoomPolicy`), `UserListener`, `ProfileService`.
+
+**Защита суперпользователя и ролей:**
+
+- `RoleService.deleteRole(actor, id)`: системные роли (`admin`/`user`/`guest`) → 409 `ROLE_SYSTEM_ROLE`;
+  свою роль не суперпользователь не удаляет → 403 `ROLE_OWN_ROLE`; до удаления собираются участники
+  (`RoleRepository.findMemberIds`, `user_roles`) → `emitAsync(RoleDeletedEvent(roleId, roleName, memberIds))`
+  → `UserService.notifyUsersPrivilegesChanged`. `createRole` → `RoleCreatedEvent(roleId, roleName)`.
+- `UserService.updateUser(actor, id, body)`: цель — суперпользователь, актор нет → 403 `USER_SUPERUSER_EDIT`.
+- `ProfileService.updateProfileOf/clearProfileOf(actor, userId, …)`: то же → 403 `PROFILE_SUPERUSER_EDIT`.
+- `JobRoomPolicy` передаёт реальный флаг суперпользователя: `JobsService.canView(userId, id, isSuperUser)`.
+
+**Области прав «все / свои» (scoped):**
+
+- `definePermissions(..., { KEY: { name, label, scoped: true } })` → регистрируется и `<name>:own`
+  (засев создаёт оба); каталог отдаёт `{ name, label, own }`. Имя с `:own` в конце напрямую — ошибка;
+  scoped-wildcard — ошибка; длина ≤ 100 с учётом `:own`.
+- `hasPermission`: право на все (и `x:*`, `*`) покрывает `<право>:own`; `:own` не даёт права на все.
+  `OWN_SCOPE_SUFFIX = "own"`, `ownPermission(p)` (`core/auth/has-permission.ts`).
+- `core/auth/access-scope.ts`: `AccessScope = "all" | "own"`, `resolveScope(roles, perms, p)`,
+  `OwnedAccess<T>({ owner, creator? })` — `scope`, `isOwn`, `can`, `filter` (`{}` / `{ ownedBy }` / `null`),
+  `listFilter(actor, p, mine?)`, `ownedCondition(alias)` (`:ownedBy`), `ownedWhere(userId)`; без `creator` —
+  «своя» только по владельцу. `AccessService.scope(userId, p)` — по БД.
+- Паттерн модуля: `<feature>.access.ts` с `OwnedAccess`; маршрут `@Security("jwt", ["permission:<p>:own"])`
+  (его проходит и право на все); сервис `_findFor(actor, id, p)`: нет права просмотра на сущность → 404,
+  видима без права на действие → 403; списки — `listFilter`/`filter` → `ownedWhere`.
+- Сокет: `OwnedEntityEmitter` (модуль socket, в `SocketModule.providers`): `toOwners(userIds, viewPerm, event, …)`
+  лично тем, у кого область `own` (право на все — через комнату списка), `detach(userId, …)` + `revalidateUser`.
+- `userDisplayName(user)` (`modules/user/user-name.ts`) — единая функция имени (профиль, иначе email);
+  её использует `UserRepository.findOptions`.
+- Смена смысла прав — миграция данных (роли, `user_permissions`, scopes `api_keys`), как
+  `SplitManagePermissions`.
 
 **Wildcard иерархия:**
 
@@ -125,7 +180,7 @@ effectivePermissions = Set(
 ```typescript
 @Security("jwt")                                    // только авторизация
 @Security("jwt", ["permission:audit:view"])         // нужен permission
-@Security("jwt", ["permission:user:manage"])        // admin endpoints
+@Security("jwt", ["permission:user:update"])        // admin endpoints
 @Security("apiKey", ["worker"])                     // сервис; точный scope worker:<queue> проверяет сервис
 ```
 
@@ -134,8 +189,9 @@ Scope API-ключа: точное совпадение, wildcard (`worker:*`, `
 
 ## Доступ к данным предметных модулей
 
-В main нет ролей внутри сущностей: доступ — глобальные роли/права + владелец (`ownerId`) + суперпользователь;
-задачи — владелец/суперпользователь или `IJobAccessPolicy` по scope (в main политик нет). Роли участника
+В main нет ролей внутри сущностей: доступ — глобальные роли/права, для сущностей с владельцем — области
+«все / свои» (`OwnedAccess`; образец — модуль file: `file.permissions.ts`, `file.access.ts`, `FileService._findFor`);
+задачи — пока владелец/суперпользователь или `IJobAccessPolicy` по scope (в main политик нет), на области не переведены. Роли участника
 пространства (`owner ⊃ admin ⊃ editor ⊃ viewer`, `WorkspaceAccessService`, `@WorkspaceRole`) — ветка
 `example/workspaces`.
 
@@ -161,7 +217,8 @@ Scope API-ключа: точное совпадение, wildcard (`worker:*`, `
 - `TokenService.issue(subject: TokenSubject { id, roles, permissions, emailVerified }, sessionId)`;
   субъект собирает `modules/auth/token-subject.ts::toTokenSubject(user)`.
 - `TokenService.verifyAccess(token)` → `{ context, expiresAt }` (сокет). Ошибки ядра — `AuthTokenError`
-  (`AUTH_TOKEN_MISSING/EXPIRED/INVALID/WRONG_SCOPE/NO_SESSION`, `AUTH_SESSION_REVOKED`, `AUTH_INSUFFICIENT_ROLE/PERMISSIONS`).
+  (`AUTH_TOKEN_MISSING/EXPIRED/INVALID/WRONG_SCOPE/NO_SESSION`, `AUTH_SESSION_REVOKED`, `AUTH_PRIVILEGES_CHANGED`,
+  `AUTH_INSUFFICIENT_ROLE/PERMISSIONS`).
 
 ## Защита входа
 
@@ -187,4 +244,6 @@ Scope API-ключа: точное совпадение, wildcard (`worker:*`, `
 в `AuditListener` (asSocketListener), ошибки — лог; `GET /api/v1/audit/my`, `GET /api/v1/audit`
 (`permission:audit:view`, `AuditPermissions` через `definePermissions`); cursor-лента; `AuditCleanupJob` 180 дней.
 События: UserLoggedIn(method), LoginFailed, AccountLocked, UserSignedOut, 2FA, PasswordChanged,
-SessionTerminated (кроме sign-out*), Passkey/Biometric Added/Removed. api-key событий пока нет.
+SessionTerminated (кроме sign-out*), Passkey/Biometric Added/Removed, ApiKey Created/Revoked.
+`AuditService.record` после записи эмитит `AuditRecordedEvent(dto)` → `AuditFeedListener`: `audit:created` в
+комнату `audit` (право `audit:view`) и автору записи (его журнал `my`).

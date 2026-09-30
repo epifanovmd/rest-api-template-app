@@ -5,6 +5,7 @@ import sinon from "sinon";
 import { QueryFailedError } from "typeorm";
 
 import { hashPassword, verifyPassword } from "../../core/auth/password";
+import { ALL_PERMISSIONS } from "../../core/auth/superuser";
 import {
   BadRequestException,
   ServiceUnavailableException,
@@ -18,14 +19,15 @@ import {
   uuid3,
 } from "../../test/helpers";
 import { FileUrlService } from "../file";
-import { Permissions } from "../permission/permission.types";
 import { Roles } from "../role/role.types";
 import {
   EmailVerifiedEvent,
   PasswordChangedEvent,
+  UserChangedEvent,
   UserDeletedEvent,
   UserPrivilegesChangedEvent,
 } from "./events";
+import { UserError } from "./user.errors";
 import { escapeLike } from "./user.repository";
 import { UserService } from "./user.service";
 
@@ -76,7 +78,7 @@ describe("UserService", () => {
   const adminRole = {
     id: uuid3(),
     name: Roles.ADMIN,
-    permissions: [{ id: "p-all", name: Permissions.ALL }],
+    permissions: [{ id: "p-all", name: ALL_PERMISSIONS }],
   };
   const fakeProfile = {
     id: uuid2(),
@@ -105,14 +107,14 @@ describe("UserService", () => {
     userId: uuid3(),
     sessionId: "session-manager",
     roles: [Roles.USER],
-    permissions: [Permissions.USER_MANAGE],
+    permissions: ["user:privileges"],
     emailVerified: true,
   };
   const superUser = {
     userId: uuid3(),
     sessionId: "session-admin",
     roles: [Roles.ADMIN],
-    permissions: [Permissions.ALL],
+    permissions: [ALL_PERMISSIONS],
     emailVerified: true,
   };
 
@@ -271,7 +273,11 @@ describe("UserService", () => {
       expect(savedUser.roles).to.deep.equal([userRole]);
       expect(txRepos.Profile.save.calledOnce).to.be.true;
       expect(mockUserRepo.save.called).to.be.false;
-      expect(eventBus.emit.called).to.be.false;
+
+      const event = eventBus.emit.lastCall.args[0];
+
+      expect(event).to.be.instanceOf(UserChangedEvent);
+      expect(event.userId).to.be.a("string");
     });
 
     it("should fail when a default role is missing", async () => {
@@ -317,11 +323,40 @@ describe("UserService", () => {
   });
 
   describe("updateUser", () => {
+    it("изменение контактов — UserChangedEvent", async () => {
+      mockUserRepo.findById.resolves(makeUser());
+      mockUserRepo.findOne.resolves(makeUser({ phone: "+79001112233" }));
+
+      await service.updateUser(superUser, uuid(), { phone: "89001112233" });
+
+      expect(
+        eventBus.emit
+          .getCalls()
+          .some(
+            c =>
+              c.args[0] instanceof UserChangedEvent &&
+              c.args[0].userId === uuid(),
+          ),
+      ).to.be.true;
+    });
+
+    it("контакты суперпользователя меняет только суперпользователь — 403", async () => {
+      mockUserRepo.findById.resolves(makeUser({ roles: [adminRole] }));
+
+      try {
+        await service.updateUser(manager, uuid(), { email: "x@example.com" });
+        expect.fail("should have thrown");
+      } catch (err: any) {
+        expect(err.code).to.equal(UserError.codes.SUPERUSER_EDIT);
+      }
+      expect(mockUserRepo.update.called).to.be.false;
+    });
+
     it("should reset emailVerified and send OTP to the new email", async () => {
       mockUserRepo.findById.resolves(makeUser({ emailVerified: true }));
       mockUserRepo.findOne.resolves(makeUser({ email: "new@example.com" }));
 
-      await service.updateUser(uuid(), { email: "new@example.com" });
+      await service.updateUser(superUser, uuid(), { email: "new@example.com" });
 
       const [, patch] = mockUserRepo.update.firstCall.args;
 
@@ -342,7 +377,7 @@ describe("UserService", () => {
       mockUserRepo.findById.resolves(makeUser({ emailVerified: true }));
       mockUserRepo.findOne.resolves(makeUser());
 
-      await service.updateUser(uuid(), {
+      await service.updateUser(superUser, uuid(), {
         email: "test@example.com",
         phone: "89001234567",
       });
@@ -358,7 +393,7 @@ describe("UserService", () => {
       mockUserRepo.findConflicting.resolves(makeUser({ id: uuid2() }));
 
       await expectReject(
-        service.updateUser(uuid(), { email: "taken@example.com" }),
+        service.updateUser(superUser, uuid(), { email: "taken@example.com" }),
         "USER_EMAIL_TAKEN",
       );
       expect(mockUserRepo.update.called).to.be.false;
@@ -369,7 +404,7 @@ describe("UserService", () => {
       mockUserRepo.update.rejects(uniqueViolation());
 
       await expectReject(
-        service.updateUser(uuid(), { phone: "+79001234567" }),
+        service.updateUser(superUser, uuid(), { phone: "+79001234567" }),
         "USER_PHONE_TAKEN",
       );
     });
@@ -378,7 +413,7 @@ describe("UserService", () => {
       mockUserRepo.findById.resolves(makeUser());
       mockUserRepo.findOne.resolves(makeUser());
 
-      await service.updateUser(uuid(), {
+      await service.updateUser(superUser, uuid(), {
         phone: "+79001234567",
         roleId: uuid2(),
       } as any);
@@ -392,7 +427,7 @@ describe("UserService", () => {
       mockUserRepo.findById.resolves(null);
 
       await expectReject(
-        service.updateUser(uuid(), { email: "x@example.com" }),
+        service.updateUser(superUser, uuid(), { email: "x@example.com" }),
         "USER_NOT_FOUND",
       );
     });
@@ -489,19 +524,19 @@ describe("UserService", () => {
     it("should assign existing roles and permissions and emit event", async () => {
       mockRoleRepo.findByNames.resolves([userRole]);
       mockPermissionRepo.findByNames.resolves([
-        { id: "p1", name: Permissions.PROFILE_VIEW },
+        { id: "p1", name: "profile:view" },
       ]);
 
       await service.setPrivileges(manager, uuid(), {
         roles: [Roles.USER],
-        permissions: [Permissions.PROFILE_VIEW],
+        permissions: ["profile:view"],
       });
 
       const saved = mockUserRepo.save.firstCall.args[0];
 
       expect(saved.roles).to.deep.equal([userRole]);
       expect(saved.directPermissions.map((p: any) => p.name)).to.deep.equal([
-        Permissions.PROFILE_VIEW,
+        "profile:view",
       ]);
 
       const event = eventBus.emitAsync.firstCall.args[0];
@@ -553,13 +588,13 @@ describe("UserService", () => {
     it("should forbid granting «*» to a non-superuser", async () => {
       mockRoleRepo.findByNames.resolves([userRole]);
       mockPermissionRepo.findByNames.resolves([
-        { id: "p-all", name: Permissions.ALL },
+        { id: "p-all", name: ALL_PERMISSIONS },
       ]);
 
       await expectReject(
         service.setPrivileges(manager, uuid(), {
           roles: [Roles.USER],
-          permissions: [Permissions.ALL],
+          permissions: [ALL_PERMISSIONS],
         }),
         "USER_SUPERUSER_ONLY",
       );

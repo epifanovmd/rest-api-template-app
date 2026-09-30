@@ -18,6 +18,15 @@ describe("ProfileService", () => {
   let mockProfileRepo: ReturnType<typeof createMockRepository> &
     Record<string, sinon.SinonStub>;
   let sandbox: sinon.SinonSandbox;
+  let access: { isSuperUser: sinon.SinonStub };
+
+  const actor = {
+    userId: uuid2(),
+    sessionId: "s",
+    roles: ["user"],
+    permissions: ["profile:update", "profile:delete"],
+    emailVerified: true,
+  };
 
   const fakeProfile = {
     id: uuid2(),
@@ -42,11 +51,13 @@ describe("ProfileService", () => {
     } as any;
 
     mockFileRepo = { findById: sandbox.stub().resolves(null) };
+    access = { isSuperUser: sandbox.stub().resolves(false) };
     service = new ProfileService(
       mockProfileRepo as any,
       createMockEventBus() as any,
       new FileUrlService(createMockFileStorage() as any),
       mockFileRepo as any,
+      access as any,
     );
   });
 
@@ -260,6 +271,51 @@ describe("ProfileService", () => {
       } catch (err: any) {
         expect(err.code).to.equal("PROFILE_NOT_FOUND");
       }
+    });
+  });
+
+  describe("чужой профиль", () => {
+    it("профиль суперпользователя меняет и очищает только суперпользователь — 403", async () => {
+      access.isSuperUser.withArgs(fakeProfile.userId).resolves(true);
+
+      for (const run of [
+        () =>
+          service.updateProfileOf(actor, fakeProfile.userId, {
+            firstName: "X",
+          }),
+        () => service.clearProfileOf(actor, fakeProfile.userId),
+      ]) {
+        try {
+          await run();
+          expect.fail("should have thrown");
+        } catch (err: any) {
+          expect(err.code).to.equal("PROFILE_SUPERUSER_EDIT");
+        }
+      }
+      expect(mockProfileRepo.update.called).to.be.false;
+    });
+
+    it("суперпользователь меняет профиль суперпользователя", async () => {
+      access.isSuperUser.resolves(true);
+      mockProfileRepo.findByUserId.resolves(fakeProfile);
+
+      await service.updateProfileOf(
+        { ...actor, roles: ["admin"], permissions: ["*"] },
+        fakeProfile.userId,
+        { firstName: "X" },
+      );
+
+      expect(mockProfileRepo.update.calledOnce).to.be.true;
+    });
+
+    it("обычный профиль меняется по праву", async () => {
+      mockProfileRepo.findByUserId.resolves(fakeProfile);
+
+      await service.updateProfileOf(actor, fakeProfile.userId, {
+        firstName: "X",
+      });
+
+      expect(mockProfileRepo.update.calledOnce).to.be.true;
     });
   });
 });

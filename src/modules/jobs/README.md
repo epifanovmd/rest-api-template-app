@@ -182,11 +182,15 @@ prom-client не использует.
 | GET   | `/api/v1/jobs`             | Свои задачи или задачи scope (`scopeType`+`scopeId`), `status`, `offset`/`limit` → `IPaginatedDto<JobRunDto>` |
 | GET   | `/api/v1/jobs/{id}`        | Задача                                                                                                        |
 | POST  | `/api/v1/jobs/{id}/cancel` | Отмена (204); завершённая — 409 `JOB_NOT_CANCELLABLE`                                                         |
+| POST  | `/api/v1/jobs/demo/echo`   | Демо-задача `demo.echo` внешнему воркеру → 201 `{ jobId }`; право `jobs:demo`                                 |
 
 Доступ: владелец, суперпользователь или `IJobAccessPolicy` scope — токен
 `JOB_ACCESS_POLICY` (`asJobAccessPolicy(Cls)`): модуль-владелец scope решает,
 кто видит (`view`) и отменяет (`cancel`) задачи. Пример: пространство разрешает
 участникам.
+
+Права — `JobsPermissions` (группа «Фоновые задачи»): `jobs:demo` — проверка внешних
+воркеров демо-задачей; по умолчанию только у admin (через `*`).
 
 ## API внешних воркеров (apiKey)
 
@@ -219,12 +223,12 @@ prom-client не использует.
 
 ## События
 
-| EventBus          | Сокет         | Куда                                                                             |
-| ----------------- | ------------- | -------------------------------------------------------------------------------- |
-| `JobUpdatedEvent` | `job:updated` | комната `job_<id>`; комната scope `<scopeType>_<scopeId>`, без scope — владельцу |
+| EventBus          | Сокет         | Куда                                                                                                         |
+| ----------------- | ------------- | ------------------------------------------------------------------------------------------------------------ |
+| `JobUpdatedEvent` | `job:updated` | комната `job_<id>`; комната scope `<scopeType>_<scopeId>` (если есть); владельцу — всегда (его список задач) |
 
-Комната `job` (`room:subscribe { type: "job", id }`) — владельцу или по
-`IJobAccessPolicy`.
+Комната `job` (`room:subscribe { type: "job", id }`) — суперпользователю (по
+актуальным правам из БД через `AccessService`), владельцу или по `IJobAccessPolicy`.
 
 ## Очереди модуля
 

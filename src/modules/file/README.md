@@ -10,9 +10,11 @@ src/modules/file/
 ├── file.entity.ts             # File (таблица files): ключи, статус, метаданные
 ├── file.types.ts              # EFileStatus, FileQueues, лимиты прямой загрузки
 ├── file.errors.ts             # FileError (FILE_*)
+├── file.permissions.ts        # FilePermissions: file:view, file:delete (scoped — есть :own)
+├── file.access.ts             # FileAccess: OwnedAccess по ownerId
 ├── file-keys.ts               # Раскладка ключей: files/<id>/original.<ext>, <variant>.<ext>
-├── file.repository.ts         # findPageByOwner, findStalePending, transitionStatus
-├── file.service.ts            # Загрузка (multipart и прямая), список, удаление
+├── file.repository.ts         # findPage ({ ownedBy? }), findStalePending, transitionStatus
+├── file.service.ts            # Загрузка (multipart и прямая), список и просмотр с областью прав, удаление
 ├── file-url.service.ts        # FileUrlService: единственное место подписи ссылок (toDto, toDtoMap, buildWithFiles)
 ├── signed-files.ts            # TSignedFiles, TFileRef, NO_SIGNED_FILES, signedUrlOf, signedFileOf
 ├── file.controller.ts         # REST (tsoa)
@@ -73,18 +75,40 @@ src/modules/file/
 
 Правило: DTO с аватарами и вложениями принимают карту `files: TSignedFiles` и берут ссылки только из неё. У каждого такого DTO рядом лежит `collect*Files(entities)` (`collectProfileFiles`, `collectUserFiles`, …). Файл не попал в карту — ссылка `null`.
 
+## Права и доступ
+
+`FilePermissions` (группа «Файлы»), оба действия — с областью (`scoped`):
+
+| Право         | Своё (`:own`)     | Что даёт                          |
+| ------------- | ----------------- | --------------------------------- |
+| `file:view`   | `file:view:own`   | Список, метаданные и ссылки файла |
+| `file:delete` | `file:delete:own` | Удаление файла                    |
+
+- Свой файл — где пользователь владелец (`FileAccess = OwnedAccess<File>({ owner: "ownerId" })`).
+  Создателя отдельно нет: загрузивший и есть владелец, а переданный домену файл (`adopt`,
+  `ownerId = null`) своим быть перестаёт — его видят только держатели `file:view`.
+- Маршруты требуют права `:own` (его проходит и право на все); сервис проверяет область на
+  конкретном файле: нет права просмотра этого файла — 404 (чужой не раскрывается), видим, но нет
+  права на действие — 403 `FILE_FORBIDDEN`.
+- Свои права (`file:view:own`, `file:delete:own`) получают роли `user` и `guest` при засеве
+  (`RoleService.seedDefaultPermissions`); у существующих баз их выдаёт миграция
+  `OwnFilePermissions` всем ролям без `*` и пользователям без ролей. Суперпользователь (`admin`,
+  `*`) — всё.
+- Загрузка (`POST /`, `/uploads`, `complete`) — только jwt: загруженный файл всегда свой;
+  `complete` — только загрузившему (403).
+
 ## Endpoints
 
-Базовый путь `/api/v1/file`, все — `@Security("jwt")`.
+Базовый путь `/api/v1/file`.
 
-| Метод    | Путь                         | Ответ                         | Описание                                                                                      |
-| -------- | ---------------------------- | ----------------------------- | --------------------------------------------------------------------------------------------- |
-| `GET`    | `/`                          | 200 `IPaginatedDto<IFileDto>` | Свои файлы, новые первыми; `offset`, `limit` (≤ 100).                                         |
-| `GET`    | `/{id}`                      | 200 `IFileDto`                | Метаданные и ссылки.                                                                          |
-| `POST`   | `/`                          | 201 `IFileDto[]`              | Multipart (поле `file`, до 100 MB). Медиа — в статусе `processing`.                           |
-| `POST`   | `/uploads`                   | 201 `IDirectUploadDto`        | Прямая загрузка: `{ name, size, contentType }` → `{ fileId, uploadUrl, headers, expiresAt }`. |
-| `POST`   | `/uploads/{fileId}/complete` | 200 `IFileDto`                | Подтверждение прямой загрузки; идемпотентно.                                                  |
-| `DELETE` | `/{id}`                      | 204                           | Владелец или суперпользователь; файл во вложении сообщения — 409.                             |
+| Метод    | Путь                         | Доступ            | Ответ                         | Описание                                                                                                               |
+| -------- | ---------------------------- | ----------------- | ----------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `GET`    | `/`                          | `file:view:own`   | 200 `IPaginatedDto<IFileDto>` | Новые первыми; `mine` (по умолчанию `true`) — свои; `mine=false` с `file:view` — все файлы; `offset`, `limit` (≤ 100). |
+| `GET`    | `/{id}`                      | `file:view:own`   | 200 `IFileDto`                | Метаданные и ссылки; недоступный — 404.                                                                                |
+| `POST`   | `/`                          | jwt               | 201 `IFileDto[]`              | Multipart (поле `file`, до 100 MB). Медиа — в статусе `processing`.                                                    |
+| `POST`   | `/uploads`                   | jwt               | 201 `IDirectUploadDto`        | Прямая загрузка: `{ name, size, contentType }` → `{ fileId, uploadUrl, headers, expiresAt }`.                          |
+| `POST`   | `/uploads/{fileId}/complete` | jwt               | 200 `IFileDto`                | Подтверждение прямой загрузки; идемпотентно.                                                                           |
+| `DELETE` | `/{id}`                      | `file:delete:own` | 204                           | Недоступный — 404, видимый без права на удаление — 403; файл во вложении — 409.                                        |
 
 ### Прямая загрузка крупных файлов (до 2 GiB)
 
@@ -121,23 +145,23 @@ src/modules/file/
 
 ## События
 
-| Событие              | Данные                        | Когда                                         |
-| -------------------- | ----------------------------- | --------------------------------------------- |
-| `FileUploadedEvent`  | `fileId`, `userId`, `type`    | Оригинал сохранён (multipart или `complete`)  |
-| `FileProcessedEvent` | `fileId`, `ownerId`, `status` | Обработка завершилась (`ready` / `failed`)    |
-| `FileDeletedEvent`   | `fileId`, `ownerId`           | Файл удалён владельцем или суперпользователем |
+| Событие              | Данные                        | Когда                                        |
+| -------------------- | ----------------------------- | -------------------------------------------- |
+| `FileUploadedEvent`  | `fileId`, `userId`, `type`    | Оригинал сохранён (multipart или `complete`) |
+| `FileProcessedEvent` | `fileId`, `ownerId`, `status` | Обработка завершилась (`ready` / `failed`)   |
+| `FileDeletedEvent`   | `fileId`, `ownerId`           | Файл удалён (своё право или право на все)    |
 
 Сокет — владельцу, из `FileListener`, чтобы списки на всех его устройствах совпадали:
 `file:uploaded` (`IFileDto`), `file:processed` (`IFileDto`), `file:deleted` (`{ id }`).
 
 ## Ошибки (`FileError`, код `FILE_*`)
 
-`NOT_FOUND` 404, `FORBIDDEN` 403, `IN_USE` 409, `TYPE_NOT_ALLOWED` 415, `SIGNATURE_MISMATCH` 415, `TOO_LARGE` 413, `UPLOAD_INCOMPLETE` 409, `SIZE_MISMATCH` 400.
+`NOT_FOUND` 404 (нет файла или он недоступен), `FORBIDDEN` 403 (видим, но нет права на действие; `complete` чужой загрузки; нет права просмотра для списка), `IN_USE` 409, `TYPE_NOT_ALLOWED` 415, `SIGNATURE_MISMATCH` 415, `TOO_LARGE` 413, `UPLOAD_INCOMPLETE` 409, `SIZE_MISMATCH` 400.
 
 ## Владение и жизненный цикл файла
 
-- Загруженный файл принадлежит загрузившему (`ownerId`): он видит его в своих файлах и
-  может удалить.
+- Загруженный файл принадлежит загрузившему (`ownerId`): с правами `:own` он видит его в
+  своих файлах и может удалить.
 - Модуль, который делает файл частью своих данных (кадр, модель), вызывает
   `FileService.adopt(fileIds, uploaderId, manager)` в транзакции, создающей ссылку:
   владелец снимается, файл живёт, пока на него ссылается запись модуля.

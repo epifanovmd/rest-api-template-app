@@ -8,4 +8,8 @@ export const ProfileError = defineErrors("PROFILE", {
     message:
       "Аватар — своё загруженное изображение, обработка которого не завершилась ошибкой",
   },
+  SUPERUSER_EDIT: {
+    status: HttpStatus.FORBIDDEN,
+    message: "Профиль суперпользователя меняет только суперпользователь",
+  },
 });
