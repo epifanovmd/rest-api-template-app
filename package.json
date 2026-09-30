@@ -35,6 +35,8 @@
     "migration:revert": "NODE_ENV=development tsx ./node_modules/typeorm/cli.js migration:revert -d src/data-source.ts",
     "typecheck": "tsc --noEmit",
     "gen:module": "node scripts/gen-module.mjs",
+    "worker:setup": "scripts/python-worker.sh setup",
+    "worker": "scripts/python-worker.sh run",
     "prepare": "lefthook install",
     "migration:run:prod": "typeorm migration:run -d build/data-source.js"
   },
