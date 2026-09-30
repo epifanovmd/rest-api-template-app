@@ -410,7 +410,7 @@ describe("платформа", () => {
       const signal = expectStatus(await waiting, 200);
 
       expect(signal.data.cancel).to.equal(true);
-      expect(Date.now() - waitStarted, "отмена пришла сразу").to.be.below(
+      expect(Date.now() - signalStarted, "отмена пришла сразу").to.be.below(
         5_000,
       );
 
