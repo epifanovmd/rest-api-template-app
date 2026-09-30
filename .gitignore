@@ -20,3 +20,6 @@ firebaseAccount.json
 
 # Python-окружение внешнего воркера (yarn worker:setup)
 .venv/
+
+# Фоновый Python-воркер: pid и журнал (yarn worker:start)
+.worker/

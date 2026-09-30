@@ -37,6 +37,10 @@
     "gen:module": "node scripts/gen-module.mjs",
     "worker:setup": "scripts/python-worker.sh setup",
     "worker": "scripts/python-worker.sh run",
+    "worker:start": "scripts/python-worker.sh start",
+    "worker:stop": "scripts/python-worker.sh stop",
+    "worker:status": "scripts/python-worker.sh status",
+    "worker:logs": "scripts/python-worker.sh logs",
     "prepare": "lefthook install",
     "migration:run:prod": "typeorm migration:run -d build/data-source.js"
   },
