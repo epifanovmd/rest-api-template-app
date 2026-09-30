@@ -62,6 +62,26 @@ describe("hasPermission", () => {
   });
 });
 
+describe("hasPermission: own-scope", () => {
+  it("право на все покрывает право «только на свои»", () => {
+    expect(hasPermission(["doc:page:update"], "doc:page:update:own")).to.be
+      .true;
+    expect(hasPermission(["doc:page:*"], "doc:page:update:own")).to.be.true;
+    expect(hasPermission(["doc:*"], "doc:page:update:own")).to.be.true;
+  });
+
+  it("право «только на свои» не даёт права на все", () => {
+    expect(hasPermission(["doc:page:update:own"], "doc:page:update")).to.be
+      .false;
+    expect(hasPermission(["doc:page:update:own"], "doc:page:update:own")).to.be
+      .true;
+  });
+
+  it("право на другое действие не покрывает own", () => {
+    expect(hasPermission(["doc:page:view"], "doc:page:update:own")).to.be.false;
+  });
+});
+
 describe("isSuperUserGrant", () => {
   it("grants the superuser role or the all-permissions wildcard", () => {
     expect(isSuperUserGrant([SUPERUSER_ROLE], [])).to.be.true;

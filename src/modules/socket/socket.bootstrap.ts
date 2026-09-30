@@ -12,17 +12,14 @@ import { UserOfflineEvent, UserOnlineEvent } from "../profile/events";
 import { TSocket } from "./socket.types";
 import { SocketAuthMiddleware } from "./socket-auth.middleware";
 import { SocketClientRegistry } from "./socket-client-registry";
+import { userSocketRoom } from "./socket-emitter.service";
 import {
   ISocketEventListener,
   SOCKET_EVENT_LISTENER,
 } from "./socket-event-listener.interface";
 import { ISocketHandler, SOCKET_HANDLER } from "./socket-handler.interface";
-import {
-  ISocketRoomPolicy,
-  ISocketRoomProvider,
-  SOCKET_ROOM_POLICY,
-  SOCKET_ROOM_PROVIDER,
-} from "./socket-rooms";
+import { SocketRoomService } from "./socket-room.service";
+import { ISocketRoomProvider, SOCKET_ROOM_PROVIDER } from "./socket-rooms";
 import { SocketServerService } from "./socket-server.service";
 
 @Injectable()
@@ -40,12 +37,11 @@ export class SocketBootstrap implements IBootstrap {
     private readonly handlers: ISocketHandler[],
     @multiInject(SOCKET_EVENT_LISTENER)
     private readonly eventListeners: ISocketEventListener[],
+    @inject(SocketRoomService)
+    private readonly roomService: SocketRoomService,
     @multiInject(SOCKET_ROOM_PROVIDER)
     @optional()
     private readonly roomProviders: ISocketRoomProvider[] = [],
-    @multiInject(SOCKET_ROOM_POLICY)
-    @optional()
-    private readonly roomPolicies: ISocketRoomPolicy[] = [],
   ) {}
 
   async initialize(): Promise<void> {
@@ -77,9 +73,9 @@ export class SocketBootstrap implements IBootstrap {
 
       await this.clientRegistry.register(user.userId, socket);
       // Личная room пользователя — через неё доставляются все push-уведомления.
-      // SocketEmitterService.toUser() использует io.to('user_${userId}'),
-      // поэтому все соединения (несколько вкладок/устройств) получат событие.
-      socket.join(`user_${user.userId}`);
+      // SocketEmitterService.toUser() шлёт в неё, поэтому все соединения
+      // (несколько вкладок/устройств) получат событие.
+      socket.join(userSocketRoom(user.userId));
       socket.emit("authenticated", { userId: user.userId });
       // Срок access-токена: auth:expired → auth:refresh или разрыв
       this.authMiddleware.watch(socket);
@@ -174,26 +170,18 @@ export class SocketBootstrap implements IBootstrap {
    * неизвестный тип или нет права — `ok: false`, комната не раскрывается.
    */
   private registerRoomSubscriptions(socket: TSocket): void {
-    const policies = new Map(this.roomPolicies.map(p => [p.type, p]));
-    const { userId } = socket.data;
-
     socket.on("room:subscribe", async (payload, ack) => {
-      const policy = policies.get(payload?.type);
-      const allowed =
-        !!policy &&
-        typeof payload?.id === "string" &&
-        (await policy.canJoin(userId, payload.id).catch(() => false));
-
-      if (allowed) socket.join(policy!.room(payload.id));
-      ack?.({ ok: allowed });
+      ack?.({
+        ok: await this.roomService.subscribe(
+          socket,
+          payload?.type,
+          payload?.id,
+        ),
+      });
     });
 
     socket.on("room:unsubscribe", (payload, ack) => {
-      const policy = policies.get(payload?.type);
-
-      if (policy && typeof payload?.id === "string") {
-        socket.leave(policy.room(payload.id));
-      }
+      this.roomService.unsubscribe(socket, payload?.type, payload?.id);
       ack?.({ ok: true });
     });
   }

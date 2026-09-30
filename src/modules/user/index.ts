@@ -8,3 +8,5 @@ export * from "./user.permissions";
 export * from "./user.repository";
 export * from "./user.service";
 export * from "./user.socket-events";
+export * from "./user-grant.resolver";
+export * from "./user-name";

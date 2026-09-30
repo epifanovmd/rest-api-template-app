@@ -4,6 +4,8 @@
 import type { TsoaRoute } from '@tsoa/runtime';
 import { fetchMiddlewares, KoaTemplateService } from '@tsoa/runtime';
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+import { PermissionController } from './../modules/permission/permission.controller';
+// WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 import { FileController } from './../modules/file/file.controller';
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 import { ProfileController } from './../modules/profile/profile.controller';
@@ -75,6 +77,39 @@ const models: TsoaRoute.Models = {
             "details": {"dataType":"any"},
             "requestId": {"dataType":"string"},
             "stack": {"dataType":"string"},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "TPermission": {
+        "dataType": "refAlias",
+        "type": {"dataType":"string","validators":{}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "IPermissionCatalogItemDto": {
+        "dataType": "refObject",
+        "properties": {
+            "name": {"ref":"TPermission","required":true},
+            "label": {"dataType":"string","required":true},
+            "own": {"ref":"TPermission"},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "IPermissionCatalogGroupDto": {
+        "dataType": "refObject",
+        "properties": {
+            "key": {"dataType":"string","required":true},
+            "label": {"dataType":"string","required":true},
+            "permissions": {"dataType":"array","array":{"dataType":"refObject","ref":"IPermissionCatalogItemDto"},"required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "IPermissionCatalogDto": {
+        "dataType": "refObject",
+        "properties": {
+            "groups": {"dataType":"array","array":{"dataType":"refObject","ref":"IPermissionCatalogGroupDto"},"required":true},
         },
         "additionalProperties": false,
     },
@@ -177,16 +212,6 @@ const models: TsoaRoute.Models = {
     "TRole": {
         "dataType": "refAlias",
         "type": {"dataType":"union","subSchemas":[{"ref":"KnownRole"},{"dataType":"intersection","subSchemas":[{"dataType":"string"},{"dataType":"nestedObjectLiteral","nestedProperties":{}}]}],"validators":{}},
-    },
-    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "KnownPermission": {
-        "dataType": "refAlias",
-        "type": {"dataType":"union","subSchemas":[{"dataType":"enum","enums":["*"]},{"dataType":"enum","enums":["user:view"]},{"dataType":"enum","enums":["user:manage"]},{"dataType":"enum","enums":["role:view"]},{"dataType":"enum","enums":["role:manage"]},{"dataType":"enum","enums":["profile:view"]},{"dataType":"enum","enums":["profile:manage"]},{"dataType":"enum","enums":["apikey:manage"]},{"dataType":"enum","enums":["audit:view"]}],"validators":{}},
-    },
-    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "TPermission": {
-        "dataType": "refAlias",
-        "type": {"dataType":"union","subSchemas":[{"ref":"KnownPermission"},{"dataType":"intersection","subSchemas":[{"dataType":"string"},{"dataType":"nestedObjectLiteral","nestedProperties":{}}]}],"validators":{}},
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "IPermissionDto": {
@@ -2045,13 +2070,49 @@ export function RegisterRoutes(router: KoaRouter,opts?:{multer?:ReturnType<typeo
 
     const upload = opts?.multer ||  multer({"limits":{"fileSize":8388608}});
 
+        const argsPermissionController_getPermissionCatalog: Record<string, TsoaRoute.ParameterSchema> = {
+        };
+        router.get('/api/v1/permissions',
+            authenticateMiddleware([{"jwt":[]}]),
+            ...(fetchMiddlewares<Middleware>(PermissionController)),
+            ...(fetchMiddlewares<Middleware>(PermissionController.prototype.getPermissionCatalog)),
+
+            async function PermissionController_getPermissionCatalog(context: Context, next: Next) {
+
+            let validatedArgs: any[] = [];
+            try {
+              validatedArgs = templateService.getValidatedArgs({ args: argsPermissionController_getPermissionCatalog, context, next });
+            } catch (err) {
+              const error = err as any;
+              error.message ||= JSON.stringify({ fields: error.fields });
+              context.status = error.status;
+              context.throw(context.status, error.message, error);
+            }
+
+            const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(context.request) : iocContainer;
+
+            const controller: any = await container.get<PermissionController>(PermissionController);
+            if (typeof controller['setStatus'] === 'function') {
+                controller.setStatus(undefined);
+            }
+
+            return templateService.apiHandler({
+              methodName: 'getPermissionCatalog',
+              controller,
+              context,
+              validatedArgs,
+              successStatus: undefined,
+            });
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         const argsFileController_getMyFiles: Record<string, TsoaRoute.ParameterSchema> = {
                 req: {"in":"request","name":"req","required":true,"dataType":"object"},
+                mine: {"in":"query","name":"mine","dataType":"boolean"},
                 offset: {"in":"query","name":"offset","dataType":"double"},
                 limit: {"in":"query","name":"limit","dataType":"double"},
         };
         router.get('/api/v1/file',
-            authenticateMiddleware([{"jwt":[]}]),
+            authenticateMiddleware([{"jwt":["permission:file:view:own"]}]),
             ...(fetchMiddlewares<Middleware>(FileController)),
             ...(fetchMiddlewares<Middleware>(FileController.prototype.getMyFiles)),
 
@@ -2084,10 +2145,11 @@ export function RegisterRoutes(router: KoaRouter,opts?:{multer?:ReturnType<typeo
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         const argsFileController_getFileById: Record<string, TsoaRoute.ParameterSchema> = {
+                req: {"in":"request","name":"req","required":true,"dataType":"object"},
                 id: {"in":"path","name":"id","required":true,"ref":"UUID"},
         };
         router.get('/api/v1/file/:id',
-            authenticateMiddleware([{"jwt":[]}]),
+            authenticateMiddleware([{"jwt":["permission:file:view:own"]}]),
             ...(fetchMiddlewares<Middleware>(FileController)),
             ...(fetchMiddlewares<Middleware>(FileController.prototype.getFileById)),
 
@@ -2241,7 +2303,7 @@ export function RegisterRoutes(router: KoaRouter,opts?:{multer?:ReturnType<typeo
                 id: {"in":"path","name":"id","required":true,"ref":"UUID"},
         };
         router.delete('/api/v1/file/:id',
-            authenticateMiddleware([{"jwt":[]}]),
+            authenticateMiddleware([{"jwt":["permission:file:delete:own"]}]),
             ...(fetchMiddlewares<Middleware>(FileController)),
             ...(fetchMiddlewares<Middleware>(FileController.prototype.deleteFile)),
 
@@ -2529,11 +2591,12 @@ export function RegisterRoutes(router: KoaRouter,opts?:{multer?:ReturnType<typeo
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         const argsProfileController_updateProfile: Record<string, TsoaRoute.ParameterSchema> = {
+                req: {"in":"request","name":"req","required":true,"dataType":"object"},
                 userId: {"in":"path","name":"userId","required":true,"ref":"UUID"},
                 body: {"in":"body","name":"body","required":true,"ref":"IProfileUpdateRequestDto"},
         };
         router.patch('/api/v1/profile/update/:userId',
-            authenticateMiddleware([{"jwt":["permission:profile:manage"]}]),
+            authenticateMiddleware([{"jwt":["permission:profile:update"]}]),
             ...(fetchMiddlewares<Middleware>(ProfileController)),
             ...(fetchMiddlewares<Middleware>(ProfileController.prototype.updateProfile)),
 
@@ -2566,10 +2629,11 @@ export function RegisterRoutes(router: KoaRouter,opts?:{multer?:ReturnType<typeo
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         const argsProfileController_deleteProfile: Record<string, TsoaRoute.ParameterSchema> = {
+                req: {"in":"request","name":"req","required":true,"dataType":"object"},
                 userId: {"in":"path","name":"userId","required":true,"ref":"UUID"},
         };
         router.delete('/api/v1/profile/delete/:userId',
-            authenticateMiddleware([{"jwt":["permission:profile:manage"]}]),
+            authenticateMiddleware([{"jwt":["permission:profile:delete"]}]),
             ...(fetchMiddlewares<Middleware>(ProfileController)),
             ...(fetchMiddlewares<Middleware>(ProfileController.prototype.deleteProfile)),
 
@@ -2640,7 +2704,7 @@ export function RegisterRoutes(router: KoaRouter,opts?:{multer?:ReturnType<typeo
                 body: {"in":"body","name":"body","required":true,"ref":"ICreateRoleRequestDto"},
         };
         router.post('/api/v1/roles',
-            authenticateMiddleware([{"jwt":["permission:role:manage"]}]),
+            authenticateMiddleware([{"jwt":["permission:role:create"]}]),
             ...(fetchMiddlewares<Middleware>(RoleController)),
             ...(fetchMiddlewares<Middleware>(RoleController.prototype.createRole)),
 
@@ -2673,10 +2737,11 @@ export function RegisterRoutes(router: KoaRouter,opts?:{multer?:ReturnType<typeo
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         const argsRoleController_deleteRole: Record<string, TsoaRoute.ParameterSchema> = {
+                req: {"in":"request","name":"req","required":true,"dataType":"object"},
                 id: {"in":"path","name":"id","required":true,"ref":"UUID"},
         };
         router.delete('/api/v1/roles/:id',
-            authenticateMiddleware([{"jwt":["permission:role:manage"]}]),
+            authenticateMiddleware([{"jwt":["permission:role:delete"]}]),
             ...(fetchMiddlewares<Middleware>(RoleController)),
             ...(fetchMiddlewares<Middleware>(RoleController.prototype.deleteRole)),
 
@@ -2714,7 +2779,7 @@ export function RegisterRoutes(router: KoaRouter,opts?:{multer?:ReturnType<typeo
                 body: {"in":"body","name":"body","required":true,"ref":"IRolePermissionsRequestDto"},
         };
         router.patch('/api/v1/roles/:id/permissions',
-            authenticateMiddleware([{"jwt":["permission:role:manage"]}]),
+            authenticateMiddleware([{"jwt":["permission:role:update"]}]),
             ...(fetchMiddlewares<Middleware>(RoleController)),
             ...(fetchMiddlewares<Middleware>(RoleController.prototype.setRolePermissions)),
 
@@ -3122,7 +3187,7 @@ export function RegisterRoutes(router: KoaRouter,opts?:{multer?:ReturnType<typeo
                 body: {"in":"body","name":"body","required":true,"ref":"IUserPrivilegesRequestDto"},
         };
         router.patch('/api/v1/user/setPrivileges/:id',
-            authenticateMiddleware([{"jwt":["permission:user:manage"]}]),
+            authenticateMiddleware([{"jwt":["permission:user:privileges"]}]),
             ...(fetchMiddlewares<Middleware>(UserController)),
             ...(fetchMiddlewares<Middleware>(UserController.prototype.setPrivileges)),
 
@@ -3228,11 +3293,12 @@ export function RegisterRoutes(router: KoaRouter,opts?:{multer?:ReturnType<typeo
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         const argsUserController_updateUser: Record<string, TsoaRoute.ParameterSchema> = {
+                req: {"in":"request","name":"req","required":true,"dataType":"object"},
                 id: {"in":"path","name":"id","required":true,"ref":"UUID"},
                 body: {"in":"body","name":"body","required":true,"ref":"IUserUpdateRequestDto"},
         };
         router.patch('/api/v1/user/update/:id',
-            authenticateMiddleware([{"jwt":["permission:user:manage"]}]),
+            authenticateMiddleware([{"jwt":["permission:user:update"]}]),
             ...(fetchMiddlewares<Middleware>(UserController)),
             ...(fetchMiddlewares<Middleware>(UserController.prototype.updateUser)),
 
@@ -3306,7 +3372,7 @@ export function RegisterRoutes(router: KoaRouter,opts?:{multer?:ReturnType<typeo
                 id: {"in":"path","name":"id","required":true,"ref":"UUID"},
         };
         router.delete('/api/v1/user/delete/:id',
-            authenticateMiddleware([{"jwt":["permission:user:manage"]}]),
+            authenticateMiddleware([{"jwt":["permission:user:delete"]}]),
             ...(fetchMiddlewares<Middleware>(UserController)),
             ...(fetchMiddlewares<Middleware>(UserController.prototype.deleteUser)),
 
@@ -6442,7 +6508,7 @@ export function RegisterRoutes(router: KoaRouter,opts?:{multer?:ReturnType<typeo
                 body: {"in":"body","name":"body","required":true,"ref":"IDemoEchoData"},
         };
         router.post('/api/v1/jobs/demo/echo',
-            authenticateMiddleware([{"jwt":["permission:jobs:manage"]}]),
+            authenticateMiddleware([{"jwt":["permission:jobs:demo"]}]),
             ...(fetchMiddlewares<Middleware>(JobsController)),
             ...(fetchMiddlewares<Middleware>(JobsController.prototype.demoEchoJob)),
 
@@ -7975,7 +8041,7 @@ export function RegisterRoutes(router: KoaRouter,opts?:{multer?:ReturnType<typeo
                 body: {"in":"body","name":"body","required":true,"ref":"ICreateApiKeyBody"},
         };
         router.post('/api/v1/api-keys',
-            authenticateMiddleware([{"jwt":["permission:apikey:manage"]}]),
+            authenticateMiddleware([{"jwt":["permission:apikey:create"]}]),
             ...(fetchMiddlewares<Middleware>(ApiKeyController)),
             ...(fetchMiddlewares<Middleware>(ApiKeyController.prototype.createApiKey)),
 
@@ -8012,7 +8078,7 @@ export function RegisterRoutes(router: KoaRouter,opts?:{multer?:ReturnType<typeo
                 limit: {"in":"query","name":"limit","dataType":"double"},
         };
         router.get('/api/v1/api-keys',
-            authenticateMiddleware([{"jwt":["permission:apikey:manage"]}]),
+            authenticateMiddleware([{"jwt":["permission:apikey:view"]}]),
             ...(fetchMiddlewares<Middleware>(ApiKeyController)),
             ...(fetchMiddlewares<Middleware>(ApiKeyController.prototype.listApiKeys)),
 
@@ -8049,7 +8115,7 @@ export function RegisterRoutes(router: KoaRouter,opts?:{multer?:ReturnType<typeo
                 req: {"in":"request","name":"req","required":true,"dataType":"object"},
         };
         router.post('/api/v1/api-keys/:id/revoke',
-            authenticateMiddleware([{"jwt":["permission:apikey:manage"]}]),
+            authenticateMiddleware([{"jwt":["permission:apikey:revoke"]}]),
             ...(fetchMiddlewares<Middleware>(ApiKeyController)),
             ...(fetchMiddlewares<Middleware>(ApiKeyController.prototype.revokeApiKey)),
 

@@ -53,21 +53,22 @@ type: project
 | ------------------------------------------------------------------ | --------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
 | `SECURITY_SCHEME` (`core/auth/security-scheme.ts`)                 | `asSecurityScheme`                            | `JwtSecurityScheme` (CoreModule), `ApiKeySecurityScheme` (api-key); `BotSecurityScheme` — в `example/messenger` |
 | `JOB_HANDLER` (`core/jobs/jobs.types.ts`)                          | `asJobHandler` / `asExternalJobHandler`       | см. project_modules.md «Очереди»                                                                                |
-| `JOB_ACCESS_POLICY` (`core/jobs`, optional)                        | `asJobAccessPolicy`                           | в main никто (`WorkspaceJobAccessPolicy` — `example/workspaces`)                                              |
+| `JOB_ACCESS_POLICY` (`core/jobs`, optional)                        | `asJobAccessPolicy`                           | в main никто (`WorkspaceJobAccessPolicy` — `example/workspaces`)                                                |
 | `JOB_METRICS` (`core/jobs`, optional)                              | `{ provide }`                                 | `PrometheusJobMetrics` (ObservabilityModule)                                                                    |
 | `ROUTE_PROVIDER` (`core/routing/route-provider.ts`)                | `{ provide }`                                 | `StorageRouteProvider` (`/files/*`)                                                                             |
 | `HEALTH_INDICATOR` (`core/observability/health.ts`)                | `asHealthIndicator`                           | `JobsHealthIndicator` (jobs, `name = "jobs"`, pg-boss запущен)                                                  |
 | `BOOTSTRAP` (`core/bootstrap`)                                     | `@Module.bootstrappers`                       | Admin, Seed (user), Jobs, Socket                                                                                |
-| `SOCKET_HANDLER` / `SOCKET_EVENT_LISTENER` (socket)                | `asSocketHandler` / `asSocketListener`        | profile (handlers), auth, user, profile, session, file, audit, jobs (listeners)                                 |
-| `SOCKET_ROOM_PROVIDER` / `SOCKET_ROOM_POLICY` (`socket-rooms.ts`)  | `asSocketRoomProvider` / `asSocketRoomPolicy` | provider: в main никто; policy: `JobRoomPolicy` (`job`)                                                       |
+| `SOCKET_HANDLER` / `SOCKET_EVENT_LISTENER` (socket)                | `asSocketHandler` / `asSocketListener`        | profile (handlers), auth, user, role, profile, session, file, api-key, audit, jobs (listeners)                  |
+| `SOCKET_ROOM_PROVIDER` / `SOCKET_ROOM_POLICY` (`socket-rooms.ts`)  | `asSocketRoomProvider` / `asSocketRoomPolicy` | provider: в main никто; policy: `JobRoomPolicy` (`job`), `permissionRoomPolicy`: users, roles, api-keys, audit  |
 | `PASSWORD_POLICY` (`modules/user/password-policy.ts`)              | `asPasswordPolicy`                            | `AuthPasswordPolicy` (auth)                                                                                     |
-| `FILE_USAGE_PROBE` (`modules/file/file-usage.probe.ts`, optional)  | `{ provide }`                                 | в main никто (`MessageFileUsageProbe` — `example/messenger`)                                                  |
-| `CONTACT_RELATION` (`modules/profile/profile.relations.ts`, opt.)  | `asContactRelation`                           | в main никто (contact — `example/messenger`)                                                                  |
-| `PRESENCE_AUDIENCE` (`modules/profile/profile.relations.ts`, opt.) | `asPresenceAudience`                          | в main никто (contact, chat — `example/messenger`)                                                            |
-| реестр прав (`modules/permission/permission.registry.ts`)          | `definePermissions(domain, {...})`            | `<module>.permissions.ts`: api-key, audit, jobs, profile, role, user                                            |
-| конфиг модуля (`src/config.ts`)                                    | `defineModuleConfig(section, schema, values)` | в main никто (`<feature>.config.ts` в ветках-примерах)                                                        |
+| `FILE_USAGE_PROBE` (`modules/file/file-usage.probe.ts`, optional)  | `{ provide }`                                 | в main никто (`MessageFileUsageProbe` — `example/messenger`)                                                    |
+| `CONTACT_RELATION` (`modules/profile/profile.relations.ts`, opt.)  | `asContactRelation`                           | в main никто (contact — `example/messenger`)                                                                    |
+| `PRESENCE_AUDIENCE` (`modules/profile/profile.relations.ts`, opt.) | `asPresenceAudience`                          | в main никто (contact, chat — `example/messenger`)                                                              |
+| реестр прав (`modules/permission/permission.registry.ts`)          | `definePermissions(domain, group, {...})`     | `<module>.permissions.ts`: api-key, audit, jobs, profile, role, user                                            |
+| `GRANT_RESOLVER` (`core/auth/access.ts`)                           | `asGrantResolver`                             | `UserGrantResolver` (user) → `AccessService` ядра (права по userId, без кэша)                                   |
+| конфиг модуля (`src/config.ts`)                                    | `defineModuleConfig(section, schema, values)` | в main никто (`<feature>.config.ts` в ветках-примерах)                                                          |
 | шаблоны писем (`modules/mailer/mailer.types.ts`)                   | `declare module` → `IMailTemplateData`        | базовые шаблоны объявлены в самом mailer                                                                        |
-| сокет-события (`modules/socket/socket.types.ts`)                   | `declare module` → `ISocketEvents/EmitEvents` | `*.socket-events.ts`: auth, user, profile, session, file, jobs                                                  |
+| сокет-события (`modules/socket/socket.types.ts`)                   | `declare module` → `ISocketEvents/EmitEvents` | `*.socket-events.ts`: auth, user, role, profile, session, file, api-key, audit, jobs                            |
 | `PRESENCE_STORE` (socket, optional)                                | `{ provide }`                                 | подмена в тестах; по умолчанию Redis/Memory                                                                     |
 
 Как пользоваться последними пятью — project_patterns.md «Точки расширения для модулей».
@@ -192,7 +193,8 @@ emailVerified }` / `KoaRequest` / `JWTDecoded` — `src/types/koa.ts`. Роле�
 `auth:refresh`), `SocketClientRegistry` (presence, см. Redis), `SocketEmitterService` (`toUser` → room
 `user_<id>`, `toRoom`, `broadcast`, `joinRoom/leaveRoom/disconnect*`), `SocketBootstrap`: auth → connection →
 `trackSocketConnection` → register presence → join `user_<id>` → `authenticated` → комнаты всех
-`SOCKET_ROOM_PROVIDER` → `room:subscribe`/`room:unsubscribe` по `SOCKET_ROOM_POLICY` (ack `{ ok }`) →
+`SOCKET_ROOM_PROVIDER` → `room:subscribe`/`room:unsubscribe` через `SocketRoomService` по `SOCKET_ROOM_POLICY`
+(ack `{ ok }`; подписки в `socket.data.subscriptions`, `revalidateUser` → `room:revoked`) →
 `UserOnlineEvent` → `handlers.onConnection` → listeners `register()`. `socket-validation.ts::onValidated`
 (схема + token bucket на сокет/событие + ack с кодом). Контракт событий — `socket.types.ts` (только события
 соединения) + `<feature>.socket-events.ts` модулей (`declare module "../socket/socket.types"`).

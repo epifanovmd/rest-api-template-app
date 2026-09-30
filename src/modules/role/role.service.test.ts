@@ -4,17 +4,29 @@ import { expect } from "chai";
 import sinon from "sinon";
 import { QueryFailedError } from "typeorm";
 
+import { ownPermission } from "../../core/auth/has-permission";
+import { ALL_PERMISSIONS } from "../../core/auth/superuser";
 import {
   createMockEventBus,
   createMockRepository,
   uuid,
   uuid2,
 } from "../../test/helpers";
-import { definePermissions, unregisterPermissionDomain } from "../permission";
-import { Permissions } from "../permission/permission.types";
-import { RolePermissionsChangedEvent } from "./events";
+import { ApiKeyPermissions } from "../api-key/api-key.permissions";
+import { AuditPermissions } from "../audit/audit.permissions";
+import { FilePermissions } from "../file/file.permissions";
+import {
+  definePermissions,
+  getRegisteredPermissions,
+  unregisterPermissionDomain,
+} from "../permission";
+import {
+  RoleCreatedEvent,
+  RoleDeletedEvent,
+  RolePermissionsChangedEvent,
+} from "./events";
 import { RoleError } from "./role.errors";
-import { RoleService } from "./role.service";
+import { ROLE_DEFAULT_PERMISSIONS, RoleService } from "./role.service";
 import { Roles } from "./role.types";
 
 describe("RoleService", () => {
@@ -28,14 +40,14 @@ describe("RoleService", () => {
     userId: uuid2(),
     sessionId: uuid2(),
     roles: [Roles.ADMIN],
-    permissions: [Permissions.ALL],
+    permissions: [ALL_PERMISSIONS],
     emailVerified: true,
   };
   const manager = {
     userId: uuid2(),
     sessionId: uuid2(),
     roles: ["manager"],
-    permissions: [Permissions.ROLE_MANAGE],
+    permissions: ["role:update"],
     emailVerified: true,
   };
 
@@ -96,7 +108,7 @@ describe("RoleService", () => {
       const role: any = { id: roleId, name: Roles.USER, permissions: [] };
       const updatedRole = {
         ...role,
-        permissions: [{ id: permissionId, name: Permissions.USER_VIEW }],
+        permissions: [{ id: permissionId, name: "user:view" }],
       };
 
       (roleRepo as any).findById
@@ -106,7 +118,7 @@ describe("RoleService", () => {
         .resolves(updatedRole);
 
       const result = await service.setRolePermissions(manager, roleId, [
-        Permissions.USER_VIEW,
+        "user:view",
       ]);
 
       expect(roleRepo.save.calledOnce).to.be.true;
@@ -116,7 +128,7 @@ describe("RoleService", () => {
 
       expect(event).to.be.instanceOf(RolePermissionsChangedEvent);
       expect(event.roleId).to.equal(roleId);
-      expect(event.permissions).to.deep.equal([Permissions.USER_VIEW]);
+      expect(event.permissions).to.deep.equal(["user:view"]);
     });
 
     it("should create missing permissions", async () => {
@@ -139,7 +151,7 @@ describe("RoleService", () => {
       });
 
       try {
-        await service.setRolePermissions(manager, roleId, [Permissions.ALL]);
+        await service.setRolePermissions(manager, roleId, [ALL_PERMISSIONS]);
         expect.fail("Should have thrown");
       } catch (err: any) {
         expect(err.code).to.equal(RoleError.codes.SUPERUSER_ONLY);
@@ -172,9 +184,7 @@ describe("RoleService", () => {
       });
 
       try {
-        await service.setRolePermissions(manager, roleId, [
-          Permissions.USER_MANAGE,
-        ]);
+        await service.setRolePermissions(manager, roleId, ["user:privileges"]);
         expect.fail("Should have thrown");
       } catch (err: any) {
         expect(err.code).to.equal(RoleError.codes.OWN_ROLE);
@@ -186,9 +196,7 @@ describe("RoleService", () => {
       (roleRepo as any).findById.resolves(null);
 
       try {
-        await service.setRolePermissions(superUser, roleId, [
-          Permissions.USER_VIEW,
-        ]);
+        await service.setRolePermissions(superUser, roleId, ["user:view"]);
         expect.fail("Should have thrown");
       } catch (err: any) {
         expect(err.code).to.equal(RoleError.codes.NOT_FOUND);
@@ -203,6 +211,11 @@ describe("RoleService", () => {
 
       expect(roleRepo.createAndSave.calledOnceWith({ name: "moderator" })).to.be
         .true;
+
+      const event = eventBus.emit.firstCall.args[0];
+
+      expect(event).to.be.instanceOf(RoleCreatedEvent);
+      expect(event).to.include({ roleId: "test-id", roleName: "moderator" });
     });
 
     it("существующая роль — 409", async () => {
@@ -234,6 +247,60 @@ describe("RoleService", () => {
     });
   });
 
+  describe("deleteRole", () => {
+    it("удаляет роль и эмитит RoleDeletedEvent с её пользователями", async () => {
+      (roleRepo as any).findById.resolves({ id: roleId, name: "moderator" });
+      (roleRepo as any).findMemberIds = sinon.stub().resolves(["u1", "u2"]);
+
+      await service.deleteRole(superUser, roleId);
+
+      expect(roleRepo.delete.calledOnceWith({ id: roleId })).to.be.true;
+
+      // Права бывших пользователей пересчитываются до ответа.
+      const event = eventBus.emitAsync.firstCall.args[0];
+
+      expect(event).to.be.instanceOf(RoleDeletedEvent);
+      expect(event).to.include({ roleId, roleName: "moderator" });
+      expect(event.memberIds).to.deep.equal(["u1", "u2"]);
+    });
+
+    it("системную роль удалить нельзя — 409", async () => {
+      for (const name of [Roles.ADMIN, Roles.USER, Roles.GUEST]) {
+        (roleRepo as any).findById.resolves({ id: roleId, name });
+
+        try {
+          await service.deleteRole(superUser, roleId);
+          expect.fail("should have thrown");
+        } catch (err: any) {
+          expect(err.code).to.equal(RoleError.codes.SYSTEM_ROLE);
+          expect(err.status).to.equal(409);
+        }
+      }
+      expect(roleRepo.delete.called).to.be.false;
+    });
+
+    it("собственную роль не суперпользователь не удаляет — 403", async () => {
+      (roleRepo as any).findById.resolves({ id: roleId, name: "manager" });
+
+      try {
+        await service.deleteRole(manager, roleId);
+        expect.fail("should have thrown");
+      } catch (err: any) {
+        expect(err.code).to.equal(RoleError.codes.OWN_ROLE);
+      }
+      expect(roleRepo.delete.called).to.be.false;
+    });
+
+    it("несуществующая роль — 404", async () => {
+      try {
+        await service.deleteRole(superUser, roleId);
+        expect.fail("should have thrown");
+      } catch (err: any) {
+        expect(err.code).to.equal(RoleError.codes.NOT_FOUND);
+      }
+    });
+  });
+
   describe("seedDefaultPermissions", () => {
     it("should ensure every known permission exists", async () => {
       await service.seedDefaultPermissions();
@@ -242,7 +309,7 @@ describe("RoleService", () => {
         .getCalls()
         .map((c: any) => c.args[0]);
 
-      for (const name of Object.values(Permissions)) {
+      for (const name of getRegisteredPermissions()) {
         expect(seeded).to.include(name);
       }
     });
@@ -254,11 +321,18 @@ describe("RoleService", () => {
         .getCalls()
         .map((c: any) => c.args[0]);
 
-      expect(seeded).to.include.members(["apikey:manage", "audit:view"]);
+      expect(seeded).to.include.members([
+        ApiKeyPermissions.VIEW,
+        AuditPermissions.VIEW,
+      ]);
     });
 
     it("засевает права, объявленные модулем через definePermissions", async () => {
-      definePermissions("report", { EXPORT: "report:export" });
+      definePermissions(
+        "report",
+        { key: "report", label: "Отчёты" },
+        { EXPORT: { name: "report:export", label: "Выгрузка" } },
+      );
 
       try {
         await service.seedDefaultPermissions();
@@ -302,21 +376,40 @@ describe("RoleService", () => {
 
       const ids = grantedTo(Roles.USER) ?? [];
 
-      expect(ids).to.not.include(`perm-${Permissions.USER_VIEW}`);
-      expect(ids).to.not.include(`perm-${Permissions.USER_MANAGE}`);
+      expect(ids).to.not.include(`perm-${"user:view"}`);
+      expect(ids).to.not.include(`perm-${"user:privileges"}`);
+    });
+
+    it("USER и GUEST получают права на свои файлы", async () => {
+      await service.seedDefaultPermissions();
+
+      const ownFiles = [FilePermissions.VIEW, FilePermissions.DELETE].map(
+        name => `perm-${ownPermission(name)}`,
+      );
+
+      expect(grantedTo(Roles.USER)).to.have.members(ownFiles);
+      expect(grantedTo(Roles.GUEST)).to.have.members(ownFiles);
+    });
+
+    it("права ролей по умолчанию объявлены в реестре", () => {
+      const registered = getRegisteredPermissions();
+
+      Object.values(ROLE_DEFAULT_PERMISSIONS)
+        .flat()
+        .forEach(name => expect(registered).to.include(name));
     });
 
     it("should grant «*» to ADMIN", async () => {
       await service.seedDefaultPermissions();
 
-      expect(grantedTo(Roles.ADMIN)).to.deep.equal([`perm-${Permissions.ALL}`]);
+      expect(grantedTo(Roles.ADMIN)).to.deep.equal([`perm-${ALL_PERMISSIONS}`]);
     });
 
     it("should not overwrite existing role permissions", async () => {
       (roleRepo as any).ensureByName.callsFake(async (name: string) => ({
         id: `id-${name}`,
         name,
-        permissions: [{ id: permissionId, name: Permissions.PROFILE_VIEW }],
+        permissions: [{ id: permissionId, name: "profile:view" }],
       }));
 
       await service.seedDefaultPermissions();

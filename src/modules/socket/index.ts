@@ -1,3 +1,5 @@
+export * from "./owned-entity-emitter";
+export * from "./permission-room.policy";
 export * from "./socket.bootstrap";
 export * from "./socket.helpers";
 export * from "./socket.module";
@@ -7,6 +9,7 @@ export * from "./socket-client-registry";
 export * from "./socket-emitter.service";
 export * from "./socket-event-listener.interface";
 export * from "./socket-handler.interface";
+export * from "./socket-room.service";
 export * from "./socket-rooms";
 export * from "./socket-server.service";
 export * from "./socket-validation";

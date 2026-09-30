@@ -35,35 +35,39 @@ export class FileController extends Controller {
   }
 
   /**
-   * Файлы текущего пользователя, новые первыми. Ссылки в ответе подписаны
-   * и действуют ограниченное время.
+   * Файлы, новые первыми. По умолчанию — свои; `mine=false` при праве
+   * `file:view` — все файлы (с правом только на свои — по-прежнему свои).
+   * Ссылки в ответе подписаны и действуют ограниченное время.
    *
-   * @summary Мои файлы
+   * @summary Файлы (по умолчанию — свои)
+   * @param mine Только свои файлы (по умолчанию `true`)
    * @param offset Смещение
    * @param limit Размер страницы (до 100)
    */
-  @Security("jwt")
+  @Security("jwt", ["permission:file:view:own"])
   @Get()
   getMyFiles(
     @Request() req: KoaRequest,
+    @Query() mine?: boolean,
     @Query() offset?: number,
     @Query() limit?: number,
   ): Promise<IPaginatedDto<IFileDto>> {
     const user = getContextUser(req);
 
-    return this._fileService.getMyFiles(user.userId, offset, limit);
+    return this._fileService.listFiles(user, mine ?? true, offset, limit);
   }
 
   /**
-   * Метаданные файла и подписанные ссылки на него.
+   * Метаданные файла и подписанные ссылки на него. Свой файл — с правом
+   * `file:view:own`, любой — с `file:view`; недоступный файл — 404.
    *
    * @summary Получение файла по ID
    * @param id ID файла
    */
-  @Security("jwt")
+  @Security("jwt", ["permission:file:view:own"])
   @Get("{id}")
-  getFileById(@Path() id: UUID): Promise<IFileDto> {
-    return this._fileService.getFileById(id);
+  getFileById(@Request() req: KoaRequest, @Path() id: UUID): Promise<IFileDto> {
+    return this._fileService.getFile(getContextUser(req), id);
   }
 
   /**
@@ -128,13 +132,14 @@ export class FileController extends Controller {
   }
 
   /**
-   * Удалить файл вместе с производными версиями. Доступно владельцу и
-   * суперпользователю; файл, прикреплённый к сообщению, удалить нельзя (409).
+   * Удалить файл вместе с производными версиями. Свой — с правом
+   * `file:delete:own`, любой — с `file:delete`; недоступный файл — 404,
+   * видимый без права на удаление — 403; используемый файл (вложение) — 409.
    *
    * @summary Удаление файла
    * @param id ID файла
    */
-  @Security("jwt")
+  @Security("jwt", ["permission:file:delete:own"])
   @SuccessResponse(204, "No Content")
   @Delete("{id}")
   async deleteFile(
@@ -143,6 +148,6 @@ export class FileController extends Controller {
   ): Promise<void> {
     const user = getContextUser(req);
 
-    await this._fileService.deleteFile(id, user);
+    await this._fileService.deleteFile(user, id);
   }
 }

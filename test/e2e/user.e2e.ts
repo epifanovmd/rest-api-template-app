@@ -364,7 +364,103 @@ describe("user и profile", () => {
       );
     });
 
-    it("роли: у user нет прав, создание, дубль — 409, права, удаление", async () => {
+    it("каталог прав: группы с подписями, первая — «Система»", async () => {
+      const res = expectStatus(
+        await call(alice, "GET", "/api/v1/permissions"),
+        200,
+      );
+      const groups: any[] = res.data.groups;
+
+      expect(groups[0]).to.include({ key: "*", label: "Система" });
+
+      const users = groups.find(g => g.key === "user");
+
+      expect(users.label).to.be.a("string").with.length.greaterThan(0);
+      expect(users.permissions.map((p: any) => p.name)).to.include.members([
+        "user:update",
+        "user:privileges",
+      ]);
+
+      const files = groups.find(g => g.key === "file");
+
+      expect(
+        files.permissions.find((p: any) => p.name === "file:view"),
+      ).to.have.property("own", "file:view:own");
+      expect(await call(null, "GET", "/api/v1/permissions")).to.have.property(
+        "status",
+        401,
+      );
+    });
+
+    it("смена прав: прежний access-токен устаревает, refresh выдаёт новые права, сессия остаётся", async () => {
+      const target = await signUp("u-privs");
+
+      expectStatus(await call(target, "GET", "/api/v1/user/all"), 403);
+      expectStatus(
+        await call(admin, "PATCH", `/api/v1/user/setPrivileges/${target.id}`, {
+          roles: ["user"],
+          permissions: ["user:view"],
+        }),
+        200,
+      );
+      expectStatus(
+        await call(target, "GET", "/api/v1/user/my"),
+        401,
+        "AUTH_PRIVILEGES_CHANGED",
+      );
+
+      const refreshed = expectStatus(
+        await call(null, "POST", "/api/v1/auth/refresh", {
+          refreshToken: target.refresh,
+        }),
+        200,
+      );
+      const tokens = refreshed.data.tokens ?? refreshed.data;
+      const next = { ...target, access: tokens.accessToken };
+
+      expectStatus(await call(next, "GET", "/api/v1/user/all"), 200);
+
+      const sessions = expectStatus(
+        await call(next, "GET", "/api/v1/session"),
+        200,
+      );
+      const list = Array.isArray(sessions.data)
+        ? sessions.data
+        : items(sessions.data);
+
+      expect(list.map((x: any) => x.id)).to.include(target.sessionId);
+    });
+
+    it("чужие данные суперпользователя меняет только суперпользователь", async () => {
+      const manager = await signUp("u-manager");
+
+      expectStatus(
+        await call(admin, "PATCH", `/api/v1/user/setPrivileges/${manager.id}`, {
+          roles: ["user"],
+          permissions: ["user:update", "profile:update"],
+        }),
+        200,
+      );
+
+      const fresh = await signIn(manager.email, manager.password);
+
+      expectStatus(
+        await call(fresh, "PATCH", `/api/v1/user/update/${admin.id}`, {
+          email: uniqueEmail("hijack"),
+        }),
+        403,
+        "USER_SUPERUSER_EDIT",
+      );
+      expectStatus(
+        await call(fresh, "PATCH", `/api/v1/profile/update/${admin.id}`, {
+          lastName: "Hijacked",
+        }),
+        403,
+        "PROFILE_SUPERUSER_EDIT",
+      );
+    });
+
+    it("роли: у user — только права на свои файлы, создание, дубль — 409, права, удаление", async () => {
       expectStatus(await call(alice, "GET", "/api/v1/roles"), 403);
 
       const roles = expectStatus(
@@ -374,8 +470,10 @@ describe("user и profile", () => {
       const list = Array.isArray(roles.data) ? roles.data : items(roles.data);
 
       expect(
-        list.find((r: any) => r.name === "user")?.permissions,
-      ).to.deep.equal([]);
+        list
+          .find((r: any) => r.name === "user")
+          ?.permissions.map((p: any) => p.name),
+      ).to.have.members(["file:view:own", "file:delete:own"]);
 
       const name = `moderator_${Date.now().toString(36)}`;
       const role = expectStatus(
@@ -398,6 +496,14 @@ describe("user и profile", () => {
       expectStatus(
         await call(admin, "DELETE", `/api/v1/roles/${role.data.id}`),
         204,
+      );
+
+      const system = list.find((r: any) => r.name === "user");
+
+      expectStatus(
+        await call(admin, "DELETE", `/api/v1/roles/${system.id}`),
+        409,
+        "ROLE_SYSTEM_ROLE",
       );
     });
   });

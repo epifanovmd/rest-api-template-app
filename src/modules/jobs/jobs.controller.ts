@@ -98,7 +98,7 @@ export class JobsController extends Controller {
    * воркеры подключены (`python/examples/echo_worker.py`). Только для админов.
    * @summary Проверка внешних воркеров
    */
-  @Security("jwt", ["permission:jobs:manage"])
+  @Security("jwt", ["permission:jobs:demo"])
   @ValidateBody(DemoEchoSchema)
   @SuccessResponse(201, "Created")
   @Post("demo/echo")

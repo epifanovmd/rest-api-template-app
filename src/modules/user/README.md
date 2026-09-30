@@ -24,7 +24,10 @@ src/modules/user/
 ├── user.errors.ts                      # UserError — коды USER_*
 ├── user.permissions.ts                 # UserPermissions (definePermissions("user"))
 ├── user.controller.ts                  # REST, /api/v1/user
-├── user.listener.ts                    # EventBus → socket; права роли → события пользователей
+├── user.listener.ts                    # EventBus → socket (адресно и комната users); права роли → события пользователей
+├── user.socket-events.ts               # user:* в контракте сокета
+├── user-grant.resolver.ts              # grantOfUser, UserGrantResolver (IGrantResolver ядра)
+├── user-name.ts                        # userDisplayName — отображаемое имя (имя профиля или email)
 ├── user.module.ts
 ├── dto/                                # UserDto, PublicUserDto, тела запросов
 ├── events/                             # Доменные события
@@ -100,18 +103,20 @@ src/modules/user/
 
 ### Администрирование
 
-| Метод    | Путь                 | Право         | Ответ                                          | Описание                                                             |
-| -------- | -------------------- | ------------- | ---------------------------------------------- | -------------------------------------------------------------------- |
-| `GET`    | `all`                | `user:view`   | `IUserAdminListDto` = `IPaginatedDto<UserDto>` | Query: `query` (≥ 2, по email), `limit` ≤ 100, `offset`              |
-| `GET`    | `options`            | `user:view`   | `IUserOptionsDto`                              | Query: `query` (≥ 2)                                                 |
-| `GET`    | `{id}`               | `user:view`   | `UserDto`                                      |                                                                      |
-| `PATCH`  | `setPrivileges/{id}` | `user:manage` | `UserDto`                                      | См. «Привилегии»                                                     |
-| `PATCH`  | `update/{id}`        | `user:manage` | `UserDto`                                      | Email/телефон **сразу**; новый email → `emailVerified = false` + код |
-| `DELETE` | `delete/{id}`        | `user:manage` | 204                                            | Нельзя удалить себя и суперпользователя (403)                        |
+| Метод    | Путь                 | Право             | Ответ                                          | Описание                                                                                                                                        |
+| -------- | -------------------- | ----------------- | ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET`    | `all`                | `user:view`       | `IUserAdminListDto` = `IPaginatedDto<UserDto>` | Query: `query` (≥ 2, по email), `limit` ≤ 100, `offset`                                                                                         |
+| `GET`    | `options`            | `user:view`       | `IUserOptionsDto`                              | Query: `query` (≥ 2)                                                                                                                            |
+| `GET`    | `{id}`               | `user:view`       | `UserDto`                                      |                                                                                                                                                 |
+| `PATCH`  | `setPrivileges/{id}` | `user:privileges` | `UserDto`                                      | См. «Привилегии»                                                                                                                                |
+| `PATCH`  | `update/{id}`        | `user:update`     | `UserDto`                                      | Email/телефон **сразу**; новый email → `emailVerified = false` + код; суперпользователя — только суперпользователь (`USER_SUPERUSER_EDIT`, 403) |
+| `DELETE` | `delete/{id}`        | `user:delete`     | 204                                            | Нельзя удалить себя и суперпользователя (403)                                                                                                   |
 
 Списки — единый контракт `IPaginatedDto { items, total, offset, limit }`: `limit` по
 умолчанию 20, максимум 100; без параметров — первая страница, не вся таблица.
 `{id}` — `UUID` (неверный формат → 422).
+`options` отдаёт `name` — `userDisplayName` (имя и фамилия профиля, иначе email); та же
+функция — для имён пользователей в DTO других модулей.
 
 ---
 
@@ -148,7 +153,9 @@ src/modules/user/
 - Менять собственные привилегии нельзя (`USER_OWN_PRIVILEGES`, 403).
 - Роль `admin`, право `*` выдаёт и привилегии суперпользователя меняет только
   суперпользователь (`USER_SUPERUSER_ONLY`, 403).
-- Роль `user` по умолчанию **без** `user:view` / `user:manage`.
+- Роль `user` по умолчанию **без** прав модуля `user:*`.
+- Сессии не завершаются: access-токены, выданные до смены, отклоняются
+  (`AUTH_PRIVILEGES_CHANGED`, 401), клиент обновляет токен (модуль session).
 
 ### Создание
 
@@ -190,6 +197,7 @@ Guard читает claim `emailVerified` из access-токена; claim обн�
 | `USERNAME_INVALID`, `ROLES_NOT_FOUND`, `PERMISSIONS_NOT_FOUND`         | 400    |
 | `EMAIL_MISSING`, `SEARCH_QUERY_TOO_SHORT`, `EMAIL_CHANGE_INVALID_CODE` | 400    |
 | `OWN_PRIVILEGES`, `SUPERUSER_ONLY`, `SELF_DELETE_VIA_ADMIN`            | 403    |
+| `SUPERUSER_EDIT`                                                       | 403    |
 | `SUPERUSER_DELETE`, `WRONG_PASSWORD`, `WRONG_CURRENT_PASSWORD`         | 403    |
 | `EMAIL_CHANGE_EXPIRED`                                                 | 410    |
 | `VERIFY_EMAIL_TOO_FREQUENT`, `EMAIL_CHANGE_TOO_FREQUENT`               | 429    |
@@ -198,7 +206,16 @@ Guard читает claim `emailVerified` из access-токена; claim обн�
 
 ## Права
 
-`UserPermissions = definePermissions("user", { VIEW: "user:view", MANAGE: "user:manage" })`.
+`UserPermissions` (группа «Пользователи»): `user:view` — просмотр, `user:update` —
+изменение контактов, `user:delete` — удаление, `user:privileges` — назначение ролей и
+прав.
+
+## Актуальные права (`UserGrantResolver`)
+
+`grantOfUser(user)` — роли и эффективные права (права ролей ∪ прямые); из него же
+строится субъект токена. `UserGrantResolver` (`asGrantResolver`) читает пользователя из
+БД и отдаёт `IUserGrant` для `AccessService` ядра — проверки прав по userId без
+HTTP-контекста (политики сокет-комнат, слушатели).
 
 ---
 
@@ -210,21 +227,29 @@ Guard читает claim `emailVerified` из access-токена; claim обн�
 | `EmailChangedEvent`          | email сменён после подтверждения                                          | `userId`, `oldEmail`, `newEmail`        |
 | `EmailVerifiedEvent`         | email подтверждён (в т. ч. сменой email)                                  | `userId`                                |
 | `PasswordChangedEvent`       | смена (`"change"`, с `currentSessionId`) / сброс (`"reset"`, модуль auth) | `userId`, `method`, `currentSessionId?` |
+| `UserChangedEvent`           | `createUser`, изменение контактов (email/телефон)                         | `userId`                                |
 | `UserDeletedEvent`           | пользователь удалён                                                       | `userId`                                |
 | `UserPrivilegesChangedEvent` | `setPrivileges`; изменение прав роли — для каждого её пользователя        | `userId`, `roles`, `permissions`        |
 | `UsernameChangedEvent`       | username изменён                                                          | `userId`, `username`                    |
 
 ## UserListener
 
-| Событие                       | Реакция                                                                                                   |
-| ----------------------------- | --------------------------------------------------------------------------------------------------------- |
-| `EmailChangedEvent`           | socket `user:email-changed { email }`                                                                     |
-| `EmailVerifiedEvent`          | socket `user:email-verified`                                                                              |
-| `UserDeletedEvent`            | socket `session:terminated { sessionId: "all" }` + `disconnectUser`                                       |
-| `PasswordChangedEvent`        | socket `user:password-changed` (завершение сессий — модуль session)                                       |
-| `UserPrivilegesChangedEvent`  | socket `user:privileges-changed`                                                                          |
-| `UsernameChangedEvent`        | socket `user:username-changed`                                                                            |
-| `RolePermissionsChangedEvent` | `UserService.notifyRoleMembersPrivilegesChanged` → `UserPrivilegesChangedEvent` каждому пользователю роли |
+Комната списка пользователей `users` (`USERS_ROOM`, `permissionRoomPolicy`, право
+`user:view`): `user:updated` — актуальный `UserDto` на `UserChangedEvent`,
+`UserPrivilegesChangedEvent`, `EmailChangedEvent`, `EmailVerifiedEvent`,
+`UsernameChangedEvent`, `ProfileUpdatedEvent` (profile); `user:deleted { id }` — на
+`UserDeletedEvent`. Адресные реакции (`toUser`):
+
+| Событие                       | Реакция                                                                                                          |
+| ----------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `EmailChangedEvent`           | socket `user:email-changed { email }`                                                                            |
+| `EmailVerifiedEvent`          | socket `user:email-verified`                                                                                     |
+| `UserDeletedEvent`            | socket `session:terminated { sessionId: "all" }` + `disconnectUser`                                              |
+| `PasswordChangedEvent`        | socket `user:password-changed` (завершение сессий — модуль session)                                              |
+| `UserPrivilegesChangedEvent`  | socket `user:privileges-changed { roles, permissions }` (эффективные права) + `SocketRoomService.revalidateUser` |
+| `UsernameChangedEvent`        | socket `user:username-changed`                                                                                   |
+| `RolePermissionsChangedEvent` | `UserService.notifyRoleMembersPrivilegesChanged` → `UserPrivilegesChangedEvent` каждому пользователю роли        |
+| `RoleDeletedEvent`            | `UserService.notifyUsersPrivilegesChanged(memberIds)` → `UserPrivilegesChangedEvent` бывшим пользователям роли   |
 
 ---
 
@@ -260,5 +285,6 @@ Guard читает claim `emailVerified` из access-токена; claim обн�
   пагинация списков, поиск и видимость телефона.
 - `email-change.service.test.ts` — запрос (хеш кода, письма в транзакции, cooldown,
   занятость, гонки) и подтверждение (истечение, попытки, занятость, гонки).
+- `user-name.test.ts` — отображаемое имя: имя профиля, иначе email, иначе `null`.
 - `user.listener.test.ts`, `admin.bootstrap.test.ts`, `dto/user.dto.test.ts`,
   `validation/user.validation.test.ts`.

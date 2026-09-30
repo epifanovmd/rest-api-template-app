@@ -9,6 +9,7 @@ import {
   fileForm,
   items,
   PNG_1PX,
+  signIn,
   signInAdmin,
   signUp,
   uniqueEmail,
@@ -73,9 +74,76 @@ describe("платформа", () => {
 
       expect(tampered.status, "подделанная подпись").to.be.oneOf([400, 403]);
       expectStatus(await call(alice, "GET", "/api/v1/file?limit=5"), 200);
-      expectStatus(await call(bob, "DELETE", `/api/v1/file/${file.id}`), 403);
+      expectStatus(await call(bob, "GET", `/api/v1/file/${file.id}`), 404);
+      expectStatus(await call(bob, "DELETE", `/api/v1/file/${file.id}`), 404);
       expectStatus(await call(alice, "DELETE", `/api/v1/file/${file.id}`), 204);
       expectStatus(await call(alice, "GET", `/api/v1/file/${file.id}`), 404);
+    });
+
+    it("области прав: свои файлы, просмотр всех, удаление без права — 403", async () => {
+      const upload = expectStatus(
+        await call(alice, "POST", "/api/v1/file", fileForm()),
+        201,
+      );
+      const file = firstFile(upload.data);
+      const mine = expectStatus(
+        await call(alice, "GET", "/api/v1/file?limit=100"),
+        200,
+      );
+
+      expect(items(mine.data).map(f => f.id)).to.include(file.id);
+
+      // Роль без прав: доступ к файлам — только выданными правами.
+      const role = expectStatus(
+        await call(admin, "POST", "/api/v1/roles", {
+          name: `files-${Date.now()}`,
+        }),
+        201,
+      );
+
+      expect(role.data.permissions).to.deep.equal([]);
+
+      const auditor = await signUp("p-auditor");
+      const grant = async (permissions: string[]) => {
+        expectStatus(
+          await call(
+            admin,
+            "PATCH",
+            `/api/v1/user/setPrivileges/${auditor.id}`,
+            { roles: [role.data.name], permissions },
+          ),
+          200,
+        );
+
+        return signIn(auditor.email, auditor.password);
+      };
+
+      const none = await grant([]);
+
+      expectStatus(await call(none, "GET", "/api/v1/file"), 403);
+      expectStatus(await call(none, "GET", `/api/v1/file/${file.id}`), 403);
+
+      const viewer = await grant(["file:view"]);
+      const own = expectStatus(await call(viewer, "GET", "/api/v1/file"), 200);
+      const all = expectStatus(
+        await call(viewer, "GET", "/api/v1/file?mine=false&limit=100"),
+        200,
+      );
+
+      expect(items(own.data).map(f => f.id)).to.not.include(file.id);
+      expect(items(all.data).map(f => f.id)).to.include(file.id);
+      expectStatus(await call(viewer, "GET", `/api/v1/file/${file.id}`), 200);
+      expectStatus(
+        await call(viewer, "DELETE", `/api/v1/file/${file.id}`),
+        403,
+      );
+
+      const cleaner = await grant(["file:view", "file:delete"]);
+
+      expectStatus(
+        await call(cleaner, "DELETE", `/api/v1/file/${file.id}`),
+        204,
+      );
     });
 
     it("прямая загрузка: PUT по подписанной ссылке, complete, обработка", async () => {

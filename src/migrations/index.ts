@@ -3,6 +3,8 @@ import { Messenger1790355565150 } from "./1790355565150-Messenger";
 import { JobRunStop1790357606328 } from "./1790357606328-JobRunStop";
 import { FileOwnerSetNull1790358900018 } from "./1790358900018-FileOwnerSetNull";
 import { JobWorkers1790363180288 } from "./1790363180288-JobWorkers";
+import { SplitManagePermissions1790600000000 } from "./1790600000000-SplitManagePermissions";
+import { OwnFilePermissions1790770000000 } from "./1790770000000-OwnFilePermissions";
 
 /**
  * Миграции в порядке применения. Новая миграция: `yarn migration:generate
@@ -15,4 +17,6 @@ export const migrations: Function[] = [
   JobRunStop1790357606328,
   FileOwnerSetNull1790358900018,
   JobWorkers1790363180288,
+  SplitManagePermissions1790600000000,
+  OwnFilePermissions1790770000000,
 ];
