@@ -34,6 +34,8 @@ export interface IStartJobRun {
   /** Записи нет (задача из cron) — создать её. */
   createIfMissing: boolean;
   files?: IJobRunFiles | null;
+  /** Агент, которому выдана внешняя задача. */
+  agentId?: string | null;
 }
 
 type TJobRunPatch = Partial<
@@ -51,6 +53,8 @@ type TJobRunPatch = Partial<
     | "eventSeq"
     | "leaseUntil"
     | "files"
+    | "agentId"
+    | "acceptedAt"
     | "startedAt"
     | "finishedAt"
   >
@@ -110,6 +114,8 @@ export class JobRunTracker {
         stopRequested: false,
         leaseUntil: null,
         files: null,
+        agentId: null,
+        acceptedAt: null,
         startedAt: null,
         finishedAt: null,
       }),
@@ -136,6 +142,8 @@ export class JobRunTracker {
       eventSeq: 0,
       startedAt,
       leaseUntil: secondsFromNow(params.leaseSeconds),
+      agentId: params.agentId ?? null,
+      acceptedAt: null,
     };
 
     if (await this._repo.markRunning(params.id, patch)) {

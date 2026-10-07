@@ -24,7 +24,7 @@
 
 ## Project — Patterns (эталоны)
 
-- [project_patterns.md](project_patterns.md) — эталоны main (gen:module, api-key, ошибки, пагинация, задачи/outbox/cron/external, хранилище, схемы auth, права, e2e), точки расширения для модулей веток (`*.socket-events.ts`, profile relations, `<feature>.config.ts`, письма, права), скелет теста, проектные gotcha
+- [project_patterns.md](project_patterns.md) — эталоны main (в т.ч. «Агенты: проверенные gotcha») (gen:module, api-key, ошибки, пагинация, задачи/outbox/cron/external, хранилище, схемы auth, права, e2e), точки расширения для модулей веток (`*.socket-events.ts`, profile relations, `<feature>.config.ts`, письма, права), скелет теста, проектные gotcha
 
 ## Feedback
 

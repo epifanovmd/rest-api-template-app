@@ -18,8 +18,8 @@ __pycache__/
 # Ключи сервисных аккаунтов (Firebase и т. п.) — не в репозиторий и не в образ
 firebaseAccount.json
 
-# Python-окружение внешнего воркера (yarn worker:setup)
+# Python-окружение нагрузок агента (yarn agent:setup)
 .venv/
 
-# Фоновый Python-воркер: pid и журнал (yarn worker:start)
-.worker/
+# Агент для разработки: данные, pid и журнал (yarn agent)
+.agent/

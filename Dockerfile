@@ -19,6 +19,24 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN yarn build
 
+# ── Сборки агента для самообновления (раздаёт API, AGENT_RELEASES_DIR) ───────
+# Подпись релиза — секрет BuildKit `agent_signing_key` (agent keygen); без него
+# manifest без подписей и агенты на такие сборки не обновляются.
+FROM --platform=$BUILDPLATFORM golang:1.26-bookworm AS agent-dist
+WORKDIR /src
+COPY agent/go.mod agent/go.sum ./
+RUN --mount=type=cache,target=/go/pkg/mod go mod download
+COPY agent/ ./
+RUN --mount=type=cache,target=/go/pkg/mod --mount=type=cache,target=/root/.cache/go-build \
+    --mount=type=secret,id=agent_signing_key \
+    set -e; v=$(cat VERSION); mkdir -p "/dist/$v"; \
+    for os in linux darwin; do for arch in amd64 arm64; do \
+      CGO_ENABLED=0 GOOS=$os GOARCH=$arch go build -trimpath \
+        -ldflags "-s -w -X main.version=$v" -o "/dist/$v/agent-$os-$arch" ./cmd/agent; \
+    done; done; \
+    AGENT_SIGNING_KEY="$(cat /run/secrets/agent_signing_key 2>/dev/null || true)" \
+      go run ./cmd/agent release-manifest "/dist/$v" "$v"
+
 # ── Только production-зависимости, без install-скриптов ──────────────────────
 # Кэш yarn — в cache-mount BuildKit, в слой не попадает: чистить не нужно.
 FROM node:${NODE_VERSION} AS prod-deps
@@ -51,6 +69,7 @@ COPY --from=prod-deps --chown=node:node /app/node_modules ./node_modules
 COPY --from=builder --chown=node:node /app/build ./build
 # Ассеты рантайма (шаблоны писем) лежат вне build/ и читаются по пути от корня.
 COPY --chown=node:node templates ./templates
+COPY --from=agent-dist --chown=node:node /dist ./agent/dist
 
 USER node
 EXPOSE 8181

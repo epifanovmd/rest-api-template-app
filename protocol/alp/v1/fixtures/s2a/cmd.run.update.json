@@ -1,0 +1,14 @@
+{
+  "type": "cmd.run",
+  "data": {
+    "commandId": "22222222-2222-4222-8222-222222222222",
+    "name": "agent.update",
+    "args": {
+      "version": "1.1.0",
+      "url": "/api/v1/agent-link/releases/1.1.0/linux/amd64",
+      "sha256": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+      "signature": "c2lnbmF0dXJl"
+    },
+    "timeoutSec": 300
+  }
+}

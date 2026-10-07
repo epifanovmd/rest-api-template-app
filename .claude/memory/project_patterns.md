@@ -46,13 +46,14 @@ message } }`). В main **нет ни одного вызова** (описани
 - Задачи: служебная очередь с повторами — `mailer/mail-send.job.ts`; `JobError(code, msg, retryable)` —
   `file/file-process.job.ts`, `mailer.service.ts`; cron — `*-cleanup.job.ts` (audit, otp, session, passkeys, file);
   outbox — `file.service.ts::_enqueueProcessing(manager, …)`, `mailer.service.ts` (`{ manager }`); внешняя очередь —
-  `jobs/demo-echo.handler.ts` (`asExternalJobHandler`, `io` + `onComplete`), воркер — `python/examples/echo_worker.py`;
+  `jobs/demo-echo.handler.ts` (`asExternalJobHandler`, `io` + `onComplete`), нагрузка — `python/examples/echo_worker.py`;
   health-индикатор — `jobs/jobs.health.ts` (`asHealthIndicator(JobsHealthIndicator)`). Политик доступа к задачам
   (`asJobAccessPolicy`) в main нет — только владелец/суперпользователь.
 - Хранилище: ключи — `file/file-keys.ts` (`files/<id>/original.<ext>`), обработка через `withLocalFile` —
   `file/file-process.job.ts`, прямая загрузка — `file.service.ts` (`signedPutUrl` + complete с условным `UPDATE`).
 - Права модуля — `audit/audit.permissions.ts` (`definePermissions("audit", { VIEW: "audit:view" })`).
-- E2E-сценарий — `test/e2e/platform.e2e.ts` (файлы S3/local, задачи и внешние воркеры, биометрия/passkeys),
+- E2E-сценарий — `test/e2e/platform.e2e.ts` (файлы S3/local, задачи, биометрия/passkeys), агенты —
+  `test/e2e/agents.e2e.ts` (хелпер `test/e2e/agent.ts`: настоящий WebSocket ALP),
   клиент `test/e2e/client.ts`, письма — Mailpit API.
 - Bootstrapper — `src/modules/socket/socket.bootstrap.ts`, `src/modules/user/*bootstrap*` (AdminBootstrap, Seed).
 - Guards на маршруте — поиск `@UseGuards(` в `src/modules/auth/`.
@@ -184,21 +185,44 @@ describe("FeatureService", () => {
 ответа старые сессии уже недействительны (иначе гонка — e2e «смена пароля» падал ~1 из 5).
 Остальные события — `emit` (не блокируют ответ).
 
-## Задачи: запрос-ответ, события воркера, штатная остановка
+## Задачи: запрос-ответ, внешние задачи агентов, штатная остановка
 
-- `JobQueue.request(queue, data, { timeoutMs, priority })` — синхронный вызов воркера из HTTP-запроса:
+- `JobQueue.request(queue, data, { timeoutMs, priority })` — синхронный вызов исполнителя из HTTP-запроса:
   видимая задача + ожидание итога (`JobResultWaiter`: сигнал `job_settled` из транзакции завершения,
-  опрос 5 с / 1 с без LISTEN). Ошибка воркера → 502 `JOB_REQUEST_FAILED` (`details.code`), таймаут → 504
+  опрос 5 с / 1 с без LISTEN). Ошибка → 502 `JOB_REQUEST_FAILED` (`details.code`), таймаут → 504
   `JOB_REQUEST_TIMEOUT` и задача снимается. `manager` передать нельзя (ждать чужого коммита некому).
-- Постановка во внешнюю очередь шлёт `job_available` (в транзакции постановки) — long-poll `claim`
-  просыпается сразу. Проверено интеграционным тестом (< 0,9 с вместо шага опроса 1 с).
-- `JobSignals` — одно LISTEN-соединение на процесс, стартует на всех ролях в `JobsBootstrap`
-  (API тоже ждёт `request` и держит long-poll). `JobCancelWatcher` — подписчик канала `job_cancel`.
-- Heartbeat: `events: [{type, data}]` (≤ 100) → хук `onEvent(job, event)` по порядку, ошибка хука
-  логируется; ответ `{ cancel, stop }`. SDK: `job.event(type, data)`, `job.stop_requested`.
-- `JobQueue.stop(id)`: running внешняя задача → `stop_requested` (миграция `JobRunStop`), `complete`
-  после stop принимается; ждущая/Node-задача — обычная отмена.
-- Python SDK покрыт `python/tests` (unittest), в CI — job `python-sdk`.
+- Внешние задачи: `ExternalJobService` (выдача `take` → `tracker.start({agentId})`, барьер `_held`: running +
+  не отменена + `agent_id` + `attempt`, `extendLeases` по `status`, `reconcile` при hello, `reject` →
+  `PgBossService.release` без траты попытки) и `JobsAgentCapability` (раздача по `status.slots` минус выданные,
+  не попавшие в status, TTL 60 с; `job_available` будит раздачу; `job_cancel`/`job_stop` → агенту).
+- `JobQueue.stop(id)`: running внешняя задача → `stop_requested`, агенту `job.stop` (сигналом или при сверке);
+  `complete` после stop принимается.
+- Python SDK покрыт `python/tests/test_worker.py` (фейковый агент по socketpair), Go — `yarn agent:go race`;
+  в CI — jobs `python-sdk` и `agent`.
+
+## Агенты: проверенные gotcha (07.10.2026)
+
+- **engine.io рвёт чужой upgrade через 1 с**, если в сокет ничего не записано: в `SocketServerService`
+  стоит `destroyUpgradeTimeout: 10_000` — проверка учётных данных агента в БД успевает.
+- **Маршруты агента — отдельный префикс** `/api/v1/agent-link/*`: `POST /agents/link/sync` совпал бы с
+  `POST /agents/{id}/revoke` (koa-router берёт первый, UUID-валидация → 400).
+- **tsoa не разбирает `z.infer`**: типы DTO (host, capabilities, status, metrics) — явные интерфейсы
+  `IAlp*` в `agent-link.protocol.ts`, схемы типизированы `z.ZodType<IAlp…>` (компилятор сверяет).
+- **Очереди агента — из `status.slots`/`status.capacity`**, не из `hello`: нагрузки регистрируются после hello.
+- **`hello.jobs` включает задачи с итогом в outbox** (`Outbox.JobRefs`): сверка на сервере идёт до досылки
+  outbox — иначе завершённая без связи задача проваливалась `AGENT_LOST` (поймано смоуком с падением API).
+- **HTTP sync**: ack склеиваются таймером 20 мс — перед ответом `session.settle()`; сессию восстанавливает
+  любой процесс по снимку Redis (`agent:session:<id>`) при совпадении `agents.session_id`; забытая по простою
+  HTTP-сессия **не** ставит проверку offline (агент мог уйти в другой процесс) — offline решает `agents.sweep`.
+- Раздача: выданная задача занимает слот, пока агент её не принял (`job.accept`), не отклонил, не сдал итог
+  или её не отменили — иначе отменённая после выдачи задача держала слот 60 с (поймано e2e досрочного завершения).
+- `POST /api/v1/jobs/{id}/stop` (право — как на отмену), `JobRunDto.agentId` — исполнитель внешней задачи.
+- e2e: HTTP-сессия живёт на сервере и раздаёт задачи соседним наборам — агента отзывать в `after`.
+- Самообновление: отметка `<binary>.update.json` рядом с бинарём; под systemd откат делает
+  `agent.prev boot-guard` (ExecStartPre, `AGENT_BOOT_GUARD=external`). Проверено вживую 1.0.0 → 1.0.1.
+- Dev: агент на машине — `yarn agent:setup && yarn agent` (bootstrap-токен из `.env.development`); Go — только в
+  docker (`scripts/agent.sh`, тома `agent-gomod`/`agent-gocache`). В docker-агенте файлы S3 dev недоступны
+  (`S3_PUBLIC_ENDPOINT=localhost:8333` внутри контейнера — сам контейнер).
 
 ## Файлы: владение, создание сервером, сборка мусора
 
@@ -212,11 +236,8 @@ describe("FeatureService", () => {
 - Белый список загрузок расширяется модулем: `defineUploadRules`; `signatures: "binary"` — формат без
   сигнатуры (веса моделей).
 
-## Воркеры: статус, пределы очередей, SDK
+## Очереди: пределы
 
-- `claim` принимает `worker: { name, meta }` → `job_workers` (миграция `JobWorkers`); `GET /api/v1/worker/status`
-  (jwt) — внешние очереди, воркеры, `online` (claim за 90 с). Забываются через 7 дней (`jobs.retention`).
 - `JobHandlerRegistry.register` отклоняет `expireInSeconds > 86400` (предел pg-boss — иначе падение при старте) и
   `leaseSeconds > expireInSeconds` у внешней очереди.
-- SDK: `job.download(name, target)` — атомарно в своё место (кэш весов); `Worker(name=, meta=)`.
 - `bigintNumber` — `core/db/transformers.ts` (колонки `bigint` → number).

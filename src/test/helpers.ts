@@ -94,6 +94,7 @@ export const uuid3 = () => "00000000-0000-0000-0000-000000000003";
 export const createMockJobQueue = () => ({
   enqueue: sinon.stub().resolves("job-id"),
   cancel: sinon.stub().resolves(),
+  stop: sinon.stub().resolves(),
 });
 
 /** Хранилище файлов в памяти: ключ → буфер. */

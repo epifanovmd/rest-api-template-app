@@ -1,170 +1,175 @@
-"""Цикл воркера: claim с long-poll, выполнение, complete/fail."""
+"""Нагрузка агента: регистрирует очереди, выполняет задачи в потоках."""
 
 from __future__ import annotations
 
 import logging
 import os
 import signal
-import socket
 import threading
-import time
-import traceback
-from typing import Any, Callable, Dict, List, Optional
+from concurrent.futures import ThreadPoolExecutor
+from typing import Any, Callable, Dict, Optional
 
-from .client import ApiClient
-from .errors import ApiError, Cancelled, JobFailed
+from . import __version__
+from .channel import Channel
+from .errors import Cancelled, JobFailed
 from .job import Job
 
 log = logging.getLogger("worker_sdk")
 
 Handler = Callable[[Job], Any]
 
-#: Сколько ждать задач в одном запросе claim (сервер ограничивает 25 с).
-DEFAULT_WAIT_SECONDS = 20
-#: Пауза после неожиданной ошибки цикла.
-ERROR_PAUSE_SECONDS = 5
-
 
 class Worker:
-    """Воркер внешних очередей.
+    """Нагрузка: обработчики очередей и цикл приёма задач от агента.
 
-    >>> worker = Worker("http://api:8181", api_key="abcd1234.secret")
-    >>> @worker.handler("demo.echo")
-    ... def echo(job):
-    ...     return {"echo": job.data["text"]}
-    >>> worker.run()
+    Запускает её агент (``workloads`` в конфигурации агента) и передаёт канал
+    IPC. Сеть, повторы, досылка итогов после обрыва связи, учётные данные и
+    обновление — забота агента; нагрузка только выполняет задачи::
 
-    ``concurrency`` — сколько задач выполнять параллельно (потоки). SIGTERM
-    и SIGINT: новые задачи не берутся, текущие дорабатывают.
+        worker = Worker("echo", version="1.0.0")
+
+        @worker.job("demo.echo", concurrency=2)
+        def echo(job: Job) -> dict:
+            job.progress(0.5)
+            return {"echo": job.data["text"]}
+
+        worker.run()
+
+    Остановка — SIGTERM (агент): новые задачи не берутся, текущие
+    дорабатываются. ``workload.drain`` (замена без простоя) — то же.
     """
 
-    def __init__(
-        self,
-        base_url: str,
-        api_key: str,
-        *,
-        concurrency: int = 1,
-        wait_seconds: int = DEFAULT_WAIT_SECONDS,
-        client: Optional[ApiClient] = None,
-        name: Optional[str] = None,
-        meta: Optional[Dict[str, str]] = None,
-    ) -> None:
-        self.client = client or ApiClient(
-            base_url, api_key, timeout=wait_seconds + 15
-        )
-        self.concurrency = max(1, concurrency)
-        self.wait_seconds = wait_seconds
+    def __init__(self, name: Optional[str] = None, *, version: str = "0.0.0",
+                 channel: Optional[Channel] = None) -> None:
+        self.name = name or os.environ.get("ALP_WORKLOAD") or "worker"
+        self.version = version
+        self._channel = channel
         self._handlers: Dict[str, Handler] = {}
-        self._stopping = threading.Event()
-        #: Как воркер представляется в статусе очередей.
-        self.name = name or f"{socket.gethostname()}:{os.getpid()}"
-        self.meta: Dict[str, str] = {"sdk": __import__("worker_sdk").__version__, **(meta or {})}
+        self._concurrency: Dict[str, int] = {}
+        self._jobs: Dict[str, Job] = {}
+        self._lock = threading.Lock()
+        self._draining = threading.Event()
+        self._done = threading.Event()
 
-    def handler(self, queue: str) -> Callable[[Handler], Handler]:
-        def register(fn: Handler) -> Handler:
-            self._handlers[queue] = fn
+    def job(self, queue: str, concurrency: int = 1) -> Callable[[Handler], Handler]:
+        """Декоратор обработчика очереди; ``concurrency`` — задач одновременно."""
+
+        def decorator(fn: Handler) -> Handler:
+            self.register(queue, fn, concurrency)
             return fn
 
-        return register
+        return decorator
 
-    def register(self, queue: str, fn: Handler) -> None:
+    def register(self, queue: str, fn: Handler, concurrency: int = 1) -> None:
+        if concurrency < 1:
+            raise ValueError("concurrency — не меньше 1")
         self._handlers[queue] = fn
+        self._concurrency[queue] = concurrency
 
-    def stop(self) -> None:
-        """Не брать новые задачи; текущие доработают."""
-        self._stopping.set()
-
-    def run(self, *, install_signals: bool = True) -> None:
+    def run(self, install_signals: bool = True) -> None:
+        """Зарегистрироваться у агента и выполнять задачи до остановки."""
         if not self._handlers:
-            raise ValueError("нет обработчиков: worker.handler('queue')")
-        if install_signals and threading.current_thread() is threading.main_thread():
-            signal.signal(signal.SIGTERM, lambda *_: self.stop())
-            signal.signal(signal.SIGINT, lambda *_: self.stop())
+            raise RuntimeError("нет обработчиков: зарегистрируйте хотя бы одну очередь")
+        channel = self._channel or Channel.from_env()
+        self._channel = channel
+        if install_signals:
+            signal.signal(signal.SIGTERM, lambda *_: self.drain())
+            signal.signal(signal.SIGINT, lambda *_: self.drain())
 
-        log.info("воркер запущен: очереди %s, потоков %d", list(self._handlers), self.concurrency)
-        threads = [
-            threading.Thread(target=self._loop, name=f"worker-{i}", daemon=True)
-            for i in range(self.concurrency)
-        ]
-        for thread in threads:
-            thread.start()
-        while any(thread.is_alive() for thread in threads):
-            for thread in threads:
-                thread.join(timeout=0.5)
-        log.info("воркер остановлен")
-
-    def run_once(self) -> int:
-        """Взять и выполнить доступные задачи один раз (для тестов и cron)."""
-        jobs = self._claim(wait_seconds=0)
-        for job in jobs:
-            self._execute(job)
-        return len(jobs)
-
-    # ── внутреннее ───────────────────────────────────────────────────────
-
-    def _loop(self) -> None:
-        while not self._stopping.is_set():
-            try:
-                for job in self._claim(self.wait_seconds):
-                    self._execute(job)
-            except ApiError as err:
-                # 401/403/400 не пройдут сами: без паузы воркер крутил бы цикл.
-                log.error("claim отклонён: %s", err)
-                self._stopping.wait(ERROR_PAUSE_SECONDS * 6)
-            except Exception:  # noqa: BLE001
-                log.error("ошибка цикла воркера:\n%s", traceback.format_exc())
-                self._stopping.wait(ERROR_PAUSE_SECONDS)
-
-    def _claim(self, wait_seconds: int) -> List[Job]:
-        payload = self.client.post(
-            "/jobs/claim",
-            {
-                "queues": list(self._handlers),
-                "max": 1,
-                "waitSeconds": wait_seconds,
-                "worker": {"name": self.name[:200], "meta": self.meta},
-            },
+        pool = ThreadPoolExecutor(
+            max_workers=sum(self._concurrency.values()), thread_name_prefix=f"{self.name}-job"
         )
-        return [Job(self.client, item) for item in payload or []]
+        channel.send("workload.register", {
+            "name": self.name,
+            "version": self.version,
+            "sdk": f"python/{__version__}",
+            "queues": [{"name": q, "concurrency": n} for q, n in self._concurrency.items()],
+        })
+        reader = threading.Thread(target=self._read, args=(channel, pool), name="alp-ipc", daemon=True)
+        reader.start()
+        try:
+            while not self._done.wait(0.5):
+                if self._draining.is_set() and self._idle():
+                    break
+        finally:
+            pool.shutdown(wait=True)
+            channel.close()
+        log.info("нагрузка %s остановлена", self.name)
 
-    def _execute(self, job: Job) -> None:
+    def drain(self) -> None:
+        """Не брать новых задач; завершиться после текущих."""
+        if not self._draining.is_set():
+            log.info("нагрузка %s дорабатывает задачи и завершается", self.name)
+        self._draining.set()
+
+    # ── внутреннее ──────────────────────────────────────────────────────
+
+    def _idle(self) -> bool:
+        with self._lock:
+            return not self._jobs
+
+    def _read(self, channel: Channel, pool: ThreadPoolExecutor) -> None:
+        for message in channel.messages():
+            kind, data = message.get("type"), message.get("data") or {}
+            if kind == "workload.ready":
+                log.info("нагрузка %s зарегистрирована у агента %s", self.name, data.get("agentVersion"))
+            elif kind == "job.assign":
+                self._assign(channel, pool, data)
+            elif kind in ("job.cancel", "job.stop"):
+                with self._lock:
+                    job = self._jobs.get(data.get("jobId"))
+                if job and job.attempt == data.get("attempt"):
+                    if kind == "job.cancel":
+                        job.cancel()
+                    else:
+                        job.request_stop()
+            elif kind == "workload.drain":
+                self.drain()
+        # Канал закрыт: агента нет — текущие задачи прервать, итоги некому отдать.
+        with self._lock:
+            jobs = list(self._jobs.values())
+        for job in jobs:
+            job.cancel()
+        self._done.set()
+
+    def _assign(self, channel: Channel, pool: ThreadPoolExecutor, data: Dict[str, Any]) -> None:
+        job = Job(channel, data)
+        if self._draining.is_set() or job.queue not in self._handlers:
+            channel.send("job.fail", {
+                **job.ref, "code": "WORKLOAD_STOPPING", "retryable": True,
+                "message": f"Нагрузка {self.name} не берёт задачу очереди {job.queue}",
+            })
+            job.close()
+            return
+        with self._lock:
+            self._jobs[job.id] = job
+        pool.submit(self._execute, channel, job)
+
+    def _execute(self, channel: Channel, job: Job) -> None:
         handler = self._handlers[job.queue]
-        log.info("задача %s (%s), попытка %d", job.id, job.queue, job.attempt)
-        started = time.monotonic()
-        job.start()
         try:
             result = handler(job)
+            if job.cancelled:
+                return
+            job.flush()
+            channel.send("job.complete", {**job.ref, "result": result})
         except Cancelled:
-            job.finish()
-            log.info("задача %s отменена", job.id)
-            return
+            pass
         except JobFailed as err:
-            job.finish()
-            self._fail(job, err.code, err.message, err.retryable)
-            return
-        except Exception as err:  # noqa: BLE001
-            job.finish()
-            log.error("задача %s упала:\n%s", job.id, traceback.format_exc())
-            self._fail(job, "WORKER_ERROR", f"{type(err).__name__}: {err}"[:2000], True)
-            return
-
-        job.finish()
-        if job.cancelled:
-            log.info("задача %s отменена — результат не отправляется", job.id)
-            return
-        try:
-            self.client.post(
-                f"/jobs/{job.id}/complete", {"attempt": job.attempt, "result": result}
-            )
-            log.info("задача %s выполнена за %.1f с", job.id, time.monotonic() - started)
-        except ApiError as err:
-            log.warning("результат задачи %s не принят: %s", job.id, err)
-
-    def _fail(self, job: Job, code: str, message: str, retryable: bool) -> None:
-        try:
-            self.client.post(
-                f"/jobs/{job.id}/fail",
-                {"attempt": job.attempt, "code": code, "message": message, "retryable": retryable},
-            )
-        except ApiError as err:
-            log.warning("ошибка задачи %s не принята: %s", job.id, err)
+            if not job.cancelled:
+                job.flush()
+                channel.send("job.fail", {
+                    **job.ref, "code": err.code, "message": err.message[:2000], "retryable": err.retryable,
+                })
+        except Exception as err:  # noqa: BLE001 — любая ошибка обработчика — провал попытки
+            log.exception("задача %s упала", job.id)
+            if not job.cancelled:
+                job.flush()
+                channel.send("job.fail", {
+                    **job.ref, "code": "WORKER_ERROR",
+                    "message": f"{type(err).__name__}: {err}"[:2000], "retryable": True,
+                })
+        finally:
+            job.close()
+            with self._lock:
+                self._jobs.pop(job.id, None)

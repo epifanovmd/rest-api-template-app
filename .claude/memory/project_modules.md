@@ -1,6 +1,6 @@
 ---
 name: Feature Modules Reference
-description: Сводка модулей main (17 каталогов в src/modules) — entities, эндпоинты по тегам, очереди, сокет, бизнес-правила; модель веток (main + example/*). Детали — README модулей
+description: Сводка модулей main (18 каталогов в src/modules, с agent) — entities, эндпоинты по тегам, очереди, сокет, бизнес-правила; модель веток (main + example/*). Детали — README модулей
 type: project
 ---
 
@@ -61,26 +61,29 @@ User/Profile/File/Auth/Session/ApiKey/Audit/Biometric/Passkeys → «Модул�
 Bootstrappers: `AdminBootstrap`, `SeedBootstrap` (user; dev-пользователи alice/bob/charlie), `JobsBootstrap`,
 `SocketBootstrap`.
 
-## Эндпоинты по тегам OpenAPI (всего 72, все под `/api/v1`)
+## Эндпоинты по тегам OpenAPI (всего 84, все под `/api/v1`; на 07.10.2026)
 
-User 16, Authorization 10, Profile 9, Files 6, Passkeys 6, Biometric 5, Role 4, Jobs 4, Worker 4, Session 3,
-ApiKey 3, Audit 2. Контроллеров — 12. Вне спецификации: `/files/*` (storage), системные пробы, `/metrics`,
+User 16, Agent 12, Authorization 10, Profile 9, Files 6, Passkeys 6, Biometric 5, Role 4, Jobs 4, Session 3,
+ApiKey 3, AgentLink 3, Audit 2, Permission 1. Вне спецификации ещё WebSocket агентов `GET /api/v1/agent-link`. Вне спецификации: `/files/*` (storage), системные пробы, `/metrics`,
 `/api-docs`.
 
 ## Очереди задач (`JOB_HANDLER`)
 
-| Очередь                      | Модуль   | Тип                                       |
-| ---------------------------- | -------- | ----------------------------------------- |
-| `mail.send`                  | mailer   | служебная, 5 повторов                     |
-| `file.process`               | file     | повторы, ставится в транзакции            |
-| `jobs.lease-reaper`          | jobs     | cron `* * * * *`                          |
-| `jobs.retention`             | jobs     | cron `30 3 * * *` (`JOBS_RETENTION_DAYS`) |
-| `session.cleanup`            | session  | cron `0 * * * *`                          |
-| `file.cleanup-pending`       | file     | cron `0 * * * *`                          |
-| `otp.cleanup`                | otp      | cron `*/30 * * * *`                       |
-| `passkeys.challenge-cleanup` | passkeys | cron `*/15 * * * *`                       |
-| `audit.cleanup`              | audit    | cron `30 3 * * *`                         |
-| `demo.echo`                  | jobs     | external (эталон протокола воркеров)      |
+| Очередь                      | Модуль   | Тип                                         |
+| ---------------------------- | -------- | ------------------------------------------- |
+| `mail.send`                  | mailer   | служебная, 5 повторов                       |
+| `file.process`               | file     | повторы, ставится в транзакции              |
+| `jobs.lease-reaper`          | jobs     | cron `* * * * *`                            |
+| `jobs.retention`             | jobs     | cron `30 3 * * *` (`JOBS_RETENTION_DAYS`)   |
+| `session.cleanup`            | session  | cron `0 * * * *`                            |
+| `file.cleanup-pending`       | file     | cron `0 * * * *`                            |
+| `otp.cleanup`                | otp      | cron `*/30 * * * *`                         |
+| `passkeys.challenge-cleanup` | passkeys | cron `*/15 * * * *`                         |
+| `audit.cleanup`              | audit    | cron `30 3 * * *`                           |
+| `demo.echo`                  | jobs     | external (эталон: нагрузка агента)          |
+| `agents.link-lost`           | agent    | отложенная (разрыв WS → offline)            |
+| `agents.sweep`               | agent    | cron `* * * * *` (offline, таймауты команд) |
+| `agents.retention`           | agent    | cron `45 3 * * *`                           |
 
 `tracked`-очередей среди модулей main нет (видимость включается `track: true` при постановке или в доменных
 модулях). `it.*` — очереди интеграционного теста jobs.
@@ -137,3 +140,14 @@ session, file, api-key, audit, jobs). Комнаты: `user_<id>` (всегда,
   загрузка `POST /file/uploads` + `complete`. Карта подписанных DTO — `file/signed-files.ts` (`TSignedFiles`,
   `signedFileOf`, `signedUrlOf`, `NO_SIGNED_FILES`).
 - **Аудит**: `audit_events`, `GET /api/v1/audit/my`, `GET /api/v1/audit` (`audit:view`), cron-очистка 180 дней.
+
+## Агенты (модуль `agent`, с 07.10.2026)
+
+Протокол ALP v1 — `protocol/alp/v1` (спецификация + эталоны `fixtures/a2s|s2a`), Go-агент — `agent/`
+(`kit/*`, `cmd/agent`), SDK нагрузок — `python/worker_sdk` v2 (IPC через fd 3, без зависимостей).
+Сущности: `agents`, `agent_enrollment_tokens`, `agent_commands`; `job_runs` + `agent_id`, `accepted_at`
+(миграция `AgentPlatform`, она же удалила `job_workers`). Старый HTTP API воркеров `/api/v1/worker/*`,
+`JobsWorkerService`, `JobWorker` — удалены. Возможности: `AgentCommandsCapability`, `AgentStateCapability`
+(в agent), `JobsAgentCapability` (в jobs, импортирует `../agent`). Агентское API — `/api/v1/agent-link/*`
+(enroll, sync, releases; схема `@Security("agent")`), админское — `/api/v1/agents`, `/agent-commands`,
+`/agent-enrollment-tokens`, `/agent-releases`. Права `agent:view|enroll|command|revoke`.

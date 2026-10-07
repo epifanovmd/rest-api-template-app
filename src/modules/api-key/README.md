@@ -1,6 +1,6 @@
 # Модуль ApiKey
 
-API-ключи сервисов (внешние воркеры, интеграции) и схема аутентификации
+API-ключи сервисов (интеграции) и схема аутентификации
 `@Security("apiKey", scopes)`. Ключ `<prefix>.<secret>` показывается один раз
 при создании; в БД — префикс для поиска и sha256 секрета.
 
@@ -26,18 +26,18 @@ src/modules/api-key/
 
 ## Entity: ApiKey (таблица `api_keys`)
 
-| Поле         | Тип                     | Описание                                        |
-| ------------ | ----------------------- | ----------------------------------------------- |
-| `id`         | `uuid` (PK)             |                                                 |
-| `name`       | `varchar(100)`          | Название                                        |
-| `prefix`     | `varchar(8)`, unique    | Открытая часть ключа для поиска                 |
-| `hash`       | `varchar(64)`           | sha256 секрета (hex)                            |
-| `scopes`     | `varchar(100)[]`        | Разрешения: `worker:demo.echo`, `worker:*`, `*` |
-| `ownerId`    | `uuid` → users, CASCADE | Кто выпустил; от его имени действует сервис     |
-| `lastUsedAt` | `timestamptz`, nullable | Обновляется не чаще раза в минуту               |
-| `expiresAt`  | `timestamptz`, nullable | Срок действия; `NULL` — бессрочный              |
-| `revokedAt`  | `timestamptz`, nullable | Отозван                                         |
-| `createdAt`  | `timestamptz`           |                                                 |
+| Поле         | Тип                     | Описание                                       |
+| ------------ | ----------------------- | ---------------------------------------------- |
+| `id`         | `uuid` (PK)             |                                                |
+| `name`       | `varchar(100)`          | Название                                       |
+| `prefix`     | `varchar(8)`, unique    | Открытая часть ключа для поиска                |
+| `hash`       | `varchar(64)`           | sha256 секрета (hex)                           |
+| `scopes`     | `varchar(100)[]`        | Разрешения: `reports:export`, `reports:*`, `*` |
+| `ownerId`    | `uuid` → users, CASCADE | Кто выпустил; от его имени действует сервис    |
+| `lastUsedAt` | `timestamptz`, nullable | Обновляется не чаще раза в минуту              |
+| `expiresAt`  | `timestamptz`, nullable | Срок действия; `NULL` — бессрочный             |
+| `revokedAt`  | `timestamptz`, nullable | Отозван                                        |
+| `createdAt`  | `timestamptz`           |                                                |
 
 Индексы: `IDX_API_KEYS_PREFIX` (unique), `IDX_API_KEYS_OWNER`.
 
@@ -50,9 +50,9 @@ src/modules/api-key/
   Отозванный, просроченный, неверный — 401 `APIKEY_INVALID`; без ключа — 401
   `APIKEY_REQUIRED`.
 - Scopes `@Security("apiKey", [...])` должны быть покрыты scope ключа: точное
-  совпадение, wildcard (`worker:*`, `*`) или — для требования без действия
+  совпадение, wildcard (`reports:*`, `*`) или — для требования без действия
   (`worker`) — любой scope домена. Иначе 403 `APIKEY_SCOPE_DENIED`. Точную
-  проверку (`worker:<queue>`) делает сервис по `permissions` контекста.
+  проверку (`reports:<действие>`) делает сервис по `permissions` контекста.
 - Контекст: `kind: "service"`, `userId` — владелец ключа, `sessionId:
 "apikey:<id>"`, `roles: []`, `permissions` — scopes ключа.
 - `lastUsedAt` — условный `UPDATE` (старше минуты), не задерживает запрос.

@@ -18,6 +18,7 @@ import { EJobRunStatus, IJobRunError, IJobRunFiles } from "./jobs.types";
 @Index("IDX_JOB_RUNS_OWNER_CREATED", ["ownerId", "createdAt"])
 @Index("IDX_JOB_RUNS_SCOPE_CREATED", ["scopeType", "scopeId", "createdAt"])
 @Index("IDX_JOB_RUNS_STATUS_LEASE", ["status", "leaseUntil"])
+@Index("IDX_JOB_RUNS_AGENT_STATUS", ["agentId", "status"])
 export class JobRun {
   @PrimaryColumn({ type: "uuid" })
   id!: string;
@@ -67,27 +68,38 @@ export class JobRun {
   @Column({ type: "int", default: 0 })
   attempt!: number;
 
-  /** Запрошена отмена: воркер узнаёт через NOTIFY, опрос или heartbeat. */
+  /** Запрошена отмена: исполнитель узнаёт сигналом (NOTIFY) или опросом. */
   @Column({ name: "cancel_requested", type: "boolean", default: false })
   cancelRequested!: boolean;
 
   /**
-   * Запрошена штатная досрочная остановка внешней задачи: воркер узнаёт из
-   * heartbeat, доводит шаг и сдаёт результат.
+   * Запрошена штатная досрочная остановка внешней задачи: агент получает
+   * `job.stop`, доводит шаг и сдаёт результат.
    */
   @Column({ name: "stop_requested", type: "boolean", default: false })
   stopRequested!: boolean;
 
   /**
-   * Номер последнего принятого события внешнего воркера в текущей попытке:
-   * повторно присланные (ответ heartbeat потерялся) отбрасываются.
+   * Номер последнего принятого события агента в текущей попытке: повторно
+   * присланные (подтверждение потерялось) отбрасываются.
    */
   @Column({ name: "event_seq", type: "int", default: 0 })
   eventSeq!: number;
 
-  /** До какого момента воркер держит задачу; дальше её забирает reaper. */
+  /** До какого момента исполнитель держит задачу; дальше её забирает reaper. */
   @Column({ name: "lease_until", type: "timestamptz", nullable: true })
   leaseUntil!: Date | null;
+
+  /** Агент, выполняющий внешнюю задачу (текущая попытка). */
+  @Column({ name: "agent_id", type: "uuid", nullable: true })
+  agentId!: string | null;
+
+  /**
+   * Агент подтвердил получение задачи: потеря её при рестарте агента —
+   * провал попытки, а не повторная выдача.
+   */
+  @Column({ name: "accepted_at", type: "timestamptz", nullable: true })
+  acceptedAt!: Date | null;
 
   /** Файлы внешней задачи (ключи хранилища). */
   @Column({ type: "jsonb", nullable: true })

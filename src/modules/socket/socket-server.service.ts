@@ -32,6 +32,9 @@ export class SocketServerService {
       pingTimeout: 10000,
       pingInterval: 25000,
       cookie: false,
+      // Чужой upgrade (канал агентов) engine.io рвёт, если за этот срок в
+      // сокет ничего не записано; проверке учётных данных нужен запас.
+      destroyUpgradeTimeout: 10_000,
     });
 
     // С Redis комнаты и emit общие для всех реплик: сообщение пользователю

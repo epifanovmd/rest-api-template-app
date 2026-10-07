@@ -154,7 +154,7 @@ export class PgBossJobQueue extends JobQueue {
 
     if (graceful) {
       await this._tracker.update(run, { stopRequested: true });
-      // Воркер, ждущий сигналов задачи, узнает сразу, а не с heartbeat.
+      // Агенту задачи остановка уходит сразу — сигналом в процесс его сессии.
       await this._signals
         .notify(JOB_STOP_CHANNEL, jobId)
         .catch(err =>

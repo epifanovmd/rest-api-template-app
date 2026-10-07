@@ -14,32 +14,32 @@ type: project
 
 ## Стек
 
-| Компонент       | Технология                                                                                      |
-| --------------- | ----------------------------------------------------------------------------------------------- |
-| Runtime         | Node.js >= 22.13 (Docker 24-alpine), TypeScript ~6, сборка `tsc`                                |
-| HTTP            | Koa 3 + tsoa 6.6.0 (закреплён), `@koa/router` 14, `@koa/multer`, koa2-swagger-ui                |
-| DI              | inversify 8                                                                                     |
-| БД              | PostgreSQL 16 + TypeORM 1.x                                                                     |
-| Очередь задач   | pg-boss 12 (схема `pgboss` в той же БД)                                                         |
-| Межпроцессное   | Redis (ioredis 6), `@socket.io/redis-adapter`                                                   |
-| Real-time       | Socket.IO 4 (только websocket)                                                                  |
-| Хранилище       | `@aws-sdk/client-s3` + presigner (S3/SeaweedFS) или локальный диск                              |
-| Auth            | jsonwebtoken (HS256), scrypt (bcrypt — только проверка старых хешей), @simplewebauthn/server 14 |
-| Почта           | nodemailer 10 + EJS, шаблоны `templates/mail/<locale>/`                                         |
-| Медиа           | sharp, blurhash, ffmpeg/ffprobe (только образ worker), file-type                                |
-| Валидация       | Zod 4                                                                                           |
-| Наблюдаемость   | pino, prom-client, Sentry                                                                       |
-| Безопасность    | helmet (koa-helmet), CORS, koa-ratelimit                                                        |
-| Тесты           | Mocha 12 + Chai 6 + Sinon 22; e2e — `test/e2e` против настоящего сервера                        |
-| Внешние воркеры | Python SDK `python/worker_sdk` (requests), `Dockerfile.worker-python`                           |
+| Компонент     | Технология                                                                                                                                      |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| Runtime       | Node.js >= 22.13 (Docker 24-alpine), TypeScript ~6, сборка `tsc`                                                                                |
+| HTTP          | Koa 3 + tsoa 6.6.0 (закреплён), `@koa/router` 14, `@koa/multer`, koa2-swagger-ui                                                                |
+| DI            | inversify 8                                                                                                                                     |
+| БД            | PostgreSQL 16 + TypeORM 1.x                                                                                                                     |
+| Очередь задач | pg-boss 12 (схема `pgboss` в той же БД)                                                                                                         |
+| Межпроцессное | Redis (ioredis 6), `@socket.io/redis-adapter`                                                                                                   |
+| Real-time     | Socket.IO 4 (только websocket)                                                                                                                  |
+| Хранилище     | `@aws-sdk/client-s3` + presigner (S3/SeaweedFS) или локальный диск                                                                              |
+| Auth          | jsonwebtoken (HS256), scrypt (bcrypt — только проверка старых хешей), @simplewebauthn/server 14                                                 |
+| Почта         | nodemailer 10 + EJS, шаблоны `templates/mail/<locale>/`                                                                                         |
+| Медиа         | sharp, blurhash, ffmpeg/ffprobe (только образ worker), file-type                                                                                |
+| Валидация     | Zod 4                                                                                                                                           |
+| Наблюдаемость | pino, prom-client, Sentry                                                                                                                       |
+| Безопасность  | helmet (koa-helmet), CORS, koa-ratelimit                                                                                                        |
+| Тесты         | Mocha 12 + Chai 6 + Sinon 22; e2e — `test/e2e` против настоящего сервера                                                                        |
+| Агенты        | протокол ALP `protocol/`, Go-агент `agent/` (coder/websocket, gopsutil, yaml.v3), SDK нагрузок `python/worker_sdk` (stdlib), `Dockerfile.agent` |
 
 firebase-admin в main нет (push — ветка `example/messenger`).
 
 ## Документация модулей (`src/modules/*/README.md`)
 
-api-key, audit, auth, biometric, file, jobs, mailer, otp, passkeys, permission, profile, reset-password-tokens,
-role, session, socket, storage, user; ядро наблюдаемости — `src/core/observability/README.md`; протокол внешних
-воркеров — `python/README.md`.
+agent, api-key, audit, auth, biometric, file, jobs, mailer, otp, passkeys, permission, profile,
+reset-password-tokens, role, session, socket, storage, user; ядро наблюдаемости — `src/core/observability/README.md`;
+протокол агентов — `protocol/alp/v1/README.md`; Go-агент — `agent/README.md`; SDK нагрузок — `python/README.md`.
 
 ## Системные маршруты (вне `/api/v1`, без auth/CORS/лимита)
 
@@ -129,6 +129,9 @@ APP_ROLE:          api | worker | all
 - Env модулей веток-примеров (`WEB_URL_WORKSPACE_INVITE`, `WORKSPACE_INVITE_TTL_HOURS`,
   `FIREBASE_SERVICE_ACCOUNT_PATH`) в main **нет** — они в `<feature>.config.ts` и `.env.example` веток.
 - Compose: `ENV_FILE`, `IMAGE`, `TAG`, `API_PORTS`, `S3_ROOT_ACCESS_KEY`/`S3_ROOT_SECRET_KEY`, `S3_PORTS`;
-  python-воркер — `WORKER_API_URL`, `WORKER_API_KEY`, `WORKER_CONCURRENCY`.
+  агенты (сервер) — `AGENT_BOOTSTRAP_TOKEN`, `AGENT_STATUS_INTERVAL_MS`, `AGENT_METRICS_INTERVAL_MS`,
+  `AGENT_HELLO_TIMEOUT_MS`, `AGENT_PING_INTERVAL_MS`, `AGENT_OFFLINE_GRACE_SEC`, `AGENT_MAX_MESSAGE_BYTES`,
+  `AGENT_RELEASES_DIR`; агент (Go) — `AGENT_SERVER_URL`, `AGENT_ENROLL_TOKEN`, `AGENT_DATA_DIR`, `AGENT_NAME`,
+  `AGENT_LABELS`, `AGENT_TRANSPORT`, `AGENT_UPDATE_MODE`, `AGENT_UPDATE_PUBLIC_KEY`, `AGENT_CONFIG`.
 - E2E: `E2E_POSTGRES_*`, `E2E_REDIS_URL`, `E2E_SMTP_*`, `E2E_MAILPIT_URL`, `E2E_S3_*`, `E2E_STORAGE_DRIVER`,
   `E2E_LOG_LEVEL`; интеграционные юнит-тесты — `TEST_DATABASE_URL`, `TEST_S3_ENDPOINT`.

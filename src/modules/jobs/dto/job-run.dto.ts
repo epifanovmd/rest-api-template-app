@@ -23,6 +23,8 @@ export class JobRunDto extends BaseDto {
   cancelRequested: boolean;
   /** Запрошена штатная досрочная остановка. */
   stopRequested: boolean;
+  /** Агент, выполняющий внешнюю задачу (текущая попытка). */
+  agentId: string | null;
   startedAt: Date | null;
   finishedAt: Date | null;
   createdAt: Date;
@@ -45,6 +47,7 @@ export class JobRunDto extends BaseDto {
     this.attempt = entity.attempt;
     this.cancelRequested = entity.cancelRequested;
     this.stopRequested = entity.stopRequested;
+    this.agentId = entity.agentId;
     this.startedAt = entity.startedAt;
     this.finishedAt = entity.finishedAt;
     this.createdAt = entity.createdAt;

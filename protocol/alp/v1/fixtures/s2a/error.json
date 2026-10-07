@@ -1,0 +1,9 @@
+{
+  "type": "error",
+  "re": "01JACOMPLETE00000000000001",
+  "data": {
+    "code": "JOB_LEASE_LOST",
+    "message": "Задача больше не за этим агентом",
+    "retryable": false
+  }
+}

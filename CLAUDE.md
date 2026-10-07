@@ -10,7 +10,8 @@
 (маршруты и OpenAPI из декораторов), Inversify (DI), TypeORM + PostgreSQL, pg-boss
 (очередь задач на Postgres), Redis (между процессами), Socket.IO, S3-совместимое
 хранилище (SeaweedFS в compose) или диск, Zod, pino, prom-client + Sentry, Mocha +
-Chai + Sinon, сборка `tsc`. Python SDK внешних воркеров — `python/`.
+Chai + Sinon, сборка `tsc`. Агенты: протокол ALP — `protocol/`, Go-агент — `agent/`,
+Python SDK нагрузок — `python/`.
 Node >= 22.13 (Docker — 24 LTS). Роль процесса — `APP_ROLE=api|worker|all`.
 
 ## Команды
@@ -26,15 +27,17 @@ yarn typecheck            # проверка типов (yarn dev:types — watc
 yarn test                 # юнит, src/**/*.test.ts (один файл: yarn test:file <path>)
 yarn test:e2e             # интеграционный набор test/e2e/*.e2e.ts (нужен dev-compose)
 yarn gen:module <name>    # каркас модуля по конвенциям (--dry-run — список файлов)
-yarn worker:setup         # Python-окружение внешнего воркера (.venv)
-yarn worker [файл]        # Python-воркер на этой машине (по умолчанию пример demo.echo; ключ — WORKER_API_KEY)
-yarn worker:start [файл] | worker:stop [--force] | worker:status | worker:logs   # тот же воркер в фоне
+yarn agent:setup          # сборка Go-агента под эту машину (в docker) + .venv нагрузок
+yarn agent                # агент с Python-нагрузкой (agent/agent.dev.yaml; AGENT_BOOTSTRAP_TOKEN)
+yarn agent:start | agent:stop [--force] | agent:status | agent:logs   # тот же агент в фоне
+yarn agent:go test|race|vet|fmt|build|release   # Go-команды агента в контейнере golang
 yarn migration:generate src/migrations/<Name> | migration:run | migration:revert
 yarn migration:run:prod   # миграции из build/ (в контейнере)
 ```
 
 Перед завершением задачи обязательны: `yarn generate`, `yarn lint`, `yarn typecheck`,
-`yarn test`; при изменении API, схемы БД или инфраструктуры — ещё `yarn test:e2e`.
+`yarn test`; при изменении API, схемы БД или инфраструктуры — ещё `yarn test:e2e`;
+при изменении агента или протокола — `yarn agent:go race` и тесты `python/`.
 
 ## Никогда не редактировать вручную
 
@@ -136,5 +139,6 @@ yarn migration:run:prod   # миграции из build/ (в контейнер�
 modules, patterns, reference. Загружай тематический файл, когда работаешь в
 соответствующей области. Внутри каждого модуля есть `README.md` с описанием его
 сущностей, эндпоинтов и событий — это часть кода модуля, а не общей документации.
-Воркеры (Node и внешние, где код, как добавить очередь, SDK, диагностика) —
-[docs/WORKERS.md](docs/WORKERS.md); протокол внешних воркеров — [python/README.md](python/README.md).
+Воркеры и агенты (где код, как добавить очередь, SDK, диагностика) —
+[docs/WORKERS.md](docs/WORKERS.md); протокол агентов — [protocol/alp/v1/README.md](protocol/alp/v1/README.md);
+агент — [agent/README.md](agent/README.md); SDK нагрузок — [python/README.md](python/README.md).

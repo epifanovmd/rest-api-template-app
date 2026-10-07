@@ -42,10 +42,26 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-          cache: pip
-          cache-dependency-path: python/requirements.txt
-      - run: pip install -r requirements.txt
+      # SDK без зависимостей; requirements.txt — для обработчиков.
       - run: python -m unittest discover -s tests -t .
+
+  agent:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: agent
+    env:
+      ALP_FIXTURES: ${{ github.workspace }}/protocol/alp/v1/fixtures
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: agent/go.mod
+          cache-dependency-path: agent/go.sum
+      - name: gofmt
+        run: test -z "$(gofmt -l .)" || (gofmt -l . && exit 1)
+      - run: go vet ./...
+      - run: go test -race ./...
 
   migrations:
     runs-on: ubuntu-latest
@@ -165,23 +181,30 @@ jobs:
     needs: verify
     strategy:
       matrix:
-        target: [api, worker]
+        include:
+          - name: api
+            target: api
+          - name: worker
+            target: worker
+          - name: agent
+            file: Dockerfile.agent
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
       - uses: docker/build-push-action@v6
         with:
           context: .
+          file: ${{ matrix.file || 'Dockerfile' }}
           target: ${{ matrix.target }}
           push: false
           load: true
-          tags: rest-api:ci-${{ matrix.target }}
-          cache-from: type=gha,scope=${{ matrix.target }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.target }}
+          tags: rest-api:ci-${{ matrix.name }}
+          cache-from: type=gha,scope=${{ matrix.name }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.name }}
       - name: Trivy
         uses: aquasecurity/trivy-action@v0.36.0
         with:
-          image-ref: rest-api:ci-${{ matrix.target }}
+          image-ref: rest-api:ci-${{ matrix.name }}
           severity: CRITICAL,HIGH
           ignore-unfixed: true
           exit-code: "1"
@@ -189,7 +212,7 @@ jobs:
 
   # Деплой main на хост после всех проверок; без настроек (форки шаблона) — пропуск.
   deploy:
-    needs: [verify, python-sdk, migrations, e2e, docker]
+    needs: [verify, python-sdk, agent, migrations, e2e, docker]
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && vars.DEPLOY_ENV != ''
     uses: ./.github/workflows/deploy.yml
     secrets: inherit

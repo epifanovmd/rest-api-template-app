@@ -16,23 +16,19 @@ export const JobsError = defineErrors("JOB", {
   },
   NOT_EXTERNAL: {
     status: HttpStatus.BAD_REQUEST,
-    message: "Очередь не выполняется внешним воркером",
-  },
-  QUEUE_FORBIDDEN: {
-    status: HttpStatus.FORBIDDEN,
-    message: "Ключ не разрешает эту очередь",
+    message: "Очередь не выполняется агентами",
   },
   LEASE_LOST: {
     status: HttpStatus.CONFLICT,
-    message: "Задача больше не выполняется этим воркером",
+    message: "Задача больше не за этим агентом: отменена или выдана заново",
   },
   REQUEST_TIMEOUT: {
     status: HttpStatus.GATEWAY_TIMEOUT,
-    message: "Воркер не ответил вовремя",
+    message: "Исполнитель задачи не ответил вовремя",
   },
   REQUEST_FAILED: {
     status: HttpStatus.BAD_GATEWAY,
-    message: "Воркер не смог выполнить запрос",
+    message: "Исполнитель не смог выполнить задачу",
   },
   STORAGE_UNAVAILABLE: {
     status: HttpStatus.SERVICE_UNAVAILABLE,

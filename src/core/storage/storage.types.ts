@@ -47,7 +47,7 @@ export abstract class FileStorage {
   abstract delete(key: string): Promise<void>;
   /** Удалить все объекты с префиксом (папку сущности). */
   abstract deletePrefix(prefix: string): Promise<void>;
-  /** Подписанная ссылка на чтение: для `<img>`, скачивания, внешних воркеров. */
+  /** Подписанная ссылка на чтение: для `<img>`, скачивания, агентов. */
   abstract signedGetUrl(
     key: string,
     options?: SignedUrlOptions,

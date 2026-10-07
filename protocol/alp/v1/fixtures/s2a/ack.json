@@ -1,0 +1,7 @@
+{
+  "type": "ack",
+  "data": {
+    "ids": ["01JACOMPLETE00000000000001"],
+    "seq": 9
+  }
+}

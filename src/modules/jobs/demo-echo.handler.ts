@@ -8,14 +8,18 @@ import {
   logger,
 } from "../../core";
 
-/** Очередь демо-воркера (`python/examples/echo_worker.py`). */
+/** Очередь демо-нагрузки агента (`python/examples/echo_worker.py`). */
 export const DEMO_ECHO_QUEUE = "demo.echo";
 
 export interface IDemoEchoData {
   text: string;
-  /** Отдать воркеру файлы: входной — ключ хранилища, выход — `jobs/<id>/echo.txt`. */
+  /** Отдать агенту файлы: входной — ключ хранилища, выход — `jobs/<id>/echo.txt`. */
   inputKey?: string;
   withOutput?: boolean;
+  /** Работать столько секунд (прогресс, отмена и остановка — по ходу). */
+  sleep?: number;
+  /** Упасть: `retry` — первая попытка с повтором, `fatal` — без повторов. */
+  fail?: "retry" | "fatal";
 }
 
 export interface IDemoEchoResult {
@@ -23,8 +27,8 @@ export interface IDemoEchoResult {
 }
 
 /**
- * Эталон внешней очереди: воркер на любом языке возвращает текст обратно.
- * Проверка протокола и e2e-тест SDK воркера.
+ * Эталон внешней очереди: нагрузка агента возвращает текст обратно.
+ * Проверка протокола, SDK нагрузок и путей отказа (повтор, провал, отмена).
  */
 @Injectable()
 export class DemoEchoJobHandler implements IExternalJobHandler<

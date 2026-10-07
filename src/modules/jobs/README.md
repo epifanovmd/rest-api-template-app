@@ -4,8 +4,8 @@
 (`src/core/jobs`). Задачи переживают рестарт, повторяются по политике очереди,
 выполняются на процессах `APP_ROLE=worker|all`; cron-задачи выполняет ровно
 один процесс кластера. Поверх pg-boss — видимые задачи (`job_runs`: статус,
-прогресс, лог, отмена между процессами, события по сокету) и HTTP API для
-внешних воркеров на любом языке (эталонный SDK — `python/`).
+прогресс, лог, отмена между процессами, события по сокету) и внешние задачи,
+которые выполняют агенты (возможность `jobs` протокола ALP, модуль `agent`).
 
 ## Структура файлов
 
@@ -29,8 +29,8 @@ src/modules/jobs/
 ├── job-run.tracker.ts        # Переходы статусов, прогресс, JobUpdatedEvent
 ├── jobs.service.ts           # Список, карточка, отмена — с проверкой доступа
 ├── jobs.controller.ts        # REST /api/v1/jobs (jwt)
-├── jobs-worker.service.ts    # Фасад внешних воркеров: claim/heartbeat/complete/fail
-├── jobs-worker.controller.ts # REST /api/v1/worker (apiKey)
+├── external-job.service.ts   # Внешние задачи агентов: выдача с арендой, прогресс, события, ссылки, итог, сверка
+├── jobs-agent.capability.ts  # Возможность jobs: раздача по слотам status, отмена/остановка агенту, сообщения job.*
 ├── jobs.listener.ts          # JobUpdatedEvent → сокет job:updated
 ├── job-room.policy.ts        # Комната job_<id> по room:subscribe
 ├── demo-echo.handler.ts      # Внешняя демо-очередь demo.echo
@@ -84,17 +84,17 @@ await dataSource.transaction(async manager => {
 
 ## Очереди и `definition`
 
-| Поле                | Умолчание          | Смысл                                                           |
-| ------------------- | ------------------ | --------------------------------------------------------------- |
-| `retryLimit`        | 3                  | повторов после ошибки                                           |
-| `retryDelaySeconds` | 10                 | задержка первого повтора                                        |
-| `retryBackoff`      | true               | экспоненциальная задержка                                       |
-| `expireInSeconds`   | 900                | сколько задача может быть активной (и для внешних — тоже)       |
-| `concurrency`       | `JOBS_CONCURRENCY` | параллельных задач очереди на процесс                           |
-| `cron`              | —                  | расписание (UTC); выполняет один процесс кластера               |
-| `tracked`           | false              | видимая задача: запись `job_runs`, прогресс, отмена, сокет      |
-| `external`          | false              | выполняет внешний воркер; задача всегда видимая                 |
-| `leaseSeconds`      | 60                 | для `external`: аренда без heartbeat, потом задача возвращается |
+| Поле                | Умолчание          | Смысл                                                                                       |
+| ------------------- | ------------------ | ------------------------------------------------------------------------------------------- |
+| `retryLimit`        | 3                  | повторов после ошибки                                                                       |
+| `retryDelaySeconds` | 10                 | задержка первого повтора                                                                    |
+| `retryBackoff`      | true               | экспоненциальная задержка                                                                   |
+| `expireInSeconds`   | 900                | сколько задача может быть активной (и для внешних — тоже)                                   |
+| `concurrency`       | `JOBS_CONCURRENCY` | параллельных задач очереди на процесс                                                       |
+| `cron`              | —                  | расписание (UTC); выполняет один процесс кластера                                           |
+| `tracked`           | false              | видимая задача: запись `job_runs`, прогресс, отмена, сокет                                  |
+| `external`          | false              | выполняет агент (нагрузка); задача всегда видимая                                           |
+| `leaseSeconds`      | 60                 | для `external`: аренда, продлеваемая пульсом агента; без связи дольше — задача возвращается |
 
 Политика (`retry*`, `expireInSeconds`) применяется к очереди при каждом старте
 (`createQueue`/`updateQueue`). Расписания синхронизируются с кодом: `cron`,
@@ -131,11 +131,14 @@ prom-client не использует.
 | `stopRequested`            | `boolean`                | Запрошена штатная досрочная остановка (внешняя задача)      |
 | `leaseUntil`               | `timestamptz`, nullable  | Аренда выполняющейся задачи                                 |
 | `files`                    | `jsonb`, nullable        | Ключи файлов внешней задачи                                 |
+| `eventSeq`                 | `int`                    | Последний принятый `seq` события агента в попытке           |
+| `agentId`                  | `uuid`, nullable         | Агент текущей попытки внешней задачи (без FK)               |
+| `acceptedAt`               | `timestamptz`, nullable  | Агент подтвердил получение (`job.accept`)                   |
 | `startedAt` / `finishedAt` | `timestamptz`, nullable  |                                                             |
 | `createdAt` / `updatedAt`  | `timestamptz`            |                                                             |
 
 Индексы: `IDX_JOB_RUNS_OWNER_CREATED`, `IDX_JOB_RUNS_SCOPE_CREATED`,
-`IDX_JOB_RUNS_STATUS_LEASE`.
+`IDX_JOB_RUNS_STATUS_LEASE`, `IDX_JOB_RUNS_AGENT_STATUS`.
 
 Запись создаётся при `enqueue` для `tracked`/`external` очередей и при опции
 `track: true`, в той же транзакции, что и задача pg-boss (переданной `manager`
@@ -153,8 +156,8 @@ prom-client не использует.
   transaction mode, обрыв), подписчики переходят на опрос, а соединение
   переподключается раз в 30 с: воркер опрашивает флаги своих задач раз в 2 с.
 - `JobQueue.stop(id)`: выполняющаяся внешняя задача получает `stopRequested` —
-  heartbeat вернёт `stop: true`, воркер доводит шаг и вызывает `complete` (он
-  принимается). Ждущая и Node-задача — обычная отмена.
+  агенту уходит `job.stop` (сразу сигналом или при сверке), нагрузка доводит шаг и
+  сдаёт `job.complete` (он принимается). Ждущая и Node-задача — обычная отмена.
 
 ## Запрос-ответ (`JobQueue.request`)
 
@@ -163,12 +166,13 @@ prom-client не использует.
 шлёт `NOTIFY job_settled '<id>'` в транзакции завершения; `JobResultWaiter`
 перечитывает запись по сигналу (и опросом: раз в 5 с с LISTEN, раз в 1 с без).
 Итог: `completed` → `result`; `failed`/`cancelled` → 502 `JOB_REQUEST_FAILED`
-(`details`: `code`, `reason` воркера); таймаут (по умолчанию 30 с) → задача
+(`details`: `code`, `reason` исполнителя); таймаут (по умолчанию 30 с) → задача
 отменяется, 504 `JOB_REQUEST_TIMEOUT`. Постановка во внешнюю очередь шлёт
-`NOTIFY job_available '<queue>'` — long-poll `claim` просыпается сразу, а не на
-следующем опросе (1 с). Без `manager`: ждать коммита чужой транзакции нельзя.
+`NOTIFY job_available '<queue>'` — раздача агентам со свободными слотами этой
+очереди начинается сразу. Без `manager`: ждать коммита чужой транзакции нельзя.
 
-- Аренда: Node-задача продлевает `leaseUntil` (60 с) каждые 20 с, внешняя — heartbeat-ом.
+- Аренда: Node-задача продлевает `leaseUntil` (60 с) каждые 20 с, внешняя — пульсом
+  агента (`status` с перечнем его задач).
   cron `jobs.lease-reaper` (и старт воркера) находит `running` с истёкшей арендой,
   проваливает активную задачу в pg-boss и приводит запись к её состоянию:
   есть повторы — `queued`, нет — `failed` (`LEASE_EXPIRED`).
@@ -177,53 +181,65 @@ prom-client не использует.
 
 ## REST (jwt)
 
-| Метод | Путь                       | Описание                                                                                                        |
-| ----- | -------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| GET   | `/api/v1/jobs`             | Свои задачи или задачи scope (`scopeType`+`scopeId`), `status`, `offset`/`limit` → `IPaginatedDto<JobRunDto>`   |
-| GET   | `/api/v1/jobs/{id}`        | Задача; `?waitSeconds=0–25` — long-poll: ответ в момент завершения или через `waitSeconds` с текущим прогрессом |
-| POST  | `/api/v1/jobs/{id}/cancel` | Отмена (204); завершённая — 409 `JOB_NOT_CANCELLABLE`                                                           |
-| POST  | `/api/v1/jobs/demo/echo`   | Демо-задача `demo.echo` внешнему воркеру → 201 `{ jobId }`; право `jobs:demo`                                   |
+| Метод | Путь                       | Описание                                                                                                             |
+| ----- | -------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| GET   | `/api/v1/jobs`             | Свои задачи или задачи scope (`scopeType`+`scopeId`), `status`, `offset`/`limit` → `IPaginatedDto<JobRunDto>`        |
+| GET   | `/api/v1/jobs/{id}`        | Задача; `?waitSeconds=0–25` — long-poll: ответ в момент завершения или через `waitSeconds` с текущим прогрессом      |
+| POST  | `/api/v1/jobs/{id}/cancel` | Отмена (204); завершённая — 409 `JOB_NOT_CANCELLABLE`                                                                |
+| POST  | `/api/v1/jobs/demo/echo`   | Демо-задача `demo.echo` агенту (`sleep`, `fail` — проверка прогресса, повторов) → 201 `{ jobId }`; право `jobs:demo` |
 
 Доступ: владелец, суперпользователь или `IJobAccessPolicy` scope — токен
 `JOB_ACCESS_POLICY` (`asJobAccessPolicy(Cls)`): модуль-владелец scope решает,
 кто видит (`view`) и отменяет (`cancel`) задачи. Пример: пространство разрешает
 участникам.
 
-Права — `JobsPermissions` (группа «Фоновые задачи»): `jobs:demo` — проверка внешних
-воркеров демо-задачей; по умолчанию только у admin (через `*`).
+Права — `JobsPermissions` (группа «Фоновые задачи»): `jobs:demo` — проверка агентов
+демо-задачей; по умолчанию только у admin (через `*`).
 
-## API внешних воркеров (apiKey)
+## Внешние задачи (агенты)
 
-`@Security("apiKey", ["worker"])` + проверка очереди по scope ключа
-`worker:<queue>` (или `worker:*`). Очередь должна быть объявлена `external`.
+Протокол — ALP (`protocol/alp/v1`, §6.3); канал и сессии — модуль `agent`, логику
+задач держит `ExternalJobService`, а `JobsAgentCapability` подключена к сессиям
+агентов (`asAgentCapability`).
 
-| Метод | Путь                                 | Тело → ответ                                                                                               |
-| ----- | ------------------------------------ | ---------------------------------------------------------------------------------------------------------- |
-| POST  | `/api/v1/worker/jobs/claim`          | `{ queues[], max?, waitSeconds?, worker? }` → `IClaimedJobDto[]` (long-poll ≤ 25 с)                        |
-| POST  | `/api/v1/worker/jobs/{id}/heartbeat` | `{ attempt?, progress?, text?, log?, events? }` → `{ cancel, stop }`                                       |
-| POST  | `/api/v1/worker/jobs/{id}/signal`    | `{ attempt?, waitSeconds? }` → `{ cancel, stop }` (long-poll ≤ 25 с: ответ сразу при отмене или остановке) |
-| POST  | `/api/v1/worker/jobs/{id}/complete`  | `{ attempt?, result }` → 204; аренда потеряна — 409 `JOB_LEASE_LOST`                                       |
-| POST  | `/api/v1/worker/jobs/{id}/fail`      | `{ attempt?, code, message, retryable? }` → 204                                                            |
+- **Раздача (push):** по свободным слотам из `status` агента (очереди — ключи
+  `status.slots`: нагрузки регистрируются после `hello`) минус выданные, но ещё не
+  попавшие в `status`. Поводы — новый `status` (заодно страховка от пропущенного
+  сигнала) и `NOTIFY job_available`. Выдача: `boss.fetch` → `tracker.start` с
+  `agentId` и арендой → подписанные ссылки → `job.assign`.
+- **Барьер:** каждое действие агента проверяет `status = running`, отмены нет,
+  `agent_id` и `attempt` совпадают; иначе — 409 `JOB_LEASE_LOST` (агенту — без повтора).
+- **Аренда** продлевается `status` (перечень задач агента) до `now + leaseSeconds`
+  очереди.
+- **Сверка при `hello`:** выполняющиеся на агенте по БД и не перечисленные им —
+  ещё не принятые (`accepted_at` пуст) выдаются снова, принятые — провал попытки
+  `AGENT_LOST` (повтор); перечисленные агентом, но не его по БД — `job.cancel`;
+  с `stopRequested` — `job.stop`.
+- **Отказ** (`job.reject`: очередь не обслуживается, мест нет) — задача
+  возвращается в pg-boss без траты попытки (`PgBossService.release`).
+- **Прогресс** схлопывается (≤ 2 записи/с на задачу); **события** (`job.event`) — по
+  порядку, повторы отбрасываются по `seq` (`job_runs.event_seq`); **ссылки** —
+  свежие по запросу `job.urls`.
+- **Отмена и остановка** — сигналы `job_cancel`/`job_stop`: процесс, где живёт
+  сессия агента задачи, шлёт ему `job.cancel`/`job.stop`.
 
-`GET /api/v1/worker/status` (jwt) — внешние очереди и воркеры: `claim` с
-`worker: { name, meta }` отмечает воркера в `job_workers`; на связи — брал задачи в
-последние 90 с. Пропавшие дольше недели забываются (`jobs.retention`).
+Какие агенты обслуживают очереди — `GET /api/v1/agents` (`capabilities.jobs`, живые
+слоты — `live.status.slots`).
 
 Реестр при регистрации отклоняет `expireInSeconds` больше суток (предел pg-boss) и
 аренду внешней задачи дольше срока выполнения.
 
 Внешнюю очередь объявляет `IExternalJobHandler` (регистрация
 `asExternalJobHandler(Cls)`): `definition.external = true`, необязательный хук
-`io(job)` — ключи входных/выходных файлов в `FileStorage` (воркер получает
-подписанные ссылки), и `onComplete(ctx, result)` — перенос результата в домен
+`io(job)` — ключи входных/выходных файлов в `FileStorage` (агент получает
+подписанные ссылки и по запросу — свежие), и `onComplete(ctx, result)` — перенос результата в домен
 в одной транзакции с завершением задачи (`ctx.manager`). Ошибка `onComplete` —
 попытка проваливается с повтором. `onFail` — по желанию. `onEvent(job, event)` —
-события воркера из heartbeat по порядку (ошибка хука логируется, задачу не
+события агента (`job.event`) по порядку (ошибка хука логируется, задачу не
 прерывает); повторы отбрасываются по номеру `seq` (`job_runs.event_seq`,
 сбрасывается при новой попытке), так что до хука каждое событие доходит один раз,
 если между доставкой и записью номера процесс не упал — хук должен быть
-идемпотентным. Протокол целиком —
-`python/README.md`.
+идемпотентным. Протокол целиком — `protocol/alp/v1/README.md`.
 
 ## События
 
@@ -236,11 +252,11 @@ prom-client не использует.
 
 ## Очереди модуля
 
-| Очередь             | Тип               | Что делает                                                  |
-| ------------------- | ----------------- | ----------------------------------------------------------- |
-| `jobs.lease-reaper` | cron `* * * * *`  | возвращает задачи с истёкшей арендой                        |
-| `jobs.retention`    | cron `30 3 * * *` | удаляет завершённые записи старше `JOBS_RETENTION_DAYS`     |
-| `demo.echo`         | external          | эталон протокола воркера (`python/examples/echo_worker.py`) |
+| Очередь             | Тип               | Что делает                                                |
+| ------------------- | ----------------- | --------------------------------------------------------- |
+| `jobs.lease-reaper` | cron `* * * * *`  | возвращает задачи с истёкшей арендой                      |
+| `jobs.retention`    | cron `30 3 * * *` | удаляет завершённые записи старше `JOBS_RETENTION_DAYS`   |
+| `demo.echo`         | external          | эталон внешней очереди (`python/examples/echo_worker.py`) |
 
 ## Конфиг
 
@@ -253,8 +269,9 @@ prom-client не использует.
 
 ## Тесты
 
-Юнит: раннер, очередь, сервис, фасад воркеров и контроллеры, reaper, watcher,
-троттлинг прогресса, listener. Интеграция с Postgres —
+Юнит: раннер, очередь, сервис, контроллеры, reaper, watcher, троттлинг прогресса,
+listener. Интеграция с Postgres (в том числе внешние задачи: выдача агенту, барьер,
+продление аренды, сверка, отказ) —
 `TEST_DATABASE_URL=postgres://… yarn test:file src/modules/jobs/jobs.integration.test.ts`
 (без переменной — пропускается; БД одноразовая: схема `pgboss` и `job_runs`
 пересоздаются).

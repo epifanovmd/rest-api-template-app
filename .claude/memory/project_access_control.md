@@ -115,7 +115,8 @@ scopes API-ключей; down собирает `manage` обратно у име
 | `profile` «Профили»           | `profile:view`, `profile:update`, `profile:delete` (очистка)                           |
 | `apikey` «API-ключи»          | `apikey:view`, `apikey:create`, `apikey:revoke`                                        |
 | `audit` «Журнал безопасности» | `audit:view`                                                                           |
-| `jobs` «Фоновые задачи»       | `jobs:demo` (демо-задача проверки внешних воркеров)                                    |
+| `jobs` «Фоновые задачи»       | `jobs:demo` (демо-задача проверки агентов)                                             |
+| `agent` «Агенты»              | `agent:view`, `agent:enroll`, `agent:command`, `agent:revoke`                          |
 | `file` «Файлы»                | `file:view`, `file:delete` — scoped, есть `file:view:own`, `file:delete:own`           |
 
 Засев ролей (`RoleService.seedDefaultPermissions`) берёт `getRegisteredPermissions()`. Страж —
@@ -181,10 +182,11 @@ effectivePermissions = Set(
 @Security("jwt")                                    // только авторизация
 @Security("jwt", ["permission:audit:view"])         // нужен permission
 @Security("jwt", ["permission:user:update"])        // admin endpoints
-@Security("apiKey", ["worker"])                     // сервис; точный scope worker:<queue> проверяет сервис
+@Security("apiKey", ["reports"])                    // сервис (интеграция); точный scope проверяет сервис
+@Security("agent")                                  // агент: Authorization: Agent <id>.<secret>, kind "agent"
 ```
 
-Scope API-ключа: точное совпадение, wildcard (`worker:*`, `*`), требование без действия (`worker`) покрывается
+Scope API-ключа: точное совпадение, wildcard (`reports:*`, `*`), требование без действия (`reports`) покрывается
 любым scope домена (`api-key.scopes.ts::scopeSatisfied`).
 
 ## Доступ к данным предметных модулей

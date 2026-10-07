@@ -191,6 +191,21 @@ export class PgBossService {
     await boss.fail(queue, id, output);
   }
 
+  /**
+   * Вернуть активную задачу в очередь без траты попытки: исполнитель
+   * отказался от неё, не начав (у pg-boss такого действия нет).
+   */
+  async release(queue: string, id: string): Promise<void> {
+    const boss = await this.ready();
+
+    await boss
+      .getDb()
+      .executeSql(
+        `UPDATE ${PGBOSS_SCHEMA}.job SET state = 'created', started_on = NULL, heartbeat_on = NULL WHERE name = $1 AND id = $2 AND state = 'active'`,
+        [queue, id],
+      );
+  }
+
   private createReady(): Promise<PgBoss> {
     const ready = new Promise<PgBoss>((resolve, reject) => {
       this._resolveReady = resolve;

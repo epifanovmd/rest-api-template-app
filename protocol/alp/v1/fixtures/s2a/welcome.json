@@ -1,0 +1,14 @@
+{
+  "type": "welcome",
+  "ts": 1791380000000,
+  "data": {
+    "protocol": 1,
+    "agentId": "33333333-3333-4333-8333-333333333333",
+    "sessionId": "44444444-4444-4444-8444-444444444444",
+    "serverTime": 1791380000000,
+    "config": {
+      "statusIntervalMs": 15000,
+      "metricsIntervalMs": 15000
+    }
+  }
+}

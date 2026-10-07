@@ -36,13 +36,15 @@ export interface JobDefinition {
    */
   tracked?: boolean;
   /**
-   * Выполняется внешним воркером (любой язык) через HTTP API воркеров.
+   * Выполняется агентом (нагрузкой на любом языке) по протоколу ALP.
    * Обработчик такой очереди — `IExternalJobHandler`; задача всегда видимая.
    */
   external?: boolean;
   /**
-   * Для `external`: срок аренды задачи воркером, секунд (по умолчанию 60).
-   * Без heartbeat дольше срока задача возвращается в очередь или падает.
+   * Для `external`: срок аренды задачи агентом, секунд (по умолчанию 60).
+   * Продлевается пульсом агента; агент без связи дольше срока — задача
+   * возвращается в очередь или падает. Для долгих задач это и есть
+   * допустимое время работы без связи.
    */
   leaseSeconds?: number;
 }
@@ -116,9 +118,9 @@ export abstract class JobQueue {
 
   /**
    * Поставить задачу и дождаться результата — запрос-ответ поверх очереди
-   * (синхронный инференс, вызов внешнего воркера из HTTP-запроса). Таймаут
+   * (синхронный инференс, вызов агента из HTTP-запроса). Таймаут
    * отменяет задачу; ошибка задачи или таймаут — `HttpException` (502/504)
-   * с кодом ошибки воркера в `details`.
+   * с кодом ошибки исполнителя в `details`.
    */
   abstract request<T extends object, R = unknown>(
     queue: string,
@@ -130,9 +132,9 @@ export abstract class JobQueue {
   abstract cancel(jobId: string): Promise<void>;
 
   /**
-   * Попросить внешнюю задачу завершиться досрочно, но штатно: воркер узнаёт
-   * `stop` из heartbeat, доводит шаг и сдаёт результат (обучение сохраняет
-   * веса). Node-задача и ждущая задача отменяются.
+   * Попросить внешнюю задачу завершиться досрочно, но штатно: агент получает
+   * `job.stop`, доводит шаг и сдаёт результат (обучение сохраняет веса).
+   * Node-задача и ждущая задача отменяются.
    */
   abstract stop(jobId: string): Promise<void>;
 }
@@ -153,7 +155,7 @@ export const asJobHandler = (
   handler: new (...args: any[]) => IJobHandler<any, any>,
 ): TokenProvider<IJobHandler> => ({ provide: JOB_HANDLER, useClass: handler });
 
-// ─── Внешние воркеры ───────────────────────────────────────────────────
+// ─── Внешние задачи (агенты) ───────────────────────────────────────────
 
 /** Задача внешней очереди, как её видит хук. */
 export interface ExternalJobInfo<T = unknown> {
@@ -164,16 +166,16 @@ export interface ExternalJobInfo<T = unknown> {
 }
 
 /**
- * Файлы задачи внешнего воркера — ключи хранилища (`FileStorage`). Воркер
- * получает на них подписанные ссылки: `inputs` — на чтение, `outputs` — на
- * запись. Ключи выводятся из данных задачи и её id.
+ * Файлы внешней задачи — ключи хранилища (`FileStorage`). Агент получает на
+ * них подписанные ссылки (`inputs` — на чтение, `outputs` — на запись) и
+ * может запросить свежие. Ключи выводятся из данных задачи и её id.
  */
 export interface ExternalJobFiles {
   inputs?: Record<string, string>;
   outputs?: Record<string, string | { key: string; contentType?: string }>;
 }
 
-/** Хук очереди: какие файлы отдать воркеру. */
+/** Хук очереди: какие файлы отдать агенту. */
 export interface IExternalJobIO<T = unknown> {
   io(job: ExternalJobInfo<T>): Promise<ExternalJobFiles> | ExternalJobFiles;
 }
@@ -189,14 +191,14 @@ export interface ExternalJobContext<T = unknown> extends ExternalJobInfo<T> {
   outputs: Record<string, string>;
 }
 
-/** Событие внешнего воркера из heartbeat: метрики эпохи, найденный объект. */
+/** Событие агента по задаче (`job.event`): метрики эпохи, найденный объект. */
 export interface ExternalJobEvent {
   /** Тип события в пределах очереди: `epoch`, `tick`. */
   type: string;
   data?: unknown;
 }
 
-/** Ошибка, о которой сообщил внешний воркер. */
+/** Ошибка, о которой сообщил агент. */
 export interface ExternalJobFailure {
   code: string;
   message: string;
@@ -207,19 +209,19 @@ export interface ExternalJobFailure {
 
 /**
  * Обработчик внешней очереди (`definition.external = true`). Саму задачу
- * выполняет воркер на любом языке через HTTP API воркеров; в Node остаются
+ * выполняет агент (нагрузка на любом языке, протокол ALP); в Node остаются
  * хуки: файлы задачи (`io`) и перенос результата (`onComplete`).
  */
 export interface IExternalJobHandler<T = unknown, R = unknown> extends Partial<
   IExternalJobIO<T>
 > {
   readonly definition: JobDefinition & { external: true };
-  /** Воркер вернул результат; ошибка — задача уходит на повтор. */
+  /** Агент вернул результат; ошибка — задача уходит на повтор. */
   onComplete(ctx: ExternalJobContext<T>, result: R): Promise<void>;
-  /** Воркер сообщил об ошибке (необязательно). */
+  /** Агент сообщил об ошибке (необязательно). */
   onFail?(job: ExternalJobInfo<T>, failure: ExternalJobFailure): Promise<void>;
   /**
-   * События воркера из heartbeat, по порядку (необязательно). Ошибка хука
+   * События агента по задаче, по порядку (необязательно). Ошибка хука
    * логируется и не прерывает задачу.
    */
   onEvent?(job: ExternalJobInfo<T>, event: ExternalJobEvent): Promise<void>;

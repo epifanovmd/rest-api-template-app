@@ -1,0 +1,14 @@
+{
+  "type": "state.put",
+  "data": {
+    "domain": "wg",
+    "version": 13,
+    "spec": {
+      "interfaces": [
+        {
+          "name": "wg0"
+        }
+      ]
+    }
+  }
+}

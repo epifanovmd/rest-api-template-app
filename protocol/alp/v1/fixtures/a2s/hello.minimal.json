@@ -1,0 +1,20 @@
+{
+  "type": "hello",
+  "data": {
+    "protocols": [1],
+    "agent": {
+      "name": "edge",
+      "version": "1.0.0",
+      "sdk": "go/1.0.0",
+      "bootId": "0000000000000001",
+      "startedAt": 1791380000000
+    },
+    "host": {
+      "hostname": "edge",
+      "os": "darwin",
+      "arch": "arm64"
+    },
+    "capabilities": {},
+    "jobs": []
+  }
+}

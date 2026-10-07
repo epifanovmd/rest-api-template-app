@@ -1,34 +1,27 @@
-"""Исключения SDK."""
+"""Исключения SDK нагрузки."""
 
 from __future__ import annotations
 
 
 class Cancelled(Exception):
-    """Задачу отменили или аренда потеряна: результат больше не нужен.
-
-    Бросается из ``job.check_cancelled()``; обработчик может не ловить его —
-    воркер сам прекратит задачу без ``complete``.
-    """
+    """Задачу отменили: работу прекратить, результат не нужен."""
 
 
 class JobFailed(Exception):
-    """Осознанная ошибка задачи с машинным кодом.
-
-    ``retryable=False`` — повторять бессмысленно (плохие входные данные).
-    """
+    """Задача провалена с кодом; ``retryable=False`` — без повторов."""
 
     def __init__(self, code: str, message: str, retryable: bool = True) -> None:
-        super().__init__(message)
+        super().__init__(f"{code}: {message}")
         self.code = code
         self.message = message
         self.retryable = retryable
 
 
-class ApiError(Exception):
-    """Ответ API с ошибкой, которую повтор не исправит (4xx)."""
+class AgentError(Exception):
+    """Агент или сервер отклонили запрос нагрузки (ответ ``error``)."""
 
-    def __init__(self, status: int, code: str, message: str) -> None:
-        super().__init__(f"{status} {code}: {message}")
-        self.status = status
+    def __init__(self, code: str, message: str, retryable: bool = True) -> None:
+        super().__init__(f"{code}: {message}")
         self.code = code
         self.message = message
+        self.retryable = retryable

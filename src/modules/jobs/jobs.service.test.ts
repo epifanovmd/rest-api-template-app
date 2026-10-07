@@ -221,6 +221,26 @@ describe("JobsService", () => {
     });
   });
 
+  describe("stop", () => {
+    it("владелец завершает активную досрочно", async () => {
+      await service.stop(owner, "job-1");
+      expect(jobQueue.stop.calledWith("job-1")).to.be.true;
+    });
+
+    it("завершённую — 409, чужую — 403", async () => {
+      runs.findById.resolves(run({ status: EJobRunStatus.FAILED }));
+      await expectCode(
+        service.stop(owner, "job-1"),
+        JobsError.codes.NOT_CANCELLABLE,
+      );
+      runs.findById.resolves(run());
+      await expectCode(
+        service.stop(stranger, "job-1"),
+        JobsError.codes.FORBIDDEN,
+      );
+    });
+  });
+
   it("canView — для комнаты сокета", async () => {
     expect(await service.canView(owner.userId, "job-1")).to.be.true;
     expect(await service.canView(stranger.userId, "job-1")).to.be.false;
@@ -239,7 +259,7 @@ describe("JobsService", () => {
     expect(jobQueue.enqueue.firstCall.args).to.deep.equal([
       "demo.echo",
       { text: "ping", withOutput: true },
-      { ownerId: owner.userId, title: "Проверка воркера: demo.echo" },
+      { ownerId: owner.userId, title: "Проверка агента: demo.echo" },
     ]);
   });
 });

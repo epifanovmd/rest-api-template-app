@@ -107,9 +107,24 @@ export class JobsController extends Controller {
   }
 
   /**
-   * Поставить демо-задачу `demo.echo` внешнему воркеру — проверка, что
-   * воркеры подключены (`python/examples/echo_worker.py`). Только для админов.
-   * @summary Проверка внешних воркеров
+   * Завершить задачу досрочно, но штатно: выполняющаяся внешняя задача
+   * доводит текущий шаг и сдаёт результат (обучение сохраняет веса); ждущая
+   * и Node-задача отменяются. Завершённую — 409.
+   * @summary Досрочное завершение задачи
+   */
+  @Security("jwt")
+  @SuccessResponse(204, "No Content")
+  @Post("{id}/stop")
+  async stopJob(@Request() req: KoaRequest, @Path() id: UUID): Promise<void> {
+    await this._jobs.stop(viewerOf(req), id);
+    this.setStatus(204);
+  }
+
+  /**
+   * Поставить демо-задачу `demo.echo` агенту — проверка, что агенты на связи
+   * (нагрузка `python/examples/echo_worker.py`): `sleep` — работать N секунд с
+   * прогрессом, `fail` — упасть с повтором или без. Только для админов.
+   * @summary Проверка агентов
    */
   @Security("jwt", ["permission:jobs:demo"])
   @ValidateBody(DemoEchoSchema)

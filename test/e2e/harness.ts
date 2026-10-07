@@ -1,7 +1,11 @@
 import { ChildProcess, spawn } from "child_process";
+import { createHash, generateKeyPairSync, KeyObject, sign } from "crypto";
 import { once } from "events";
+import { mkdirSync, mkdtempSync, writeFileSync } from "fs";
 import { Redis } from "ioredis";
 import { createServer } from "net";
+import { tmpdir } from "os";
+import { join } from "path";
 import { Client } from "pg";
 
 /**
@@ -83,6 +87,47 @@ const resetRedis = async (): Promise<void> => {
   redis.disconnect();
 };
 
+/** Выпуск агента для e2e: сборка linux/amd64, подписанная ключом стенда. */
+export const AGENT_RELEASE = {
+  version: "1.2.3",
+  bytes: Buffer.from("#!e2e-agent-binary"),
+  bootstrapToken: "e2e-bootstrap-token-0123456789abcdef0123",
+  publicKey: null as KeyObject | null,
+};
+
+/** Каталог выпусков агента: `<version>/manifest.json` и файл сборки. */
+const prepareAgentReleases = (): string => {
+  const dir = mkdtempSync(join(tmpdir(), "agent-releases-"));
+  const { publicKey, privateKey } = generateKeyPairSync("ed25519");
+  const sha256 = createHash("sha256").update(AGENT_RELEASE.bytes).digest("hex");
+  const versionDir = join(dir, AGENT_RELEASE.version);
+
+  mkdirSync(versionDir);
+  writeFileSync(join(versionDir, "agent-linux-amd64"), AGENT_RELEASE.bytes);
+  writeFileSync(
+    join(versionDir, "manifest.json"),
+    JSON.stringify({
+      version: AGENT_RELEASE.version,
+      artifacts: [
+        {
+          os: "linux",
+          arch: "amd64",
+          file: "agent-linux-amd64",
+          sha256,
+          signature: sign(null, Buffer.from(sha256), privateKey).toString(
+            "base64",
+          ),
+        },
+        // Без подписи: обновление на неё запрещено.
+        { os: "linux", arch: "arm64", file: "agent-linux-arm64", sha256 },
+      ],
+    }),
+  );
+  AGENT_RELEASE.publicKey = publicKey;
+
+  return dir;
+};
+
 let server: ChildProcess | undefined;
 
 export let BASE_URL = "";
@@ -128,6 +173,8 @@ export const startServer = async (): Promise<void> => {
       JWT_SECRET_KEY: "e2e-secret-key-0123456789abcdef0123456789",
       ADMIN_EMAIL: E2E.admin.email,
       ADMIN_PASSWORD: E2E.admin.password,
+      AGENT_BOOTSTRAP_TOKEN: AGENT_RELEASE.bootstrapToken,
+      AGENT_RELEASES_DIR: prepareAgentReleases(),
     },
   });
 

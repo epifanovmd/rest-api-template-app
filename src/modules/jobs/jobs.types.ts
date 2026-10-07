@@ -40,7 +40,7 @@ export const JOB_CANCEL_CHANNEL = "job_cancel";
 export const JOB_STOP_CHANNEL = "job_stop";
 /** Канал NOTIFY о завершении видимой задачи; payload — id задачи. */
 export const JOB_SETTLED_CHANNEL = "job_settled";
-/** Канал NOTIFY о новой задаче внешней очереди; payload — имя очереди. */
+/** Канал NOTIFY о новой задаче внешней очереди (раздача агентам); payload — имя очереди. */
 export const JOB_AVAILABLE_CHANNEL = "job_available";
 /** Все каналы сигналов задач: слушаются одним соединением. */
 export const JOB_SIGNAL_CHANNELS = [
@@ -54,8 +54,6 @@ export type TJobSignalChannel = (typeof JOB_SIGNAL_CHANNELS)[number];
 export const JOB_RESULT_POLL_MS = 1_000;
 /** Ожидание результата по умолчанию. */
 export const JOB_REQUEST_TIMEOUT_MS = 30_000;
-/** Событий воркера в одном heartbeat — не больше. */
-export const WORKER_HEARTBEAT_MAX_EVENTS = 100;
 /** Опрос отмен, если LISTEN недоступен (PgBouncer в transaction mode). */
 export const JOB_CANCEL_POLL_MS = 2_000;
 /** Прогресс и лог пишутся в БД не чаще раза в этот интервал. */
@@ -68,24 +66,10 @@ export const JOB_LOG_LINE_MAX = 1_000;
 export const JOB_INTERNAL_LEASE_SECONDS = 60;
 /** Предел pg-boss на выполнение задачи (`expireInSeconds`) — сутки. */
 export const JOB_MAX_EXPIRE_SECONDS = 24 * 3_600;
-/** Воркер считается на связи, если брал задачи не раньше этого. */
-export const WORKER_ONLINE_SECONDS = 90;
-/** Сколько дней хранить сведения о пропавших воркерах. */
-export const WORKER_FORGET_DAYS = 7;
 /** Аренда внешней задачи по умолчанию. */
 export const JOB_EXTERNAL_LEASE_SECONDS = 60;
-/** Long-poll claim внешнего воркера — не дольше (прокси рвут дольше 30 с). */
-export const WORKER_CLAIM_MAX_WAIT_SECONDS = 25;
 /** Long-poll ожидания итога задачи клиентом (`GET /jobs/{id}?waitSeconds=`) — не дольше. */
 export const JOB_WAIT_MAX_SECONDS = 25;
-/** Long-poll сигналов задачи воркером — не дольше (как у claim). */
-export const WORKER_SIGNAL_MAX_WAIT_SECONDS = 25;
-/** Страховочная проверка записи во время ожидания сигнала задачи. */
-export const WORKER_SIGNAL_POLL_MS = 5_000;
-/** Пауза между проверками очередей во время long-poll. */
-export const WORKER_CLAIM_POLL_MS = 1_000;
-/** Задач за один claim — не больше. */
-export const WORKER_CLAIM_MAX_JOBS = 10;
 /** Очередь cron-задачи, возвращающей задачи с истёкшей арендой. */
 export const LEASE_REAPER_QUEUE = "jobs.lease-reaper";
 /** Очередь cron-задачи, удаляющей старые завершённые записи задач. */

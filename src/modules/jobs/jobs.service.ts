@@ -123,7 +123,7 @@ export class JobsService {
   ): Promise<{ jobId: string }> {
     const jobId = await this._queue.enqueue(DEMO_ECHO_QUEUE, data, {
       ownerId: viewer.userId,
-      title: "Проверка воркера: demo.echo",
+      title: "Проверка агента: demo.echo",
     });
 
     return { jobId: jobId! };
@@ -137,6 +137,20 @@ export class JobsService {
     }
 
     await this._queue.cancel(id);
+  }
+
+  /**
+   * Завершить досрочно, но штатно: выполняющаяся внешняя задача доводит шаг и
+   * сдаёт результат; ждущая и Node-задача отменяются. Право — как на отмену.
+   */
+  async stop(viewer: IJobViewer, id: string): Promise<void> {
+    const run = await this.findAccessible(viewer, id, "cancel");
+
+    if (!ACTIVE_JOB_RUN_STATUSES.includes(run.status)) {
+      throw JobsError.NOT_CANCELLABLE();
+    }
+
+    await this._queue.stop(id);
   }
 
   /** Может ли пользователь видеть задачу (подписка на комнату сокета). */

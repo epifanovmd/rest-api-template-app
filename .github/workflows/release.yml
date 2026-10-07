@@ -39,6 +39,10 @@ jobs:
           # Облегчённый образ API без ffmpeg.
           - target: api
             suffix: "-api"
+          # Агент: Go + Python-нагрузки (Dockerfile.agent).
+          - target: ""
+            file: Dockerfile.agent
+            suffix: "-agent"
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-qemu-action@v3
@@ -63,12 +67,16 @@ jobs:
       - uses: docker/build-push-action@v6
         with:
           context: .
+          file: ${{ matrix.file || 'Dockerfile' }}
           target: ${{ matrix.target }}
           platforms: linux/amd64,linux/arm64
+          # Подпись сборок агента для самообновления (agent keygen → секрет репозитория).
+          secrets: |
+            agent_signing_key=${{ secrets.AGENT_SIGNING_KEY }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: APP_VERSION=${{ github.ref_name }}
           provenance: true
-          cache-from: type=gha,scope=release-${{ matrix.target }}
-          cache-to: type=gha,mode=max,scope=release-${{ matrix.target }}
+          cache-from: type=gha,scope=release${{ matrix.suffix }}
+          cache-to: type=gha,mode=max,scope=release${{ matrix.suffix }}

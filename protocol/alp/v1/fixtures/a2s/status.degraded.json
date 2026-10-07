@@ -1,0 +1,18 @@
+{
+  "type": "status",
+  "seq": 4,
+  "data": {
+    "state": "degraded",
+    "message": "нагрузка echo перезапускается",
+    "slots": {},
+    "jobs": [],
+    "workloads": [
+      {
+        "name": "echo",
+        "state": "backoff",
+        "instances": 0
+      }
+    ],
+    "outbox": 2
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "type": "job.urls",
+  "re": "01JAURLS000000000000000001",
+  "data": {
+    "inputs": {},
+    "outputs": {
+      "best": {
+        "url": "https://s3.example/best?sig=3",
+        "contentType": "application/octet-stream"
+      }
+    },
+    "expiresAt": 1791383600000
+  }
+}

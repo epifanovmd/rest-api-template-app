@@ -1,0 +1,11 @@
+{
+  "type": "job.fail",
+  "id": "01JAFAIL000000000000000001",
+  "data": {
+    "jobId": "11111111-1111-4111-8111-111111111111",
+    "attempt": 0,
+    "code": "WORKER_ERROR",
+    "message": "ValueError: bad input",
+    "retryable": true
+  }
+}

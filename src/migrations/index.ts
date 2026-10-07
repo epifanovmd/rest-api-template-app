@@ -4,6 +4,7 @@ import { FileOwnerSetNull1790358900018 } from "./1790358900018-FileOwnerSetNull"
 import { JobWorkers1790363180288 } from "./1790363180288-JobWorkers";
 import { SplitManagePermissions1790600000000 } from "./1790600000000-SplitManagePermissions";
 import { JobRunEventSeq1790776771285 } from "./1790776771285-JobRunEventSeq";
+import { AgentPlatform1791382801616 } from "./1791382801616-AgentPlatform";
 import { OwnFilePermissions1790770000000 } from "./1790770000000-OwnFilePermissions";
 
 /**
@@ -19,4 +20,5 @@ export const migrations: Function[] = [
   SplitManagePermissions1790600000000,
   OwnFilePermissions1790770000000,
   JobRunEventSeq1790776771285,
+  AgentPlatform1791382801616,
 ];

@@ -6,7 +6,7 @@
 воркерами, хранилище файлов по подписанным ссылкам и событийная модель между модулями.
 
 Главная ветка — платформа без предметной области: пользователи и доступ, сессии,
-2FA, биометрия и passkeys, профиль, файлы, задачи и внешние воркеры, почта, аудит,
+2FA, биометрия и passkeys, профиль, файлы, задачи и агенты, почта, аудит,
 API-ключи, реальное время. Предметные примеры — в ветках-примерах (главная ветка +
 модули примера и их миграции):
 
@@ -33,7 +33,7 @@ API-ключи, реальное время. Предметные примеры
 - Nodemailer + EJS (письма по локалям), sharp + ffmpeg (обработка медиа)
 - Mocha + Chai + Sinon (юнит- и e2e-тесты)
 - tsc (сборка), lefthook (git-хуки), ESLint 10 flat config + Prettier 3
-- Python SDK внешних воркеров (`python/`)
+- Агенты: протокол ALP (`protocol/`), Go-агент (`agent/`), Python SDK нагрузок (`python/`)
 
 ### Architecture
 
@@ -57,7 +57,9 @@ src/
     <feature>/       ← entity · repository · service · controller · dto · validation · events · errors · jobs · module
 templates/           ← ассеты рантайма вне кода (шаблоны писем по локалям); путь — от корня проекта
 test/e2e/            ← интеграционный набор
-python/              ← SDK и пример внешнего воркера
+protocol/            ← протокол агентов ALP: спецификация и эталонные сообщения
+agent/               ← Go-агент: kit (связь, задачи, нагрузки, обновление), установка
+python/              ← SDK нагрузок агента и пример
 scripts/             ← генератор модуля
 ```
 
@@ -69,7 +71,8 @@ scripts/             ← генератор модуля
 - правила написания кода — [CONVENTIONS.md](CONVENTIONS.md);
 - принципы проектирования — [CLEAN-CODE.md](CLEAN-CODE.md) и
   [DESIGN-PRINCIPLES.md](DESIGN-PRINCIPLES.md);
-- протокол внешних воркеров — [python/README.md](python/README.md).
+- протокол агентов — [protocol/alp/v1/README.md](protocol/alp/v1/README.md), агент —
+  [agent/README.md](agent/README.md), SDK нагрузок — [python/README.md](python/README.md).
 
 Документация описывает общие принципы и не содержит описания конкретных модулей,
 сущностей и эндпоинтов — они описаны в `README.md` каждого модуля. Документация
@@ -156,19 +159,20 @@ Swagger UI — `/api-docs` (в production — по `API_DOCS_ENABLED`). Сист
 | `yarn migration:run` / `migration:revert`      | применить ожидающие миграции / откатить последнюю |
 | `yarn migration:run:prod`                      | применить миграции из `build/` (в контейнере)     |
 
-**Внешний Python-воркер на этой машине** — долгоживущий процесс: пока он работает,
-сам забирает задачи своих очередей по протоколу `/api/v1/worker`. Ключ —
-`WORKER_API_KEY` в `.env.development` (scope `worker:<очередь>`), адрес API —
-`http://localhost:$SERVER_PORT`.
+**Агент на этой машине** — Go-агент (протокол ALP) с Python-нагрузкой из
+`agent/agent.dev.yaml` (по умолчанию пример `demo.echo`). Регистрируется
+`AGENT_BOOTSTRAP_TOKEN` из `.env.development` (тот же токен у API), адрес API —
+`http://localhost:$SERVER_PORT`. Go на машине не нужен: агент собирается в контейнере.
 
-| Команда                      | Что делает                                                                                                              |
-| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| `yarn worker:setup`          | создать окружение `.venv` и поставить SDK (один раз)                                                                    |
-| `yarn worker [файл]`         | воркер на переднем плане (Ctrl+C — остановка); по умолчанию пример `demo.echo`                                          |
-| `yarn worker:start [файл]`   | тот же воркер в фоне (pid и журнал — `.worker/`)                                                                        |
-| `yarn worker:stop [--force]` | остановить фоновый: новые задачи не берёт, текущую дорабатывает (до 30 с); `--force` — сразу, задача вернётся в очередь |
-| `yarn worker:status`         | запущен ли фоновый воркер                                                                                               |
-| `yarn worker:logs`           | журнал фонового воркера                                                                                                 |
+| Команда                     | Что делает                                                                              |
+| --------------------------- | --------------------------------------------------------------------------------------- |
+| `yarn agent:setup`          | собрать агент под эту машину и окружение `.venv` для нагрузок (один раз и после правок) |
+| `yarn agent`                | агент на переднем плане (Ctrl+C — штатная остановка с доработкой задач)                 |
+| `yarn agent:start`          | то же в фоне (данные, pid и журнал — `.agent/`)                                         |
+| `yarn agent:stop [--force]` | остановить: задачи дорабатываются; `--force` — сразу (задачи вернутся по аренде)        |
+| `yarn agent:status`         | запущен ли агент                                                                        |
+| `yarn agent:logs`           | журнал агента и его нагрузок                                                            |
+| `yarn agent:go <команда>`   | Go-команды агента в контейнере: `test`, `race`, `vet`, `build [os] [arch]`, `release`   |
 
 **Makefile — сервер по SSH** (настройки — `.env.deploy`, образец `.env.deploy.example`;
 любое значение переопределяется в команде: `make deploy SSH_HOST=…`)
@@ -213,12 +217,14 @@ API масштабируется репликами за балансировщ�
 дедупликация, cron (ровно один процесс кластера), постановка в транзакции с данными.
 Видимые задачи имеют прогресс, лог и отмену, их изменения приходят клиенту по сокету.
 
-Внешние воркеры на любом языке выполняют очереди, объявленные `external`, по
-HTTP-протоколу `claim → heartbeat → complete | fail` под `/api/v1/worker` с API-ключом
-сервиса (scope `worker:<queue>`); файлы получают и отдают по подписанным ссылкам.
-Эталонный SDK и пример — `python/`, образ — `Dockerfile.worker-python`. Протокол —
-[python/README.md](python/README.md). Как устроены воркеры (Node и внешние), где их код и
-как добавить свою очередь (с примером) — [docs/WORKERS.md](docs/WORKERS.md).
+Очереди, объявленные `external`, выполняют **агенты** — автономные процессы на узлах,
+связанные с бэкендом протоколом ALP (`protocol/alp/v1`): WebSocket с запасным HTTP sync,
+журнал итогов на диске, работа без связи, самообновление с подписью. Агент (Go,
+`agent/`) запускает нагрузки — Python-воркеры на SDK `python/worker_sdk`; задачи
+раздаются им по свободным слотам. Образ — `Dockerfile.agent`, сервер без Docker —
+`agent/install/install.sh` (systemd). Как устроены воркеры и агенты, где их код и как
+добавить свою очередь (с примером) — [docs/WORKERS.md](docs/WORKERS.md); агент —
+[agent/README.md](agent/README.md), SDK нагрузок — [python/README.md](python/README.md).
 
 ### Build
 
@@ -325,7 +331,7 @@ TAG=v1.2.3 docker compose pull                      # или: docker compose bui
 docker compose run --rm migrate                     # одноразовый шаг миграций
 docker compose up -d                                # api + worker + Postgres + Redis + S3
 docker compose up -d --scale api=3                  # несколько реплик API
-docker compose --profile python-worker up -d        # + внешний Python-воркер
+docker compose --profile agent up -d                # + агент с Python-нагрузкой
 ENV_FILE=.env.staging docker compose up -d          # другой env-файл
 ```
 
@@ -344,8 +350,9 @@ ENV_FILE=.env.staging docker compose up -d          # другой env-файл
   `s3`/`local`), audit production-зависимостей, docker (сборка обеих целей + Trivy);
   запускается на push и pull request в `main` (ветки-примеры CI не запускают);
   на push в `main` после всех проверок — deploy.
-- **Release** (`release.yml`): по тегу `v*` на коммите из `main` — образы `api` и `worker` (amd64/arm64) в
-  GHCR.
+- **Release** (`release.yml`): по тегу `v*` на коммите из `main` — образы `api`, `worker` и `agent`
+  (amd64/arm64) в GHCR; сборки агента для самообновления в образе API подписываются секретом
+  `AGENT_SIGNING_KEY` (`agent keygen`).
 - **Deploy** (`deploy.yml`, из CI или вручную с `main`): `make deploy` на хост по SSH — сборка
   там же. Настройки — переменная репозитория `DEPLOY_ENV` (содержимое `.env.deploy`),
   ключ — секрет `SSH_PRIVATE_KEY`; без `DEPLOY_ENV` CI деплой пропускает.
