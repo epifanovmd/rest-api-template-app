@@ -16,7 +16,7 @@
 # агента — в томе /var/lib/agent (без тома агент регистрируется заново при каждом
 # старте).
 ARG PYTHON_VERSION=3.12-slim
-ARG AGENT_VERSION=1.0.0
+ARG AGENT_VERSION=1.0.1
 
 # ── Программа агента под платформу образа ────────────────────────────────────
 FROM python:${PYTHON_VERSION} AS agent-bin

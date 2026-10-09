@@ -794,8 +794,9 @@ describe("агенты (настоящий агент и воркер echo)", fu
       await call(admin, "POST", "/api/v1/jobs/demo/echo", {
         text: "работа",
         long: true,
-        steps: 8,
-        delayMs: 300,
+        // Окно busy заметно длиннее опроса /health агентом (5 с): замена точно попадает в него.
+        steps: 30,
+        delayMs: 400,
       }),
       201,
     ).data;
@@ -823,7 +824,7 @@ describe("агенты (настоящий агент и воркер echo)", fu
     const action = await socket.next(
       "agent:action",
       (a: any) => a.id === deferred.actionId,
-      30_000,
+      60_000,
     );
 
     expect(action).to.include({
