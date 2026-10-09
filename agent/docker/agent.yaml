@@ -1,0 +1,23 @@
+# Агент в контейнере (agent/docker/Dockerfile). Адрес API — AGENT_SERVER_URL, токен
+# регистрации — AGENT_ENROLL_TOKEN, имя — AGENT_NAME (по умолчанию hostname), уровень журнала —
+# AGENT_LOG_LEVEL: переменные окружения важнее файла. В контейнере воркеры всегда
+# останавливаются вместе с агентом (update.mode: external).
+dataDir: /var/lib/agent
+update:
+  mode: external
+log:
+  format: json
+workers:
+  - name: echo
+    command: ["/app/workers/echo/run"]
+    env:
+      PYTHONUNBUFFERED: "1"
+      ECHO_JOBS_DIR: /var/lib/agent/echo-jobs
+    lifecycle:
+      stopTimeout: 30s
+  # Проверка сети между узлами: сборка с GitHub Release агента (Dockerfile). ICMP без прав —
+  # ping-сокет или команда ping, иначе TCP до порта цели.
+  - name: netprobe
+    command: ["/usr/local/bin/netprobe"]
+    lifecycle:
+      stopTimeout: 10s

@@ -3,7 +3,7 @@
 Общие принципы, архитектура и правила — в корневых документах (`ARCHITECTURE.md`,
 `MODULE-CHEATSHEET.md`, `CONVENTIONS.md`, `CLEAN-CODE.md`, `DESIGN-PRINCIPLES.md`).
 Здесь — проектная конкретика; обновлять свободно. Описывает ветку `main` (базовая платформа);
-предметные примеры — ветки `example/workspaces`, `example/messenger` (у каждой свой `project_example.md`).
+предметные примеры — в ветках-примерах этого шаблона (`example/*`).
 
 ## User
 
@@ -28,7 +28,7 @@
 
 ## Project — Patterns (эталоны)
 
-- [project_patterns.md](project_patterns.md) — эталоны main (gen:module, api-key, ошибки, пагинация, задачи/outbox/cron/external, хранилище, схемы auth, права, e2e), точки расширения для модулей веток (`*.socket-events.ts`, profile relations, `<feature>.config.ts`, письма, права), скелет теста, проектные gotcha
+- [project_patterns.md](project_patterns.md) — эталоны main (в т.ч. «Агенты: проверенные gotcha») (gen:module, api-key, ошибки, пагинация, задачи/outbox/cron/external, хранилище, схемы auth, права, e2e), точки расширения для модулей веток (`*.socket-events.ts`, profile relations, `<feature>.config.ts`, письма, права), скелет теста, проектные gotcha
 
 ## Feedback
 

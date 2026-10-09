@@ -80,7 +80,7 @@ export class SocketBootstrap implements IBootstrap {
       // Срок access-токена: auth:expired → auth:refresh или разрыв
       this.authMiddleware.watch(socket);
 
-      // Комнаты модулей (чаты, пространства) — до доменных хендлеров,
+      // Комнаты модулей — до доменных хендлеров,
       // чтобы сокет уже получал события; при reconnect восстанавливаются.
       const rooms = await Promise.allSettled(
         this.roomProviders.map(provider => provider.rooms(user.userId)),

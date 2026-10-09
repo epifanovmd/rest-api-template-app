@@ -79,6 +79,7 @@ export const createMockEventBus = () => ({
 export const createMockEmitter = () => ({
   toUser: sinon.stub(),
   toRoom: sinon.stub(),
+  toRooms: sinon.stub(),
   broadcast: sinon.stub(),
   joinRoom: sinon.stub(),
   leaveRoom: sinon.stub(),

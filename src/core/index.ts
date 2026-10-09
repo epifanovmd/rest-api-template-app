@@ -17,3 +17,4 @@ export * from "./redis";
 export * from "./repository";
 export * from "./routing";
 export * from "./storage";
+export * from "./worker-requests";

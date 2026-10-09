@@ -5,6 +5,7 @@ import sinon from "sinon";
 
 import { HttpException } from "../../core";
 import { createMockJobQueue, uuid, uuid2 } from "../../test/helpers";
+import { JobRunViews } from "./job-run.views";
 import { JobsError } from "./jobs.errors";
 import { JobsService } from "./jobs.service";
 import { EJobRunStatus } from "./jobs.types";
@@ -59,9 +60,13 @@ describe("JobsService", () => {
       canAccess: sinon.stub().resolves(false),
     };
     waiter = { wait: sinon.stub().resolves(null) };
-    service = new JobsService(runs as any, jobQueue as any, waiter as any, [
-      policy,
-    ]);
+    service = new JobsService(
+      runs as any,
+      jobQueue as any,
+      waiter as any,
+      new JobRunViews(),
+      [policy],
+    );
   });
 
   describe("list", () => {
@@ -232,14 +237,14 @@ describe("JobsService", () => {
 
     const result = await service.enqueueDemoEcho(owner, {
       text: "ping",
-      withOutput: true,
+      steps: 2,
     });
 
     expect(result).to.deep.equal({ jobId: "job-42" });
     expect(jobQueue.enqueue.firstCall.args).to.deep.equal([
       "demo.echo",
-      { text: "ping", withOutput: true },
-      { ownerId: owner.userId, title: "Проверка воркера: demo.echo" },
+      { text: "ping", steps: 2 },
+      { ownerId: owner.userId, title: "Проверка агента: demo.echo" },
     ]);
   });
 });

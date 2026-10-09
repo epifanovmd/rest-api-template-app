@@ -2,8 +2,8 @@
 # Дамп базы PostgreSQL из docker-контейнера (локально или на сервере по SSH)
 # в файл формата custom (-Fc) — его читает restore_dump_db.sh.
 #
-#   ./dump_db.sh --container ml-labeling-postgres --user labeling --db labeling
-#   ./dump_db.sh --host root@1.2.3.4 --container app-postgres-1 --user postgres --db labeling \
+#   ./dump_db.sh --container app-postgres-1 --user postgres --db app
+#   ./dump_db.sh --host root@1.2.3.4 --container app-postgres-1 --user postgres --db app \
 #     --out ./prod.dump
 #
 # Параметры (или переменные окружения):

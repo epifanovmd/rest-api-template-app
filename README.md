@@ -6,17 +6,10 @@
 воркерами, хранилище файлов по подписанным ссылкам и событийная модель между модулями.
 
 Главная ветка — платформа без предметной области: пользователи и доступ, сессии,
-2FA, биометрия и passkeys, профиль, файлы, задачи и внешние воркеры, почта, аудит,
-API-ключи, реальное время. Предметные примеры — в ветках-примерах (главная ветка +
-модули примера и их миграции):
-
-| Ветка                | Что добавляет                                                           |
-| -------------------- | ----------------------------------------------------------------------- |
-| `example/workspaces` | рабочие пространства: участники с ролями, приглашения, доступ по роли   |
-| `example/messenger`  | мессенджер: контакты, чаты, сообщения, опросы, звонки, push, боты, sync |
-
-Новый проект начинается с главной ветки или с подходящего примера; исправления
-общего кода делаются в главной ветке и вливаются в примеры.
+2FA, биометрия и passkeys, профиль, файлы, задачи и агенты, почта, аудит,
+API-ключи, реальное время. Предметные примеры — в ветках-примерах этого шаблона
+(`example/*`): главная ветка плюс модули примера и их миграции. Новый проект
+начинается с главной ветки или с подходящего примера.
 
 **Эта ветка — `example/workspaces`:** модуль `workspace` (пространства, участники с
 ролями owner ⊃ admin ⊃ editor ⊃ viewer, приглашения по email, `@WorkspaceRole`,
@@ -38,7 +31,7 @@ API-ключи, реальное время. Предметные примеры
 - Nodemailer + EJS (письма по локалям), sharp + ffmpeg (обработка медиа)
 - Mocha + Chai + Sinon (юнит- и e2e-тесты)
 - tsc (сборка), lefthook (git-хуки), ESLint 10 flat config + Prettier 3
-- Python SDK внешних воркеров (`python/`)
+- Агенты: агент и серверный SDK [github.com/epifanovmd/agent](https://github.com/epifanovmd/agent) — `agent-sdk` (Node); воркеры — HTTP-сервисы без SDK
 
 ### Architecture
 
@@ -62,7 +55,7 @@ src/
     <feature>/       ← entity · repository · service · controller · dto · validation · events · errors · jobs · module
 templates/           ← ассеты рантайма вне кода (шаблоны писем по локалям); путь — от корня проекта
 test/e2e/            ← интеграционный набор
-python/              ← SDK и пример внешнего воркера
+agent/               ← всё про агента на узлах: воркеры проекта, их сборки, локальный запуск, образ (agent/README.md)
 scripts/             ← генератор модуля
 ```
 
@@ -74,7 +67,8 @@ scripts/             ← генератор модуля
 - правила написания кода — [CONVENTIONS.md](CONVENTIONS.md);
 - принципы проектирования — [CLEAN-CODE.md](CLEAN-CODE.md) и
   [DESIGN-PRINCIPLES.md](DESIGN-PRINCIPLES.md);
-- протокол внешних воркеров — [python/README.md](python/README.md).
+- агенты, своя очередь и воркер — [src/modules/agent/README.md](src/modules/agent/README.md);
+  формат сообщений агентов — [sdk/spec/README.md](https://github.com/epifanovmd/agent/blob/main/sdk/spec/README.md).
 
 Документация описывает общие принципы и не содержит описания конкретных модулей,
 сущностей и эндпоинтов — они описаны в `README.md` каждого модуля. Документация
@@ -161,27 +155,41 @@ Swagger UI — `/api-docs` (в production — по `API_DOCS_ENABLED`). Сист
 | `yarn migration:run` / `migration:revert`      | применить ожидающие миграции / откатить последнюю |
 | `yarn migration:run:prod`                      | применить миграции из `build/` (в контейнере)     |
 
-**Внешний Python-воркер на этой машине** — долгоживущий процесс: пока он работает,
-сам забирает задачи своих очередей по протоколу `/api/v1/worker`. Ключ —
-`WORKER_API_KEY` в `.env.development` (scope `worker:<очередь>`), адрес API —
-`http://localhost:$SERVER_PORT`.
+**Агент на этой машине** — агент ([github.com/epifanovmd/agent](https://github.com/epifanovmd/agent))
+с воркерами из `agent/local/agent.yaml`: `echo` (воркер проекта из `agent/workers/echo`,
+Python на стандартной библиотеке) и `netprobe` (проверка сети, из сборок агента).
+Регистрируется `AGENT_BOOTSTRAP_TOKEN` из `.env.development` (тот же токен у API), адрес
+API — `http://localhost:$SERVER_PORT`. Программа агента — `AGENT_BIN`, `.agent/bin/agent` или
+сборки агента версии `agent-sdk` в `agent/dist/` (нет — скачивается с GitHub). Бэкенд берёт
+агента для узлов из релизов GitHub сам (`AGENT_RELEASES_*`) и замечает новые версии — ради
+новой версии агента его не пересобирают. Как агент и воркеры попадают на узлы —
+[agent/README.md](agent/README.md).
 
-| Команда                      | Что делает                                                                                                              |
-| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| `yarn worker:setup`          | создать окружение `.venv` и поставить SDK (один раз)                                                                    |
-| `yarn worker [файл]`         | воркер на переднем плане (Ctrl+C — остановка); по умолчанию пример `demo.echo`                                          |
-| `yarn worker:start [файл]`   | тот же воркер в фоне (pid и журнал — `.worker/`)                                                                        |
-| `yarn worker:stop [--force]` | остановить фоновый: новые задачи не берёт, текущую дорабатывает (до 30 с); `--force` — сразу, задача вернётся в очередь |
-| `yarn worker:status`         | запущен ли фоновый воркер                                                                                               |
-| `yarn worker:logs`           | журнал фонового воркера                                                                                                 |
+| Команда                     | Что делает                                                                                 |
+| --------------------------- | ------------------------------------------------------------------------------------------ |
+| `yarn agent`                | агент на переднем плане (Ctrl+C — остановка агента и воркеров)                             |
+| `yarn agent:start`          | то же в фоне (данные, pid и журнал — `.agent/`; другой агент — `AGENT_DIR=… AGENT_NAME=…`) |
+| `yarn agent:stop [--force]` | остановить агента и воркеры; `--force` — сразу                                             |
+| `yarn agent:status`         | запущен ли агент                                                                           |
+| `yarn agent:logs`           | журнал агента и его воркеров                                                               |
+| `yarn agent:release`        | собрать воркеры проекта в `agent/release` (`AGENT_RELEASES_DIR`)                           |
+| `yarn agent:fetch`          | скачать сборки агента с GitHub в `agent/dist/` (агент на этой машине, e2e)                 |
 
 **Makefile — сервер по SSH** (настройки — `.env.deploy`, образец `.env.deploy.example`;
 любое значение переопределяется в команде: `make deploy SSH_HOST=…`)
 
+Обычная выкладка — push в `main`: CI проверяет код, собирает образы (воркеры проекта
+подписаны ключом из секрета `AGENT_SIGNING_KEY`), отправляет их в ghcr с тегом коммита и
+запускает на хосте `make release TAG=<sha>`; после выкладки `latest` указывает на этот
+коммит. Хост только скачивает образы. Откат — `make release TAG=<sha прошлого коммита>`
+или ручной запуск workflow Deploy с этим тегом. `make deploy` (сборка на хосте) — запасной
+путь без CI; воркеры проекта в нём подписаны, только если на хосте есть файл ключа
+(`AGENT_SIGNING_KEY_FILE`).
+
 | Команда                            | Что делает                                                                           |
 | ---------------------------------- | ------------------------------------------------------------------------------------ |
 | `make deploy`                      | исходники на хост, сборка образов там же, миграции, запуск (`sync build migrate up`) |
-| `make release TAG=v1.2.3`          | готовые образы из registry: compose-файлы, `pull`, миграции, запуск                  |
+| `make release TAG=<sha>`           | готовые образы из ghcr: compose-файлы, `pull`, миграции, запуск                      |
 | `make env`                         | секреты приложения (`ENV_FILE`, по умолчанию `.env.production`) на хост              |
 | `make sync` / `compose`            | исходники (rsync, кроме `.deployignore`) / только compose-файлы на хост              |
 | `make build` / `pull`              | собрать образы на хосте / скачать из registry                                        |
@@ -218,12 +226,19 @@ API масштабируется репликами за балансировщ�
 дедупликация, cron (ровно один процесс кластера), постановка в транзакции с данными.
 Видимые задачи имеют прогресс, лог и отмену, их изменения приходят клиенту по сокету.
 
-Внешние воркеры на любом языке выполняют очереди, объявленные `external`, по
-HTTP-протоколу `claim → heartbeat → complete | fail` под `/api/v1/worker` с API-ключом
-сервиса (scope `worker:<queue>`); файлы получают и отдают по подписанным ссылкам.
-Эталонный SDK и пример — `python/`, образ — `Dockerfile.worker-python`. Протокол —
-[python/README.md](python/README.md). Как устроены воркеры (Node и внешние), где их код и
-как добавить свою очередь (с примером) — [docs/WORKERS.md](docs/WORKERS.md).
+Очереди, объявленные `external`, выполняют **воркеры агентов**. Агент — программа на узле
+([github.com/epifanovmd/agent](https://github.com/epifanovmd/agent)): соединение открывает
+он сам (WebSocket), важные сообщения хранит на диске до подтверждения, работает без
+связи, запускает воркеры — обычные HTTP-сервисы на unix-сокете на любом языке, без SDK.
+Сторону сервера ведёт `agent-sdk` (модуль `agent`): хранилище агентов и настроек в
+Postgres, регистрация по токенам, запросы к воркерам, настройки, метрики, события,
+наблюдение, раздача сборок агента и обновление; задача очереди передаётся воркеру сразу после
+постановки как задача его типа (`POST /jobs`): быстрая — итог в ответе, долгая — ход и
+итог событиями. Несколько реплик API пересылают вызовы агентов друг другу
+(`AGENT_RELAY_SECRET`). Образ агента с воркером проекта — `agent/docker/Dockerfile`. Как
+агент и воркеры попадают на узлы — [agent/README.md](agent/README.md); как устроено и
+как добавить свою очередь — [src/modules/agent/README.md](src/modules/agent/README.md);
+формат сообщений — [sdk/spec/README.md](https://github.com/epifanovmd/agent/blob/main/sdk/spec/README.md).
 
 ### Build
 
@@ -263,6 +278,7 @@ pre-commit (lefthook): prettier и eslint по staged-файлам, typecheck, �
 
 ```sh
 docker compose -f docker-compose.dev.yml up -d
+yarn agent:fetch     # скачать сборки агента с GitHub в agent/dist (один раз на версию agent-sdk)
 yarn test:e2e
 ```
 
@@ -272,7 +288,9 @@ Postgres, Redis, Mailpit и S3 и прогоняет сценарии всех �
 (только с `e2e`/`test` в имени) и очищает отдельную базу Redis (не `0`). Последний
 тест проверяет, что вызван каждый эндпоинт спецификации. Параметры — переменные
 `E2E_*` (по умолчанию — сервисы `docker-compose.dev.yml`), драйвер хранилища —
-`E2E_STORAGE_DRIVER=s3|local`.
+`E2E_STORAGE_DRIVER=s3|local`. В GitHub сервер стенда не ходит: агента и `netprobe` он
+берёт с локального сервера сборок (файлы `agent/dist`), воркеры проекта стенд
+собирает сам (`agent/release.sh`, нужен Go или Docker) и подписывает своим ключом.
 
 ### Codegen
 
@@ -307,7 +325,7 @@ yarn migration:revert                           # откатить послед�
 Схема БД живёт только в миграциях: автосинхронизации нет ни в одном окружении.
 Сущности регистрируются в `@Module({ entities })` — DataSource собирает их из дерева
 модулей, без поиска файлов по маске. Новая миграция добавляется в
-`src/migrations/index.ts`. Пока проект не выпущен, схема собрана в одну начальную
+`src/migrations/index.ts`. Пока проект не запущен в работу, схема собрана в одну начальную
 миграцию; каждое следующее изменение — новая миграция. CI проверяет, что миграции
 применяются на чистую БД и что сущности не разошлись со схемой.
 `DB_MIGRATIONS_RUN=false` — миграции отдельным шагом (`yarn migration:run:prod`),
@@ -330,7 +348,7 @@ TAG=v1.2.3 docker compose pull                      # или: docker compose bui
 docker compose run --rm migrate                     # одноразовый шаг миграций
 docker compose up -d                                # api + worker + Postgres + Redis + S3
 docker compose up -d --scale api=3                  # несколько реплик API
-docker compose --profile python-worker up -d        # + внешний Python-воркер
+docker compose --profile agent up -d                # + агент с воркерами echo и netprobe
 ENV_FILE=.env.staging docker compose up -d          # другой env-файл
 ```
 
@@ -349,8 +367,10 @@ ENV_FILE=.env.staging docker compose up -d          # другой env-файл
   `s3`/`local`), audit production-зависимостей, docker (сборка обеих целей + Trivy);
   запускается на push и pull request в `main` (ветки-примеры CI не запускают);
   на push в `main` после всех проверок — deploy.
-- **Release** (`release.yml`): по тегу `v*` на коммите из `main` — образы `api` и `worker` (amd64/arm64) в
-  GHCR.
+- **Release** (`release.yml`): по тегу `v*` на коммите из `main` — образы `api`, `worker` и `agent`
+  (amd64/arm64) в GHCR; образ API собирает и раздаёт сборки воркеров проекта (`agent/release.sh`;
+  подпись — секрет `AGENT_SIGNING_KEY` и переменная `AGENT_UPDATE_PUBLIC_KEY`), агента узлы
+  получают из релизов GitHub.
 - **Deploy** (`deploy.yml`, из CI или вручную с `main`): `make deploy` на хост по SSH — сборка
   там же. Настройки — переменная репозитория `DEPLOY_ENV` (содержимое `.env.deploy`),
   ключ — секрет `SSH_PRIVATE_KEY`; без `DEPLOY_ENV` CI деплой пропускает.

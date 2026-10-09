@@ -7,7 +7,7 @@ import {
   UpdateDateColumn,
 } from "typeorm";
 
-import { EJobRunStatus, IJobRunError, IJobRunFiles } from "./jobs.types";
+import { EJobRunStatus, IJobRunError, IJobRunOutput } from "./jobs.types";
 
 /**
  * Видимая задача: статус, прогресс, хвост лога и отмена. Сама задача живёт в
@@ -18,6 +18,9 @@ import { EJobRunStatus, IJobRunError, IJobRunFiles } from "./jobs.types";
 @Index("IDX_JOB_RUNS_OWNER_CREATED", ["ownerId", "createdAt"])
 @Index("IDX_JOB_RUNS_SCOPE_CREATED", ["scopeType", "scopeId", "createdAt"])
 @Index("IDX_JOB_RUNS_STATUS_LEASE", ["status", "leaseUntil"])
+@Index("IDX_JOB_RUNS_AGENT_STATUS", ["agentId", "status"])
+@Index("IDX_JOB_RUNS_EXTERNAL", ["agentId", "externalId"])
+@Index("IDX_JOB_RUNS_STATUS_DEADLINE", ["status", "deadlineAt"])
 export class JobRun {
   @PrimaryColumn({ type: "uuid" })
   id!: string;
@@ -67,31 +70,37 @@ export class JobRun {
   @Column({ type: "int", default: 0 })
   attempt!: number;
 
-  /** Запрошена отмена: воркер узнаёт через NOTIFY, опрос или heartbeat. */
+  /** Запрошена отмена: исполнитель узнаёт сигналом (NOTIFY) или опросом. */
   @Column({ name: "cancel_requested", type: "boolean", default: false })
   cancelRequested!: boolean;
 
-  /**
-   * Запрошена штатная досрочная остановка внешней задачи: воркер узнаёт из
-   * heartbeat, доводит шаг и сдаёт результат.
-   */
-  @Column({ name: "stop_requested", type: "boolean", default: false })
-  stopRequested!: boolean;
-
-  /**
-   * Номер последнего принятого события внешнего воркера в текущей попытке:
-   * повторно присланные (ответ heartbeat потерялся) отбрасываются.
-   */
-  @Column({ name: "event_seq", type: "int", default: 0 })
-  eventSeq!: number;
-
-  /** До какого момента воркер держит задачу; дальше её забирает reaper. */
+  /** До какого момента Node-воркер держит задачу; дальше её забирает reaper. */
   @Column({ name: "lease_until", type: "timestamptz", nullable: true })
   leaseUntil!: Date | null;
 
-  /** Файлы внешней задачи (ключи хранилища). */
+  /** Агент, у воркера которого выполняется внешняя задача. */
+  @Column({ name: "agent_id", type: "varchar", length: 64, nullable: true })
+  agentId!: string | null;
+
+  /** Воркер агента, выполняющий внешнюю задачу. */
+  @Column({ type: "varchar", length: 32, nullable: true })
+  worker!: string | null;
+
+  /** Тип задачи воркера внешней задачи (`echo.long`). */
+  @Column({ name: "job_type", type: "varchar", length: 64, nullable: true })
+  jobType!: string | null;
+
+  /** Файлы итога внешней задачи: имя, ключ хранилища, размер. */
   @Column({ type: "jsonb", nullable: true })
-  files!: IJobRunFiles | null;
+  outputs!: IJobRunOutput[] | null;
+
+  /** Id задачи у воркера (ответ `202 { id }`; у быстрой задачи — id записи). */
+  @Column({ name: "external_id", type: "varchar", length: 128, nullable: true })
+  externalId!: string | null;
+
+  /** Срок внешней задачи: не закончилась к нему — провал `JOB_TIMEOUT`. */
+  @Column({ name: "deadline_at", type: "timestamptz", nullable: true })
+  deadlineAt!: Date | null;
 
   @Column({ name: "started_at", type: "timestamptz", nullable: true })
   startedAt!: Date | null;

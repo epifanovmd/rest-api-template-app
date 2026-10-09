@@ -1,16 +1,28 @@
 name: Deploy
 
-# Сборка и запуск на хосте по SSH (make deploy): из CI после проверок main
-# или вручную. Настройки — переменная репозитория DEPLOY_ENV (содержимое
+# Запуск готовых образов коммита из ghcr на хосте по SSH (make release): из CI
+# после проверок main (образы собирает и подписывает CI) или вручную с тегом
+# (коммит, уже собранный CI). На хосте ничего не собирается. Настройки — переменная репозитория DEPLOY_ENV (содержимое
 # .env.deploy), ключ — секрет SSH_PRIVATE_KEY. Секреты приложения — секрет
 # PRODUCTION_ENV (содержимое .env.production): кладётся на хост при каждом
 # деплое; без него используется файл, уже лежащий на хосте (make env).
 on:
   workflow_call:
+    inputs:
+      tag:
+        description: Тег образов в ghcr (полный sha коммита)
+        type: string
+        required: true
   workflow_dispatch:
+    inputs:
+      tag:
+        description: Тег образов в ghcr (полный sha коммита); пусто — текущий коммит
+        type: string
+        required: false
 
 permissions:
   contents: read
+  packages: write
 
 jobs:
   deploy:
@@ -52,9 +64,9 @@ jobs:
           [ -n "$keys" ] || { echo "::error::Хост $host не отвечает"; exit 1; }
           echo "$keys" >> ~/.ssh/known_hosts
 
-      - name: Исходники на хост
+      - name: Compose-файлы на хост
         run: |
-          for i in 1 2 3; do make sync && exit 0; sleep 10; done
+          for i in 1 2 3; do make compose && exit 0; sleep 10; done
           exit 1
 
       - name: Секреты приложения на хост
@@ -70,5 +82,21 @@ jobs:
           ( umask 077 && printf '%s\n' "$PRODUCTION_ENV" | tr -d '\r' > "$env_file" )
           make env
 
-      - name: Сборка, миграции, запуск
-        run: make build migrate up
+      - name: Образы, миграции, запуск
+        run: make release TAG="${{ inputs.tag || github.sha }}"
+
+      # latest — последний выложенный коммит (для make release без TAG).
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/setup-buildx-action@v3
+      - name: latest — на выложенный коммит
+        env:
+          IMAGE: ghcr.io/${{ github.repository }}
+          TAG: ${{ inputs.tag || github.sha }}
+        run: |
+          for suffix in "" -api -agent; do
+            docker buildx imagetools create -t "$IMAGE:latest$suffix" "$IMAGE:$TAG$suffix"
+          done

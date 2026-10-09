@@ -185,20 +185,20 @@ describe("платформа", () => {
     });
   });
 
-  describe("задачи и внешние воркеры", () => {
-    it("API-ключ: выдаётся один раз, отзыв; схема apiKey", async () => {
+  describe("задачи", () => {
+    it("API-ключ: выдаётся один раз, отзыв", async () => {
       expectStatus(
         await call(alice, "POST", "/api/v1/api-keys", {
           name: "x",
-          scopes: ["worker:*"],
+          scopes: ["integration:*"],
         }),
         403,
       );
 
       const created = expectStatus(
         await call(admin, "POST", "/api/v1/api-keys", {
-          name: "echo-worker",
-          scopes: ["worker:demo.echo"],
+          name: "integration",
+          scopes: ["integration:read"],
         }),
         201,
       );
@@ -212,214 +212,27 @@ describe("платформа", () => {
       );
 
       expect(JSON.stringify(list.data)).to.not.include(key.split(".")[1]);
-
-      // Внешний воркер: claim → heartbeat → complete
-      const job = expectStatus(
-        await call(admin, "POST", "/api/v1/jobs/demo/echo", {
-          text: "привет",
-          withOutput: true,
-        }),
-        201,
-      );
-      const claimed = await eventually(
-        async () => {
-          const res = await call(
-            key,
-            "POST",
-            "/api/v1/worker/jobs/claim",
-            {
-              queues: ["demo.echo"],
-              max: 1,
-              waitSeconds: 1,
-              worker: { name: "e2e-echo:1", meta: { device: "cpu" } },
-            },
-            { scheme: "ApiKey" },
-          );
-
-          return items(res.data).length || res.data?.length
-            ? (res.data.items ?? res.data)[0]
-            : undefined;
-        },
-        { what: "claim задачи воркером" },
-      );
-
-      expect(claimed.jobId).to.equal(job.data.jobId);
-
-      // Статус воркеров: echo-воркер на связи по своей очереди.
-      const status = expectStatus(
-        await call(alice, "GET", "/api/v1/worker/status"),
-        200,
-      );
-      const echo = status.data.find((q: any) => q.queue === "demo.echo");
-
-      expect(echo.online).to.equal(true);
-      expect(echo.workers.map((w: any) => w.name)).to.include("e2e-echo:1");
-      expect(claimed.data.text).to.equal("привет");
-      expect(claimed.outputs.echo, "подписанная ссылка для результата").to.be.a(
-        "string",
-      );
-
-      const beat = expectStatus(
-        await call(
-          key,
-          "POST",
-          `/api/v1/worker/jobs/${claimed.jobId}/heartbeat`,
-          { progress: 0.5, text: "половина", log: ["работаю"] },
-          { scheme: "ApiKey" },
-        ),
-        200,
-      );
-
-      expect(beat.data.cancel).to.equal(false);
-
-      // Сигналы задачи без ожидания: ничего не запрошено.
-      const quiet = expectStatus(
-        await call(
-          key,
-          "POST",
-          `/api/v1/worker/jobs/${claimed.jobId}/signal`,
-          { waitSeconds: 0 },
-          { scheme: "ApiKey" },
-        ),
-        200,
-      );
-
-      expect(quiet.data).to.deep.equal({ cancel: false, stop: false });
-
-      const running = expectStatus(
-        await call(admin, "GET", `/api/v1/jobs/${claimed.jobId}`),
-        200,
-      );
-
-      expect(running.data.progress).to.equal(0.5);
-
-      const out = await fetch(claimed.outputs.echo, {
-        method: "PUT",
-        headers: {
-          "content-type": claimed.outputContentTypes?.echo ?? "text/plain",
-        },
-        body: "привет",
-      });
-
-      expect(out.status).to.be.oneOf([200, 201, 204]);
-
-      // Клиент ждёт итога long-poll: ответ приходит в момент завершения.
-      const waitStarted = Date.now();
-      const waitingResult = call(
-        admin,
-        "GET",
-        `/api/v1/jobs/${claimed.jobId}?waitSeconds=20`,
-      );
-
-      await new Promise(resolve => setTimeout(resolve, 300));
       expectStatus(
         await call(
-          key,
+          admin,
           "POST",
-          `/api/v1/worker/jobs/${claimed.jobId}/complete`,
-          { result: { echo: "привет" } },
-          { scheme: "ApiKey" },
+          `/api/v1/api-keys/${created.data.apiKey.id}/revoke`,
         ),
         204,
       );
+    });
 
-      const done = expectStatus(await waitingResult, 200).data;
-
-      expect(done.status).to.equal("completed");
-      expect(done.result.echo).to.equal("привет");
-      expect(Date.now() - waitStarted, "итог пришёл сразу").to.be.below(5_000);
-      expectStatus(await call(admin, "GET", "/api/v1/jobs?limit=5"), 200);
-
-      // Ошибка без повтора → failed
-      const failing = expectStatus(
-        await call(admin, "POST", "/api/v1/jobs/demo/echo", { text: "fail" }),
-        201,
-      );
-      const second = await eventually(
-        async () => {
-          const res = await call(
-            key,
-            "POST",
-            "/api/v1/worker/jobs/claim",
-            { queues: ["demo.echo"], max: 1, waitSeconds: 1 },
-            { scheme: "ApiKey" },
-          );
-
-          return (res.data?.items ?? res.data ?? [])[0];
-        },
-        { what: "claim второй задачи" },
-      );
-
-      expect(second.jobId).to.equal(failing.data.jobId);
-      expectStatus(
-        await call(
-          key,
-          "POST",
-          `/api/v1/worker/jobs/${second.jobId}/fail`,
-          { code: "BAD_INPUT", message: "не могу", retryable: false },
-          { scheme: "ApiKey" },
-        ),
-        204,
-      );
-      await eventually(
-        async () => {
-          const res = await call(admin, "GET", `/api/v1/jobs/${second.jobId}`);
-
-          return res.data?.status === "failed";
-        },
-        { what: "провал задачи" },
-      );
-
-      // Отмена выполняющейся задачи доходит до воркера сразу (long-poll сигналов).
-      const signalled = expectStatus(
-        await call(admin, "POST", "/api/v1/jobs/demo/echo", { text: "signal" }),
-        201,
-      );
-      const third = await eventually(
-        async () => {
-          const res = await call(
-            key,
-            "POST",
-            "/api/v1/worker/jobs/claim",
-            { queues: ["demo.echo"], max: 1, waitSeconds: 1 },
-            { scheme: "ApiKey" },
-          );
-
-          return (res.data?.items ?? res.data ?? [])[0];
-        },
-        { what: "claim задачи для сигнала" },
-      );
-
-      expect(third.jobId).to.equal(signalled.data.jobId);
-
-      const signalStarted = Date.now();
-      const waiting = call(
-        key,
-        "POST",
-        `/api/v1/worker/jobs/${third.jobId}/signal`,
-        { waitSeconds: 20 },
-        { scheme: "ApiKey" },
-      );
-
-      await new Promise(resolve => setTimeout(resolve, 300));
-      expectStatus(
-        await call(admin, "POST", `/api/v1/jobs/${third.jobId}/cancel`),
-        204,
-      );
-
-      const signal = expectStatus(await waiting, 200);
-
-      expect(signal.data.cancel).to.equal(true);
-      expect(Date.now() - signalStarted, "отмена пришла сразу").to.be.below(
-        5_000,
-      );
-
-      // Отмена ждущей задачи и чужой ключ
+    it("внешняя задача без агента ждёт в очереди; отмена ждущей; чужому не видна", async () => {
       const cancelled = expectStatus(
         await call(admin, "POST", "/api/v1/jobs/demo/echo", { text: "cancel" }),
         201,
       );
+      const queued = expectStatus(
+        await call(admin, "GET", `/api/v1/jobs/${cancelled.data.jobId}`),
+        200,
+      );
 
+      expect(queued.data.status).to.equal("queued");
       expectStatus(
         await call(
           admin,
@@ -432,36 +245,7 @@ describe("платформа", () => {
         await call(bob, "GET", `/api/v1/jobs/${cancelled.data.jobId}`),
         [403, 404],
       );
-      expectStatus(
-        await call(
-          key,
-          "POST",
-          "/api/v1/worker/jobs/claim",
-          { queues: ["file.process"], max: 1 },
-          { scheme: "ApiKey" },
-        ),
-        400,
-        "JOB_NOT_EXTERNAL",
-      );
-
-      expectStatus(
-        await call(
-          admin,
-          "POST",
-          `/api/v1/api-keys/${created.data.apiKey.id}/revoke`,
-        ),
-        204,
-      );
-      expectStatus(
-        await call(
-          key,
-          "POST",
-          "/api/v1/worker/jobs/claim",
-          { queues: ["demo.echo"] },
-          { scheme: "ApiKey" },
-        ),
-        401,
-      );
+      expectStatus(await call(admin, "GET", "/api/v1/jobs?limit=5"), 200);
     });
   });
 
