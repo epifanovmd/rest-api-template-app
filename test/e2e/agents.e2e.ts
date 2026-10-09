@@ -806,6 +806,17 @@ describe("агенты (настоящий агент и воркер echo)", fu
       201,
     ).data;
 
+    // Задача именно этого теста уже идёт (есть ход), и агент видит воркер занятым: busy в
+    // статусе мог остаться от прошлой задачи, пока агент снова не опросил /health.
+    await eventually(
+      async () => {
+        const job = (await call(admin, "GET", `/api/v1/jobs/${long.jobId}`))
+          .data;
+
+        return job?.status === "running" && (job?.progress ?? 0) > 0;
+      },
+      { what: "задача идёт (есть ход)", timeoutMs: 20_000 },
+    );
     await eventually(
       async () => worker(await getAgent(), "echo").health?.busy === true,
       { what: "воркер занят (health.busy)" },
