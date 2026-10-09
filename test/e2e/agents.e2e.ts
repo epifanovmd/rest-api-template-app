@@ -12,6 +12,7 @@ import {
 } from "./client";
 import {
   AGENT_BOOTSTRAP_TOKEN,
+  AGENT_VERSION,
   BASE_URL,
   readStored,
   RELAY_URL,
@@ -148,7 +149,11 @@ describe("агенты (настоящий агент и воркер echo)", fu
       { what: "воркер echo зарегистрирован", timeoutMs: 20_000 },
     );
 
-    expect(card).to.include({ online: true, revoked: false, version: "1.0.0" });
+    expect(card).to.include({
+      online: true,
+      revoked: false,
+      version: AGENT_VERSION,
+    });
     expect(card.host.os).to.be.a("string");
     expect(worker(card, "sysmetrics")).to.include({ builtin: true });
 
@@ -895,7 +900,7 @@ describe("агенты (настоящий агент и воркер echo)", fu
       200,
     ).data;
 
-    expect(release.manifest.version).to.equal("1.0.0");
+    expect(release.manifest.version).to.equal(AGENT_VERSION);
     expect(release.manifest.workers.map((w: any) => w.name)).to.include(
       "netprobe",
     );

@@ -1,4 +1,5 @@
 import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { SDK_VERSION } from "agent-sdk";
 import { ChildProcess, spawn } from "child_process";
 import { once } from "events";
 import { readFile } from "fs/promises";
@@ -37,15 +38,23 @@ export const E2E = {
   admin: { email: "admin@e2e.local", password: "admin-e2e-password" },
 };
 
-const freePort = async (): Promise<number> => {
-  const server = createServer().listen(0);
+/**
+ * Свободные порты, все разные: слушатели держатся, пока не выбраны все, —
+ * иначе два вызова подряд могут получить один и тот же порт.
+ */
+const freePorts = async (count: number): Promise<number[]> => {
+  const servers = Array.from({ length: count }, () => createServer().listen(0));
 
-  await once(server, "listening");
-  const { port } = server.address() as { port: number };
+  await Promise.all(servers.map(server => once(server, "listening")));
+  const ports = servers.map(
+    server => (server.address() as { port: number }).port,
+  );
 
-  server.close();
+  await Promise.all(
+    servers.map(server => new Promise(done => server.close(done))),
+  );
 
-  return port;
+  return ports;
 };
 
 /**
@@ -114,6 +123,9 @@ export const readStored = async (key: string): Promise<string> => {
 };
 
 /** Агенты стенда: общий токен регистрации. */
+/** Версия агента в выпуске — та же, что у agent-sdk. */
+export const AGENT_VERSION = SDK_VERSION;
+
 export const AGENT_BOOTSTRAP_TOKEN = "e2e-bootstrap-token-0123456789abcdef0123";
 
 /** Общий секрет копий API: вызовы агентов пересылаются между ними. */
@@ -210,8 +222,7 @@ export const startServer = async (): Promise<void> => {
   await resetDatabase();
   await resetRedis();
 
-  const port = await freePort();
-  const relayPort = await freePort();
+  const [port, relayPort] = await freePorts(2);
 
   BASE_URL = `http://127.0.0.1:${port}`;
   RELAY_URL = `http://127.0.0.1:${relayPort}`;
@@ -224,8 +235,7 @@ export const startPeerServer = async (): Promise<{
   relayUrl: string;
   stop: () => Promise<void>;
 }> => {
-  const port = await freePort();
-  const relayPort = await freePort();
+  const [port, relayPort] = await freePorts(2);
   const child = await spawnServer(port, relayPort);
 
   return {

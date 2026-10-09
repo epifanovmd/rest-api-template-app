@@ -11,7 +11,7 @@ import {
   signInAdmin,
   signUp,
 } from "./client";
-import { AGENT_BOOTSTRAP_TOKEN } from "./harness";
+import { AGENT_BOOTSTRAP_TOKEN, AGENT_VERSION } from "./harness";
 import { connectSocket, TestSocket } from "./socket";
 
 const NETPROBE = "netprobe";
@@ -243,7 +243,7 @@ describe("узлы", function () {
     const card = await online;
 
     expect(card.agentId).to.equal(agentBId);
-    expect(card.agent).to.include({ online: true, version: "1.0.0" });
+    expect(card.agent).to.include({ online: true, version: AGENT_VERSION });
     expect(card.agent.workers.map((w: any) => w.name)).to.include.members([
       "echo",
       "netprobe",
