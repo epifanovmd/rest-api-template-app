@@ -9,6 +9,7 @@ import { BiometricModule } from "./modules/biometric";
 import { FileModule } from "./modules/file";
 import { JobsModule } from "./modules/jobs";
 import { MailerModule } from "./modules/mailer";
+import { NodeModule } from "./modules/node";
 import { OtpModule } from "./modules/otp";
 import { PasskeysModule } from "./modules/passkeys";
 import { ProfileModule } from "./modules/profile";
@@ -47,6 +48,7 @@ import { UserModule } from "./modules/user";
     PasskeysModule,
 
     // Модули проекта
+    NodeModule,
 
     // Socket — последним, чтобы все ISocketHandler / ISocketEventListener были привязаны
     SocketModule,

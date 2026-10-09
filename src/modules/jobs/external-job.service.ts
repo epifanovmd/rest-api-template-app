@@ -1,662 +1,627 @@
 import { inject, optional } from "inversify";
 import type { JobWithMetadata } from "pg-boss";
-import { DataSource, In } from "typeorm";
+import { DataSource } from "typeorm";
 
 import { config } from "../../config";
 import {
+  EXTERNAL_JOB_EXECUTOR,
+  ExternalJobAssignment,
   ExternalJobFiles,
+  ExternalJobFileUrls,
   ExternalJobInfo,
+  ExternalJobUpdate,
   FileStorage,
-  HttpException,
-  IExternalJobHandler,
+  IExternalJobExecutor,
   Injectable,
+  JobError,
   logger,
-  requestContext,
 } from "../../core";
-import type { IAlpJobAssign, IAlpJobUrls } from "../agent";
-import { toJobOutput } from "./job.runner";
-import { JobHandlerRegistry, resolveDefinition } from "./job-handler.registry";
-import { JobProgressWriter } from "./job-progress.writer";
+import { JobHandlerRegistry } from "./job-handler.registry";
 import { JobRun } from "./job-run.entity";
 import { JobRunRepository } from "./job-run.repository";
 import {
-  appendLogTail,
   clampProgress,
   JobRunTracker,
   secondsFromNow,
 } from "./job-run.tracker";
-import { JobsError } from "./jobs.errors";
-import { EJobRunStatus, IJobRunFiles } from "./jobs.types";
-import { managerDb, PgBossService } from "./pg-boss.service";
+import {
+  EJobRunStatus,
+  IJobRunError,
+  IJobRunOutput,
+  JOB_EXTERNAL_CLAIM_SECONDS,
+  JOB_EXTERNAL_KICK_BATCH,
+  SETTLED_JOB_RUN_STATUSES,
+} from "./jobs.types";
+import { PgBossService } from "./pg-boss.service";
 
-type TExternalHandler = IExternalJobHandler<unknown, unknown>;
+/** Сколько задач с истёкшим сроком обрабатывается за проход. */
+const DEADLINE_BATCH = 100;
+const PROGRESS_TEXT_MAX = 200;
 
-/** Задача агента: id и попытка (барьер против устаревшего исполнителя). */
-export interface IAgentJobRef {
-  jobId: string;
-  attempt: number;
-}
-
-export interface IAgentJobProgress extends IAgentJobRef {
-  progress?: number;
-  text?: string;
-  log?: string[];
-}
-
-export interface IAgentJobEvent extends IAgentJobRef {
-  seq: number;
-  type: string;
-  data?: unknown;
-}
-
-export interface IAgentJobFailure {
-  code: string;
-  message: string;
-  retryable: boolean;
-}
-
-/** Итог сверки задач агента при `hello`. */
-export interface IAgentJobReconcile {
-  /** Выданы, но агент их не получил — выдать снова (та же попытка). */
-  resend: IAlpJobAssign[];
-  /** Агент выполняет, а сервер их уже не числит за ним — прервать. */
-  cancel: IAgentJobRef[];
-  /** Агент выполняет, а пользователь попросил остановить. */
-  stop: IAgentJobRef[];
-}
-
-const AGENT_LOST = {
-  code: "AGENT_LOST",
-  message: "Агент перезапустился и потерял задачу",
-  retryable: true,
+const COMPLETE_FAILED = "JOB_COMPLETE_FAILED";
+const EXTERNAL_LOST: IJobRunError = {
+  code: "EXTERNAL_JOB_LOST",
+  message: "Воркер не знает об этой задаче (перезапущен без сохранения хода)",
 };
+const TIMED_OUT: IJobRunError = {
+  code: "JOB_TIMEOUT",
+  message: "Внешняя задача не закончилась в срок",
+};
+const NO_EXECUTOR = new JobError(
+  "EXTERNAL_EXECUTOR_MISSING",
+  "Исполнитель внешних очередей не подключён",
+  false,
+);
+const NO_STORAGE = new JobError(
+  "STORAGE_UNAVAILABLE",
+  "Файлы задачи: хранилище не подключено",
+  false,
+);
 
-const normalizeFiles = (files: ExternalJobFiles): IJobRunFiles => ({
-  inputs: { ...files.inputs },
-  outputs: Object.fromEntries(
-    Object.entries(files.outputs ?? {}).map(([name, value]) => [
+const errorOf = (err: unknown): IJobRunError =>
+  err instanceof JobError
+    ? { code: err.code, message: err.message }
+    : { code: "JOB_DISPATCH_FAILED", message: (err as Error).message };
+
+/** Поля связи записи с задачей у воркера. */
+type TAssignPatch = Partial<
+  Pick<JobRun, "agentId" | "worker" | "externalId" | "startedAt" | "deadlineAt">
+>;
+
+const assignmentOf = (run: JobRun): ExternalJobAssignment | null =>
+  run.agentId && run.worker && run.externalId
+    ? { agentId: run.agentId, worker: run.worker, workId: run.externalId }
+    : null;
+
+/** Ключи выходных файлов: имя → ключ. */
+const outputKeys = (files: ExternalJobFiles): Record<string, string> =>
+  Object.fromEntries(
+    Object.entries(files.outputs ?? {}).map(([name, output]) => [
       name,
-      typeof value === "string" ? { key: value } : value,
+      typeof output === "string" ? output : output.key,
     ]),
-  ),
-});
+  );
 
-/** Писатель прогресса без обновлений дольше — забывается. */
-const WRITER_IDLE_MS = 10 * 60_000;
-
-const isLeaseLost = (err: unknown): boolean =>
-  err instanceof HttpException && err.code === JobsError.codes.LEASE_LOST;
-
-const refKey = (ref: IAgentJobRef): string => `${ref.jobId}:${ref.attempt}`;
+/** Подписать ссылки параллельно: имя → URL. */
+const signAll = async (
+  entries: [string, Promise<string>][],
+): Promise<Record<string, string>> =>
+  Object.fromEntries(
+    await Promise.all(
+      entries.map(async ([name, url]) => [name, await url] as const),
+    ),
+  );
 
 /**
- * Внешние задачи, выполняемые агентами: выдача с арендой за агентом,
- * прогресс и события, свежие ссылки на файлы, итог. Результат переносит в
- * домен хук очереди `onComplete` — в транзакции завершения. Каждое действие
- * агента проверяет, что задача всё ещё за ним и попытка та же.
+ * Внешние задачи: передача задачи воркеру агента (`IExternalJobExecutor`) и
+ * отражение её хода в записи `job_runs`. Передача — сразу после постановки
+ * (`startNow` по сигналу после коммита, при подключении агента) или задачей
+ * pg-boss (`dispatch`: повторы, ожидание агента); дважды задача не
+ * передаётся — запись берётся условным UPDATE (`claimDispatch`). Быстрая
+ * задача завершается ответом воркера, долгая — событиями (`onUpdate`
+ * исполнителя): итог — хук `onComplete` в транзакции завершения,
+ * окончательная ошибка — `onFail`. После подключения агента его задачи
+ * сверяются опросом; срок задачи (`expireInSeconds`) проверяет cron.
  */
 @Injectable()
 export class ExternalJobService {
-  /** Прогресс пишется в БД не чаще интервала; на задачу — свой писатель. */
-  private readonly _writers = new Map<
-    string,
-    { writer: JobProgressWriter; usedAt: number }
-  >();
+  private _unsubscribe: (() => void)[] = [];
 
   constructor(
-    @inject(PgBossService) private readonly _boss: PgBossService,
-    @inject(JobHandlerRegistry) private readonly _registry: JobHandlerRegistry,
-    @inject(JobRunTracker) private readonly _tracker: JobRunTracker,
     @inject(JobRunRepository) private readonly _runs: JobRunRepository,
+    @inject(JobRunTracker) private readonly _tracker: JobRunTracker,
+    @inject(JobHandlerRegistry) private readonly _registry: JobHandlerRegistry,
     @inject(DataSource) private readonly _dataSource: DataSource,
+    @inject(PgBossService) private readonly _boss: PgBossService,
+    @inject(EXTERNAL_JOB_EXECUTOR)
+    @optional()
+    private readonly _executor?: IExternalJobExecutor,
     @inject(FileStorage) @optional() private readonly _storage?: FileStorage,
   ) {}
 
-  /** Обработчик внешней очереди; `undefined` — очередь не внешняя или неизвестна. */
-  handler(queue: string): TExternalHandler | undefined {
-    return this._registry.external(queue);
+  /** Процесс может передавать внешние задачи воркерам. */
+  get canDispatch(): boolean {
+    return this._executor?.canDispatch === true;
   }
 
-  /** Внешние очереди процесса. */
-  externalQueues(): string[] {
-    return this._registry
-      .all()
-      .filter(handler => handler.definition.external)
-      .map(handler => handler.definition.queue);
+  /** Слушать изменения задач и подключения агентов в этом процессе. */
+  listen(): void {
+    const executor = this._executor;
+
+    if (!executor || this._unsubscribe.length) return;
+
+    this._unsubscribe = [
+      executor.onUpdate(update => this.apply(update)),
+      executor.onReconnect(agentId => void this.onAgentReady(agentId)),
+    ];
   }
 
-  /** Взять из pg-boss до `max` задач очереди и выдать агенту. */
-  async take(
-    queue: string,
-    max: number,
-    agentId: string,
-  ): Promise<IAlpJobAssign[]> {
-    const handler = this.handler(queue);
-
-    if (!handler || max <= 0) return [];
-
-    const boss = await this._boss.ready();
-    const jobs = await boss.fetch<unknown>(queue, {
-      batchSize: max,
-      includeMetadata: true,
-    });
-    const assigned: IAlpJobAssign[] = [];
-
-    for (const job of jobs) {
-      const assign = await this.lease(handler, job, agentId);
-
-      if (assign) assigned.push(assign);
-    }
-
-    return assigned;
-  }
-
-  /** Агент принял задачу: дальше её потеря при рестарте агента — провал попытки. */
-  async accept(agentId: string, ref: IAgentJobRef): Promise<void> {
-    await this._runs.update(
-      {
-        id: ref.jobId,
-        agentId,
-        attempt: ref.attempt,
-        status: EJobRunStatus.RUNNING,
-      },
-      { acceptedAt: new Date() },
-    );
-  }
-
-  /** Прогресс, текст и строки лога; частые обновления схлопываются. */
-  async progress(agentId: string, update: IAgentJobProgress): Promise<void> {
-    const run = await this._held(agentId, update);
-
-    if (!run) return;
-
-    const writer = this._writer(run.id);
-
-    if (update.log?.length) update.log.forEach(line => void writer.log(line));
-    if (update.progress !== undefined) {
-      await writer.progress(update.progress, update.text);
-    } else if (update.text !== undefined) {
-      await writer.progress(run.progress, update.text);
-    }
-  }
-
-  /** Доменное событие задачи; повтор (seq не больше принятого) — мимо. */
-  async event(agentId: string, event: IAgentJobEvent): Promise<void> {
-    const run = await this._heldOrThrow(agentId, event);
-
-    if (event.seq <= run.eventSeq) return;
-
-    const handler = this._handlerOf(run);
-
-    if (handler.onEvent) {
-      const info = await this.jobInfo(run);
-
-      try {
-        await requestContext.run(
-          { requestId: `job:${run.queue}:${run.id}` },
-          () => handler.onEvent!(info, { type: event.type, data: event.data }),
-        );
-      } catch (err) {
-        logger.error(
-          { err, jobId: run.id, event: event.type },
-          "[Jobs] onEvent внешней задачи упал",
-        );
-      }
-    }
-
-    await this._runs.update({ id: run.id }, { eventSeq: event.seq });
-  }
-
-  /** Свежие подписанные ссылки на файлы задачи (все или перечисленные). */
-  async urls(
-    agentId: string,
-    ref: IAgentJobRef,
-    names: { inputs?: string[]; outputs?: string[] },
-  ): Promise<IAlpJobUrls> {
-    const run = await this._heldOrThrow(agentId, ref);
-    const files = run.files ?? { inputs: {}, outputs: {} };
-    const pick = <T>(all: Record<string, T>, wanted?: string[]) =>
-      wanted
-        ? Object.fromEntries(
-            Object.entries(all).filter(([name]) => wanted.includes(name)),
-          )
-        : all;
-    const signed = await this.signFiles({
-      inputs: pick(files.inputs, names.inputs),
-      outputs: pick(files.outputs, names.outputs),
-    });
-
-    return {
-      inputs: signed.inputs,
-      outputs: signed.outputs,
-      expiresAt: signed.expiresAt,
-    };
-  }
-
-  async complete(
-    agentId: string,
-    ref: IAgentJobRef,
-    result: unknown,
-  ): Promise<void> {
-    const run = await this._heldOrThrow(agentId, ref);
-    const handler = this._handlerOf(run);
-    const boss = await this._boss.ready();
-    const info = await this.jobInfo(run);
-    const reported = result ?? null;
-
-    await this._flushProgress(run.id);
-
-    try {
-      await requestContext.run(
-        { requestId: `job:${run.queue}:${run.id}` },
-        () =>
-          this._dataSource.transaction(async manager => {
-            await handler.onComplete(
-              {
-                ...info,
-                manager,
-                outputs: Object.fromEntries(
-                  Object.entries(run.files?.outputs ?? {}).map(([name, o]) => [
-                    name,
-                    o.key,
-                  ]),
-                ),
-              },
-              reported,
-            );
-
-            const settled = await boss.complete(
-              run.queue,
-              run.id,
-              toJobOutput(reported) ?? null,
-              { db: managerDb(manager) },
-            );
-
-            if (!(settled as { affected?: number }).affected) {
-              throw JobsError.LEASE_LOST();
-            }
-
-            await this._tracker.complete(run, reported, manager);
-          }),
-      );
-    } catch (err) {
-      if (isLeaseLost(err)) throw err;
-
-      logger.error(
-        { err, queue: run.queue, jobId: run.id },
-        "[Jobs] onComplete внешней задачи упал — задача на повтор",
-      );
-      await this.settleFailure(run, handler, {
-        code: "COMPLETE_HOOK_FAILED",
-        message: "Не удалось сохранить результат задачи",
-        retryable: true,
-      });
-      throw err;
-    }
-
-    this._tracker.publish(run);
-  }
-
-  async fail(
-    agentId: string,
-    ref: IAgentJobRef,
-    failure: IAgentJobFailure,
-  ): Promise<void> {
-    const run = await this._heldOrThrow(agentId, ref);
-
-    await this._flushProgress(run.id);
-    await this.settleFailure(run, this._handlerOf(run), failure);
+  unlisten(): void {
+    for (const off of this._unsubscribe) off();
+    this._unsubscribe = [];
   }
 
   /**
-   * Агент не может выполнить задачу (очередь не обслуживается, нет места):
-   * вернуть её в очередь без траты попытки.
+   * Передать ждущую задачу сейчас, если подходящий агент на связи; нет —
+   * задача ждёт повтора pg-boss. Задачу передаёт другой процесс — ничего.
    */
-  async reject(
-    agentId: string,
-    ref: IAgentJobRef,
-    reason: { code: string; message: string },
-  ): Promise<void> {
-    const run = await this._held(agentId, ref);
+  async startNow(id: string): Promise<void> {
+    if (!this.canDispatch) return;
 
-    if (!run) return;
+    const run = await this._runs.findById(id);
 
-    await this._boss.release(run.queue, run.id);
-    await this._tracker.update(run, {
-      status: EJobRunStatus.QUEUED,
-      agentId: null,
-      acceptedAt: null,
-      leaseUntil: null,
-    });
-    logger.warn(
-      { jobId: run.id, agentId, ...reason },
-      "[Jobs] Агент отклонил задачу — она снова в очереди",
-    );
+    if (!run || run.status !== EJobRunStatus.QUEUED || run.externalId) return;
+    if (!this._registry.external(run.queue)) return;
+    if (!(await this.claim(run, run.attempt))) return;
+
+    try {
+      await this.submit(run, await this._boss.findJobData(id), run.attempt);
+    } catch (err) {
+      if (err instanceof JobError && !err.retryable) {
+        await this.settleFailed(run, errorOf(err));
+
+        return;
+      }
+
+      logger.info(
+        { jobId: id, errorCode: errorOf(err).code },
+        "[Jobs] Внешняя задача ждёт агента",
+      );
+      await this.release(run.id, errorOf(err), run.attempt);
+    }
   }
 
-  /** Пульс агента: продлить аренды перечисленных задач, которые за ним. */
-  async extendLeases(agentId: string, refs: IAgentJobRef[]): Promise<void> {
-    if (!refs.length) return;
+  /**
+   * Задача pg-boss: передать задачу воркеру, если её ещё не передали. Ошибка
+   * без смысла повтора или на последней попытке — запись падает; иначе —
+   * повтор по политике очереди.
+   */
+  async dispatch(job: JobWithMetadata<unknown>): Promise<void> {
+    const run = await this._runs.findById(job.id);
 
-    const runs = await this._runs.find({
-      where: {
-        id: In(refs.map(ref => ref.jobId)),
-        agentId,
-        status: EJobRunStatus.RUNNING,
-      },
-    });
-    const listed = new Set(refs.map(refKey));
-    const byLease = new Map<number, string[]>();
+    if (!run || SETTLED_JOB_RUN_STATUSES.includes(run.status)) return;
+    if (run.externalId) return;
+    if (!(await this.claim(run, job.retryCount))) {
+      throw new JobError("JOB_DISPATCHING", "Задачу передаёт другой процесс");
+    }
+
+    try {
+      await this.submit(run, job.data, job.retryCount);
+    } catch (err) {
+      const final =
+        (err instanceof JobError && !err.retryable) ||
+        job.retryCount >= job.retryLimit;
+
+      if (!final) {
+        await this.release(run.id, errorOf(err), job.retryCount + 1);
+        throw err;
+      }
+
+      logger.warn({ err, jobId: run.id }, "[Jobs] Задача не передана воркеру");
+      await this.settleFailed(run, errorOf(err));
+    }
+  }
+
+  /** Отменить задачу у воркера (запись отменяет очередь). */
+  async cancelJob(run: JobRun): Promise<void> {
+    const assignment = assignmentOf(run);
+
+    if (assignment) await this._executor?.cancel(assignment);
+  }
+
+  /** Провалить задачи с истёкшим сроком и отменить их у воркеров. */
+  async failExpired(now = new Date()): Promise<number> {
+    const runs = await this._runs.findExpiredExternal(now, DEADLINE_BATCH);
 
     for (const run of runs) {
-      if (!listed.has(refKey({ jobId: run.id, attempt: run.attempt }))) {
-        continue;
+      try {
+        if (await this.settleFailed(run, TIMED_OUT)) {
+          await this.cancelJob(run);
+        }
+      } catch (err) {
+        logger.warn({ err, jobId: run.id }, "[Jobs] Срок внешней задачи");
       }
-
-      const handler = this.handler(run.queue);
-
-      if (!handler) continue;
-
-      const { leaseSeconds } = resolveDefinition(handler.definition);
-
-      byLease.set(leaseSeconds, [...(byLease.get(leaseSeconds) ?? []), run.id]);
     }
 
-    for (const [seconds, ids] of byLease) {
-      await this._runs.update(
-        { id: In(ids), status: EJobRunStatus.RUNNING },
-        { leaseUntil: secondsFromNow(seconds) },
+    return runs.length;
+  }
+
+  /**
+   * Сверить задачи агента после его подключения: ход и итог — опросом
+   * воркера (`GET /jobs/{id}`); воркер о задаче не знает — задача падает.
+   */
+  async reconcile(agentId: string): Promise<void> {
+    if (!this._executor) return;
+
+    const runs = await this._runs.findActiveExternalByAgent(agentId);
+
+    for (const run of runs) {
+      const assignment = assignmentOf(run);
+
+      if (!assignment) continue;
+
+      try {
+        const update = await this._executor.poll(assignment);
+
+        if (update) await this.apply({ ...update, jobId: run.id });
+        else await this.settleFailed(run, EXTERNAL_LOST);
+      } catch (err) {
+        logger.warn({ err, jobId: run.id }, "[Jobs] Сверка внешней задачи");
+      }
+    }
+  }
+
+  /** Ждущие внешние задачи — передать сейчас (агент подключился). */
+  async startQueued(): Promise<void> {
+    const queues = this._registry
+      .all()
+      .filter(handler => handler.definition.external === true)
+      .map(handler => handler.definition.queue);
+    const ids = await this._runs.findQueuedExternalIds(
+      queues,
+      JOB_EXTERNAL_KICK_BATCH,
+    );
+
+    for (const id of ids) {
+      await this.startNow(id).catch(err =>
+        logger.warn({ err, jobId: id }, "[Jobs] Передача ждущей задачи"),
       );
     }
   }
 
   /**
-   * Сверка при `hello`: что сервер числит за агентом и что агент выполняет.
-   * Не дошедшие до агента — выдать снова; потерянные после принятия —
-   * провалить попытку (повтор по политике очереди); лишние у агента — прервать.
+   * Изменение задачи от воркера. Идемпотентно: повтор события ничего не
+   * меняет, итог записывается один раз (условный UPDATE активной записи).
    */
-  async reconcile(
-    agentId: string,
-    reported: IAgentJobRef[],
-  ): Promise<IAgentJobReconcile> {
-    const running = await this._runs.find({
-      where: { agentId, status: EJobRunStatus.RUNNING },
-    });
-    const reportedKeys = new Set(reported.map(refKey));
-    const runningKeys = new Set(
-      running.map(run => refKey({ jobId: run.id, attempt: run.attempt })),
+  async apply(update: ExternalJobUpdate): Promise<void> {
+    const run = update.jobId
+      ? await this._runs.findById(update.jobId)
+      : await this._runs.findByAssignment(update.agentId, update.workId);
+
+    if (!run || SETTLED_JOB_RUN_STATUSES.includes(run.status)) return;
+    // Задача другой попытки (передали другому агенту) — не эта.
+    if (
+      run.agentId &&
+      (run.agentId !== update.agentId || run.externalId !== update.workId)
+    ) {
+      return;
+    }
+
+    switch (update.kind) {
+      case "progress":
+        await this._tracker.updateIfActive(run, {
+          ...this.assignPatch(run, update),
+          status: EJobRunStatus.RUNNING,
+          ...(update.progress !== undefined && {
+            progress: clampProgress(update.progress),
+          }),
+          ...(update.text !== undefined && {
+            progressText: update.text.slice(0, PROGRESS_TEXT_MAX),
+          }),
+        });
+        break;
+      case "done":
+        await this.complete(run, update);
+        break;
+      case "failed":
+        await this.settleFailed(
+          run,
+          update.error ?? {
+            code: "JOB_FAILED",
+            message: "Задача не выполнена",
+          },
+          this.assignPatch(run, update),
+        );
+        break;
+      case "cancelled":
+        await this._tracker.updateIfActive(run, {
+          ...this.assignPatch(run, update),
+          status: EJobRunStatus.CANCELLED,
+          cancelRequested: true,
+          finishedAt: new Date(),
+        });
+        break;
+    }
+  }
+
+  /** Агент на связи: сверить его задачи и передать ждущие. */
+  private async onAgentReady(agentId: string): Promise<void> {
+    await this.reconcile(agentId);
+    await this.startQueued().catch(err =>
+      logger.warn({ err, agentId }, "[Jobs] Передача ждущих задач"),
     );
-    const result: IAgentJobReconcile = { resend: [], cancel: [], stop: [] };
+  }
 
-    for (const run of running) {
-      const ref = { jobId: run.id, attempt: run.attempt };
+  /** Взять запись на передачу; `false` — её передаёт другой процесс или уже передали. */
+  private async claim(run: JobRun, attempt: number): Promise<boolean> {
+    const now = new Date();
+    const claimed = await this._runs.claimDispatch(
+      run.id,
+      attempt,
+      now,
+      new Date(now.getTime() - JOB_EXTERNAL_CLAIM_SECONDS * 1000),
+    );
 
-      if (reportedKeys.has(refKey(ref))) {
-        if (run.stopRequested) result.stop.push(ref);
-        continue;
-      }
+    if (claimed) Object.assign(run, { attempt, startedAt: now });
 
-      const handler = this.handler(run.queue);
+    return claimed;
+  }
 
-      if (!handler) continue;
-      if (run.acceptedAt) {
-        await this.settleFailure(run, handler, AGENT_LOST);
-        continue;
-      }
-
-      const info = await this.jobInfo(run);
-
-      result.resend.push(await this.assignment(handler, info, run.files));
+  /** Вернуть запись в ожидание: передача не удалась, будет повтор. */
+  private async release(
+    id: string,
+    error: IJobRunError,
+    attempt: number,
+  ): Promise<void> {
+    if (await this._runs.releaseDispatch(id, { error, attempt })) {
+      await this.republish(id);
     }
-
-    result.cancel = reported.filter(ref => !runningKeys.has(refKey(ref)));
-
-    return result;
   }
 
-  /** Задача по id, если она за этим агентом в этой попытке. */
-  async findHeld(agentId: string, ref: IAgentJobRef): Promise<JobRun | null> {
-    return this._held(agentId, ref);
+  /** Свежий снимок записи — подписчикам. */
+  private async republish(id: string): Promise<void> {
+    const fresh = await this._runs.findById(id);
+
+    if (fresh) this._tracker.publish(fresh);
   }
 
-  /** Выдать задачу агенту: аренда, файлы, подписанные ссылки. */
-  private async lease(
-    handler: TExternalHandler,
-    job: JobWithMetadata<unknown>,
-    agentId: string,
-  ): Promise<IAlpJobAssign | null> {
-    const { queue, leaseSeconds } = resolveDefinition(handler.definition);
+  /** Передать взятую задачу воркеру и отразить ответ: итог или связь с задачей. */
+  private async submit(
+    run: JobRun,
+    data: unknown,
+    attempt: number,
+  ): Promise<void> {
+    const handler = this._registry.external(run.queue);
+    const definition = this._registry.definition(run.queue);
+
+    if (!handler || !definition?.job) {
+      throw new JobError("UNKNOWN_QUEUE", "Очередь не внешняя", false);
+    }
+    if (!this._executor) throw NO_EXECUTOR;
+
     const info: ExternalJobInfo = {
-      id: job.id,
-      queue,
-      data: job.data,
-      attempt: job.retryCount,
+      id: run.id,
+      queue: run.queue,
+      data,
+      attempt,
+    };
+    const files = await this.signFiles(
+      handler.io ? await handler.io(info) : {},
+      definition.expireInSeconds,
+    );
+    const target = {
+      ...definition.job,
+      type: handler.jobType?.(info) ?? definition.job.type,
     };
 
-    try {
-      const files = handler.io ? normalizeFiles(await handler.io(info)) : null;
-      const run = await this._tracker.start({
-        id: job.id,
-        queue,
-        attempt: info.attempt,
-        leaseSeconds,
-        createIfMissing: true,
-        files,
-        agentId,
-      });
+    await this.setTarget(run, target.type, target.worker);
 
-      if (!run || run.status !== EJobRunStatus.RUNNING) {
-        // Отменили между выборкой и арендой — снять и в pg-boss.
-        const boss = await this._boss.ready();
+    const update = await this._executor.dispatch({
+      jobId: run.id,
+      queue: run.queue,
+      attempt,
+      data,
+      target,
+      ...(files && { files }),
+    });
+    const attached = await this._runs.attachExternal(
+      run.id,
+      update,
+      new Date(),
+      secondsFromNow(definition.expireInSeconds),
+    );
 
-        await boss.cancel(queue, job.id);
+    if (update.kind !== "progress") {
+      await this.apply({ ...update, jobId: run.id });
 
-        return null;
-      }
-
-      return await this.assignment(handler, info, files);
-    } catch (err) {
-      logger.error(
-        { err, queue, jobId: job.id, agentId },
-        "[Jobs] Не удалось выдать задачу агенту",
-      );
-
-      const boss = await this._boss.ready();
-
-      await boss.fail(queue, job.id, {
-        code: "ASSIGN_FAILED",
-        message: err instanceof Error ? err.message : String(err),
-      });
-
-      return null;
+      return;
     }
+    if (attached) await this.republish(run.id);
+
+    const fresh = await this._runs.findById(run.id);
+
+    // Задачу отменили, пока она передавалась, — отменить и у воркера.
+    if (fresh?.cancelRequested) await this._executor.cancel(update);
   }
 
-  private async assignment(
-    handler: TExternalHandler,
-    info: ExternalJobInfo,
-    files: IJobRunFiles | null,
-  ): Promise<IAlpJobAssign> {
-    const { leaseSeconds } = resolveDefinition(handler.definition);
-    const signed = await this.signFiles(files);
-
-    return {
-      jobId: info.id,
-      attempt: info.attempt,
-      queue: info.queue,
-      data: info.data,
-      leaseSeconds,
-      inputs: signed.inputs,
-      outputs: signed.outputs,
-      ...(signed.expiresAt && { urlsExpireAt: signed.expiresAt }),
+  /** Тип задачи воркера и воркер (если очередь его называет) — в запись до передачи. */
+  private async setTarget(
+    run: JobRun,
+    jobType: string,
+    worker: string | undefined,
+  ): Promise<void> {
+    const patch = {
+      jobType,
+      ...(worker && !run.agentId && { worker }),
     };
+
+    if (
+      run.jobType === patch.jobType &&
+      (patch.worker === undefined || run.worker === patch.worker)
+    ) {
+      return;
+    }
+
+    await this._runs.setTarget(run.id, patch);
+    Object.assign(run, patch);
   }
 
-  private async signFiles(files: IJobRunFiles | null): Promise<IAlpJobUrls> {
-    const inputs = Object.entries(files?.inputs ?? {});
-    const outputs = Object.entries(files?.outputs ?? {});
-    const expiresAt = Date.now() + config.storage.signedUrlTtlSeconds * 1000;
+  /**
+   * Файлы итога, которые воркер загрузил: имя, ключ, размер. Объекта нет —
+   * выход пропускается; хранилище не ответило — без размера.
+   */
+  private async storedOutputs(
+    outputs: Record<string, string>,
+  ): Promise<IJobRunOutput[] | null> {
+    const storage = this._storage;
+    const entries = Object.entries(outputs);
 
-    if (!inputs.length && !outputs.length) {
-      return { inputs: {}, outputs: {}, expiresAt };
-    }
+    if (!storage || !entries.length) return null;
+
+    const stored = await Promise.all(
+      entries.map(async ([name, key]): Promise<IJobRunOutput | null> => {
+        try {
+          const object = await storage.stat(key);
+
+          return object ? { name, key, size: object.size } : null;
+        } catch (err) {
+          logger.warn({ err, key }, "[Jobs] Файл итога задачи");
+
+          return { name, key, size: null };
+        }
+      }),
+    );
+    const found = stored.filter(
+      (output): output is IJobRunOutput => output !== null,
+    );
+
+    return found.length ? found : null;
+  }
+
+  /** Подписанные ссылки на файлы задачи: срок — не меньше срока задачи. */
+  private async signFiles(
+    files: ExternalJobFiles,
+    expireInSeconds: number,
+  ): Promise<ExternalJobFileUrls | null> {
+    const inputs = Object.entries(files.inputs ?? {});
+    const outputs = Object.entries(files.outputs ?? {});
+
+    if (!inputs.length && !outputs.length) return null;
 
     const storage = this._storage;
 
-    if (!storage) throw JobsError.STORAGE_UNAVAILABLE();
+    if (!storage) throw NO_STORAGE;
+
+    const ttlSeconds = Math.max(
+      config.storage.signedUrlTtlSeconds,
+      expireInSeconds,
+    );
 
     return {
-      inputs: Object.fromEntries(
-        await Promise.all(
-          inputs.map(async ([name, key]) => [
+      ...(inputs.length > 0 && {
+        inputs: await signAll(
+          inputs.map(([name, key]) => [
             name,
-            await storage.signedGetUrl(key),
+            storage.signedGetUrl(key, { ttlSeconds }),
           ]),
         ),
-      ),
-      outputs: Object.fromEntries(
-        await Promise.all(
-          outputs.map(async ([name, { key, contentType }]) => [
-            name,
-            {
-              url: await storage.signedPutUrl(key, { contentType }),
-              ...(contentType && { contentType }),
-            },
-          ]),
+      }),
+      ...(outputs.length > 0 && {
+        outputs: await signAll(
+          outputs.map(([name, output]) => {
+            const { key, contentType } =
+              typeof output === "string"
+                ? { key: output, contentType: undefined }
+                : output;
+
+            return [
+              name,
+              storage.signedPutUrl(key, {
+                ttlSeconds,
+                ...(contentType && { contentType }),
+              }),
+            ];
+          }),
         ),
-      ),
-      expiresAt,
+      }),
     };
   }
 
-  private async jobInfo(run: JobRun): Promise<ExternalJobInfo> {
-    const boss = await this._boss.ready();
-    const [job] = await boss.findJobs<unknown>(run.queue, { id: run.id });
+  /** Поля связи с задачей: событие пришло раньше ответа на запуск. */
+  private assignPatch(run: JobRun, update: ExternalJobUpdate): TAssignPatch {
+    if (run.agentId) return {};
 
+    const definition = this._registry.definition(run.queue);
+
+    return {
+      agentId: update.agentId,
+      worker: update.worker,
+      externalId: update.workId,
+      startedAt: run.startedAt ?? new Date(),
+      ...(definition && {
+        deadlineAt: secondsFromNow(definition.expireInSeconds),
+      }),
+    };
+  }
+
+  /** Итог — в транзакции с хуком `onComplete`; ошибка хука — задача падает. */
+  private async complete(
+    run: JobRun,
+    update: ExternalJobUpdate,
+  ): Promise<void> {
+    const handler = this._registry.external(run.queue);
+    const info = await this.infoOf(run);
+    const outputs = outputKeys(handler?.io ? await handler.io(info) : {});
+    const patch = {
+      ...this.assignPatch(run, update),
+      status: EJobRunStatus.COMPLETED,
+      progress: 1,
+      result: update.result ?? null,
+      error: null,
+      outputs: await this.storedOutputs(outputs),
+      finishedAt: new Date(),
+    };
+    let settled = false;
+
+    try {
+      await this._dataSource.transaction(async manager => {
+        settled = await this._tracker.updateIfActive(
+          { ...run },
+          patch,
+          manager,
+        );
+        if (settled) {
+          await handler?.onComplete(
+            { ...info, manager, outputs },
+            update.result,
+          );
+        }
+      });
+    } catch (err) {
+      logger.error({ err, jobId: run.id }, "[Jobs] onComplete упал");
+      await this.settleFailed(run, {
+        code: COMPLETE_FAILED,
+        message: (err as Error).message,
+      });
+
+      return;
+    }
+
+    if (settled) this._tracker.publish(Object.assign(run, patch));
+  }
+
+  /** Задача для хуков: данные — из pg-boss (запись их не хранит). */
+  private async infoOf(run: JobRun): Promise<ExternalJobInfo> {
     return {
       id: run.id,
       queue: run.queue,
-      data: job?.data ?? null,
+      data: await this._boss.findJobData(run.id),
       attempt: run.attempt,
     };
   }
 
-  /** Провалить попытку в pg-boss и привести запись к исходу. */
-  private async settleFailure(
+  /** Окончательный провал и хук `onFail`; `false` — задача уже завершена. */
+  private async settleFailed(
     run: JobRun,
-    handler: TExternalHandler,
-    failure: IAgentJobFailure,
-  ): Promise<void> {
-    const output = { code: failure.code, message: failure.message };
-
-    if (failure.retryable) {
-      const boss = await this._boss.ready();
-
-      await boss.fail(run.queue, run.id, output);
-    } else {
-      await this._boss.failFinal(run.queue, run.id, output);
-    }
-
-    const ref = await this._boss.findJob(run.id);
-    const final = !ref || ref.state === "failed" || ref.state === "cancelled";
-
-    await this._tracker.fail(run, output, final);
-
-    if (handler.onFail) {
-      try {
-        await handler.onFail(await this.jobInfo(run), { ...failure, final });
-      } catch (err) {
-        logger.error(
-          { err, jobId: run.id },
-          "[Jobs] onFail внешней задачи упал",
-        );
-      }
-    }
-  }
-
-  private _handlerOf(run: JobRun): TExternalHandler {
-    const handler = this.handler(run.queue);
-
-    if (!handler) throw JobsError.NOT_EXTERNAL({ queue: run.queue });
-
-    return handler;
-  }
-
-  /** Задача за агентом в этой попытке и не отменена; иначе `null`. */
-  private async _held(
-    agentId: string,
-    ref: IAgentJobRef,
-  ): Promise<JobRun | null> {
-    const run = await this._tracker.find(ref.jobId);
-
-    return run &&
-      run.status === EJobRunStatus.RUNNING &&
-      !run.cancelRequested &&
-      run.agentId === agentId &&
-      run.attempt === ref.attempt
-      ? run
-      : null;
-  }
-
-  private async _heldOrThrow(
-    agentId: string,
-    ref: IAgentJobRef,
-  ): Promise<JobRun> {
-    const run = await this._held(agentId, ref);
-
-    if (!run) throw JobsError.LEASE_LOST();
-
-    return run;
-  }
-
-  private _writer(jobId: string): JobProgressWriter {
-    const now = Date.now();
-    const entry = this._writers.get(jobId);
-
-    if (entry) {
-      entry.usedAt = now;
-
-      return entry.writer;
-    }
-
-    // Задачи, ушедшие без итога (отмена, аренда истекла), — забыть.
-    for (const [id, idle] of this._writers) {
-      if (now - idle.usedAt > WRITER_IDLE_MS) {
-        idle.writer.dispose();
-        this._writers.delete(id);
-      }
-    }
-
-    const writer = new JobProgressWriter(async (value, text, lines) => {
-      const run = await this._tracker.find(jobId);
-
-      if (run?.status !== EJobRunStatus.RUNNING) return;
-
-      await this._tracker.update(run, {
-        ...(value !== undefined && { progress: clampProgress(value) }),
-        ...(text !== undefined && { progressText: text }),
-        ...(lines.length > 0 && {
-          logTail: appendLogTail(run.logTail, lines),
-        }),
-      });
+    error: IJobRunError,
+    extra: TAssignPatch = {},
+  ): Promise<boolean> {
+    const settled = await this._tracker.updateIfActive(run, {
+      ...extra,
+      status: EJobRunStatus.FAILED,
+      error,
+      finishedAt: new Date(),
     });
+    const handler = this._registry.external(run.queue);
 
-    this._writers.set(jobId, { writer, usedAt: now });
+    if (!settled || !handler?.onFail) return settled;
 
-    return writer;
-  }
-
-  /** Дописать накопленный прогресс до итога и забыть писателя задачи. */
-  private async _flushProgress(jobId: string): Promise<void> {
-    const entry = this._writers.get(jobId);
-
-    if (!entry) return;
-
-    this._writers.delete(jobId);
     try {
-      await entry.writer.flush();
-    } finally {
-      entry.writer.dispose();
+      await handler.onFail(await this.infoOf(run), error);
+    } catch (err) {
+      logger.warn({ err, jobId: run.id }, "[Jobs] Хук onFail упал");
     }
+
+    return settled;
   }
 }

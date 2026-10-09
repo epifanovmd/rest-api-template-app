@@ -107,23 +107,11 @@ export class JobsController extends Controller {
   }
 
   /**
-   * Завершить задачу досрочно, но штатно: выполняющаяся внешняя задача
-   * доводит текущий шаг и сдаёт результат (обучение сохраняет веса); ждущая
-   * и Node-задача отменяются. Завершённую — 409.
-   * @summary Досрочное завершение задачи
-   */
-  @Security("jwt")
-  @SuccessResponse(204, "No Content")
-  @Post("{id}/stop")
-  async stopJob(@Request() req: KoaRequest, @Path() id: UUID): Promise<void> {
-    await this._jobs.stop(viewerOf(req), id);
-    this.setStatus(204);
-  }
-
-  /**
-   * Поставить демо-задачу `demo.echo` агенту — проверка, что агенты на связи
-   * (нагрузка `python/examples/echo_worker.py`): `sleep` — работать N секунд с
-   * прогрессом, `fail` — упасть с повтором или без. Только для админов.
+   * Поставить демо-задачу `demo.echo` воркеру `echo` агента — проверка, что
+   * агенты на связи. Быстрая (`echo.quick`) — итог сразу; долгая (`long`,
+   * `echo.long`) — `steps` шагов по `delayMs` с ходом, `fail` — провал после
+   * шагов, `withOutput` — итог ещё и в файл хранилища по подписанной ссылке.
+   * Итог — текст по настройкам воркера.
    * @summary Проверка агентов
    */
   @Security("jwt", ["permission:jobs:demo"])

@@ -1,4 +1,4 @@
-import type { EntityManager } from "typeorm";
+import { IsNull } from "typeorm";
 
 import { InjectableRepository } from "../../core";
 import { BaseRepository } from "../../core/repository/repository";
@@ -7,11 +7,11 @@ import { AgentEnrollmentToken } from "./agent-enrollment-token.entity";
 @InjectableRepository(AgentEnrollmentToken)
 export class AgentEnrollmentTokenRepository extends BaseRepository<AgentEnrollmentToken> {
   findById(id: string): Promise<AgentEnrollmentToken | null> {
-    return this.findOne({ where: { id } });
+    return this.findOneBy({ id });
   }
 
   findByPrefix(prefix: string): Promise<AgentEnrollmentToken | null> {
-    return this.findOne({ where: { prefix } });
+    return this.findOneBy({ prefix });
   }
 
   findPage(
@@ -26,22 +26,29 @@ export class AgentEnrollmentTokenRepository extends BaseRepository<AgentEnrollme
   }
 
   /**
-   * Атомарно занять одно использование токена: действующий, не отозван, не
-   * исчерпан. `false` — использовать нельзя (гонка за последнее место тоже).
+   * Использовать токен одним условным `UPDATE`: не отозван, не истёк, лимит
+   * не исчерпан. `false` — токен больше не годится (в том числе из-за
+   * одновременной регистрации).
    */
-  async consume(
-    id: string,
-    now: Date,
-    manager?: EntityManager,
-  ): Promise<boolean> {
-    const { affected } = await (manager ?? this.manager)
-      .createQueryBuilder()
-      .update(AgentEnrollmentToken)
+  async consume(id: string, now: Date): Promise<boolean> {
+    const { affected } = await this.createQueryBuilder()
+      .update()
       .set({ uses: () => "uses + 1" })
-      .where("id = :id AND revoked_at IS NULL", { id })
+      .where("id = :id", { id })
+      .andWhere("revoked_at IS NULL")
       .andWhere("(expires_at IS NULL OR expires_at > :now)", { now })
       .andWhere("(max_uses IS NULL OR uses < max_uses)")
       .execute();
+
+    return (affected ?? 0) > 0;
+  }
+
+  /** Отозвать; `false` — уже отозван. */
+  async revoke(id: string, now: Date): Promise<boolean> {
+    const { affected } = await this.update(
+      { id, revokedAt: IsNull() },
+      { revokedAt: now },
+    );
 
     return (affected ?? 0) > 0;
   }

@@ -5,6 +5,11 @@ import { JobWorkers1790363180288 } from "./1790363180288-JobWorkers";
 import { SplitManagePermissions1790600000000 } from "./1790600000000-SplitManagePermissions";
 import { JobRunEventSeq1790776771285 } from "./1790776771285-JobRunEventSeq";
 import { AgentPlatform1791382801616 } from "./1791382801616-AgentPlatform";
+import { AgentSdk1791467952080 } from "./1791467952080-AgentSdk";
+import { Nodes1791475124953 } from "./1791475124953-Nodes";
+import { AgentWorkers1791511700000 } from "./1791511700000-AgentWorkers";
+import { NodeAgentName1791600000000 } from "./1791600000000-NodeAgentName";
+import { JobRunOutputs1791700000000 } from "./1791700000000-JobRunOutputs";
 import { OwnFilePermissions1790770000000 } from "./1790770000000-OwnFilePermissions";
 
 /**
@@ -21,4 +26,9 @@ export const migrations: Function[] = [
   OwnFilePermissions1790770000000,
   JobRunEventSeq1790776771285,
   AgentPlatform1791382801616,
+  AgentSdk1791467952080,
+  Nodes1791475124953,
+  AgentWorkers1791511700000,
+  NodeAgentName1791600000000,
+  JobRunOutputs1791700000000,
 ];

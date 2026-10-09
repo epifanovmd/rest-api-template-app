@@ -1,31 +1,60 @@
 import { inject } from "inversify";
-import { Controller, Get, Response, Route, Security, Tags } from "tsoa";
+import {
+  Body,
+  Controller,
+  Get,
+  Post,
+  Request,
+  Response,
+  Route,
+  Security,
+  Tags,
+} from "tsoa";
 
 import type { IErrorResponseDto } from "../../core";
-import { Injectable } from "../../core";
-import { AgentReleaseService, IAgentRelease } from "./agent-release.service";
+import { getContextUser, Injectable, ValidateBody } from "../../core";
+import { KoaRequest } from "../../types/koa";
+import { AgentService } from "./agent.service";
+import {
+  IAgentInstallCommandDto,
+  IAgentReleaseDto,
+  ICreateAgentInstallCommandBody,
+} from "./dto";
+import { CreateAgentInstallCommandSchema } from "./validation";
 
 @Injectable()
 @Tags("Agent")
 @Response<IErrorResponseDto>("default", "Ошибка")
 @Route("api/v1/agent-releases")
 export class AgentReleaseController extends Controller {
-  constructor(
-    @inject(AgentReleaseService)
-    private readonly _releases: AgentReleaseService,
-  ) {
+  constructor(@inject(AgentService) private readonly _agents: AgentService) {
     super();
   }
 
   /**
-   * Выпуски агента, новые первыми: сборки под ОС и архитектуры, sha256,
-   * подпись. Агент, чей `codeHash` отличается от сборки своей платформы, —
-   * кандидат на обновление (`POST /agents/{id}/update`).
-   * @summary Выпуски агента
+   * Выпуск агента (`AGENT_RELEASES_DIR`: манифест со сборками агента и
+   * воркеров) и кого из доступных агентов можно обновить до него: агентов и
+   * воркеры из выпуска.
+   * @summary Выпуск агента
    */
-  @Security("jwt", ["permission:agent:view"])
+  @Security("jwt")
   @Get()
-  listAgentReleases(): Promise<IAgentRelease[]> {
-    return this._releases.list();
+  getAgentRelease(@Request() req: KoaRequest): Promise<IAgentReleaseDto> {
+    return this._agents.release(getContextUser(req));
+  }
+
+  /**
+   * Команда установки агента на новый узел одной строкой:
+   * `curl …/api/v1/agent-link/install.sh | sudo sh -s -- --token … [флаги]`
+   * (воркеры из выпуска — `workers`, флаг `--worker`).
+   * @summary Команда установки агента
+   */
+  @Security("jwt", ["permission:agent:enroll"])
+  @ValidateBody(CreateAgentInstallCommandSchema)
+  @Post("install-command")
+  createAgentInstallCommand(
+    @Body() body: ICreateAgentInstallCommandBody,
+  ): IAgentInstallCommandDto {
+    return this._agents.installCommand(body);
   }
 }

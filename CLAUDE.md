@@ -10,8 +10,11 @@
 (маршруты и OpenAPI из декораторов), Inversify (DI), TypeORM + PostgreSQL, pg-boss
 (очередь задач на Postgres), Redis (между процессами), Socket.IO, S3-совместимое
 хранилище (SeaweedFS в compose) или диск, Zod, pino, prom-client + Sentry, Mocha +
-Chai + Sinon, сборка `tsc`. Агенты: протокол ALP — `protocol/`, Go-агент — `agent/`,
-Python SDK нагрузок — `python/`.
+Chai + Sinon, сборка `tsc`. Агенты — github.com/epifanovmd/agent: серверный
+`agent-sdk` (архив в `vendor/`); всё про агента на узлах — в `agent/` (README простыми
+словами): воркеры проекта без SDK (`agent/workers/<имя>`), выпуск для узлов
+(`agent/release`, собирается `agent/release.sh`), локальный запуск (`agent/dev.sh`,
+`agent/local`), образ (`agent/docker`).
 Node >= 22.13 (Docker — 24 LTS). Роль процесса — `APP_ROLE=api|worker|all`.
 
 ## Команды
@@ -27,17 +30,17 @@ yarn typecheck            # проверка типов (yarn dev:types — watc
 yarn test                 # юнит, src/**/*.test.ts (один файл: yarn test:file <path>)
 yarn test:e2e             # интеграционный набор test/e2e/*.e2e.ts (нужен dev-compose)
 yarn gen:module <name>    # каркас модуля по конвенциям (--dry-run — список файлов)
-yarn agent:setup          # сборка Go-агента под эту машину (в docker) + .venv нагрузок
-yarn agent                # агент с Python-нагрузкой (agent/agent.dev.yaml; AGENT_BOOTSTRAP_TOKEN)
+yarn agent                # агент с воркерами echo и netprobe (agent/local/agent.yaml; AGENT_BOOTSTRAP_TOKEN)
 yarn agent:start | agent:stop [--force] | agent:status | agent:logs   # тот же агент в фоне
-yarn agent:go test|race|vet|fmt|build|release   # Go-команды агента в контейнере golang
+yarn agent:release        # выпуск для узлов agent/release: агент + воркеры проекта (AGENT_RELEASES_DIR, e2e)
 yarn migration:generate src/migrations/<Name> | migration:run | migration:revert
 yarn migration:run:prod   # миграции из build/ (в контейнере)
 ```
 
 Перед завершением задачи обязательны: `yarn generate`, `yarn lint`, `yarn typecheck`,
 `yarn test`; при изменении API, схемы БД или инфраструктуры — ещё `yarn test:e2e`;
-при изменении агента или протокола — `yarn agent:go race` и тесты `python/`.
+при изменении хранилища агентов — интеграционный тест Store (`TEST_DATABASE_URL`);
+e2e агентов и узлов — с настоящим агентом из `agent/release` (`yarn agent:release`).
 
 ## Никогда не редактировать вручную
 
@@ -139,6 +142,8 @@ yarn migration:run:prod   # миграции из build/ (в контейнер�
 modules, patterns, reference. Загружай тематический файл, когда работаешь в
 соответствующей области. Внутри каждого модуля есть `README.md` с описанием его
 сущностей, эндпоинтов и событий — это часть кода модуля, а не общей документации.
-Воркеры и агенты (где код, как добавить очередь, SDK, диагностика) —
-[docs/WORKERS.md](docs/WORKERS.md); протокол агентов — [protocol/alp/v1/README.md](protocol/alp/v1/README.md);
-агент — [agent/README.md](agent/README.md); SDK нагрузок — [python/README.md](python/README.md).
+Воркеры и агенты (где код, как добавить очередь и воркер без SDK, диагностика) —
+[src/modules/agent/README.md](src/modules/agent/README.md), узлы с агентами (привязка,
+установка по SSH, связность) — [src/modules/node/README.md](src/modules/node/README.md);
+формат сообщений агентов —
+[sdk/spec/README.md](https://github.com/epifanovmd/agent/blob/main/sdk/spec/README.md).

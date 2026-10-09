@@ -26,28 +26,30 @@ export interface IJobRunError {
   message: string;
 }
 
-/** Файлы внешней задачи: имя → ключ хранилища. */
-export interface IJobRunFiles {
-  inputs: Record<string, string>;
-  outputs: Record<string, { key: string; contentType?: string }>;
+/** Файл итога внешней задачи в записи: имя выхода, ключ хранилища, размер. */
+export interface IJobRunOutput {
+  name: string;
+  key: string;
+  /** Размер, байт; `null` — файла в хранилище нет. */
+  size: number | null;
 }
 
 /** Схема таблиц pg-boss. */
 export const PGBOSS_SCHEMA = "pgboss";
 /** Канал NOTIFY об отмене задачи; payload — id задачи. */
 export const JOB_CANCEL_CHANNEL = "job_cancel";
-/** Канал NOTIFY о запросе штатной остановки задачи; payload — id задачи. */
-export const JOB_STOP_CHANNEL = "job_stop";
 /** Канал NOTIFY о завершении видимой задачи; payload — id задачи. */
 export const JOB_SETTLED_CHANNEL = "job_settled";
-/** Канал NOTIFY о новой задаче внешней очереди (раздача агентам); payload — имя очереди. */
-export const JOB_AVAILABLE_CHANNEL = "job_available";
+/**
+ * Канал NOTIFY о постановке внешней задачи (в транзакции постановки — дойдёт
+ * после коммита); payload — id задачи: процессы сразу передают её воркеру.
+ */
+export const JOB_QUEUED_CHANNEL = "job_queued";
 /** Все каналы сигналов задач: слушаются одним соединением. */
 export const JOB_SIGNAL_CHANNELS = [
   JOB_CANCEL_CHANNEL,
-  JOB_STOP_CHANNEL,
   JOB_SETTLED_CHANNEL,
-  JOB_AVAILABLE_CHANNEL,
+  JOB_QUEUED_CHANNEL,
 ] as const;
 export type TJobSignalChannel = (typeof JOB_SIGNAL_CHANNELS)[number];
 /** Ожидание результата (`request`) без LISTEN — опрос записи с этим шагом. */
@@ -66,8 +68,17 @@ export const JOB_LOG_LINE_MAX = 1_000;
 export const JOB_INTERNAL_LEASE_SECONDS = 60;
 /** Предел pg-boss на выполнение задачи (`expireInSeconds`) — сутки. */
 export const JOB_MAX_EXPIRE_SECONDS = 24 * 3_600;
-/** Аренда внешней задачи по умолчанию. */
-export const JOB_EXTERNAL_LEASE_SECONDS = 60;
+/**
+ * Внешняя задача сразу после постановки передаётся воркеру по сигналу;
+ * задача pg-boss (повтор передачи, ожидание агента) начинается не раньше, с.
+ */
+export const JOB_EXTERNAL_START_DELAY_SECONDS = 10;
+/** Передача внешней задачи воркеру идёт не дольше, с: дальше её берёт повтор. */
+export const JOB_EXTERNAL_CLAIM_SECONDS = 90;
+/** Сколько ждущих внешних задач передаётся за раз при подключении агента. */
+export const JOB_EXTERNAL_KICK_BATCH = 50;
+/** Очередь cron-задачи, проваливающей внешние задачи с истёкшим сроком. */
+export const JOB_EXTERNAL_SYNC_QUEUE = "jobs.external-sync";
 /** Long-poll ожидания итога задачи клиентом (`GET /jobs/{id}?waitSeconds=`) — не дольше. */
 export const JOB_WAIT_MAX_SECONDS = 25;
 /** Очередь cron-задачи, возвращающей задачи с истёкшей арендой. */

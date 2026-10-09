@@ -1,125 +1,144 @@
-# Агент
+# Агент на узлах
 
-Долгоживущий процесс на узле (сервер, VM, контейнер), связанный с бэкендом протоколом
-**ALP** ([protocol/alp/v1](../protocol/alp/v1/README.md)). Один агент на узел:
-держит связь, работает автономно при её потере, выполняет задачи нагрузками,
-команды и желаемое состояние, шлёт статус и метрики, обновляет себя.
+Здесь всё, что относится к агенту — программе, которая работает на каждой машине (узле) и
+держит связь с бэкендом. Сам агент — отдельный проект
+([github.com/epifanovmd/agent](https://github.com/epifanovmd/agent)); в этом репозитории —
+то, что бэкенд отдаёт агентам: свои воркеры, выпуск для узлов и настройки для запуска на
+своей машине и в Docker.
 
 ```
 agent/
-├── cmd/agent/          # Стандартный агент шаблона: run | version | keygen | boot-guard | release-manifest
-├── kit/                # Пакеты — из них собирается любой агент проекта
-│   ├── alp/            # Протокол: конверт, сообщения (тест на эталонах protocol/alp/v1/fixtures)
-│   ├── link/           # Связь: WebSocket, HTTP sync, переподключение, классы доставки, коды закрытия
-│   ├── outbox/         # Журнал надёжных сообщений на диске (до подтверждения сервером)
-│   ├── stream/         # Поток: seq в пределах запуска, буфер неподтверждённого
-│   ├── runtime/        # Оркестратор: возможности, status/metrics, drain, остановка
-│   ├── jobs/           # Возможность jobs: назначения, слоты, исполнители (Runner), Go-обработчики
-│   ├── workload/       # Нагрузки: дочерние процессы, IPC (fd 3), backoff, замена без простоя
-│   ├── commands/       # Возможность commands: белый список, вывод потоком, итог надёжно
-│   ├── state/          # Возможность state: снимок домена, кэш на диске, Reconciler
-│   ├── telemetry/      # Хост (gopsutil) и GPU (nvidia-smi)
-│   ├── update/         # Самообновление: sha256 + подпись Ed25519, .prev, откат (boot guard)
-│   ├── identity/       # Регистрация по токену, учётные данные (0600)
-│   ├── config/         # YAML с ${ENV} + AGENT_*
-│   ├── logx/, backoff/ # Лог (slog + кольцевой буфер), задержки повторов
-│   └── app/            # Сборка агента из пакетов; проект добавляет свои возможности
-├── install/            # install.sh + agent.service (systemd)
-├── agent.dev.yaml      # yarn agent
-├── agent.docker.yaml   # Dockerfile.agent
-└── VERSION             # Версия сборки (-X main.version)
+├── workers/        # воркеры проекта: каждый — своя папка (echo — пример)
+│   └── echo/       # main.py, run (как запустить), VERSION (версия)
+├── release.sh      # собирает выпуск для узлов → agent/release
+├── release/        # готовый выпуск (не в git): его раздаёт API
+├── tools/          # утилита agent-release (не в git), нужна release.sh
+├── dev.sh          # агент на своей машине (yarn agent)
+├── local/          # настройки агента для yarn agent
+└── docker/         # образ агента: Dockerfile и его настройки
 ```
 
-## Модель
+## Кто есть кто
 
-- **Связь открывает агент**: WebSocket `/api/v1/agent-link`, при отказе upgrade
-  (прокси) — HTTP sync; через 10 минут — снова WebSocket. Коды закрытия: 1012 —
-  быстро переподключиться, 4401 — повторная регистрация (если есть токен), 4409 —
-  ждать обновления, 4410 — вытеснен другой сессией, пауза.
-- **Классы доставки**: поток (`status`, `metrics`, прогресс, вывод команд) — `seq` и
-  буфер в памяти; надёжные (итоги задач, события, итоги команд, `state.applied`) —
-  `outbox` на диске до `ack`; запросы (`job.urls`) — ответ по `re`.
-- **Автономность**: без связи задачи продолжаются, итоги копятся в `outbox`; при
-  переподключении `hello.jobs` перечисляет и задачи с недоставленным итогом.
-- **Нагрузки** — дочерние процессы из `workloads`: канал IPC (unix socketpair, fd 3),
-  нагрузка регистрирует очереди, агент суммирует слоты и раздаёт задачи; упавшая
-  нагрузка — её задачи проваливаются с `WORKLOAD_CRASHED`, процесс перезапускается
-  с backoff; `workload.restart` — замена без простоя.
-- **Остановка** (SIGTERM): drain → нагрузки дорабатывают задачи (`stopTimeout`) →
-  последний статус и досылка итогов → выход.
+- **Агент** — одна программа на узле. Она подключается к бэкенду, запускает воркеры,
+  передаёт им запросы и настройки, а бэкенду — их события и метрики. Что делают воркеры,
+  агент не знает.
+- **Воркер** — небольшой сервис, который делает полезную работу на узле (проверяет сеть,
+  считает, собирает отчёт). Пишется на любом языке, без библиотек агента: это обычный
+  HTTP-сервис. Воркеры проекта лежат в `agent/workers`.
+- **Выпуск** — папка `agent/release`: программа агента под разные системы, воркеры
+  проекта, файл `manifest.json` со списком и контрольными суммами и установщик
+  `install.sh`. Её раздаёт бэкенд (`AGENT_RELEASES_DIR`), узлы скачивают оттуда агента и
+  воркеры.
 
-## Конфигурация
+## Откуда берётся программа агента
 
-YAML (`-config`, `AGENT_CONFIG`) с подстановкой `${ENV}`, поверх — переменные:
+`yarn agent:release` (это `agent/release.sh`) собирает выпуск в `agent/release`:
 
-| Ключ                 | Переменная                  | По умолчанию     | Что                                                                  |
-| -------------------- | --------------------------- | ---------------- | -------------------------------------------------------------------- |
-| `server.url`         | `AGENT_SERVER_URL`          | —                | адрес API (`https://…`)                                              |
-| `server.transport`   | `AGENT_TRANSPORT`           | `auto`           | `auto` (WS → HTTP) \| `ws` \| `http`                                 |
-| `dataDir`            | `AGENT_DATA_DIR`            | `/var/lib/agent` | учётные данные, outbox, кэш состояния                                |
-| `name`               | `AGENT_NAME`                | hostname         | имя агента                                                           |
-| `labels`             | `AGENT_LABELS` (`k=v,…`)    | —                | метки                                                                |
-| `enroll.token`       | `AGENT_ENROLL_TOKEN`        | —                | токен регистрации (до первой регистрации)                            |
-| `log.level`/`format` | `AGENT_LOG_LEVEL`/`…FORMAT` | `info`/`text`    | лог в stderr (`json` — для журналов)                                 |
-| `telemetry.gpu`      | `AGENT_GPU`                 | `auto`           | `auto` (nvidia-smi, если есть) \| `off`                              |
-| `update.mode`        | `AGENT_UPDATE_MODE`         | `self`           | `self` (systemd) \| `external` (контейнер) \| `disabled`             |
-| `update.publicKey`   | `AGENT_UPDATE_PUBLIC_KEY`   | —                | ключ проверки подписи релизов (base64 Ed25519)                       |
-| `workloads[]`        | —                           | —                | `name`, `command`, `dir`, `env`, `replicas`, `queues`, `stopTimeout` |
+1. Берёт выпуск агента той же версии, что серверный SDK (`agent-sdk` в `package.json`):
+   из папки `AGENT_RELEASE_SRC`, если задана, иначе из `../alp-agent/dist/<версия>`, иначе
+   скачивает с GitHub Release `v<версия>`. Там программа агента под linux и darwin (amd64,
+   arm64), его собственные воркеры (например, `netprobe`) и `install.sh`.
+2. Упаковывает каждый воркер проекта (см. ниже).
+3. Записывает общий `manifest.json` утилитой `agent-release`.
 
-## Разработка
+Утилиту `agent-release` скрипт ищет в `AGENT_RELEASE_TOOL`, в
+`agent/tools/agent-release-<os>-<arch>` или собирает сама через `go run` (если есть Go).
 
-Go на машине не нужен — команды идут в контейнере `golang` (`scripts/agent.sh`):
+**Подпись.** Узел ставит обновления, только если они подписаны. Ключи создаются один раз:
+`agent-release keygen` выдаёт пару `AGENT_SIGNING_KEY` (закрытый — только при сборке
+выпуска, например секрет CI) и открытый ключ — его указывают бэкенду в
+`AGENT_PUBLIC_KEY`, и `install.sh` передаёт его узлу. С `AGENT_SIGNING_KEY` весь выпуск
+подписывается ключом проекта. Без него воркеры проекта идут без подписи: установка сверит
+только контрольную сумму, а обновить такой воркер с бэкенда не получится.
+
+## Как агент попадает на узел
+
+Файлы настроек из этого репозитория на узлы **не попадают**. На узле всё делает
+установщик:
+
+1. Бэкенд выдаёт команду установки одной строкой — в API это
+   `POST /api/v1/nodes/{id}/install-command` (узел) или
+   `POST /api/v1/agent-releases/install-command`:
+   `curl -fsSL https://<бэкенд>/api/v1/agent-link/install.sh | sudo sh -s -- --token … --worker netprobe`.
+   Её выполняют на узле руками или бэкенд сам по SSH (`POST /api/v1/nodes/{id}/agent/install`).
+2. `install.sh` скачивает с бэкенда программу агента под эту машину, сверяет контрольную
+   сумму и запускает `agent install`.
+3. `agent install` ставит агента службой, **сам создаёт его настройки**
+   `/etc/agent/agent.yaml` (адрес бэкенда, токен, воркеры), ставит воркеры из выпуска и
+   запускает агента. Агент регистрируется по токену и появляется в списке агентов.
+
+Удалить с узла: `sudo agent uninstall` (или тот же `install.sh … --uninstall`).
+
+## Как воркеры проекта попадают на узлы
+
+1. **Упаковка.** `agent/release.sh` берёт каждую папку `agent/workers/<имя>` с файлом
+   `VERSION` и исполняемым `run` и упаковывает её в архив
+   `<имя>-<версия>-<os>-<arch>.tar.gz` — по архиву на каждую систему из выпуска агента.
+   Содержимое одинаковое (Python-воркеру неважна платформа), но агент ищет сборку под свою
+   систему, поэтому архивов несколько. Архивы попадают в `manifest.json`.
+2. **Установка.** В команде установки воркер называют: `--worker echo` (в API — поле
+   `workers`). Установщик скачивает архив, распаковывает его в
+   `/var/lib/agent/workers/echo/current` и прописывает воркер в `agent.yaml` с
+   `release: true`. Агент запускает `./run` из этой папки.
+3. **Обновление.** Новая версия — поднять `VERSION`, пересобрать выпуск
+   (`yarn agent:release`), перезапустить бэкенд с новым выпуском и вызвать
+   `POST /api/v1/agents/{id}/workers/echo/update`. Если воркер занят долгой задачей,
+   замена ждёт её окончания: ответ приходит сразу (`deferred: true`), итог — событием
+   `agent:action` в сокете.
+
+На узле нужна среда для воркера: для `echo` — `python3` (≥ 3.10). Пакеты можно поставить
+той же командой (`packages` в команде установки).
+
+## Свой воркер
+
+1. Папка `agent/workers/<имя>` (имя — строчные латинские буквы, цифры и `-`):
+   - сам сервис — на любом языке; обязательно отвечает на `GET /health` и
+     `GET /manifest` на unix-сокете из `AGENT_WORKER_SOCKET` (пример — `echo/main.py`,
+     полное описание — `sdk/docs/workers.md` в репозитории агента);
+   - `run` — исполняемый файл, который запускает сервис (`#!/bin/sh` и `exec …`);
+   - `VERSION` — версия, та же, что в ответе `GET /manifest`.
+2. Работа для воркера — задача его типа: тип объявляется в манифесте (`jobs`), бэкенд
+   ставит её очередью (`definition.job.type`) — см. README модуля
+   [agent](../src/modules/agent/README.md#своя-очередь-задач-и-воркер).
+3. Локально — строка в `agent/local/agent.yaml`, в образе — в `agent/docker/agent.yaml` и
+   строка `COPY` уже покрывает `agent/workers`.
+4. На узлы — `yarn agent:release` и `--worker <имя>` в команде установки.
+
+## Агент на своей машине
 
 ```bash
-yarn agent:go test      # тесты (и на эталонах протокола)
-yarn agent:go race      # с race-детектором
-yarn agent:go vet | fmt | tidy
-yarn agent:go build [os] [arch]   # agent/dist/<VERSION>/agent-<os>-<arch>
-yarn agent:setup && yarn agent    # агент на этой машине с Python-нагрузкой
+yarn dev              # API (в .env.development — AGENT_BOOTSTRAP_TOKEN и AGENT_RELEASES_DIR=agent/release)
+yarn agent:release    # выпуск в agent/release (один раз и после изменений воркеров)
+yarn agent            # агент с воркерами echo и netprobe; Ctrl+C — остановка
+yarn agent:start | agent:stop [--force] | agent:status | agent:logs   # то же в фоне
 ```
 
-## Поставка
+`agent/dev.sh` берёт программу агента из `AGENT_BIN`, `.agent/bin/agent`, `agent/release`
+или `../alp-agent/dist/<версия>`; воркер `echo` запускает прямо из `agent/workers/echo`
+(правки видны после перезапуска воркера), `netprobe` — из выпуска. Настройки —
+`agent/local/agent.yaml`, данные агента — `.agent/` (удалить — агент зарегистрируется
+заново и привяжется к своему узлу по имени). Второй агент — `AGENT_DIR=.agent-2
+AGENT_NAME=dev-2 yarn agent`.
 
-- **Контейнер** — `Dockerfile.agent` (агент + Python-нагрузки, `update.mode=external`),
-  профиль `agent` в `docker-compose.yml`; учётные данные и outbox — в томе
-  `/var/lib/agent`. Обновление — новым образом.
-- **Сервер без Docker** — `sudo sh agent/install/install.sh --binary agent-linux-amd64
---server https://api… --token … --public-key …`: `/opt/agent/bin/agent`, конфигурация
-  `/etc/agent/agent.yaml`, секреты `/etc/agent/agent.env` (0600), служба `agent`
-  (`Restart=always`, `KillMode=mixed`). `--uninstall [--purge]` — удаление.
+## Docker
 
-## Обновление и подпись
+Образ агента с воркерами проекта и `netprobe`: `agent/docker/Dockerfile`, настройки внутри —
+`agent/docker/agent.yaml`. Программа агента берётся из `agent/release` (или с GitHub
+Release).
 
-1. Ключи: `agent keygen` → `AGENT_SIGNING_KEY` (секрет CI/выпуска, вне бэкенда) и
-   `AGENT_UPDATE_PUBLIC_KEY` (в конфигурацию агентов).
-2. Сборка: `AGENT_SIGNING_KEY=… yarn agent:go release` — linux/darwin × amd64/arm64 и
-   подписанный `manifest.json` в `agent/dist/<VERSION>/`. Образ API собирает их сам
-   (стадия `agent-dist`, секрет BuildKit `agent_signing_key`) и раздаёт из
-   `AGENT_RELEASES_DIR`.
-3. `POST /api/v1/agents/{id}/update` — команда `agent.update` со сборкой под ОС и
-   архитектуру агента. Агент сверяет подпись и sha256, сохраняет прежнюю версию
-   (`.prev`), подменяет себя и перезапускается после доработки задач.
-4. Новая версия, не вышедшая на связь за 3 запуска, откатывается: под systemd это
-   делает прежняя версия до запуска новой (`agent.prev boot-guard`), иначе — сам
-   процесс при старте.
-
-## Свой агент проекта
-
-Проект с собственной возможностью (желаемое состояние узла, свои команды, задачи на
-Go) собирает свой `cmd/<name>` из `kit/app` — без копирования связи и инфраструктуры:
-
-```go
-agent, err := app.New(cfg, version)
-// Желаемое состояние домена: снимок с сервера → Apply на узле (идемпотентно).
-agent.State().Register(wg.NewReconciler(agent.Log()))
-// Своя команда из белого списка.
-agent.Commands().Register("wg.restart", wg.RestartCommand)
-// Задачи на Go в процессе агента.
-funcs := jobs.NewFuncs("go", agent.Jobs())
-funcs.Handle("node.probe", 4, probe)
-agent.Jobs().Attach(funcs)
-err = agent.Run(ctx)
+```bash
+docker build -f agent/docker/Dockerfile -t agent .
+docker compose --profile agent up -d    # агент рядом с API из docker-compose.yml
 ```
 
-На сервере домен регистрирует `asAgentStateProvider` (снимок для агента и реакция на
-`state.applied`) — модуль `agent` доставляет его по протоколу.
+В контейнере агент себя не обновляет — обновляют образ.
+
+## Несколько копий бэкенда
+
+Агент подключён к одной копии API. Если копий несколько, задайте всем один
+`AGENT_RELAY_SECRET`: копия без соединения агента пересылает вызов той, у которой оно
+есть, на её внутренний сервер пересылки — отдельный порт `AGENT_RELAY_PORT` (8182) на
+адресе `AGENT_RELAY_HOST` (`127.0.0.1`; в контейнере — `0.0.0.0`). Внутренний адрес копии
+— `INSTANCE_URL` или `AGENT_RELAY_HOST:AGENT_RELAY_PORT`. Публичный порт API пересылку не
+обслуживает; порт пересылки наружу не публикуют.

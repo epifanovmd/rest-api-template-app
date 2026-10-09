@@ -1,27 +1,35 @@
 import { inject } from "inversify";
 
-import { AccessService, Injectable } from "../../core";
+import { Injectable } from "../../core";
 import { ISocketRoomPolicy } from "../socket";
-import { AgentPermissions } from "./agent.permissions";
+import { AgentRuntime } from "./agent.runtime";
+import { AGENT_ROOM_TYPE, agentRoom, isAgentId } from "./agent.types";
+import { AgentAccessService } from "./agent-access.service";
 
-/** Комната списка агентов: право `agent:view`. */
-export const AGENTS_ROOM = "agents";
-
-/** Комната агента `agent_<id>`: живое состояние и команды. */
-export const agentRoom = (id: string): string => `agent_${id}`;
-
-/** Комната одного агента: право `agent:view`. */
+/**
+ * Комната агента `agent_<id>` (`room:subscribe { type: "agent", id }`):
+ * право `agent:view` или доступ к агенту через политику (агент своего
+ * узла), и агент существует. Пока клиент в комнате, сервер держит
+ * наблюдателя (`AgentWatchService`): метрики и журнал приходят чаще.
+ */
 @Injectable()
 export class AgentRoomPolicy implements ISocketRoomPolicy {
-  readonly type = "agent";
+  readonly type = AGENT_ROOM_TYPE;
 
-  constructor(@inject(AccessService) private readonly _access: AccessService) {}
+  constructor(
+    @inject(AgentAccessService) private readonly _access: AgentAccessService,
+    @inject(AgentRuntime) private readonly _runtime: AgentRuntime,
+  ) {}
 
   room(id: string): string {
     return agentRoom(id);
   }
 
-  canJoin(userId: string): Promise<boolean> {
-    return this._access.can(userId, AgentPermissions.VIEW);
+  async canJoin(userId: string, id: string): Promise<boolean> {
+    return (
+      isAgentId(id) &&
+      (await this._access.canUser(userId, id, "view")) &&
+      !!(await this._runtime.agents.getAgent(id))
+    );
   }
 }

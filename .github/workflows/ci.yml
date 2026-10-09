@@ -32,36 +32,15 @@ jobs:
       - run: yarn test
       - run: yarn build
 
-  python-sdk:
+  # Воркер проекта echo (Python без SDK, стандартная библиотека): синтаксис.
+  agent-worker:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: python
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      # SDK без зависимостей; requirements.txt — для обработчиков.
-      - run: python -m unittest discover -s tests -t .
-
-  agent:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: agent
-    env:
-      ALP_FIXTURES: ${{ github.workspace }}/protocol/alp/v1/fixtures
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: agent/go.mod
-          cache-dependency-path: agent/go.sum
-      - name: gofmt
-        run: test -z "$(gofmt -l .)" || (gofmt -l . && exit 1)
-      - run: go vet ./...
-      - run: go test -race ./...
+      - run: python -m py_compile agent/workers/echo/main.py
 
   migrations:
     runs-on: ubuntu-latest
@@ -159,6 +138,13 @@ jobs:
             amazon/aws-cli:latest --endpoint-url http://localhost:8333 s3 mb s3://e2e
       - run: yarn install --frozen-lockfile --ignore-scripts
       - run: yarn generate
+      # Настоящий агент и воркеры для сценариев агентов и узлов — выпуск в agent/release:
+      # агент версии agent-sdk из GitHub Release и воркеры проекта (утилита agent-release —
+      # go run из репозитория агента).
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+      - run: yarn agent:release
       - run: yarn test:e2e
 
   audit:
@@ -187,7 +173,7 @@ jobs:
           - name: worker
             target: worker
           - name: agent
-            file: Dockerfile.agent
+            file: agent/docker/Dockerfile
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
@@ -212,7 +198,7 @@ jobs:
 
   # Деплой main на хост после всех проверок; без настроек (форки шаблона) — пропуск.
   deploy:
-    needs: [verify, python-sdk, agent, migrations, e2e, docker]
+    needs: [verify, agent-worker, migrations, e2e, docker]
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && vars.DEPLOY_ENV != ''
     uses: ./.github/workflows/deploy.yml
     secrets: inherit

@@ -79,6 +79,7 @@ export const createMockEventBus = () => ({
 export const createMockEmitter = () => ({
   toUser: sinon.stub(),
   toRoom: sinon.stub(),
+  toRooms: sinon.stub(),
   broadcast: sinon.stub(),
   joinRoom: sinon.stub(),
   leaveRoom: sinon.stub(),
@@ -94,7 +95,6 @@ export const uuid3 = () => "00000000-0000-0000-0000-000000000003";
 export const createMockJobQueue = () => ({
   enqueue: sinon.stub().resolves("job-id"),
   cancel: sinon.stub().resolves(),
-  stop: sinon.stub().resolves(),
 });
 
 /** Хранилище файлов в памяти: ключ → буфер. */

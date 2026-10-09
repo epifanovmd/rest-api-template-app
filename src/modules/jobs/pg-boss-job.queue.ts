@@ -9,6 +9,7 @@ import {
   logger,
   RequestOptions,
 } from "../../core";
+import { ExternalJobService } from "./external-job.service";
 import { JobCancelWatcher } from "./job-cancel.watcher";
 import { JobHandlerRegistry } from "./job-handler.registry";
 import { JobResultWaiter } from "./job-result.waiter";
@@ -19,15 +20,18 @@ import { JobsError } from "./jobs.errors";
 import {
   ACTIVE_JOB_RUN_STATUSES,
   EJobRunStatus,
-  JOB_AVAILABLE_CHANNEL,
+  JOB_EXTERNAL_START_DELAY_SECONDS,
+  JOB_QUEUED_CHANNEL,
   JOB_REQUEST_TIMEOUT_MS,
-  JOB_STOP_CHANNEL,
 } from "./jobs.types";
 import { managerDb, PgBossService } from "./pg-boss.service";
 
 /**
  * `JobQueue` на pg-boss. Видимая задача ставится вместе с записью
  * `job_runs` в одной транзакции: переданной (`manager`, outbox) или своей.
+ * Внешняя задача без `startAfter` передаётся воркеру сразу после коммита
+ * (сигнал `job_queued` в той же транзакции), а задача pg-boss начинается
+ * позже — для повтора передачи и ожидания агента.
  */
 @Injectable()
 export class PgBossJobQueue extends JobQueue {
@@ -36,8 +40,9 @@ export class PgBossJobQueue extends JobQueue {
     @inject(JobHandlerRegistry) private readonly _registry: JobHandlerRegistry,
     @inject(JobRunTracker) private readonly _tracker: JobRunTracker,
     @inject(JobCancelWatcher) private readonly _watcher: JobCancelWatcher,
-    @inject(JobSignals) private readonly _signals: JobSignals,
+    @inject(ExternalJobService) private readonly _external: ExternalJobService,
     @inject(JobResultWaiter) private readonly _waiter: JobResultWaiter,
+    @inject(JobSignals) private readonly _signals: JobSignals,
     @inject(DataSource) private readonly _dataSource: DataSource,
   ) {
     super();
@@ -54,10 +59,12 @@ export class PgBossJobQueue extends JobQueue {
 
     if (!definition) throw JobsError.UNKNOWN_QUEUE({ queue });
 
+    const startNow = definition.external && options.startAfter === undefined;
+    const startAfter = startNow
+      ? JOB_EXTERNAL_START_DELAY_SECONDS
+      : options.startAfter;
     const sendOptions: SendOptions = {
-      ...(options.startAfter !== undefined && {
-        startAfter: options.startAfter,
-      }),
+      ...(startAfter !== undefined && { startAfter }),
       ...(options.singletonKey !== undefined && {
         singletonKey: options.singletonKey,
       }),
@@ -71,7 +78,6 @@ export class PgBossJobQueue extends JobQueue {
       });
     }
 
-    const external = this._registry.external(queue) !== undefined;
     const enqueueTracked = async (
       manager: EntityManager,
     ): Promise<JobRun | null> => {
@@ -90,10 +96,7 @@ export class PgBossJobQueue extends JobQueue {
         scope: options.scope,
       });
 
-      // Воркеры в long-poll берут задачу сразу, а не на следующем опросе.
-      if (external) {
-        await this._signals.notify(JOB_AVAILABLE_CHANNEL, queue, manager);
-      }
+      if (startNow) await this._signals.notify(JOB_QUEUED_CHANNEL, id, manager);
 
       return run;
     };
@@ -142,27 +145,6 @@ export class PgBossJobQueue extends JobQueue {
     });
   }
 
-  async stop(jobId: string): Promise<void> {
-    const run = await this._tracker.find(jobId);
-
-    if (!run) throw JobsError.NOT_FOUND();
-    if (!ACTIVE_JOB_RUN_STATUSES.includes(run.status)) return;
-
-    const graceful =
-      run.status === EJobRunStatus.RUNNING &&
-      this._registry.external(run.queue) !== undefined;
-
-    if (graceful) {
-      await this._tracker.update(run, { stopRequested: true });
-      // Агенту задачи остановка уходит сразу — сигналом в процесс его сессии.
-      await this._signals
-        .notify(JOB_STOP_CHANNEL, jobId)
-        .catch(err =>
-          logger.warn({ err, jobId }, "[Jobs] Сигнал остановки не отправлен"),
-        );
-    } else await this.cancel(jobId);
-  }
-
   async cancel(jobId: string): Promise<void> {
     const run = await this._tracker.find(jobId);
     const queue = run?.queue ?? (await this._boss.findJob(jobId))?.queue;
@@ -179,6 +161,11 @@ export class PgBossJobQueue extends JobQueue {
 
       if (settleNow) await this._tracker.cancelled(run);
       else await this._tracker.update(run, { cancelRequested: true });
+      await this._external
+        .cancelJob(run)
+        .catch(err =>
+          logger.warn({ err, jobId }, "[Jobs] Отмена у исполнителя не удалась"),
+        );
     }
 
     const boss = await this._boss.ready();

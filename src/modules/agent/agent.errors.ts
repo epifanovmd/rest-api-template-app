@@ -1,66 +1,139 @@
-import { defineErrors, HttpStatus } from "../../core";
+import { AgentsError } from "agent-sdk/server";
+
+import {
+  defineErrors,
+  ErrorFactory,
+  HttpException,
+  HttpStatus,
+} from "../../core";
+import { AGENT_ELSEWHERE_RETRY_SECONDS } from "./agent.types";
 
 export const AgentError = defineErrors("AGENT", {
-  CREDENTIALS_REQUIRED: {
-    status: HttpStatus.UNAUTHORIZED,
-    message: "Требуются учётные данные агента",
-  },
-  CREDENTIALS_INVALID: {
-    status: HttpStatus.UNAUTHORIZED,
-    message: "Неверные или отозванные учётные данные агента",
-  },
-  ENROLLMENT_TOKEN_INVALID: {
-    status: HttpStatus.UNAUTHORIZED,
-    message: "Токен регистрации неверен, отозван, просрочен или исчерпан",
-  },
   NOT_FOUND: { status: HttpStatus.NOT_FOUND, message: "Агент не найден" },
+  FORBIDDEN: { status: HttpStatus.FORBIDDEN, message: "Нет доступа к агенту" },
+  AGENT_REQUIRED: {
+    status: HttpStatus.FORBIDDEN,
+    message: "Нет права на все агенты: укажите агента (agentId)",
+  },
+  REVOKED: { status: HttpStatus.CONFLICT, message: "Агент отозван" },
+  OFFLINE: {
+    status: HttpStatus.SERVICE_UNAVAILABLE,
+    message: "Агент не на связи",
+  },
+  ELSEWHERE: {
+    status: HttpStatus.SERVICE_UNAVAILABLE,
+    message:
+      "Агент на связи с другим процессом сервера: повторите запрос через несколько секунд",
+  },
+  WORKER_NOT_FOUND: {
+    status: HttpStatus.NOT_FOUND,
+    message: "У агента нет такого воркера",
+  },
+  WORKER_NOT_RELEASED: {
+    status: HttpStatus.CONFLICT,
+    message: "Воркер не из выпуска: обновить его с сервера нельзя",
+  },
+  CONFIG_NOT_FOUND: {
+    status: HttpStatus.NOT_FOUND,
+    message: "Ключа настроек нет",
+  },
+  CONFIG_INVALID: {
+    status: HttpStatus.BAD_REQUEST,
+    message: "Значение не подходит под схему ключа из манифеста воркера",
+  },
+  UPDATE_NOT_AVAILABLE: {
+    status: HttpStatus.CONFLICT,
+    message: "Обновление недоступно: нет выпуска или сборки под агента",
+  },
+  STORE_CONFLICT: {
+    status: HttpStatus.CONFLICT,
+    message: "Запись агента меняется другими процессами, повторите",
+  },
+  TIMEOUT: {
+    status: HttpStatus.GATEWAY_TIMEOUT,
+    message: "Агент не ответил в срок",
+  },
+  TOO_LARGE: {
+    status: HttpStatus.PAYLOAD_TOO_LARGE,
+    message: "Слишком большое тело запроса или значение",
+  },
+  INVALID_REQUEST: {
+    status: HttpStatus.BAD_REQUEST,
+    message: "Некорректный запрос к агенту",
+  },
+  NOT_WATCHED: {
+    status: HttpStatus.CONFLICT,
+    message: "Сначала войдите в комнату агента (room:subscribe)",
+  },
   ENROLLMENT_TOKEN_NOT_FOUND: {
     status: HttpStatus.NOT_FOUND,
     message: "Токен регистрации не найден",
   },
-  COMMAND_NOT_FOUND: {
-    status: HttpStatus.NOT_FOUND,
-    message: "Команда не найдена",
-  },
-  COMMAND_NOT_SUPPORTED: {
-    status: HttpStatus.BAD_REQUEST,
-    message: "Агент не поддерживает эту команду",
-  },
-  COMMAND_NOT_CANCELLABLE: {
-    status: HttpStatus.CONFLICT,
-    message: "Команда уже завершена",
-  },
-  REVOKED: { status: HttpStatus.CONFLICT, message: "Агент отозван" },
-  SESSION_EXPIRED: {
-    status: HttpStatus.CONFLICT,
-    message: "Сессия агента истекла: начните новую с hello",
-  },
-  SESSION_REPLACED: {
-    status: HttpStatus.CONFLICT,
-    message: "Сессию агента вытеснила другая",
-  },
-  HELLO_REQUIRED: {
-    status: HttpStatus.BAD_REQUEST,
-    message: "Первое сообщение сессии — hello",
-  },
-  PROTOCOL_UNSUPPORTED: {
-    status: HttpStatus.CONFLICT,
-    message: "Нет общей версии протокола",
-  },
-  MESSAGE_INVALID: {
-    status: HttpStatus.BAD_REQUEST,
-    message: "Некорректное сообщение агента",
-  },
-  UNKNOWN_TYPE: {
-    status: HttpStatus.BAD_REQUEST,
-    message: "Неизвестный тип сообщения",
-  },
-  RELEASE_UNSIGNED: {
-    status: HttpStatus.CONFLICT,
-    message: "Сборка агента без подписи: самообновление на неё невозможно",
-  },
-  RELEASE_NOT_FOUND: {
-    status: HttpStatus.NOT_FOUND,
-    message: "Сборка агента не найдена",
-  },
 });
+
+/** Коды ошибок SDK → доменные ошибки модуля. */
+const SDK_ERRORS: Record<string, ErrorFactory> = {
+  AGENT_NOT_FOUND: AgentError.NOT_FOUND,
+  AGENT_REVOKED: AgentError.REVOKED,
+  AGENT_OFFLINE: AgentError.OFFLINE,
+  WORKER_UNKNOWN: AgentError.WORKER_NOT_FOUND,
+  WORKER_NOT_RELEASED: AgentError.WORKER_NOT_RELEASED,
+  CONFIG_INVALID: AgentError.CONFIG_INVALID,
+  UPDATE_NOT_AVAILABLE: AgentError.UPDATE_NOT_AVAILABLE,
+  CONFLICT: AgentError.STORE_CONFLICT,
+  TIMEOUT: AgentError.TIMEOUT,
+  BODY_TOO_LARGE: AgentError.TOO_LARGE,
+  MESSAGE_INVALID: AgentError.INVALID_REQUEST,
+};
+
+/**
+ * Ошибка SDK агентов → доменная (`AGENT_*`): текст SDK — в `details.reason`.
+ * `AGENT_ELSEWHERE` (соединение агента в другом процессе) — 503 с
+ * `details.retryAfter`. Коды агента и воркера (`WORKER_UNAVAILABLE`,
+ * `ACTION_FAILED`, …) — со статусом и кодом SDK. Прочие ошибки — как есть.
+ */
+export const toAgentError = (err: unknown): unknown => {
+  if (!(err instanceof AgentsError)) return err;
+  if (err.code === "AGENT_ELSEWHERE") {
+    return AgentError.ELSEWHERE({
+      reason: err.message,
+      retryAfter: AGENT_ELSEWHERE_RETRY_SECONDS,
+    });
+  }
+
+  const factory = SDK_ERRORS[err.code];
+
+  return factory
+    ? factory({ reason: err.message })
+    : new HttpException(err.message, err.status, undefined, err.code);
+};
+
+/** Вызов SDK с переводом его ошибок в доменные. */
+export const callAgents = async <T>(fn: () => Promise<T>): Promise<T> => {
+  try {
+    return await fn();
+  } catch (err) {
+    throw toAgentError(err);
+  }
+};
+
+/**
+ * `AGENT_ELSEWHERE` → заголовок `Retry-After`: клиент повторит запрос, и
+ * балансировщик, возможно, приведёт его в процесс с соединением агента.
+ */
+export const withRetryAfter = async <T>(
+  setHeader: (name: string, value: string) => void,
+  run: () => Promise<T>,
+): Promise<T> => {
+  try {
+    return await run();
+  } catch (err) {
+    if (
+      err instanceof HttpException &&
+      err.code === AgentError.codes.ELSEWHERE
+    ) {
+      setHeader("Retry-After", String(AGENT_ELSEWHERE_RETRY_SECONDS));
+    }
+    throw err;
+  }
+};

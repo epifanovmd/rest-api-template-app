@@ -18,8 +18,12 @@ __pycache__/
 # Ключи сервисных аккаунтов (Firebase и т. п.) — не в репозиторий и не в образ
 firebaseAccount.json
 
-# Python-окружение нагрузок агента (yarn agent:setup)
+# Python-окружения
 .venv/
 
-# Агент для разработки: данные, pid и журнал (yarn agent)
+# Агент для разработки: программа, данные, окружение воркера, pid и журнал (yarn agent)
 .agent/
+
+# Выпуск для агентов (yarn agent:release) и утилита agent-release — собираются, не хранятся
+agent/release/
+agent/tools/

@@ -42,6 +42,8 @@ export interface CallOptions {
   /** Схема заголовка авторизации: Bearer (по умолчанию), Bot, ApiKey. */
   scheme?: string;
   ip?: string;
+  /** Другая копия API (по умолчанию — основная, `BASE_URL`). */
+  baseUrl?: string;
 }
 
 /** Запрос к API от имени токена (строка) или участника (Actor). */
@@ -69,7 +71,11 @@ export const call = async <T = any>(
 
   calledEndpoints.push({ method, path: path.split("?")[0] });
 
-  const res = await fetch(BASE_URL + path, { method, headers, body: payload });
+  const res = await fetch((options.baseUrl ?? BASE_URL) + path, {
+    method,
+    headers,
+    body: payload,
+  });
   const text = await res.text();
   let data: any;
 

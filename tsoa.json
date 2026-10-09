@@ -15,12 +15,6 @@
         "in": "header",
         "name": "X-Api-Key",
         "description": "API-ключ сервиса (интеграция)"
-      },
-      "agent": {
-        "type": "apiKey",
-        "in": "header",
-        "name": "Authorization",
-        "description": "Учётные данные агента: `Agent <agentId>.<secret>`"
       }
     },
     "spec": {

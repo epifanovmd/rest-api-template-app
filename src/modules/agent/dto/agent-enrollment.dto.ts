@@ -9,7 +9,6 @@ export class AgentEnrollmentTokenDto extends BaseDto {
   labels: Record<string, string>;
   maxUses: number | null;
   uses: number;
-  ephemeral: boolean;
   expiresAt: Date | null;
   revokedAt: Date | null;
   createdBy: string | null;
@@ -24,7 +23,6 @@ export class AgentEnrollmentTokenDto extends BaseDto {
     this.labels = entity.labels;
     this.maxUses = entity.maxUses;
     this.uses = entity.uses;
-    this.ephemeral = entity.ephemeral;
     this.expiresAt = entity.expiresAt;
     this.revokedAt = entity.revokedAt;
     this.createdBy = entity.createdBy;
@@ -37,13 +35,13 @@ export class AgentEnrollmentTokenDto extends BaseDto {
 }
 
 /** Выпущенный токен: `token` показывается один раз. */
-export interface ICreatedEnrollmentTokenDto {
+export interface ICreatedAgentEnrollmentTokenDto {
   enrollmentToken: AgentEnrollmentTokenDto;
-  /** Полный токен `<prefix>.<secret>` — в конфигурацию агента. */
+  /** Полный токен `<prefix>.<secret>` — в настройки агента. */
   token: string;
 }
 
-export interface ICreateEnrollmentTokenBody {
+export interface ICreateAgentEnrollmentTokenBody {
   /**
    * @minLength 1
    * @maxLength 100
@@ -53,34 +51,6 @@ export interface ICreateEnrollmentTokenBody {
   labels?: Record<string, string>;
   /** Сколько агентов можно зарегистрировать; без него — без ограничения. */
   maxUses?: number;
-  /** Агенты — эфемерные реплики (без постоянного тома). */
-  ephemeral?: boolean;
-  /** Срок действия токена; без него — бессрочный. */
+  /** Срок действия; без него — бессрочный. */
   expiresAt?: Date;
-}
-
-/** Сведения о хосте при регистрации. */
-export interface IEnrollAgentHost {
-  hostname?: string;
-  os?: string;
-  arch?: string;
-}
-
-export interface IEnrollAgentBody {
-  /** Токен регистрации `<prefix>.<secret>`. */
-  token: string;
-  /**
-   * @minLength 1
-   * @maxLength 200
-   */
-  name: string;
-  labels?: Record<string, string>;
-  host?: IEnrollAgentHost;
-}
-
-/** Учётные данные агента: `secret` показывается один раз. */
-export interface IEnrolledAgentDto {
-  agentId: string;
-  /** Секрет: `Authorization: Agent <agentId>.<secret>`. */
-  secret: string;
 }

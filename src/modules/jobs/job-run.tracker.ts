@@ -1,17 +1,18 @@
 import { inject } from "inversify";
-import type { EntityManager } from "typeorm";
+import { type EntityManager, In } from "typeorm";
 import type { QueryDeepPartialEntity } from "typeorm/query-builder/QueryPartialEntity";
 
-import { EventBus, Injectable, type JobScope } from "../../core";
+import { EventBus, Injectable, type JobScope, logger } from "../../core";
 import { JobRunDto } from "./dto/job-run.dto";
 import { JobUpdatedEvent } from "./events";
 import { JobRun } from "./job-run.entity";
 import { JobRunRepository } from "./job-run.repository";
+import { JobRunViews } from "./job-run.views";
 import { JobSignals } from "./job-signals";
 import {
+  ACTIVE_JOB_RUN_STATUSES,
   EJobRunStatus,
   IJobRunError,
-  IJobRunFiles,
   JOB_LOG_LINE_MAX,
   JOB_LOG_TAIL_SIZE,
   JOB_SETTLED_CHANNEL,
@@ -33,9 +34,6 @@ export interface IStartJobRun {
   leaseSeconds: number;
   /** Записи нет (задача из cron) — создать её. */
   createIfMissing: boolean;
-  files?: IJobRunFiles | null;
-  /** Агент, которому выдана внешняя задача. */
-  agentId?: string | null;
 }
 
 type TJobRunPatch = Partial<
@@ -49,12 +47,13 @@ type TJobRunPatch = Partial<
     | "error"
     | "attempt"
     | "cancelRequested"
-    | "stopRequested"
-    | "eventSeq"
     | "leaseUntil"
-    | "files"
     | "agentId"
-    | "acceptedAt"
+    | "worker"
+    | "jobType"
+    | "outputs"
+    | "externalId"
+    | "deadlineAt"
     | "startedAt"
     | "finishedAt"
   >
@@ -89,6 +88,7 @@ export class JobRunTracker {
     @inject(JobRunRepository) private readonly _repo: JobRunRepository,
     @inject(EventBus) private readonly _eventBus: EventBus,
     @inject(JobSignals) private readonly _signals: JobSignals,
+    @inject(JobRunViews) private readonly _views: JobRunViews,
   ) {}
 
   /** Запись о задаче в транзакции постановки (outbox); событие — после коммита. */
@@ -111,11 +111,13 @@ export class JobRunTracker {
         scopeId: data.scope?.id ?? null,
         attempt: 0,
         cancelRequested: false,
-        stopRequested: false,
         leaseUntil: null,
-        files: null,
         agentId: null,
-        acceptedAt: null,
+        worker: null,
+        jobType: null,
+        outputs: null,
+        externalId: null,
+        deadlineAt: null,
         startedAt: null,
         finishedAt: null,
       }),
@@ -126,8 +128,22 @@ export class JobRunTracker {
     return this._repo.findById(id);
   }
 
+  /** Снимок задачи — подписчикам; с файлами итога — после подписи ссылок. */
   publish(run: JobRun): void {
-    this._eventBus.emit(new JobUpdatedEvent(JobRunDto.fromEntity(run)));
+    if (!run.outputs?.length) {
+      this._eventBus.emit(new JobUpdatedEvent(JobRunDto.fromEntity(run)));
+
+      return;
+    }
+
+    const snapshot = { ...run };
+
+    this._views
+      .toDto(snapshot)
+      .then(dto => this._eventBus.emit(new JobUpdatedEvent(dto)))
+      .catch(err =>
+        logger.warn({ err, jobId: run.id }, "[Jobs] Событие задачи"),
+      );
   }
 
   /**
@@ -138,19 +154,11 @@ export class JobRunTracker {
     const startedAt = new Date();
     const patch = {
       attempt: params.attempt,
-      // Новая попытка — события воркера нумеруются заново.
-      eventSeq: 0,
       startedAt,
       leaseUntil: secondsFromNow(params.leaseSeconds),
-      agentId: params.agentId ?? null,
-      acceptedAt: null,
     };
 
     if (await this._repo.markRunning(params.id, patch)) {
-      if (params.files !== undefined) {
-        await this._repo.update({ id: params.id }, { files: params.files });
-      }
-
       const run = await this._repo.findById(params.id);
 
       if (run) this.publish(run);
@@ -177,8 +185,12 @@ export class JobRunTracker {
         scopeType: null,
         scopeId: null,
         cancelRequested: false,
-        stopRequested: false,
-        files: params.files ?? null,
+        agentId: null,
+        worker: null,
+        jobType: null,
+        outputs: null,
+        externalId: null,
+        deadlineAt: null,
         finishedAt: null,
         ...patch,
       }),
@@ -216,6 +228,32 @@ export class JobRunTracker {
     if (!manager) this.publish(run);
 
     return run;
+  }
+
+  /**
+   * Условный UPDATE, только пока задача не завершена: изменение из другого
+   * процесса не откатит итог. `false` — задача уже завершена.
+   */
+  async updateIfActive(
+    run: JobRun,
+    patch: TJobRunPatch,
+    manager?: EntityManager,
+  ): Promise<boolean> {
+    const repo = manager ? manager.getRepository(JobRun) : this._repo;
+    const { affected } = await repo.update(
+      { id: run.id, status: In(ACTIVE_JOB_RUN_STATUSES as EJobRunStatus[]) },
+      patch as QueryDeepPartialEntity<JobRun>,
+    );
+
+    if (!affected) return false;
+
+    Object.assign(run, patch);
+    if (patch.status && SETTLED_JOB_RUN_STATUSES.includes(patch.status)) {
+      await this._signals.notify(JOB_SETTLED_CHANNEL, run.id, manager);
+    }
+    if (!manager) this.publish(run);
+
+    return true;
   }
 
   progress(

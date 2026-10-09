@@ -1,8 +1,0 @@
-{
-  "type": "cmd.output",
-  "seq": 9,
-  "data": {
-    "commandId": "22222222-2222-4222-8222-222222222222",
-    "chunk": "2026-10-07T10:00:00Z INFO link connected\n"
-  }
-}

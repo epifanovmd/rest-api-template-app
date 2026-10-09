@@ -15,6 +15,7 @@ import { JobRunDto } from "./dto/job-run.dto";
 import { JobResultWaiter } from "./job-result.waiter";
 import { JobRun } from "./job-run.entity";
 import { JobRunRepository } from "./job-run.repository";
+import { JobRunViews } from "./job-run.views";
 import { JobsError } from "./jobs.errors";
 import {
   ACTIVE_JOB_RUN_STATUSES,
@@ -56,6 +57,7 @@ export class JobsService {
     @inject(JobRunRepository) private readonly _runs: JobRunRepository,
     @inject(JobQueue) private readonly _queue: JobQueue,
     @inject(JobResultWaiter) private readonly _waiter: JobResultWaiter,
+    @inject(JobRunViews) private readonly _views: JobRunViews,
     @multiInject(JOB_ACCESS_POLICY)
     @optional()
     private readonly _policies: IJobAccessPolicy[] = [],
@@ -86,7 +88,7 @@ export class JobsService {
       ...page,
     });
 
-    return toPage(runs.map(JobRunDto.fromEntity), total, page);
+    return toPage(await this._views.toDtos(runs), total, page);
   }
 
   /**
@@ -104,13 +106,13 @@ export class JobsService {
       Math.min(Math.max(waitSeconds, 0), JOB_WAIT_MAX_SECONDS) * 1000;
 
     if (waitMs === 0 || SETTLED_JOB_RUN_STATUSES.includes(run.status)) {
-      return JobRunDto.fromEntity(run);
+      return this._views.toDto(run);
     }
 
     const settled = await this._waiter.wait(id, waitMs, signal);
     const current = settled ?? (await this._runs.findById(id)) ?? run;
 
-    return JobRunDto.fromEntity(current);
+    return this._views.toDto(current);
   }
 
   /**
@@ -137,20 +139,6 @@ export class JobsService {
     }
 
     await this._queue.cancel(id);
-  }
-
-  /**
-   * Завершить досрочно, но штатно: выполняющаяся внешняя задача доводит шаг и
-   * сдаёт результат; ждущая и Node-задача отменяются. Право — как на отмену.
-   */
-  async stop(viewer: IJobViewer, id: string): Promise<void> {
-    const run = await this.findAccessible(viewer, id, "cancel");
-
-    if (!ACTIVE_JOB_RUN_STATUSES.includes(run.status)) {
-      throw JobsError.NOT_CANCELLABLE();
-    }
-
-    await this._queue.stop(id);
   }
 
   /** Может ли пользователь видеть задачу (подписка на комнату сокета). */

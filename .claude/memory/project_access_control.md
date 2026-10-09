@@ -108,16 +108,16 @@ scopes API-ключей; down собирает `manage` обратно у име
 `*` «Система». `PermissionController` зарегистрирован в `UserModule`. Совместимого `Permissions`/`KnownPermission`
 нет: `TPermission = string`, `*` — `ALL_PERMISSIONS` из `core/auth/superuser.ts`.
 
-| Группа                        | Права                                                                                  |
-| ----------------------------- | -------------------------------------------------------------------------------------- |
-| `user` «Пользователи»         | `user:view`, `user:update` (контакты), `user:delete`, `user:privileges` (роли и права) |
-| `role` «Роли»                 | `role:view`, `role:create`, `role:update` (права роли), `role:delete`                  |
-| `profile` «Профили»           | `profile:view`, `profile:update`, `profile:delete` (очистка)                           |
-| `apikey` «API-ключи»          | `apikey:view`, `apikey:create`, `apikey:revoke`                                        |
-| `audit` «Журнал безопасности» | `audit:view`                                                                           |
-| `jobs` «Фоновые задачи»       | `jobs:demo` (демо-задача проверки агентов)                                             |
-| `agent` «Агенты»              | `agent:view`, `agent:enroll`, `agent:command`, `agent:revoke`                          |
-| `file` «Файлы»                | `file:view`, `file:delete` — scoped, есть `file:view:own`, `file:delete:own`           |
+| Группа                        | Права                                                                                     |
+| ----------------------------- | ----------------------------------------------------------------------------------------- |
+| `user` «Пользователи»         | `user:view`, `user:update` (контакты), `user:delete`, `user:privileges` (роли и права)    |
+| `role` «Роли»                 | `role:view`, `role:create`, `role:update` (права роли), `role:delete`                     |
+| `profile` «Профили»           | `profile:view`, `profile:update`, `profile:delete` (очистка)                              |
+| `apikey` «API-ключи»          | `apikey:view`, `apikey:create`, `apikey:revoke`                                           |
+| `audit` «Журнал безопасности» | `audit:view`                                                                              |
+| `jobs` «Фоновые задачи»       | `jobs:demo` (демо-задача проверки агентов)                                                |
+| `agent` «Агенты»              | `agent:view`, `agent:manage`, `agent:config`, `agent:fetch`, `agent:logs`, `agent:enroll` |
+| `file` «Файлы»                | `file:view`, `file:delete` — scoped, есть `file:view:own`, `file:delete:own`              |
 
 Засев ролей (`RoleService.seedDefaultPermissions`) берёт `getRegisteredPermissions()`. Страж —
 `src/routing/spec.test.ts`: каждое `permission:`-право в security спецификации объявлено.
@@ -183,7 +183,6 @@ effectivePermissions = Set(
 @Security("jwt", ["permission:audit:view"])         // нужен permission
 @Security("jwt", ["permission:user:update"])        // admin endpoints
 @Security("apiKey", ["reports"])                    // сервис (интеграция); точный scope проверяет сервис
-@Security("agent")                                  // агент: Authorization: Agent <id>.<secret>, kind "agent"
 ```
 
 Scope API-ключа: точное совпадение, wildcard (`reports:*`, `*`), требование без действия (`reports`) покрывается

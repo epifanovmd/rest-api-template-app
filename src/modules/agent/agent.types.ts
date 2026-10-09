@@ -1,74 +1,102 @@
-/** Связь агента с сервером. */
-export enum EAgentStatus {
-  ONLINE = "online",
-  OFFLINE = "offline",
-}
+/** Комната списка агентов: изменения агентов, проблемы, события воркеров. */
+export const AGENTS_ROOM = "agents";
 
-/** Транспорт сессии агента. */
-export enum EAgentTransport {
-  WS = "ws",
-  HTTP = "http",
-}
+/** Тип комнаты одного агента для `room:subscribe { type, id }`. */
+export const AGENT_ROOM_TYPE = "agent";
 
-/** Жизненный цикл команды агенту. */
-export enum EAgentCommandStatus {
-  PENDING = "pending",
-  RUNNING = "running",
-  SUCCEEDED = "succeeded",
-  FAILED = "failed",
-  TIMEOUT = "timeout",
-  CANCELLED = "cancelled",
-}
+const AGENT_ROOM_PREFIX = "agent_";
 
-/** Итоговые статусы команды. */
-export const SETTLED_AGENT_COMMAND_STATUSES: readonly EAgentCommandStatus[] = [
-  EAgentCommandStatus.SUCCEEDED,
-  EAgentCommandStatus.FAILED,
-  EAgentCommandStatus.TIMEOUT,
-  EAgentCommandStatus.CANCELLED,
+/**
+ * Комната агента: точки метрик и журнал (пока клиент в комнате — `watch`),
+ * события воркеров, статусы настроек, итоги действий, изменения агента.
+ */
+export const agentRoom = (agentId: string): string =>
+  `${AGENT_ROOM_PREFIX}${agentId}`;
+
+/** Id агента из имени его комнаты; `null` — комната не агента. */
+export const agentIdOfRoom = (room: string): string | null =>
+  room.startsWith(AGENT_ROOM_PREFIX)
+    ? room.slice(AGENT_ROOM_PREFIX.length)
+    : null;
+
+/** Id агента, который выдаёт SDK: 32 шестнадцатеричных символа. */
+export const AGENT_ID_PATTERN = /^[0-9a-f]{32}$/;
+
+export const isAgentId = (value: unknown): value is string =>
+  typeof value === "string" && AGENT_ID_PATTERN.test(value);
+
+/** Длина id агента в колонках. */
+export const AGENT_ID_MAX = 64;
+
+/** Имя воркера и ключа настроек — как у агента. */
+export const WORKER_NAME_PATTERN = /^[a-z][a-z0-9-]{0,31}$/;
+
+/** Длина имени воркера и ключа настроек. */
+export const WORKER_NAME_MAX = 32;
+
+/** Тип события воркера. */
+export const EVENT_TYPE_PATTERN = /^[a-z][a-z0-9._-]{0,63}$/;
+
+/** Длина типа события. */
+export const EVENT_TYPE_MAX = 64;
+
+/** Уровни журнала агента — от подробного к важному. */
+export const AGENT_LOG_LEVELS = ["debug", "info", "warn", "error"] as const;
+
+export type TAgentLogLevel = (typeof AGENT_LOG_LEVELS)[number];
+
+/** Наблюдение (`watch`), пока клиент в комнате агента. */
+export const AGENT_WATCH = {
+  /** Частота метрик, мс. */
+  metricsIntervalMs: 1_000,
+  /** Срок наблюдателя без продления, мс. */
+  ttlMs: 30_000,
+  /** Продление, мс (меньше срока). */
+  renewMs: 20_000,
+  /** Уровень журнала по умолчанию. */
+  logLevel: "info" as TAgentLogLevel,
+};
+
+/** Канал NOTIFY: агенты, изменённые в другом процессе (payload — JSON). */
+export const AGENTS_CHANGED_CHANNEL = "agents_changed";
+
+/**
+ * Маршрут пересылки вызовов агентов между копиями API (`relay`) на
+ * внутреннем сервере пересылки (`AGENT_RELAY_PORT`): закрыт общим секретом
+ * `AGENT_RELAY_SECRET`.
+ */
+export const AGENT_RELAY_PATH = "/internal/agent-relay";
+
+/** Заголовок ответа прокси запроса к воркеру: статус ответа воркера. */
+export const AGENT_WORKER_STATUS_HEADER = "X-Agent-Worker-Status";
+
+/** Запросы к воркеру, которые попадают в аудит: изменяющие. */
+export const AGENT_AUDITED_FETCH_METHODS: readonly string[] = [
+  "POST",
+  "PUT",
+  "PATCH",
+  "DELETE",
 ];
 
-/** Схема заголовка `Authorization: Agent <agentId>.<secret>`. */
-export const AGENT_AUTH_SCHEME = "Agent ";
-/** Секрет агента и токена регистрации: 32 байта → 43 символа base64url. */
-export const AGENT_SECRET_BYTES = 32;
-/** Открытая часть токена регистрации: 6 байт → 8 символов base64url. */
-export const ENROLLMENT_TOKEN_PREFIX_BYTES = 6;
+/** Очередь cron-уборки событий и истории метрик. */
+export const AGENT_PRUNE_QUEUE = "agents.prune";
+
+/** «Агент на связи с другим процессом»: повторить через, с. */
+export const AGENT_ELSEWHERE_RETRY_SECONDS = 2;
+
+/** Срок запроса к воркеру по умолчанию и предел, мс. */
+export const AGENT_FETCH_TIMEOUT = { defaultMs: 30_000, maxMs: 600_000 };
+
+/** Тело запроса к воркеру — не больше, байт (предел агента — 4 МБ). */
+export const AGENT_FETCH_BODY_MAX = 4 * 1024 * 1024;
+
+/** Встроенное действие агента. */
+export type TAgentActionName =
+  | "worker.restart"
+  | "worker.update"
+  | "agent.update"
+  | "agent.rotateKey"
+  | "agent.logs";
+
+/** Длина открытой части токена регистрации (`<prefix>.<secret>`), символов. */
 export const ENROLLMENT_TOKEN_PREFIX_LENGTH = 8;
-/** Длиннее — заведомо не наши учётные данные. */
-export const AGENT_CREDENTIAL_MAX_LENGTH = 128;
-
-/** Канал NOTIFY «агенту есть что доставить»; payload — id агента. */
-export const AGENT_SIGNAL_CHANNEL = "agent_signal";
-/** Канал NOTIFY «сессия агента сменилась»; payload — `<agentId>:<sessionId>`. */
-export const AGENT_SESSION_CHANNEL = "agent_session";
-export const AGENT_SIGNAL_CHANNELS = [
-  AGENT_SIGNAL_CHANNEL,
-  AGENT_SESSION_CHANNEL,
-] as const;
-export type TAgentSignalChannel = (typeof AGENT_SIGNAL_CHANNELS)[number];
-
-/** Отложенная проверка после разрыва: не вернулся — offline. */
-export const AGENT_LINK_LOST_QUEUE = "agents.link-lost";
-/** Cron: агенты без пульса — offline, просроченные команды — timeout. */
-export const AGENT_SWEEP_QUEUE = "agents.sweep";
-/** Cron: удаление старых команд и забытых эфемерных агентов. */
-export const AGENT_RETENTION_QUEUE = "agents.retention";
-
-/** `lastSeenAt` пишется в БД не чаще этого интервала. */
-export const AGENT_TOUCH_INTERVAL_MS = 15_000;
-/** Пропущено столько интервалов статуса — агент offline. */
-export const AGENT_MISSED_STATUS_LIMIT = 3;
-/** Вывод команды хранится не длиннее (символов). */
-export const AGENT_COMMAND_OUTPUT_MAX = 256 * 1024;
-/** Таймаут команды по умолчанию и предел. */
-export const AGENT_COMMAND_DEFAULT_TIMEOUT_SEC = 60;
-export const AGENT_COMMAND_MAX_TIMEOUT_SEC = 3_600;
-/** Запас к таймауту команды: агент сам сообщает о таймауте раньше. */
-export const AGENT_COMMAND_TIMEOUT_GRACE_SEC = 15;
-/** Сколько дней хранить завершённые команды. */
-export const AGENT_COMMAND_RETENTION_DAYS = 30;
-/** Эфемерный агент без связи дольше — удаляется. */
-export const AGENT_EPHEMERAL_FORGET_HOURS = 24;
-/** Ожидание `welcome` не дольше: HTTP sync long-poll (как у прокси). */
-export const AGENT_SYNC_MAX_WAIT_SECONDS = 25;

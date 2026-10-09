@@ -1,7 +1,7 @@
 import { inject } from "inversify";
 import {
-  Body,
   Controller,
+  Delete,
   Get,
   Path,
   Post,
@@ -14,152 +14,225 @@ import {
   Tags,
 } from "tsoa";
 
-import type { IErrorResponseDto, IPaginatedDto } from "../../core";
-import {
-  getContextUser,
-  Injectable,
-  ValidateBody,
-  ValidateQuery,
+import type {
+  ICursorPageDto,
+  IErrorResponseDto,
+  IPaginatedDto,
 } from "../../core";
-import { UUID } from "../../core/http";
+import { getContextUser, Injectable, ValidateQuery } from "../../core";
 import { KoaRequest } from "../../types/koa";
+import { withRetryAfter } from "./agent.errors";
 import { AgentService } from "./agent.service";
-import { EAgentStatus } from "./agent.types";
-import { AgentCommandService } from "./agent-command.service";
 import {
-  AgentCommandDto,
+  AgentAlertDto,
   AgentDto,
-  ICreateAgentCommandBody,
-  IUpdateAgentBody,
+  IAgentEventDto,
+  IAgentLogsDto,
+  IAgentMetricsPointDto,
+  IAgentUpdateResultDto,
+  TAgentId,
+  TAgentWorkerName,
 } from "./dto";
 import {
-  CreateAgentCommandSchema,
-  ListAgentsQuerySchema,
+  AgentAlertsQuerySchema,
+  AgentEventsQuerySchema,
+  AgentLogsQuerySchema,
+  AgentMetricsQuerySchema,
   PageQuerySchema,
-  UpdateAgentSchema,
 } from "./validation";
 
+/**
+ * Агенты. Доступ — право модуля (`agent:*`, все агенты) или политика
+ * (например, агенты своих узлов с правами `node:*`): security — только вход,
+ * доступ к агенту проверяет сервис. Действия с агентом выполняет процесс,
+ * у которого его соединение; в другом — 503 `AGENT_ELSEWHERE` с `Retry-After`.
+ */
 @Injectable()
 @Tags("Agent")
 @Response<IErrorResponseDto>("default", "Ошибка")
 @Route("api/v1/agents")
 export class AgentController extends Controller {
-  constructor(
-    @inject(AgentService) private readonly _agents: AgentService,
-    @inject(AgentCommandService)
-    private readonly _commands: AgentCommandService,
-  ) {
+  constructor(@inject(AgentService) private readonly _agents: AgentService) {
     super();
   }
 
   /**
-   * Агенты по имени. Живое состояние — в ответе по одному агенту.
+   * Агенты в порядке регистрации: связь, узел, воркеры (состояние,
+   * самочувствие, манифест, настройки), последняя точка метрик, проблемы.
+   * Право `agent:view` — все агенты, иначе — доступные через политику.
    * @summary Список агентов
    */
-  @Security("jwt", ["permission:agent:view"])
-  @ValidateQuery(ListAgentsQuerySchema)
+  @Security("jwt")
+  @ValidateQuery(PageQuerySchema)
   @Get()
-  listAgents(
-    @Query() status?: EAgentStatus,
+  getAgents(
+    @Request() req: KoaRequest,
     @Query() offset?: number,
     @Query() limit?: number,
   ): Promise<IPaginatedDto<AgentDto>> {
-    return this._agents.list(status, offset, limit);
+    return this._agents.list(getContextUser(req), offset, limit);
   }
 
   /**
-   * Агент: версия, хост, возможности и живое состояние — последние `status`
-   * (задачи, слоты, нагрузки) и `metrics` (CPU, память, GPU), пока агент на связи.
+   * Текущие проблемы: агент без связи, воркер упал, не зарегистрирован, не в
+   * порядке, отказал в настройке. Без `agentId` — у всех доступных агентов.
+   * @summary Проблемы агентов
+   */
+  @Security("jwt")
+  @ValidateQuery(AgentAlertsQuerySchema)
+  @Get("alerts")
+  getAgentAlerts(
+    @Request() req: KoaRequest,
+    @Query() agentId?: string,
+  ): Promise<AgentAlertDto[]> {
+    return this._agents.alerts(getContextUser(req), agentId);
+  }
+
+  /**
+   * События воркеров, новые первыми: фильтр по агенту, воркеру и типу;
+   * следующая страница — `cursor` из ответа.
+   * @summary Лента событий воркеров
+   */
+  @Security("jwt")
+  @ValidateQuery(AgentEventsQuerySchema)
+  @Get("events")
+  getAgentEvents(
+    @Request() req: KoaRequest,
+    @Query() agentId?: string,
+    @Query() worker?: string,
+    @Query() type?: string,
+    @Query() cursor?: string,
+    @Query() limit?: number,
+  ): Promise<ICursorPageDto<IAgentEventDto>> {
+    return this._agents.events(getContextUser(req), {
+      agentId,
+      worker,
+      type,
+      cursor,
+      limit,
+    });
+  }
+
+  /**
+   * Агент: `hello` (версия, узел, воркеры), последний `status` (воркеры с
+   * `state`, `health`, `pending`, манифестом и итогами настроек), метрики,
+   * проблемы, процесс с соединением.
    * @summary Агент
    */
-  @Security("jwt", ["permission:agent:view"])
+  @Security("jwt")
   @Get("{id}")
-  getAgent(@Path() id: UUID): Promise<AgentDto> {
-    return this._agents.get(id);
+  getAgent(
+    @Request() req: KoaRequest,
+    @Path() id: TAgentId,
+  ): Promise<AgentDto> {
+    return this._agents.get(getContextUser(req), id);
   }
 
   /**
-   * Отозвать агента: его сессия закрывается, учётные данные больше не
-   * действуют. Повторный отзыв — 204.
+   * Отозвать агента: ключ больше не принимается, соединение закрывается.
+   * Повторный отзыв — тот же ответ.
    * @summary Отзыв агента
    */
-  @Security("jwt", ["permission:agent:revoke"])
-  @SuccessResponse(204, "No Content")
+  @Security("jwt")
   @Post("{id}/revoke")
-  async revokeAgent(
-    @Path() id: UUID,
+  revokeAgent(
     @Request() req: KoaRequest,
+    @Path() id: TAgentId,
+  ): Promise<AgentDto> {
+    return this._agents.revoke(getContextUser(req), id);
+  }
+
+  /**
+   * Удалить запись агента, его настройки и историю; соединение закрывается.
+   * Агент с токеном регистрации зарегистрируется заново — уже другим.
+   * @summary Удаление агента
+   */
+  @Security("jwt")
+  @SuccessResponse(204, "No Content")
+  @Delete("{id}")
+  async deleteAgent(
+    @Request() req: KoaRequest,
+    @Path() id: TAgentId,
   ): Promise<void> {
-    await this._agents.revoke(id, getContextUser(req).userId);
+    await this._agents.delete(getContextUser(req), id);
     this.setStatus(204);
   }
 
   /**
-   * Обновить агента до версии (по умолчанию — последней): команда
-   * `agent.update` со сборкой под его ОС и архитектуру. Агент проверяет
-   * sha256 и подпись, заменяет исполняемый файл и перезапускается после
-   * доработки задач; не связавшаяся с сервером версия откатывается.
+   * Сменить ключ агента: агент создаёт новый секрет и переподключается с
+   * ним. Агент должен быть на связи.
+   * @summary Смена ключа агента
+   */
+  @Security("jwt")
+  @SuccessResponse(204, "No Content")
+  @Post("{id}/rotate-key")
+  async rotateAgentKey(
+    @Request() req: KoaRequest,
+    @Path() id: TAgentId,
+  ): Promise<void> {
+    await withRetryAfter(
+      (name, value) => this.setHeader(name, value),
+      () => this._agents.rotateKey(getContextUser(req), id),
+    );
+    this.setStatus(204);
+  }
+
+  /**
+   * Обновить агента до версии выпуска (`AGENT_RELEASES_DIR`): итог — после
+   * запуска новой версии. Агент в контейнере себя не обновляет.
    * @summary Обновление агента
    */
-  @Security("jwt", ["permission:agent:command"])
-  @ValidateBody(UpdateAgentSchema)
-  @SuccessResponse(201, "Created")
+  @Security("jwt")
   @Post("{id}/update")
-  async updateAgent(
-    @Path() id: UUID,
+  updateAgent(
     @Request() req: KoaRequest,
-    @Body() body: IUpdateAgentBody,
-  ): Promise<AgentCommandDto> {
-    const command = await this._commands.createUpdate(
-      id,
-      body.version,
-      getContextUser(req).userId,
+    @Path() id: TAgentId,
+  ): Promise<IAgentUpdateResultDto> {
+    return withRetryAfter(
+      (name, value) => this.setHeader(name, value),
+      () => this._agents.update(getContextUser(req), id),
     );
-
-    this.setStatus(201);
-
-    return command;
   }
 
   /**
-   * Команды агента, новые первыми.
-   * @summary Команды агента
+   * Последние строки журнала с узла: агента или воркера (`worker`).
+   * @summary Журнал агента
    */
-  @Security("jwt", ["permission:agent:view"])
-  @ValidateQuery(PageQuerySchema)
-  @Get("{id}/commands")
-  listAgentCommands(
-    @Path() id: UUID,
-    @Query() offset?: number,
+  @Security("jwt")
+  @ValidateQuery(AgentLogsQuerySchema)
+  @Get("{id}/logs")
+  getAgentLogs(
+    @Request() req: KoaRequest,
+    @Path() id: TAgentId,
+    @Query() worker?: TAgentWorkerName,
+    @Query() lines?: number,
+  ): Promise<IAgentLogsDto> {
+    return withRetryAfter(
+      (name, value) => this.setHeader(name, value),
+      () => this._agents.logs(getContextUser(req), id, { worker, lines }),
+    );
+  }
+
+  /**
+   * История метрик агента по возрастанию времени: узел (`host`) и ответы
+   * `GET /metrics` воркеров (`workers`). Окно — `since` (строго позже) и
+   * `until` (мс), из него — последние `limit` точек.
+   * @summary История метрик агента
+   */
+  @Security("jwt")
+  @ValidateQuery(AgentMetricsQuerySchema)
+  @Get("{id}/metrics")
+  getAgentMetrics(
+    @Request() req: KoaRequest,
+    @Path() id: TAgentId,
+    @Query() since?: number,
+    @Query() until?: number,
     @Query() limit?: number,
-  ): Promise<IPaginatedDto<AgentCommandDto>> {
-    return this._commands.list(id, offset, limit);
-  }
-
-  /**
-   * Поручить агенту команду из объявленного им списка
-   * (`capabilities.commands.names`): `agent.logs`, `agent.drain`,
-   * `agent.update`. Агент без связи получит её после переподключения;
-   * итог — в команде (`GET /agent-commands/{id}`, событие `agent:command`).
-   * @summary Команда агенту
-   */
-  @Security("jwt", ["permission:agent:command"])
-  @ValidateBody(CreateAgentCommandSchema)
-  @SuccessResponse(201, "Created")
-  @Post("{id}/commands")
-  async createAgentCommand(
-    @Path() id: UUID,
-    @Request() req: KoaRequest,
-    @Body() body: ICreateAgentCommandBody,
-  ): Promise<AgentCommandDto> {
-    const command = await this._commands.create(
-      id,
-      body,
-      getContextUser(req).userId,
-    );
-
-    this.setStatus(201);
-
-    return command;
+  ): Promise<IAgentMetricsPointDto[]> {
+    return this._agents.metrics(getContextUser(req), id, {
+      since,
+      until,
+      limit,
+    });
   }
 }

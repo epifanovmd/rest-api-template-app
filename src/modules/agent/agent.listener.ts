@@ -1,78 +1,66 @@
 import { inject } from "inversify";
 
-import { EventBus, Injectable, logger } from "../../core";
+import { EventBus, Injectable } from "../../core";
 import { ISocketEventListener, SocketEmitterService } from "../socket";
-import { AgentService } from "./agent.service";
-import { AgentCommandService } from "./agent-command.service";
-import { agentRoom, AGENTS_ROOM } from "./agent-room.policy";
+import { agentRoom, AGENTS_ROOM } from "./agent.types";
 import {
-  AgentCapabilitiesChangedEvent,
-  AgentCommandUpdatedEvent,
-  AgentEnrolledEvent,
-  AgentLiveEvent,
-  AgentOfflineEvent,
-  AgentOnlineEvent,
-  AgentRevokedEvent,
+  AgentActionFinishedEvent,
+  AgentAlertChangedEvent,
+  AgentConfigChangedEvent,
+  AgentDeletedEvent,
+  AgentEventReceivedEvent,
+  AgentLogReceivedEvent,
+  AgentMetricsReceivedEvent,
+  AgentUpdatedEvent,
 } from "./events";
 
-/** События агентов → сокет: список агентов, живое состояние, команды. */
+/** Комната списка и комната агента. */
+const roomsOf = (agentId: string): string[] => [
+  AGENTS_ROOM,
+  agentRoom(agentId),
+];
+
+/**
+ * События агентов → сокет. Список (`agents`) получает изменения агентов,
+ * проблемы и события воркеров; комната агента — то же по нему и вдобавок
+ * метрики, журнал, статусы настроек и итоги действий. Сокет в обеих
+ * комнатах получает событие один раз.
+ */
 @Injectable()
 export class AgentListener implements ISocketEventListener {
   constructor(
     @inject(EventBus) private readonly _eventBus: EventBus,
     @inject(SocketEmitterService)
     private readonly _emitter: SocketEmitterService,
-    @inject(AgentService) private readonly _agents: AgentService,
-    @inject(AgentCommandService)
-    private readonly _commands: AgentCommandService,
   ) {}
 
   register(): void {
-    const updated = ({ agentId }: { agentId: string }) =>
-      void this._sendAgent(agentId);
+    const on = this._eventBus.on.bind(this._eventBus);
+    const emitter = this._emitter;
 
-    this._eventBus.on(AgentEnrolledEvent, updated);
-    this._eventBus.on(AgentOnlineEvent, updated);
-    this._eventBus.on(AgentOfflineEvent, updated);
-    this._eventBus.on(AgentRevokedEvent, updated);
-    this._eventBus.on(AgentCapabilitiesChangedEvent, updated);
-    this._eventBus.on(AgentLiveEvent, ({ agentId, status, metrics }) =>
-      this._emitter.toRoom(agentRoom(agentId), "agent:live", {
-        agentId,
-        ...(status && { status }),
-        ...(metrics && { metrics }),
-      }),
+    on(AgentUpdatedEvent, ({ agent }) =>
+      emitter.toRooms(roomsOf(agent.id), "agent:updated", agent),
     );
-    this._eventBus.on(
-      AgentCommandUpdatedEvent,
-      ({ agentId, commandId }) => void this._sendCommand(agentId, commandId),
+    on(AgentDeletedEvent, ({ agentId }) =>
+      emitter.toRooms(roomsOf(agentId), "agent:deleted", { id: agentId }),
     );
-  }
-
-  private async _sendAgent(id: string): Promise<void> {
-    try {
-      this._emitter.toRoom(
-        AGENTS_ROOM,
-        "agent:updated",
-        await this._agents.getSummary(id),
-      );
-    } catch (err) {
-      logger.warn({ err, agentId: id }, "[Agent] agent:updated не отправлено");
-    }
-  }
-
-  private async _sendCommand(agentId: string, id: string): Promise<void> {
-    try {
-      this._emitter.toRoom(
-        agentRoom(agentId),
-        "agent:command",
-        await this._commands.get(id),
-      );
-    } catch (err) {
-      logger.warn(
-        { err, commandId: id },
-        "[Agent] agent:command не отправлено",
-      );
-    }
+    on(AgentAlertChangedEvent, ({ alert }) =>
+      emitter.toRooms(roomsOf(alert.agentId), "agent:alert", alert),
+    );
+    on(AgentEventReceivedEvent, ({ event }) =>
+      emitter.toRooms(roomsOf(event.agentId), "agent:event", event),
+    );
+    on(AgentConfigChangedEvent, ({ status }) =>
+      emitter.toRoom(agentRoom(status.agentId), "agent:config", status),
+    );
+    on(AgentActionFinishedEvent, ({ action }) =>
+      emitter.toRoom(agentRoom(action.agentId), "agent:action", action),
+    );
+    on(AgentMetricsReceivedEvent, ({ agentId, point }) =>
+      emitter.toRoom(agentRoom(agentId), "agent:metrics", { agentId, point }),
+    );
+    on(AgentLogReceivedEvent, ({ agentId, entries }) =>
+      emitter.toRoom(agentRoom(agentId), "agent:log", { agentId, entries }),
+    );
   }
 }

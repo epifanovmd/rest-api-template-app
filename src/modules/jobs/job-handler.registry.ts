@@ -8,10 +8,7 @@ import {
   isExternalJobHandler,
   JobDefinition,
 } from "../../core";
-import {
-  JOB_EXTERNAL_LEASE_SECONDS,
-  JOB_MAX_EXPIRE_SECONDS,
-} from "./jobs.types";
+import { JOB_MAX_EXPIRE_SECONDS } from "./jobs.types";
 
 /** Определение очереди с умолчаниями. */
 export type TResolvedJobDefinition = Required<
@@ -25,10 +22,9 @@ export type TResolvedJobDefinition = Required<
     | "concurrency"
     | "tracked"
     | "external"
-    | "leaseSeconds"
   >
 > &
-  Pick<JobDefinition, "cron">;
+  Pick<JobDefinition, "cron" | "job">;
 
 export const resolveDefinition = (
   definition: JobDefinition,
@@ -43,7 +39,7 @@ export const resolveDefinition = (
   // Внешняя задача без записи не может держать аренду и получать отмену.
   tracked: definition.tracked === true || definition.external === true,
   external: definition.external === true,
-  leaseSeconds: definition.leaseSeconds ?? JOB_EXTERNAL_LEASE_SECONDS,
+  ...(definition.job && { job: { ...definition.job } }),
 });
 
 /**
@@ -65,19 +61,20 @@ export class JobHandlerRegistry {
         );
       }
 
-      const { expireInSeconds, leaseSeconds } = resolveDefinition(
+      const { expireInSeconds, external, job } = resolveDefinition(
         handler.definition,
       );
+
+      if (external && !job?.type) {
+        throw new InternalServerErrorException(
+          `Очередь «${queue}»: внешней очереди нужен тип задачи воркера (job.type)`,
+        );
+      }
 
       // pg-boss отвергает больше суток уже при старте — объясняем сразу.
       if (expireInSeconds > JOB_MAX_EXPIRE_SECONDS) {
         throw new InternalServerErrorException(
           `Очередь «${queue}»: expireInSeconds больше суток (${JOB_MAX_EXPIRE_SECONDS})`,
-        );
-      }
-      if (handler.definition.external && leaseSeconds > expireInSeconds) {
-        throw new InternalServerErrorException(
-          `Очередь «${queue}»: аренда дольше срока выполнения`,
         );
       }
 

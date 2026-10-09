@@ -7,10 +7,10 @@ import {
   JobQueue,
   Module,
 } from "../../core";
-import { asAgentCapability } from "../agent";
 import { asSocketListener, asSocketRoomPolicy } from "../socket";
 import { DemoEchoJobHandler } from "./demo-echo.handler";
 import { ExternalJobService } from "./external-job.service";
+import { ExternalSyncJobHandler } from "./external-sync.handler";
 import { JobRunner } from "./job.runner";
 import { JobCancelWatcher } from "./job-cancel.watcher";
 import { JobHandlerRegistry } from "./job-handler.registry";
@@ -21,18 +21,21 @@ import { JobRoomPolicy } from "./job-room.policy";
 import { JobRun } from "./job-run.entity";
 import { JobRunRepository } from "./job-run.repository";
 import { JobRunTracker } from "./job-run.tracker";
+import { JobRunViews } from "./job-run.views";
 import { JobSignals } from "./job-signals";
 import { JobsBootstrap } from "./jobs.bootstrap";
 import { JobsController } from "./jobs.controller";
 import { JobsHealthIndicator } from "./jobs.health";
 import { JobsSocketListener } from "./jobs.listener";
 import { JobsService } from "./jobs.service";
-import { JobsAgentCapability } from "./jobs-agent.capability";
 import { LeaseReaperJobHandler } from "./lease-reaper.handler";
 import { PgBossService } from "./pg-boss.service";
 import { PgBossJobQueue } from "./pg-boss-job.queue";
 
-/** Очередь задач (pg-boss): обработчики, cron, видимые задачи, внешние задачи агентов. */
+/**
+ * Очередь задач (pg-boss): обработчики, cron, видимые задачи; внешние
+ * очереди выполняет исполнитель `EXTERNAL_JOB_EXECUTOR` (агенты).
+ */
 @Module({
   entities: [JobRun],
   providers: [
@@ -40,6 +43,7 @@ import { PgBossJobQueue } from "./pg-boss-job.queue";
     PgBossService,
     JobRunRepository,
     JobRunTracker,
+    JobRunViews,
     JobHandlerRegistry,
     JobSignals,
     JobCancelWatcher,
@@ -50,11 +54,11 @@ import { PgBossJobQueue } from "./pg-boss-job.queue";
     JobsService,
     ExternalJobService,
     JobsController,
-    asAgentCapability(JobsAgentCapability),
     asSocketListener(JobsSocketListener),
     asSocketRoomPolicy(JobRoomPolicy),
     asJobHandler(LeaseReaperJobHandler),
     asJobHandler(JobRetentionJobHandler),
+    asJobHandler(ExternalSyncJobHandler),
     asExternalJobHandler(DemoEchoJobHandler),
   ],
   bootstrappers: [JobsBootstrap],

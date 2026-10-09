@@ -9,9 +9,13 @@ import { DataSource } from "typeorm";
 
 import {
   EventBus,
+  ExternalJobAssignment,
   ExternalJobContext,
-  ExternalJobEvent,
+  ExternalJobDispatch,
+  ExternalJobFailure,
   ExternalJobInfo,
+  ExternalJobUpdate,
+  IExternalJobExecutor,
   IExternalJobHandler,
   IJobHandler,
   JobContext,
@@ -26,6 +30,7 @@ import { JobResultWaiter } from "./job-result.waiter";
 import { JobRun } from "./job-run.entity";
 import { JobRunRepository } from "./job-run.repository";
 import { JobRunTracker } from "./job-run.tracker";
+import { JobRunViews } from "./job-run.views";
 import { JobSignals } from "./job-signals";
 import { JobsBootstrap } from "./jobs.bootstrap";
 import { EJobRunStatus, PGBOSS_SCHEMA } from "./jobs.types";
@@ -72,9 +77,109 @@ class TestSignals extends JobSignals {
   }
 }
 
+const AGENT_ID = "0123456789abcdef0123456789abcdef";
+
+/**
+ * Исполнитель внешних очередей в памяти: задача «запускается» сразу —
+ * быстрая (`data.quick`) отдаёт итог в ответе, ход и итог долгой тест
+ * присылает сам (`emit`) — как события воркера через агента. `available =
+ * false` — подходящего агента нет.
+ */
+class FakeExecutor implements IExternalJobExecutor {
+  readonly canDispatch = true;
+  readonly dispatched: ExternalJobDispatch[] = [];
+  readonly cancelled: string[] = [];
+  available = true;
+  /** Что ответит опрос хода задачи; нет — воркер о задаче не знает. */
+  private readonly _works = new Map<string, ExternalJobUpdate>();
+  private readonly _listeners = new Set<
+    (update: ExternalJobUpdate) => Promise<void>
+  >();
+  private readonly _reconnects = new Set<(agentId: string) => void>();
+
+  async dispatch(job: ExternalJobDispatch): Promise<ExternalJobUpdate> {
+    if (!this.available) throw new JobError("NO_AGENT", "нет агента");
+
+    this.dispatched.push(job);
+    if ((job.data as { quick?: boolean }).quick) {
+      return {
+        agentId: AGENT_ID,
+        worker: "echo",
+        workId: job.jobId,
+        kind: "done",
+        result: { quick: job.target.type },
+      };
+    }
+
+    const update = {
+      agentId: AGENT_ID,
+      worker: "echo",
+      workId: `w-${job.jobId}`,
+      kind: "progress" as const,
+    };
+
+    this._works.set(update.workId, update);
+
+    return update;
+  }
+
+  async poll(
+    assignment: ExternalJobAssignment,
+  ): Promise<ExternalJobUpdate | null> {
+    return this._works.get(assignment.workId) ?? null;
+  }
+
+  async cancel(assignment: ExternalJobAssignment): Promise<void> {
+    this.cancelled.push(assignment.workId);
+  }
+
+  onUpdate(listener: (update: ExternalJobUpdate) => Promise<void>) {
+    this._listeners.add(listener);
+
+    return () => this._listeners.delete(listener);
+  }
+
+  onReconnect(listener: (agentId: string) => void) {
+    this._reconnects.add(listener);
+
+    return () => this._reconnects.delete(listener);
+  }
+
+  /** Событие воркера о работе: слушателям (как до подтверждения агенту). */
+  async emit(workId: string, patch: Partial<ExternalJobUpdate>) {
+    const update = {
+      agentId: AGENT_ID,
+      worker: "echo",
+      workId,
+      kind: "progress" as const,
+      ...patch,
+    };
+
+    this._works.set(workId, update);
+    for (const listener of this._listeners) await listener(update);
+  }
+
+  /** Состояние для опроса без события (событие потерялось). */
+  set(workId: string, patch: Partial<ExternalJobUpdate>): void {
+    const current = this._works.get(workId);
+
+    if (current) this._works.set(workId, { ...current, ...patch });
+  }
+
+  forget(workId: string): void {
+    this._works.delete(workId);
+  }
+
+  reconnect(agentId: string): void {
+    for (const listener of this._reconnects) listener(agentId);
+  }
+}
+
 const flakyAttempts: number[] = [];
 const completedExternal: { id: string; result: unknown; inTx: boolean }[] = [];
-const externalEvents: { id: string; type: string; data: unknown }[] = [];
+const completedData: unknown[] = [];
+const failedExternal: { id: string; failure: ExternalJobFailure }[] = [];
+const executor = new FakeExecutor();
 
 const handlers: (IJobHandler<any, any> | IExternalJobHandler<any, any>)[] = [
   {
@@ -124,7 +229,7 @@ const handlers: (IJobHandler<any, any> | IExternalJobHandler<any, any>)[] = [
     definition: {
       queue: "it.external",
       external: true,
-      leaseSeconds: 30,
+      job: { type: "it.run", worker: "echo" },
       retryLimit: 1,
       retryDelaySeconds: 1,
       retryBackoff: false,
@@ -135,9 +240,10 @@ const handlers: (IJobHandler<any, any> | IExternalJobHandler<any, any>)[] = [
         result,
         inTx: ctx.manager.queryRunner?.isTransactionActive === true,
       });
+      completedData.push(ctx.data);
     },
-    onEvent: async (job: ExternalJobInfo, event: ExternalJobEvent) => {
-      externalEvents.push({ id: job.id, type: event.type, data: event.data });
+    onFail: async (job: ExternalJobInfo, failure: ExternalJobFailure) => {
+      failedExternal.push({ id: job.id, failure });
     },
   },
 ];
@@ -178,20 +284,29 @@ describe("JobQueue на pg-boss (интеграция, TEST_DATABASE_URL)", func
 
     runs = new JobRunRepository(dataSource, JobRun);
     signals = new TestSignals(dataSource);
-    tracker = new JobRunTracker(runs, eventBus, signals);
+    tracker = new JobRunTracker(runs, eventBus, signals, new JobRunViews());
     boss = new TestPgBossService();
 
     const registry = new JobHandlerRegistry();
     const watcher = new JobCancelWatcher(signals, runs, boss);
 
     reaper = new JobLeaseReaper(runs, tracker, boss);
+    external = new ExternalJobService(
+      runs,
+      tracker,
+      registry,
+      dataSource,
+      boss,
+      executor,
+    );
     queue = new PgBossJobQueue(
       boss,
       registry,
       tracker,
       watcher,
-      signals,
+      external,
       new JobResultWaiter(signals, runs),
+      signals,
       dataSource,
     );
     bootstrap = new JobsBootstrap(
@@ -201,14 +316,8 @@ describe("JobQueue на pg-boss (интеграция, TEST_DATABASE_URL)", func
       watcher,
       signals,
       reaper,
+      external,
       handlers,
-    );
-    external = new ExternalJobService(
-      boss,
-      registry,
-      tracker,
-      runs,
-      dataSource,
     );
 
     await bootstrap.initialize();
@@ -339,208 +448,124 @@ describe("JobQueue на pg-boss (интеграция, TEST_DATABASE_URL)", func
     );
   });
 
-  const AGENT = "11111111-1111-4111-8111-111111111111";
-  const OTHER_AGENT = "22222222-2222-4222-8222-222222222222";
+  /** Задача передана воркеру: id работы у него. */
+  const workIdOf = (id: string) =>
+    waitFor(async () => (await runs.findById(id))?.externalId);
 
-  /** Раздать агенту задачи внешней очереди, как это делает возможность `jobs`. */
-  const take = (max = 1, agentId = AGENT) =>
-    external.take("it.external", max, agentId);
+  const settled = (id: string, status: EJobRunStatus) =>
+    waitFor(async () => {
+      const found = await runs.findById(id);
 
-  it("внешняя очередь: выдача агенту → прогресс → complete с onComplete в транзакции", async () => {
+      return found?.status === status && found;
+    });
+
+  it("внешняя: передача воркеру сразу после постановки (задача pg-boss ещё ждёт), ход, итог в транзакции", async () => {
+    const started = Date.now();
     const id = (await queue.enqueue("it.external", { n: 1 })) as string;
-    const [job] = await take();
+    const workId = await workIdOf(id);
 
-    expect(job).to.include({ jobId: id, queue: "it.external", attempt: 0 });
-    expect(job.data).to.deep.equal({ n: 1 });
-    expect((await runs.findById(id))?.agentId).to.equal(AGENT);
-
-    await external.progress(AGENT, {
-      jobId: id,
-      attempt: 0,
-      progress: 0.3,
-      log: ["шаг"],
-    });
-    await waitFor(
-      async () => (await runs.findById(id))?.progress === 0.3 || null,
-    );
-
-    await external.complete(AGENT, { jobId: id, attempt: 0 }, { sum: 2 });
-
-    expect(completedExternal).to.deep.include({
-      id,
-      result: { sum: 2 },
-      inTx: true,
-    });
-    expect((await runs.findById(id))?.status).to.equal(EJobRunStatus.COMPLETED);
-    expect(await bossState(id)).to.equal("completed");
-  });
-
-  it("чужой агент и устаревшая попытка не могут сдать задачу (LEASE_LOST)", async () => {
-    const id = (await queue.enqueue("it.external", { n: 5 })) as string;
-
-    await take();
-
-    for (const [agentId, attempt] of [
-      [OTHER_AGENT, 0],
-      [AGENT, 7],
-    ] as const) {
-      try {
-        await external.complete(agentId, { jobId: id, attempt }, {});
-        expect.fail("должно было упасть");
-      } catch (err: any) {
-        expect(err.code).to.equal("JOB_LEASE_LOST");
-      }
-    }
-
-    await external.complete(AGENT, { jobId: id, attempt: 0 }, {});
-  });
-
-  it("пульс агента продлевает аренду только его задач", async () => {
-    const id = (await queue.enqueue("it.external", { n: 6 })) as string;
-
-    await take();
-    await runs.update({ id }, { leaseUntil: new Date(Date.now() + 1000) });
-    await external.extendLeases(OTHER_AGENT, [{ jobId: id, attempt: 0 }]);
-    expect((await runs.findById(id))!.leaseUntil!.getTime()).to.be.below(
-      Date.now() + 5_000,
-    );
-
-    await external.extendLeases(AGENT, [{ jobId: id, attempt: 0 }]);
-    expect((await runs.findById(id))!.leaseUntil!.getTime()).to.be.above(
-      Date.now() + 20_000,
-    );
-
-    await external.complete(AGENT, { jobId: id, attempt: 0 }, {});
-  });
-
-  it("сверка при hello: не принятую — выдать снова, принятую и потерянную — провалить, лишнюю — отменить", async () => {
-    const lostId = (await queue.enqueue("it.external", { n: 7 })) as string;
-    const [lost] = await take();
-
-    await external.accept(AGENT, lost);
-
-    const resendId = (await queue.enqueue("it.external", { n: 8 })) as string;
-
-    await take();
-
-    const stray = { jobId: OTHER_AGENT, attempt: 0 };
-    const result = await external.reconcile(AGENT, [stray]);
-
-    expect(result.resend.map(a => a.jobId)).to.deep.equal([resendId]);
-    expect(result.cancel).to.deep.equal([stray]);
-
-    const lostRun = await runs.findById(lostId);
-
-    expect(lostRun?.status).to.equal(EJobRunStatus.QUEUED);
-    expect(lostRun?.error?.code).to.equal("AGENT_LOST");
-
-    await external.complete(AGENT, { jobId: resendId, attempt: 0 }, {});
-    await waitFor(() => take().then(jobs => jobs.length > 0 && jobs));
-    await external.complete(AGENT, { jobId: lostId, attempt: 1 }, {});
-  });
-
-  it("отказ агента возвращает задачу в очередь без траты попытки", async () => {
-    const id = (await queue.enqueue("it.external", { n: 9 })) as string;
-
-    await take();
-    await external.reject(
-      AGENT,
-      { jobId: id, attempt: 0 },
-      { code: "QUEUE_BUSY", message: "нет места" },
-    );
-
+    expect(Date.now() - started).to.be.below(3_000);
     expect(await bossState(id)).to.equal("created");
-
-    const [again] = await take(1, OTHER_AGENT);
-
-    expect(again).to.include({ jobId: id, attempt: 0 });
-    await external.complete(OTHER_AGENT, again, {});
-  });
-
-  it("внешняя очередь: истёкшая аренда — reaper возвращает задачу в очередь", async () => {
-    const id = (await queue.enqueue("it.external", { n: 2 })) as string;
-
-    await take();
-    await runs.update({ id }, { leaseUntil: new Date(Date.now() - 1000) });
-
-    expect(await reaper.reap()).to.equal(1);
-
-    const run = await runs.findById(id);
-
-    expect(run?.status).to.equal(EJobRunStatus.QUEUED);
-    expect(run?.error?.code).to.equal("LEASE_EXPIRED");
-    expect(await bossState(id)).to.equal("retry");
-
-    const [again] = await waitFor(() =>
-      take().then(jobs => jobs.length > 0 && jobs),
-    );
-
-    expect(again).to.include({ jobId: id, attempt: 1 });
-
-    // Итог старой попытки не принимается.
-    try {
-      await external.complete(AGENT, { jobId: id, attempt: 0 }, {});
-      expect.fail("должно было упасть");
-    } catch (err: any) {
-      expect(err.code).to.equal("JOB_LEASE_LOST");
-    }
-
-    await external.fail(
-      AGENT,
-      { jobId: id, attempt: 1 },
-      { code: "BROKEN", message: "сломалось", retryable: false },
-    );
-    expect((await runs.findById(id))?.status).to.equal(EJobRunStatus.FAILED);
-    expect(await bossState(id)).to.equal("failed");
-  });
-
-  it("request: события и результат агента доходят до ждущего", async () => {
-    const pending = queue.request<{ n: number }, { doubled: number }>(
-      "it.external",
-      { n: 21 },
-      { timeoutMs: 10_000 },
-    );
-    const [job] = await waitFor(() =>
-      take().then(jobs => jobs.length > 0 && jobs),
-    );
-
-    await external.event(AGENT, {
-      jobId: job.jobId,
-      attempt: job.attempt,
-      seq: 1,
-      type: "epoch",
-      data: { epoch: 1 },
+    expect(executor.dispatched.at(-1)).to.deep.include({
+      jobId: id,
+      queue: "it.external",
+      attempt: 0,
+      data: { n: 1 },
+      target: { type: "it.run", worker: "echo" },
     });
-    // Повтор того же события (ack потерялся) — мимо.
-    await external.event(AGENT, {
-      jobId: job.jobId,
-      attempt: job.attempt,
-      seq: 1,
-      type: "epoch",
-      data: { epoch: 1 },
-    });
-    await external.complete(AGENT, job, { doubled: 42 });
 
-    expect(await pending).to.deep.equal({ doubled: 42 });
-    expect(
-      externalEvents.filter(e => e.id === job.jobId && e.type === "epoch"),
-    ).to.have.length(1);
+    const attached = await runs.findById(id);
+
+    expect(attached?.status).to.equal(EJobRunStatus.RUNNING);
+    expect(attached?.agentId).to.equal(AGENT_ID);
+    expect(attached?.worker).to.equal("echo");
+    expect(attached?.deadlineAt).to.be.instanceOf(Date);
+
+    await executor.emit(workId, { progress: 0.5, text: "половина" });
+
+    const running = await runs.findById(id);
+
+    expect(running?.progress).to.equal(0.5);
+    expect(running?.progressText).to.equal("половина");
+
+    await executor.emit(workId, { kind: "done", result: { sum: 2 } });
+    // Повтор события (подтверждение агенту потерялось) ничего не меняет.
+    await executor.emit(workId, { kind: "done", result: { sum: 3 } });
+
+    const done = await settled(id, EJobRunStatus.COMPLETED);
+
+    expect(done.result).to.deep.equal({ sum: 2 });
+    expect(completedExternal.filter(c => c.id === id)).to.deep.equal([
+      { id, result: { sum: 2 }, inTx: true },
+    ]);
+    expect(completedData).to.deep.include({ n: 1 });
   });
 
-  it("request: ошибка агента — 502 с его кодом; таймаут — 504 и задача снята", async () => {
+  it("внешняя быстрая: итог из ответа воркера, без событий", async () => {
+    const id = (await queue.enqueue("it.external", {
+      quick: true,
+    })) as string;
+    const done = await settled(id, EJobRunStatus.COMPLETED);
+
+    expect(done.result).to.deep.equal({ quick: "it.run" });
+    expect(done.externalId).to.equal(id);
+    expect(completedExternal.map(c => c.id)).to.include(id);
+  });
+
+  it("внешняя из outbox-транзакции: передаётся только после коммита", async () => {
+    const before = executor.dispatched.length;
+    const id = (await dataSource.transaction(async manager => {
+      const jobId = await queue.enqueue("it.external", { n: 9 }, { manager });
+
+      await sleep(300);
+      expect(executor.dispatched.length).to.equal(before);
+
+      return jobId;
+    })) as string;
+
+    await workIdOf(id);
+  });
+
+  it("внешняя: нет агента — ждёт без ошибки; агент подключился — передаётся сразу", async () => {
+    executor.available = false;
+
+    const id = (await queue.enqueue("it.external", { n: 10 })) as string;
+    const waiting = await waitFor(async () => {
+      const found = await runs.findById(id);
+
+      return found?.error?.code === "NO_AGENT" && found;
+    });
+
+    expect(waiting.status).to.equal(EJobRunStatus.QUEUED);
+    executor.available = true;
+    executor.reconnect(AGENT_ID);
+    await workIdOf(id);
+  });
+
+  it("внешняя: событие другой задачи воркера той же записи — пропускается", async () => {
+    const id = (await queue.enqueue("it.external", { n: 7 })) as string;
+
+    await workIdOf(id);
+    await executor.emit("другой-id", { jobId: id, kind: "done", result: 1 });
+
+    // Работа связана с другим id — событие не этой попытки.
+    expect((await runs.findById(id))?.status).to.equal(EJobRunStatus.RUNNING);
+  });
+
+  it("внешняя: окончательная ошибка — failed и onFail; request — 502", async () => {
     const failing = queue.request(
       "it.external",
-      { n: 0 },
-      { timeoutMs: 10_000 },
+      { n: 2 },
+      { timeoutMs: 15_000 },
     );
-    const [job] = await waitFor(() =>
-      take().then(jobs => jobs.length > 0 && jobs),
+    const job = await waitFor(async () =>
+      executor.dispatched.find(d => (d.data as { n: number }).n === 2),
     );
+    const workId = await workIdOf(job.jobId);
 
-    await external.fail(AGENT, job, {
-      code: "BAD_MODEL",
-      message: "веса повреждены",
-      retryable: false,
+    await executor.emit(workId, {
+      kind: "failed",
+      error: { code: "BAD_MODEL", message: "веса повреждены" },
     });
 
     try {
@@ -551,31 +576,44 @@ describe("JobQueue на pg-boss (интеграция, TEST_DATABASE_URL)", func
       expect(err.reason).to.include({ code: "BAD_MODEL" });
     }
 
-    try {
-      await queue.request("it.external", { n: 1 }, { timeoutMs: 300 });
-      expect.fail("должно было упасть");
-    } catch (err: any) {
-      expect(err.status).to.equal(504);
-    }
-
-    // Снятая по таймауту задача агенту больше не выдаётся.
-    const left = await take(10);
-
-    expect(left.map(j => j.data)).to.not.deep.include({ n: 1 });
+    expect(failedExternal.map(f => f.id)).to.include(job.jobId);
   });
 
-  it("stop: сверка сообщает stop, complete принимается", async () => {
-    const id = (await queue.enqueue("it.external", { n: 3 })) as string;
-    const [job] = await take();
+  it("внешняя: отмена уходит воркеру", async () => {
+    const cancelId = (await queue.enqueue("it.external", { n: 3 })) as string;
+    const cancelWork = await workIdOf(cancelId);
 
-    await queue.stop(id);
+    await queue.cancel(cancelId);
 
-    const { stop } = await external.reconcile(AGENT, [job]);
+    expect(executor.cancelled).to.include(cancelWork);
+    expect((await runs.findById(cancelId))?.status).to.equal(
+      EJobRunStatus.CANCELLED,
+    );
+  });
 
-    expect(stop).to.deep.equal([{ jobId: id, attempt: job.attempt }]);
+  it("внешняя: сверка после подключения агента и срок задачи", async () => {
+    const id = (await queue.enqueue("it.external", { n: 5 })) as string;
+    const workId = await workIdOf(id);
+    const lostId = (await queue.enqueue("it.external", { n: 6 })) as string;
 
-    await external.complete(AGENT, job, { partial: true });
+    // Итог есть у воркера, а событие потерялось; вторую работу воркер забыл.
+    executor.set(workId, { kind: "done", result: { late: true } });
+    executor.forget(await workIdOf(lostId));
+    executor.reconnect(AGENT_ID);
 
-    expect((await runs.findById(id))?.status).to.equal(EJobRunStatus.COMPLETED);
+    expect((await settled(id, EJobRunStatus.COMPLETED)).result).to.deep.equal({
+      late: true,
+    });
+    expect((await settled(lostId, EJobRunStatus.FAILED)).error?.code).to.equal(
+      "EXTERNAL_JOB_LOST",
+    );
+
+    const slowId = (await queue.enqueue("it.external", { n: 8 })) as string;
+    const slowWork = await workIdOf(slowId);
+
+    await runs.update({ id: slowId }, { deadlineAt: new Date(Date.now() - 1) });
+    expect(await external.failExpired()).to.equal(1);
+    expect((await runs.findById(slowId))?.error?.code).to.equal("JOB_TIMEOUT");
+    expect(executor.cancelled).to.include(slowWork);
   });
 });

@@ -1,294 +1,314 @@
+import { type Agent, AgentsError, type LogEntry } from "agent-sdk/server";
 import { inject } from "inversify";
 
+import { config } from "../../config";
 import {
-  EventBus,
+  ICursorPageDto,
   Injectable,
   IPaginatedDto,
-  JobQueue,
-  logger,
   normalizePagination,
-  tokenHashMatches,
   toPage,
 } from "../../core";
 import { agentConfig } from "./agent.config";
-import { Agent } from "./agent.entity";
-import { AgentError } from "./agent.errors";
-import { AgentRepository } from "./agent.repository";
+import { AgentError, callAgents, toAgentError } from "./agent.errors";
+import { AgentRuntime } from "./agent.runtime";
 import {
-  AGENT_LINK_LOST_QUEUE,
-  AGENT_MISSED_STATUS_LIMIT,
-  AGENT_SESSION_CHANNEL,
-  EAgentStatus,
-  EAgentTransport,
-} from "./agent.types";
-import { parseAgentCredentials } from "./agent-credentials";
-import type { IAgentLinkLostData } from "./agent-jobs";
-import type { TAlpHello } from "./agent-link.protocol";
-import { AgentPresenceStore } from "./agent-presence.store";
-import { AgentSignals } from "./agent-signals";
-import { AgentDto } from "./dto";
+  AgentAccessService,
+  IAgentActor,
+  inScope,
+} from "./agent-access.service";
 import {
-  AgentCapabilitiesChangedEvent,
-  AgentOfflineEvent,
-  AgentOnlineEvent,
-  AgentRevokedEvent,
-} from "./events";
+  AgentHistoryService,
+  IAgentEventFeedQuery,
+} from "./agent-history.service";
+import {
+  AgentAlertDto,
+  AgentConfigStatusDto,
+  AgentDto,
+  IAgentEventDto,
+  IAgentInstallCommandDto,
+  IAgentLogsDto,
+  IAgentMetricsPointDto,
+  IAgentReleaseDto,
+  IAgentUpdateResultDto,
+  ICreateAgentInstallCommandBody,
+} from "./dto";
 
-/** Сколько агентов без пульса обрабатывается за проход. */
-const SWEEP_BATCH = 100;
+/** Сколько точек метрик по умолчанию. */
+const METRICS_DEFAULT_LIMIT = 500;
+/** Сколько событий на странице по умолчанию. */
+const EVENTS_DEFAULT_LIMIT = 50;
 
-/** Сведения о новой сессии агента. */
-export interface IAgentSessionOpen {
-  sessionId: string;
-  transport: EAgentTransport;
-  hello: TAlpHello;
-  protocol: number;
-  remoteIp: string | undefined;
+/** Фильтр ленты событий. */
+export interface IAgentEventsQuery {
+  agentId?: string;
+  worker?: string;
+  type?: string;
+  cursor?: string;
+  limit?: number;
 }
 
-/** Payload сигнала смены сессии: `<agentId>:<sessionId>` или `<agentId>:revoked`. */
-export const AGENT_REVOKED_SESSION = "revoked";
+/** Окно истории метрик. */
+export interface IAgentMetricsRangeQuery {
+  since?: number;
+  until?: number;
+  limit?: number;
+}
+
+/** Параметры журнала. */
+export interface IAgentLogsQuery {
+  worker?: string;
+  lines?: number;
+}
 
 /**
- * Реестр агентов: учётные данные, сессии и присутствие. Присутствие — в БД
- * (`status`, `lastSeenAt`) для списков и в Redis (живое состояние).
+ * Агенты: список и карточка (`hello`, `status` с воркерами, последняя точка
+ * метрик, проблемы), отзыв, удаление, смена ключа, обновление, журнал,
+ * выпуск и команда установки. Доступ — право модуля или политика
+ * (`AgentAccessService`); вызовы SDK — от имени пользователя (`by`), чтобы
+ * действие попало в аудит.
  */
 @Injectable()
 export class AgentService {
   constructor(
-    @inject(AgentRepository) private readonly _agents: AgentRepository,
-    @inject(AgentPresenceStore) private readonly _presence: AgentPresenceStore,
-    @inject(AgentSignals) private readonly _signals: AgentSignals,
-    @inject(EventBus) private readonly _eventBus: EventBus,
-    @inject(JobQueue) private readonly _jobs: JobQueue,
+    @inject(AgentRuntime) private readonly _runtime: AgentRuntime,
+    @inject(AgentAccessService) private readonly _access: AgentAccessService,
+    @inject(AgentHistoryService) private readonly _history: AgentHistoryService,
   ) {}
 
-  /**
-   * Сессия закрылась: если за время ожидания агент не вернётся (новая сессия
-   * или пульс), он offline. Проверка — отложенной задачей очереди.
-   */
-  async scheduleOfflineCheck(
-    agentId: string,
-    sessionId: string,
-  ): Promise<void> {
-    try {
-      await this._jobs.enqueue<IAgentLinkLostData>(
-        AGENT_LINK_LOST_QUEUE,
-        { agentId, sessionId, disconnectedAt: new Date().toISOString() },
-        { startAfter: agentConfig.offlineGraceSec },
-      );
-    } catch (err) {
-      logger.warn({ err, agentId }, "[Agent] Проверка offline не поставлена");
-    }
-  }
-
-  /** Действующий агент по учётным данным `<agentId>.<secret>` или 401. */
-  async authenticate(raw: string): Promise<Agent> {
-    const parsed = parseAgentCredentials(raw);
-    const agent = parsed ? await this._agents.findById(parsed.agentId) : null;
-
-    if (
-      !parsed ||
-      !agent ||
-      agent.revokedAt ||
-      !tokenHashMatches(parsed.secret, agent.secretHash)
-    ) {
-      throw AgentError.CREDENTIALS_INVALID();
-    }
-
-    return agent;
-  }
-
+  /** Агенты в порядке регистрации: все или доступные через политики. */
   async list(
-    status?: EAgentStatus,
+    actor: IAgentActor,
     offset?: number,
     limit?: number,
   ): Promise<IPaginatedDto<AgentDto>> {
+    const scope = await this._access.scope(actor, "view");
     const page = normalizePagination(offset, limit);
-    const [agents, total] = await this._agents.findPage({
-      status,
-      offset: page.offset,
-      limit: page.limit,
-    });
+    const agents = (await this._runtime.agents.listAgents()).filter(agent =>
+      inScope(scope, agent.id),
+    );
 
     return toPage(
-      agents.map(agent => AgentDto.fromEntity(agent)),
-      total,
+      agents
+        .slice(page.offset, page.offset + page.limit)
+        .map(AgentDto.fromModel),
+      agents.length,
       page,
     );
   }
 
-  /** Агент с живым состоянием (последний `status` и `metrics`). */
-  async get(id: string): Promise<AgentDto> {
-    const agent = await this._agents.findById(id);
+  async get(actor: IAgentActor, id: string): Promise<AgentDto> {
+    await this._access.require(actor, id, "view");
 
-    if (!agent) throw AgentError.NOT_FOUND();
+    return AgentDto.fromModel(await this.require(id));
+  }
 
-    const [status, metrics] = await Promise.all([
-      this._presence.getStatus(id),
-      this._presence.getMetrics(id),
+  /** Текущие проблемы: одного агента или всех в области просмотра. */
+  async alerts(actor: IAgentActor, agentId?: string): Promise<AgentAlertDto[]> {
+    if (agentId) await this._access.require(actor, agentId, "view");
+
+    const scope = agentId ? "all" : await this._access.scope(actor, "view");
+    const alerts = await this._runtime.agents.listAlerts(agentId);
+
+    return alerts
+      .filter(alert => inScope(scope, alert.agentId))
+      .map(AgentAlertDto.fromModel);
+  }
+
+  /** Лента событий воркеров, новые первыми: одного агента или всех в области. */
+  async events(
+    actor: IAgentActor,
+    query: IAgentEventsQuery,
+  ): Promise<ICursorPageDto<IAgentEventDto>> {
+    if (query.agentId) await this._access.require(actor, query.agentId, "view");
+
+    const scope = query.agentId
+      ? new Set([query.agentId])
+      : await this._access.scope(actor, "view");
+    const feed: IAgentEventFeedQuery = {
+      agentIds: scope === "all" ? undefined : [...scope],
+      worker: query.worker,
+      type: query.type,
+      cursor: query.cursor,
+      limit: query.limit ?? EVENTS_DEFAULT_LIMIT,
+    };
+
+    return this._history.eventFeed(feed);
+  }
+
+  /** История метрик агента по возрастанию времени: последние `limit` точек окна. */
+  async metrics(
+    actor: IAgentActor,
+    id: string,
+    query: IAgentMetricsRangeQuery,
+  ): Promise<IAgentMetricsPointDto[]> {
+    await this._access.require(actor, id, "view");
+
+    return this._history.metrics({
+      agentId: id,
+      since: query.since,
+      until: query.until,
+      limit: query.limit ?? METRICS_DEFAULT_LIMIT,
+    });
+  }
+
+  /**
+   * Отозвать: ключ больше не принимается, соединение закрывается. Только с
+   * правом модуля `agent:manage`: доступ через политику (свой узел) отзыв не
+   * открывает — агента узла убирает удаление агента с узла.
+   */
+  async revoke(actor: IAgentActor, id: string): Promise<AgentDto> {
+    await this.requireModuleManage(actor, id);
+
+    return AgentDto.fromModel(
+      await callAgents(() => this._runtime.agents.by(actor.userId).revoke(id)),
+    );
+  }
+
+  /** Удалить запись агента, его настройки и историю (только `agent:manage`). */
+  async delete(actor: IAgentActor, id: string): Promise<void> {
+    await this.requireModuleManage(actor, id);
+    await callAgents(() =>
+      this._runtime.agents.by(actor.userId).deleteAgent(id),
+    );
+  }
+
+  /** Сменить ключ: агент переподключится с новым секретом. */
+  async rotateKey(actor: IAgentActor, id: string): Promise<void> {
+    await this._access.require(actor, id, "manage");
+    await callAgents(() => this._runtime.agents.by(actor.userId).rotateKey(id));
+  }
+
+  /** Обновить агента до версии выпуска; итог — после запуска новой версии. */
+  async update(actor: IAgentActor, id: string): Promise<IAgentUpdateResultDto> {
+    await this._access.require(actor, id, "manage");
+
+    return callAgents(() =>
+      this._runtime.agents.by(actor.userId).updateAgent(id),
+    );
+  }
+
+  /** Последние строки журнала агента или воркера (с узла). */
+  async logs(
+    actor: IAgentActor,
+    id: string,
+    query: IAgentLogsQuery,
+  ): Promise<IAgentLogsDto> {
+    await this._access.require(actor, id, "logs");
+
+    const entries: LogEntry[] = await callAgents(() =>
+      this._runtime.agents.by(actor.userId).logs(id, query),
+    );
+
+    return { entries };
+  }
+
+  /** Выпуск (`AGENT_RELEASES_DIR`) и кого можно обновить до него. */
+  async release(actor: IAgentActor): Promise<IAgentReleaseDto> {
+    const scope = await this._access.scope(actor, "view");
+    const agents = this._runtime.agents;
+    const [manifest, candidates, workerCandidates] = await Promise.all([
+      agents.release(),
+      agents.updateCandidates(),
+      agents.workerUpdateCandidates(),
     ]);
 
-    return AgentDto.fromEntity(agent, { status, metrics });
+    return {
+      manifest,
+      candidates: candidates.filter(c => inScope(scope, c.agentId)),
+      workerCandidates: workerCandidates.filter(c => inScope(scope, c.agentId)),
+    };
   }
 
-  /** Агент без живого состояния (для событий списка). */
-  async getSummary(id: string): Promise<AgentDto> {
-    const agent = await this._agents.findById(id);
+  /** Команда установки агента одной строкой (`curl … | sudo sh -s -- …`). */
+  installCommand(
+    body: ICreateAgentInstallCommandBody,
+  ): IAgentInstallCommandDto {
+    const { baseUrl, ...rest } = body;
+    const command = this.callSync(() =>
+      this._runtime.agents.installCommand({
+        ...rest,
+        baseUrl: baseUrl ?? this.publicUrl(),
+      }),
+    );
+
+    return { command };
+  }
+
+  /** Адрес сервера для агентов: `AGENT_PUBLIC_URL` или `APP_PUBLIC_URL`. */
+  publicUrl(): string {
+    return (agentConfig.publicUrl ?? config.app.publicUrl).replace(/\/+$/, "");
+  }
+
+  // ─── для других модулей (без проверки прав) ──────────────────────────
+
+  async find(id: string): Promise<AgentDto | null> {
+    const agent = await this._runtime.agents.getAgent(id);
+
+    return agent ? AgentDto.fromModel(agent) : null;
+  }
+
+  async all(): Promise<AgentDto[]> {
+    return (await this._runtime.agents.listAgents()).map(AgentDto.fromModel);
+  }
+
+  /** Статус настроек агента (желаемая, доставленная, применённая версии). */
+  async configStatus(id: string): Promise<AgentConfigStatusDto[]> {
+    return (await this._runtime.agents.configStatus(id)).map(
+      AgentConfigStatusDto.fromModel,
+    );
+  }
+
+  /** Агенты, которых можно обновить до версии выпуска. */
+  async updateCandidateIds(): Promise<Set<string>> {
+    const candidates = await this._runtime.agents.updateCandidates();
+
+    return new Set(candidates.map(c => c.agentId));
+  }
+
+  /** Отозвать от имени пользователя (`actorId`) или системы (пусто). */
+  async revokeAs(actorId: string, id: string): Promise<void> {
+    const agents = this._runtime.agents;
+
+    await callAgents(() => (actorId ? agents.by(actorId) : agents).revoke(id));
+  }
+
+  /** Отозвать и удалить запись (агент удалён с машины). */
+  async revokeAndDelete(actorId: string, id: string): Promise<void> {
+    const agents = this._runtime.agents;
+    const as = actorId ? agents.by(actorId) : agents;
+
+    try {
+      await as.revoke(id);
+      await as.deleteAgent(id);
+    } catch (err) {
+      if (err instanceof AgentsError && err.code === "AGENT_NOT_FOUND") return;
+      throw toAgentError(err);
+    }
+  }
+
+  /** Видимый агент без права модуля на управление — 403, невидимый — 404. */
+  private async requireModuleManage(
+    actor: IAgentActor,
+    id: string,
+  ): Promise<void> {
+    await this._access.require(actor, id, "view");
+    if (!this._access.hasAll(actor, "manage")) throw AgentError.FORBIDDEN();
+  }
+
+  private async require(id: string): Promise<Agent> {
+    const agent = await this._runtime.agents.getAgent(id);
 
     if (!agent) throw AgentError.NOT_FOUND();
-
-    return AgentDto.fromEntity(agent);
-  }
-
-  /** Действующий (не отозванный) агент или 401. */
-  async findActive(id: string): Promise<Agent> {
-    const agent = await this._agents.findById(id);
-
-    if (!agent || agent.revokedAt) throw AgentError.CREDENTIALS_INVALID();
 
     return agent;
   }
 
-  findById(id: string): Promise<Agent | null> {
-    return this._agents.findById(id);
-  }
-
-  /** Из `ids` — агенты, которые больше не действуют (отозваны или удалены). */
-  async findInactive(ids: string[]): Promise<string[]> {
-    const alive = new Set(
-      (await this._agents.findByIds(ids))
-        .filter(agent => !agent.revokedAt)
-        .map(agent => agent.id),
-    );
-
-    return ids.filter(id => !alive.has(id));
-  }
-
-  /**
-   * Новая сессия: агент на связи, сведения из `hello` сохранены. Сессии того
-   * же агента в других процессах закрываются по сигналу.
-   */
-  async openSession(agent: Agent, open: IAgentSessionOpen): Promise<void> {
-    const now = new Date();
-    const { hello } = open;
-    const patch = {
-      status: EAgentStatus.ONLINE,
-      sessionId: open.sessionId,
-      transport: open.transport,
-      version: hello.agent.version,
-      protocol: open.protocol,
-      host: hello.host,
-      capabilities: hello.capabilities,
-      labels: { ...agent.labels, ...hello.labels },
-      remoteIp: open.remoteIp ?? null,
-      connectedAt: now,
-      lastSeenAt: now,
-    };
-
-    await this._agents.update({ id: agent.id }, patch);
-    Object.assign(agent, patch);
-    await this._signals.notify(
-      AGENT_SESSION_CHANNEL,
-      `${agent.id}:${open.sessionId}`,
-    );
-    this._eventBus.emit(new AgentOnlineEvent(agent.id, open.sessionId));
-  }
-
-  /**
-   * Ёмкость очередей агента изменилась (нагрузка зарегистрировалась или
-   * перезапустилась после `hello`): обновить возможности в БД.
-   */
-  async updateJobsCapacity(
-    agent: Agent,
-    capacity: Record<string, number>,
-  ): Promise<void> {
-    const queues = Object.entries(capacity)
-      .map(([name, concurrency]) => ({ name, concurrency }))
-      .sort((a, b) => a.name.localeCompare(b.name));
-    const current = agent.capabilities.jobs?.queues ?? [];
-
-    if (JSON.stringify(current) === JSON.stringify(queues)) return;
-
-    const capabilities = { ...agent.capabilities, jobs: { queues } };
-
-    await this._agents.update({ id: agent.id }, { capabilities });
-    agent.capabilities = capabilities;
-    this._eventBus.emit(new AgentCapabilitiesChangedEvent(agent.id));
-  }
-
-  /**
-   * Пульс сессии: `lastSeenAt`. `false` — сессия больше не текущая (её
-   * вытеснила новая или агент отозван).
-   */
-  async touch(agentId: string, sessionId: string): Promise<boolean> {
-    const { affected } = await this._agents.update(
-      { id: agentId, sessionId },
-      { lastSeenAt: new Date(), status: EAgentStatus.ONLINE },
-    );
-
-    return (affected ?? 0) > 0;
-  }
-
-  /**
-   * Сессия закрылась `before` и с тех пор агент не появлялся — offline.
-   * Новая сессия (другой `sessionId`) отметку не снимает.
-   */
-  async markOfflineIfSilent(
-    agentId: string,
-    sessionId: string | null,
-    before: Date,
-  ): Promise<boolean> {
-    if (!(await this._agents.markOffline(agentId, sessionId, before))) {
-      return false;
+  private callSync<T>(fn: () => T): T {
+    try {
+      return fn();
+    } catch (err) {
+      throw toAgentError(err);
     }
-
-    await this._presence
-      .clear(agentId)
-      .catch(err =>
-        logger.warn({ err, agentId }, "[Agent] Живое состояние не очищено"),
-      );
-    this._eventBus.emit(new AgentOfflineEvent(agentId));
-
-    return true;
-  }
-
-  /** Агенты на связи без пульса дольше нескольких интервалов статуса — offline. */
-  async sweepSilent(): Promise<number> {
-    const before = new Date(
-      Date.now() - agentConfig.statusIntervalMs * AGENT_MISSED_STATUS_LIMIT,
-    );
-    const silent = await this._agents.findSilent(before, SWEEP_BATCH);
-    let count = 0;
-
-    for (const agent of silent) {
-      if (await this.markOfflineIfSilent(agent.id, null, before)) count += 1;
-    }
-
-    return count;
-  }
-
-  /** Отозвать агента: сессия закрывается (4401), учётные данные недействительны. */
-  async revoke(id: string, revokedBy?: string): Promise<void> {
-    const agent = await this._agents.findById(id);
-
-    if (!agent) throw AgentError.NOT_FOUND();
-    if (agent.revokedAt) return;
-
-    await this._agents.update(
-      { id },
-      { revokedAt: new Date(), status: EAgentStatus.OFFLINE, sessionId: null },
-    );
-    await this._presence.clear(id);
-    await this._signals.notify(
-      AGENT_SESSION_CHANNEL,
-      `${id}:${AGENT_REVOKED_SESSION}`,
-    );
-    this._eventBus.emit(new AgentRevokedEvent(id, revokedBy));
-  }
-
-  /** Забыть эфемерных агентов, пропавших до `before`. */
-  forgetEphemeral(before: Date): Promise<number> {
-    return this._agents.deleteForgottenEphemeral(before);
   }
 }

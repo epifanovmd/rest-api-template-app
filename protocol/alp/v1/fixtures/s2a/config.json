@@ -1,6 +1,0 @@
-{
-  "type": "config",
-  "data": {
-    "metricsIntervalMs": 2000
-  }
-}

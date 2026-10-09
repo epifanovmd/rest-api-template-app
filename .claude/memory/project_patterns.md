@@ -46,14 +46,14 @@ message } }`). В main **нет ни одного вызова** (описани
 - Задачи: служебная очередь с повторами — `mailer/mail-send.job.ts`; `JobError(code, msg, retryable)` —
   `file/file-process.job.ts`, `mailer.service.ts`; cron — `*-cleanup.job.ts` (audit, otp, session, passkeys, file);
   outbox — `file.service.ts::_enqueueProcessing(manager, …)`, `mailer.service.ts` (`{ manager }`); внешняя очередь —
-  `jobs/demo-echo.handler.ts` (`asExternalJobHandler`, `io` + `onComplete`), нагрузка — `python/examples/echo_worker.py`;
+  `jobs/demo-echo.handler.ts` (`asExternalJobHandler`, `job` + `jobType` + `io` + `onComplete`), воркер — `agent/workers/echo`;
   health-индикатор — `jobs/jobs.health.ts` (`asHealthIndicator(JobsHealthIndicator)`). Политик доступа к задачам
   (`asJobAccessPolicy`) в main нет — только владелец/суперпользователь.
 - Хранилище: ключи — `file/file-keys.ts` (`files/<id>/original.<ext>`), обработка через `withLocalFile` —
   `file/file-process.job.ts`, прямая загрузка — `file.service.ts` (`signedPutUrl` + complete с условным `UPDATE`).
 - Права модуля — `audit/audit.permissions.ts` (`definePermissions("audit", { VIEW: "audit:view" })`).
 - E2E-сценарий — `test/e2e/platform.e2e.ts` (файлы S3/local, задачи, биометрия/passkeys), агенты —
-  `test/e2e/agents.e2e.ts` (хелпер `test/e2e/agent.ts`: настоящий WebSocket ALP),
+  `test/e2e/agents.e2e.ts` (хелпер `test/e2e/agent.ts`: настоящий агент 1.0.0 с воркерами echo/netprobe),
   клиент `test/e2e/client.ts`, письма — Mailpit API.
 - Bootstrapper — `src/modules/socket/socket.bootstrap.ts`, `src/modules/user/*bootstrap*` (AdminBootstrap, Seed).
 - Guards на маршруте — поиск `@UseGuards(` в `src/modules/auth/`.
@@ -185,44 +185,29 @@ describe("FeatureService", () => {
 ответа старые сессии уже недействительны (иначе гонка — e2e «смена пароля» падал ~1 из 5).
 Остальные события — `emit` (не блокируют ответ).
 
-## Задачи: запрос-ответ, внешние задачи агентов, штатная остановка
+## Задачи: запрос-ответ, внешние задачи агентов
 
 - `JobQueue.request(queue, data, { timeoutMs, priority })` — синхронный вызов исполнителя из HTTP-запроса:
   видимая задача + ожидание итога (`JobResultWaiter`: сигнал `job_settled` из транзакции завершения,
   опрос 5 с / 1 с без LISTEN). Ошибка → 502 `JOB_REQUEST_FAILED` (`details.code`), таймаут → 504
   `JOB_REQUEST_TIMEOUT` и задача снимается. `manager` передать нельзя (ждать чужого коммита некому).
-- Внешние задачи: `ExternalJobService` (выдача `take` → `tracker.start({agentId})`, барьер `_held`: running +
-  не отменена + `agent_id` + `attempt`, `extendLeases` по `status`, `reconcile` при hello, `reject` →
-  `PgBossService.release` без траты попытки) и `JobsAgentCapability` (раздача по `status.slots` минус выданные,
-  не попавшие в status, TTL 60 с; `job_available` будит раздачу; `job_cancel`/`job_stop` → агенту).
-- `JobQueue.stop(id)`: running внешняя задача → `stop_requested`, агенту `job.stop` (сигналом или при сверке);
-  `complete` после stop принимается.
-- Python SDK покрыт `python/tests/test_worker.py` (фейковый агент по socketpair), Go — `yarn agent:go race`;
-  в CI — jobs `python-sdk` и `agent`.
-
-## Агенты: проверенные gotcha (07.10.2026)
-
-- **engine.io рвёт чужой upgrade через 1 с**, если в сокет ничего не записано: в `SocketServerService`
-  стоит `destroyUpgradeTimeout: 10_000` — проверка учётных данных агента в БД успевает.
-- **Маршруты агента — отдельный префикс** `/api/v1/agent-link/*`: `POST /agents/link/sync` совпал бы с
-  `POST /agents/{id}/revoke` (koa-router берёт первый, UUID-валидация → 400).
-- **tsoa не разбирает `z.infer`**: типы DTO (host, capabilities, status, metrics) — явные интерфейсы
-  `IAlp*` в `agent-link.protocol.ts`, схемы типизированы `z.ZodType<IAlp…>` (компилятор сверяет).
-- **Очереди агента — из `status.slots`/`status.capacity`**, не из `hello`: нагрузки регистрируются после hello.
-- **`hello.jobs` включает задачи с итогом в outbox** (`Outbox.JobRefs`): сверка на сервере идёт до досылки
-  outbox — иначе завершённая без связи задача проваливалась `AGENT_LOST` (поймано смоуком с падением API).
-- **HTTP sync**: ack склеиваются таймером 20 мс — перед ответом `session.settle()`; сессию восстанавливает
-  любой процесс по снимку Redis (`agent:session:<id>`) при совпадении `agents.session_id`; забытая по простою
-  HTTP-сессия **не** ставит проверку offline (агент мог уйти в другой процесс) — offline решает `agents.sweep`.
-- Раздача: выданная задача занимает слот, пока агент её не принял (`job.accept`), не отклонил, не сдал итог
-  или её не отменили — иначе отменённая после выдачи задача держала слот 60 с (поймано e2e досрочного завершения).
-- `POST /api/v1/jobs/{id}/stop` (право — как на отмену), `JobRunDto.agentId` — исполнитель внешней задачи.
-- e2e: HTTP-сессия живёт на сервере и раздаёт задачи соседним наборам — агента отзывать в `after`.
-- Самообновление: отметка `<binary>.update.json` рядом с бинарём; под systemd откат делает
-  `agent.prev boot-guard` (ExecStartPre, `AGENT_BOOT_GUARD=external`). Проверено вживую 1.0.0 → 1.0.1.
-- Dev: агент на машине — `yarn agent:setup && yarn agent` (bootstrap-токен из `.env.development`); Go — только в
-  docker (`scripts/agent.sh`, тома `agent-gomod`/`agent-gocache`). В docker-агенте файлы S3 dev недоступны
-  (`S3_PUBLIC_ENDPOINT=localhost:8333` внутри контейнера — сам контейнер).
+- Внешние задачи (с 09.10.2026 — стандарт `/jobs` SDK): core-токен `EXTERNAL_JOB_EXECUTOR`
+  (`IExternalJobExecutor`: canDispatch/dispatch → `ExternalJobUpdate`/poll/cancel/onUpdate/onReconnect), реализация —
+  `AgentJobExecutor` (agent). Jobs не импортирует agent. `definition.job: { type, worker? }` (обязателен, иначе
+  ошибка регистрации), хуки `jobType?(info)`, `io?(info)` (ключи FileStorage → подписанные GET/PUT, ttl ≥
+  expireInSeconds), `onComplete(ctx{outputs})`, `onFail`. Штатной остановки нет (`JobQueue.stop`, `POST /jobs/{id}/stop`,
+  `stopRequested` удалены миграцией `NodeAgentName1791600000000`).
+- Старт без опроса pg-boss: `enqueue` внешней без `startAfter` → `startAfter: 10 с` у pg-boss + `NOTIFY job_queued`
+  в транзакции (outbox — дойдёт после коммита) → `JobsBootstrap` в процессах с `canDispatch` → `startNow`.
+  Захват записи — `claimDispatch` (status queued, external_id NULL, started_at NULL или старше 90 с → ставит
+  started_at; статус остаётся queued), неудача — `releaseDispatch` (started_at NULL, error). pg-boss `dispatch`
+  — тот же захват; захвачено другим → `JOB_DISPATCHING` (retry). Reconnect агента → `reconcile` + `startQueued`.
+- `AgentJobExecutor.dispatch`: агенты online, воркер running с типом в `workerManifest().jobs` (supports не умеет
+  jobs), без relay — только local; `runJob(..., { jobId: run.id, timeoutMs: 1 })` — 200 → `done` (workId = run.id),
+  202 → `progress` (workId = id воркера). JOB_REJECTED: 408/409/429/5xx — retry, иначе final; JOB_INVALID — final.
+  События `job.*` (JOB_EVENTS) → `ExternalJobService.apply`. Логгер редактирует ключ `code` — писать `errorCode`.
+- S3 (SeaweedFS) presigned PUT: `content-type` должен быть подписан и совпадать (без ContentType — 403) →
+  выходам задавать `contentType`, воркер шлёт ровно его (echo — `text/plain`).
 
 ## Файлы: владение, создание сервером, сборка мусора
 
@@ -241,3 +226,18 @@ describe("FeatureService", () => {
 - `JobHandlerRegistry.register` отклоняет `expireInSeconds > 86400` (предел pg-boss — иначе падение при старте) и
   `leaseSeconds > expireInSeconds` у внешней очереди.
 - `bigintNumber` — `core/db/transformers.ts` (колонки `bigint` → number).
+
+### Агенты и задачи: файлы итога, своим лично, пересылка
+
+- Файлы итога внешней задачи: при `done` выходы `io(job).outputs`, которые есть в хранилище
+  (`storage.stat`), пишутся в `job_runs.outputs` `[{name,key,size}]`; ссылки (`GET`, срок
+  `STORAGE_SIGNED_URL_TTL_SECONDS`) подписывает `JobRunViews` при каждой выдаче
+  (`JobsService`, `JobRunTracker.publish` — для записи с `outputs` событие уходит после подписи).
+  `job_runs.job_type` (+ `worker` очереди) пишется `setTarget` до `executor.dispatch`.
+- `node:mesh` своим — `NodeMeshService.byOwner(mesh)` + `OwnedEntityEmitter.toOwners`; нагрузка
+  — `node:load {nodeId, agentId, point:{at, host}}` из `AgentMetricsReceivedEvent` (не чаще
+  `NODE_LOAD_EMIT_MS` на агента; при watch метрики идут раз в секунду).
+- Пересылка — отдельный `AgentRelayServer` (`AGENT_RELAY_PORT`/`HOST`), `instanceId` с секретом —
+  адрес сервера пересылки, без секрета — адрес API. В e2e у каждой копии свой порт пересылки
+  (`RELAY_URL`, `peer.relayUrl`). Миграционный тест `node.repository.integration` откатывает
+  последние миграции по порядку — новая миграция добавляет туда шаг.

@@ -8,7 +8,9 @@ ARG NODE_VERSION=24-alpine
 # ── Все зависимости для сборки ───────────────────────────────────────────────
 FROM node:${NODE_VERSION} AS deps
 WORKDIR /app
+# SDK агентов ставится из архива в vendor/ (file:vendor/agent-sdk-<версия>.tgz).
 COPY package.json yarn.lock ./
+COPY vendor/agent-sdk-*.tgz ./vendor/
 RUN --mount=type=cache,target=/usr/local/share/.cache/yarn,sharing=locked \
     yarn install --frozen-lockfile --ignore-scripts --network-timeout 600000
 
@@ -19,29 +21,22 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN yarn build
 
-# ── Сборки агента для самообновления (раздаёт API, AGENT_RELEASES_DIR) ───────
-# Подпись релиза — секрет BuildKit `agent_signing_key` (agent keygen); без него
-# manifest без подписей и агенты на такие сборки не обновляются.
-FROM --platform=$BUILDPLATFORM golang:1.26-bookworm AS agent-dist
-WORKDIR /src
-COPY agent/go.mod agent/go.sum ./
-RUN --mount=type=cache,target=/go/pkg/mod go mod download
-COPY agent/ ./
-RUN --mount=type=cache,target=/go/pkg/mod --mount=type=cache,target=/root/.cache/go-build \
-    --mount=type=secret,id=agent_signing_key \
-    set -e; v=$(cat VERSION); mkdir -p "/dist/$v"; \
-    for os in linux darwin; do for arch in amd64 arm64; do \
-      CGO_ENABLED=0 GOOS=$os GOARCH=$arch go build -trimpath \
-        -ldflags "-s -w -X main.version=$v" -o "/dist/$v/agent-$os-$arch" ./cmd/agent; \
-    done; done; \
-    AGENT_SIGNING_KEY="$(cat /run/secrets/agent_signing_key 2>/dev/null || true)" \
-      go run ./cmd/agent release-manifest "/dist/$v" "$v"
+# ── Выпуск для агентов (раздаёт API: установка, обновления, install.sh) ──────
+# Берётся из agent/release (yarn agent:release: агент и воркеры проекта); нет его —
+# каталог пуст и выпуска нет.
+FROM node:${NODE_VERSION} AS agent-release
+COPY agent/ /src/agent/
+RUN mkdir -p /agent-release && \
+    if [ -f /src/agent/release/manifest.json ]; then \
+      cp /src/agent/release/* /agent-release/; \
+    fi
 
 # ── Только production-зависимости, без install-скриптов ──────────────────────
 # Кэш yarn — в cache-mount BuildKit, в слой не попадает: чистить не нужно.
 FROM node:${NODE_VERSION} AS prod-deps
 WORKDIR /app
 COPY package.json yarn.lock ./
+COPY vendor/agent-sdk-*.tgz ./vendor/
 RUN --mount=type=cache,target=/usr/local/share/.cache/yarn,sharing=locked \
     yarn install --frozen-lockfile --production --ignore-scripts --network-timeout 600000
 
@@ -52,7 +47,8 @@ WORKDIR /app
 ARG APP_VERSION=dev
 ENV NODE_ENV=production \
     NODE_OPTIONS=--enable-source-maps \
-    APP_VERSION=${APP_VERSION}
+    APP_VERSION=${APP_VERSION} \
+    AGENT_RELEASES_DIR=agent-release
 
 # tini — корректный PID 1: сигналы доходят до node, дочерние процессы убираются.
 # Менеджеры пакетов в рантайме не нужны (старт и миграции — через node): меньше
@@ -69,7 +65,7 @@ COPY --from=prod-deps --chown=node:node /app/node_modules ./node_modules
 COPY --from=builder --chown=node:node /app/build ./build
 # Ассеты рантайма (шаблоны писем) лежат вне build/ и читаются по пути от корня.
 COPY --chown=node:node templates ./templates
-COPY --from=agent-dist --chown=node:node /dist ./agent/dist
+COPY --from=agent-release --chown=node:node /agent-release ./agent-release
 
 USER node
 EXPOSE 8181

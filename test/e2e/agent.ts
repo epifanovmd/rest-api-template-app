@@ -1,180 +1,204 @@
-import { expect } from "chai";
-import { randomBytes, randomUUID } from "crypto";
-import WebSocket from "ws";
+import { ChildProcess, spawn } from "child_process";
+import { once } from "events";
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  writeFileSync,
+} from "fs";
+import { tmpdir } from "os";
+import { join, resolve } from "path";
 
 import { BASE_URL } from "./harness";
 
-/** Входящее сообщение ALP. */
-export interface AlpMessage {
-  type: string;
-  id?: string;
-  re?: string;
-  seq?: number;
-  data?: any;
-}
-
-export interface AgentHello {
-  queues?: { name: string; concurrency: number }[];
-  commands?: string[];
-  jobs?: { jobId: string; attempt: number }[];
-}
-
-const LINK_PATH = "/api/v1/agent-link";
-
-const linkUrl = (): string => BASE_URL.replace(/^http/, "ws") + LINK_PATH;
-
-/** Попытка upgrade без установки сессии: HTTP-код отказа. */
-export const rejectedUpgrade = (
-  headers: Record<string, string>,
-  protocols: string[] = ["alp.v1"],
-): Promise<number> =>
-  new Promise((resolve, reject) => {
-    const ws = new WebSocket(linkUrl(), protocols, { headers });
-
-    ws.on("unexpected-response", (_req, res) => {
-      resolve(res.statusCode ?? 0);
-      ws.terminate();
-    });
-    ws.on("open", () => {
-      ws.close();
-      reject(new Error("upgrade неожиданно принят"));
-    });
-    ws.on("error", () => undefined);
-  });
-
 /**
- * Агент для e2e: настоящий WebSocket по протоколу ALP, очередь входящих
- * сообщений с ожиданием по типу и условию, нумерация потока.
+ * Настоящий агент (github.com/epifanovmd/agent) для сценариев: программа и
+ * воркер netprobe — из выпуска (`E2E_AGENT_RELEASES_DIR`, по умолчанию
+ * `agent/release`, `yarn agent:release`), воркер echo — из исходников
+ * `agent/workers/echo` (python3). Агент работает в своём временном каталоге
+ * данных и останавливается вместе с воркерами.
  */
-export class TestAgent {
-  readonly bootId = randomBytes(8).toString("hex");
-  private readonly _inbox: AlpMessage[] = [];
-  private readonly _waiters: (() => void)[] = [];
-  private _seq = 0;
-  private _ws!: WebSocket;
-  closeCode: number | null = null;
+const env = process.env;
 
-  constructor(readonly credentials: string) {}
+const SDK_VERSION = (
+  JSON.parse(
+    readFileSync(resolve("node_modules/agent-sdk/package.json"), "utf8"),
+  ) as { version: string }
+).version;
 
-  /** Подключиться и пройти рукопожатие; вернуть `welcome`. */
-  async connect(hello: AgentHello = {}): Promise<AlpMessage> {
-    this._ws = new WebSocket(linkUrl(), ["alp.v1"], {
-      headers: { authorization: `Agent ${this.credentials}` },
-    });
-    this._ws.on("message", raw => {
-      this._inbox.push(JSON.parse(raw.toString()));
-      this._waiters.splice(0).forEach(wake => wake());
-    });
-    this._ws.on("close", code => {
-      this.closeCode = code;
-      this._waiters.splice(0).forEach(wake => wake());
-    });
-    await new Promise<void>((resolve, reject) => {
-      this._ws.once("open", () => resolve());
-      this._ws.once("error", reject);
-    });
+/** Каталог выпуска агента: его раздаёт и сервер стенда. */
+export const AGENT_RELEASES_DIR = resolve(
+  env.E2E_AGENT_RELEASES_DIR ?? "agent/release",
+);
 
-    this.send("hello", {
-      protocols: [1],
-      agent: {
-        name: "e2e-agent",
-        version: "1.0.0",
-        sdk: "e2e/1",
-        bootId: this.bootId,
-        startedAt: Date.now(),
-      },
-      host: { hostname: "e2e", os: "linux", arch: "amd64", cpus: 2 },
-      labels: { suite: "e2e" },
-      capabilities: {
-        ...(hello.queues && { jobs: { queues: hello.queues } }),
-        ...(hello.commands && { commands: { names: hello.commands } }),
-      },
-      jobs: hello.jobs ?? [],
-    });
+const platform = (): string =>
+  `${process.platform === "darwin" ? "darwin" : "linux"}-${process.arch === "arm64" ? "arm64" : "amd64"}`;
 
-    return this.next("welcome");
+const agentBinary = (): string => {
+  const file =
+    env.E2E_AGENT_BIN ?? join(AGENT_RELEASES_DIR, `agent-${platform()}`);
+
+  if (!existsSync(file)) {
+    throw new Error(
+      `E2E: нет программы агента ${file} — yarn agent:release (или E2E_AGENT_BIN)`,
+    );
   }
 
-  send(type: string, data: unknown, extra: { id?: string; seq?: number } = {}) {
-    this._ws.send(JSON.stringify({ type, ts: Date.now(), ...extra, data }));
+  return file;
+};
+
+const netprobeBinary = (): string =>
+  join(AGENT_RELEASES_DIR, `netprobe-${SDK_VERSION}-${platform()}`);
+
+export interface IEnrollResult {
+  status: number;
+  agentId?: string;
+  secret?: string;
+}
+
+/** Регистрация напрямую (без агента): проверка токенов. */
+export const enroll = async (
+  token: string,
+  name: string,
+): Promise<IEnrollResult> => {
+  const res = await fetch(`${BASE_URL}/api/v1/agent-link/enroll`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      token,
+      name,
+      host: { os: "linux", arch: "amd64", hostname: "e2e" },
+    }),
+  });
+  const data = (await res.json().catch(() => ({}))) as Record<string, string>;
+
+  return { status: res.status, agentId: data.agentId, secret: data.secret };
+};
+
+export type TWorkerName = "echo" | "netprobe";
+
+export interface IStartAgentOptions {
+  token: string;
+  name: string;
+  workers?: TWorkerName[];
+}
+
+const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
+
+const workerYaml = (name: TWorkerName, dataDir: string): string =>
+  name === "echo"
+    ? [
+        "  - name: echo",
+        '    command: ["./run"]',
+        `    dir: ${JSON.stringify(resolve("agent/workers/echo"))}`,
+        "    env:",
+        '      PYTHONUNBUFFERED: "1"',
+        `      ECHO_JOBS_DIR: ${JSON.stringify(join(dataDir, "echo-jobs"))}`,
+        "    lifecycle:",
+        "      { onAgentStop: stop, onAgentRestart: restart, stopTimeout: 5s, health: { interval: 1s, timeout: 1s, failures: 5 } }",
+      ].join("\n")
+    : [
+        "  - name: netprobe",
+        "    release: true",
+        "    lifecycle: { onAgentStop: stop, onAgentRestart: restart, stopTimeout: 5s }",
+      ].join("\n");
+
+export class RealAgent {
+  private readonly _logs: string[] = [];
+
+  private constructor(
+    readonly dataDir: string,
+    private readonly _process: ChildProcess,
+  ) {
+    _process.stdout?.on("data", chunk => this._logs.push(String(chunk)));
+    _process.stderr?.on("data", chunk => this._logs.push(String(chunk)));
   }
 
-  /** Потоковое сообщение: следующий номер `seq`. */
-  stream(type: string, data: unknown): number {
-    this._seq += 1;
-    this.send(type, data, { seq: this._seq });
+  /** Запустить агента с воркерами; дождаться регистрации (ключ на диске). */
+  static async start(options: IStartAgentOptions): Promise<RealAgent> {
+    const dir = mkdtempSync(join(tmpdir(), "e2e-agent-"));
+    const dataDir = join(dir, "data");
+    const workers = options.workers ?? ["echo"];
 
-    return this._seq;
-  }
+    if (workers.includes("netprobe")) {
+      const target = join(dataDir, "workers", "netprobe");
 
-  /** Надёжное сообщение: `id`; вернуть его. */
-  reliable(type: string, data: unknown): string {
-    const id = randomUUID();
-
-    this.send(type, data, { id });
-
-    return id;
-  }
-
-  status(slots: Record<string, number>, jobs: unknown[] = []): number {
-    return this.stream("status", {
-      state: jobs.length ? "busy" : "idle",
-      slots,
-      jobs,
-      workloads: [],
-      outbox: 0,
-    });
-  }
-
-  /** Дождаться сообщения типа `type` (и условия); забрать его из очереди. */
-  async next(
-    type: string,
-    match: (message: AlpMessage) => boolean = () => true,
-    timeoutMs = 10_000,
-  ): Promise<AlpMessage> {
-    const deadline = Date.now() + timeoutMs;
-
-    while (true) {
-      const index = this._inbox.findIndex(m => m.type === type && match(m));
-
-      if (index >= 0) return this._inbox.splice(index, 1)[0];
-      if (this.closeCode !== null) {
-        expect.fail(`канал закрыт (${this.closeCode}), ждали ${type}`);
-      }
-
-      const left = deadline - Date.now();
-
-      if (left <= 0) expect.fail(`не дождались ${type} за ${timeoutMs} мс`);
-
-      await new Promise<void>(resolve => {
-        const timer = setTimeout(resolve, left);
-
-        this._waiters.push(() => {
-          clearTimeout(timer);
-          resolve();
-        });
-      });
-    }
-  }
-
-  /** Подтверждение надёжного сообщения `id`. */
-  acked(id: string): Promise<AlpMessage> {
-    return this.next("ack", m => m.data?.ids?.includes(id));
-  }
-
-  /** Дождаться закрытия канала; вернуть код. */
-  async closed(timeoutMs = 10_000): Promise<number> {
-    const deadline = Date.now() + timeoutMs;
-
-    while (this.closeCode === null) {
-      if (Date.now() > deadline) expect.fail("канал не закрылся");
-      await new Promise(resolve => setTimeout(resolve, 50));
+      mkdirSync(target, { recursive: true });
+      copyFileSync(netprobeBinary(), join(target, "current"));
+      writeFileSync(join(target, "version"), `${SDK_VERSION}\n`);
     }
 
-    return this.closeCode;
+    const config = join(dir, "agent.yaml");
+
+    writeFileSync(
+      config,
+      [
+        "server:",
+        `  url: ${BASE_URL}`,
+        "  reconnect: { min: 200ms, max: 2s }",
+        `dataDir: ${JSON.stringify(dataDir)}`,
+        `name: ${JSON.stringify(options.name)}`,
+        "enroll:",
+        `  token: ${JSON.stringify(options.token)}`,
+        "update:",
+        "  mode: disabled",
+        "log:",
+        "  forward: info",
+        "workers:",
+        ...workers.map(name => workerYaml(name, dataDir)),
+        "",
+      ].join("\n"),
+    );
+
+    const child = spawn(agentBinary(), ["run", "-config", config], {
+      stdio: ["ignore", "pipe", "pipe"],
+      env: { PATH: env.PATH ?? "", HOME: dir },
+    });
+    const agent = new RealAgent(dataDir, child);
+
+    await agent.waitForKey();
+
+    return agent;
   }
 
-  close(): void {
-    this._ws?.close(1000);
+  /** Id агента из `credentials.json`. */
+  get agentId(): string {
+    return (
+      JSON.parse(
+        readFileSync(join(this.dataDir, "credentials.json"), "utf8"),
+      ) as { agentId: string }
+    ).agentId;
+  }
+
+  get log(): string {
+    return this._logs.join("");
+  }
+
+  /** Остановить агента (воркеры — вместе с ним). */
+  async stop(): Promise<void> {
+    if (this._process.exitCode !== null) return;
+
+    const exited = once(this._process, "exit");
+
+    this._process.kill("SIGTERM");
+
+    const timer = setTimeout(() => this._process.kill("SIGKILL"), 15_000);
+
+    await exited;
+    clearTimeout(timer);
+  }
+
+  private async waitForKey(): Promise<void> {
+    for (let i = 0; i < 100; i += 1) {
+      if (this._process.exitCode !== null) break;
+      if (existsSync(join(this.dataDir, "credentials.json"))) return;
+      await sleep(100);
+    }
+
+    throw new Error(
+      `E2E: агент не зарегистрировался\n${this.log.slice(-3000)}`,
+    );
   }
 }

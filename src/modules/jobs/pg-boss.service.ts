@@ -160,6 +160,19 @@ export class PgBossService {
       : null;
   }
 
+  /** Данные задачи; задачи нет (удалена по сроку) — `null`. */
+  async findJobData(id: string): Promise<unknown> {
+    const boss = await this.ready();
+    const { rows } = await boss
+      .getDb()
+      .executeSql(
+        `SELECT data FROM ${PGBOSS_SCHEMA}.job WHERE id = $1 LIMIT 1`,
+        [id],
+      );
+
+    return (rows[0] as { data?: unknown } | undefined)?.data ?? null;
+  }
+
   /** Из `ids` — задачи, отменённые в pg-boss. */
   async findCancelledIds(ids: string[]): Promise<string[]> {
     if (!ids.length) return [];
@@ -173,37 +186,6 @@ export class PgBossService {
       );
 
     return rows.map(row => String((row as { id: string }).id));
-  }
-
-  /**
-   * Провалить активную задачу без повторов. У pg-boss нет `fail` без
-   * повторов вне `work`: исчерпываем лимит повторов задачи и падаем.
-   */
-  async failFinal(queue: string, id: string, output: object): Promise<void> {
-    const boss = await this.ready();
-
-    await boss
-      .getDb()
-      .executeSql(
-        `UPDATE ${PGBOSS_SCHEMA}.job SET retry_limit = retry_count WHERE name = $1 AND id = $2 AND state = 'active'`,
-        [queue, id],
-      );
-    await boss.fail(queue, id, output);
-  }
-
-  /**
-   * Вернуть активную задачу в очередь без траты попытки: исполнитель
-   * отказался от неё, не начав (у pg-boss такого действия нет).
-   */
-  async release(queue: string, id: string): Promise<void> {
-    const boss = await this.ready();
-
-    await boss
-      .getDb()
-      .executeSql(
-        `UPDATE ${PGBOSS_SCHEMA}.job SET state = 'created', started_on = NULL, heartbeat_on = NULL WHERE name = $1 AND id = $2 AND state = 'active'`,
-        [queue, id],
-      );
   }
 
   private createReady(): Promise<PgBoss> {

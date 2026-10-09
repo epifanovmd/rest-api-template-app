@@ -26,16 +26,19 @@ import { KoaRequest } from "../../types/koa";
 import { AgentEnrollmentService } from "./agent-enrollment.service";
 import {
   AgentEnrollmentTokenDto,
-  ICreatedEnrollmentTokenDto,
-  ICreateEnrollmentTokenBody,
+  ICreateAgentEnrollmentTokenBody,
+  ICreatedAgentEnrollmentTokenDto,
 } from "./dto";
-import { CreateEnrollmentTokenSchema, PageQuerySchema } from "./validation";
+import {
+  CreateAgentEnrollmentTokenSchema,
+  PageQuerySchema,
+} from "./validation";
 
 @Injectable()
 @Tags("Agent")
 @Response<IErrorResponseDto>("default", "Ошибка")
 @Route("api/v1/agent-enrollment-tokens")
-export class AgentEnrollmentTokenController extends Controller {
+export class AgentEnrollmentController extends Controller {
   constructor(
     @inject(AgentEnrollmentService)
     private readonly _enrollment: AgentEnrollmentService,
@@ -44,19 +47,19 @@ export class AgentEnrollmentTokenController extends Controller {
   }
 
   /**
-   * Выпустить токен регистрации агентов. Полный токен (`token`) возвращается
-   * только в этом ответе: он кладётся в конфигурацию агента. Многоразовый
-   * токен (`maxUses` больше 1 или не задан) регистрирует парк машин.
-   * @summary Токен регистрации агентов
+   * Выпустить токен регистрации агентов. Полный токен (`token`) — только в
+   * этом ответе: он кладётся в настройки агента (`enroll.token`) или в
+   * команду установки. `maxUses` не задан — многоразовый (парк машин).
+   * @summary Выпуск токена регистрации
    */
   @Security("jwt", ["permission:agent:enroll"])
-  @ValidateBody(CreateEnrollmentTokenSchema)
+  @ValidateBody(CreateAgentEnrollmentTokenSchema)
   @SuccessResponse(201, "Created")
   @Post()
-  async createEnrollmentToken(
+  async createAgentEnrollmentToken(
     @Request() req: KoaRequest,
-    @Body() body: ICreateEnrollmentTokenBody,
-  ): Promise<ICreatedEnrollmentTokenDto> {
+    @Body() body: ICreateAgentEnrollmentTokenBody,
+  ): Promise<ICreatedAgentEnrollmentTokenDto> {
     const created = await this._enrollment.createToken(
       getContextUser(req).userId,
       body,
@@ -68,13 +71,13 @@ export class AgentEnrollmentTokenController extends Controller {
   }
 
   /**
-   * Токены регистрации, новые первыми. Секреты не возвращаются.
+   * Токены регистрации, новые первыми; секреты не возвращаются.
    * @summary Список токенов регистрации
    */
   @Security("jwt", ["permission:agent:enroll"])
   @ValidateQuery(PageQuerySchema)
   @Get()
-  listEnrollmentTokens(
+  getAgentEnrollmentTokens(
     @Query() offset?: number,
     @Query() limit?: number,
   ): Promise<IPaginatedDto<AgentEnrollmentTokenDto>> {
@@ -82,14 +85,14 @@ export class AgentEnrollmentTokenController extends Controller {
   }
 
   /**
-   * Отозвать токен: новые регистрации по нему невозможны, уже
-   * зарегистрированные агенты продолжают работать. Повторный отзыв — 204.
+   * Отозвать токен: новые регистрации по нему невозможны, агенты остаются.
+   * Повторный отзыв — 204.
    * @summary Отзыв токена регистрации
    */
   @Security("jwt", ["permission:agent:enroll"])
   @SuccessResponse(204, "No Content")
   @Post("{id}/revoke")
-  async revokeEnrollmentToken(@Path() id: UUID): Promise<void> {
+  async revokeAgentEnrollmentToken(@Path() id: UUID): Promise<void> {
     await this._enrollment.revokeToken(id);
     this.setStatus(204);
   }

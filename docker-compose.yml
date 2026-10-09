@@ -13,8 +13,12 @@
 # docker-compose.postgres.yml, POSTGRES_HOST в .env.production (с хоста —
 # host.docker.internal). Без docker-compose.s3.yml — STORAGE_DRIVER=local (том
 # files) или внешний S3 через S3_*.
-# Агент (Go + Python-нагрузки, протокол ALP): `docker compose --profile agent
-# up -d --scale agent=N`; регистрация — AGENT_BOOTSTRAP_TOKEN (тот же у API).
+# Агент с воркерами echo и netprobe (agent/docker/Dockerfile): `docker compose --profile
+# agent up -d`; регистрация — AGENT_BOOTSTRAP_TOKEN (тот же у API). Один агент — один том
+# данных: ещё агенты — своими сервисами со своими томами. Несколько реплик api пересылают
+# вызовы агентов друг другу (AGENT_RELAY_SECRET в .env.production) через внутренний сервер
+# пересылки: порт AGENT_RELAY_PORT (8182) внутри сети compose, на хост не публикуется; адрес
+# копии — http://<IP контейнера>:8182.
 
 x-logging: &logging
   driver: json-file
@@ -103,6 +107,9 @@ services:
     environment:
       <<: *app-env
       APP_ROLE: api
+      # Сервер пересылки между репликами — только в сети compose (без ports).
+      AGENT_RELAY_HOST: 0.0.0.0
+      AGENT_RELAY_PORT: "8182"
     # Несколько реплик: `docker compose up -d --scale api=3` и диапазон
     # API_PORTS=8181-8183 (или без host-портов — за reverse proxy по имени `api`).
     ports:
@@ -143,13 +150,13 @@ services:
     healthcheck: *ready-check
     restart: unless-stopped
 
-  # Внешний воркер на Python (задачи `external`), по профилю.
+  # Агент и воркеры без SDK (echo — очередь demo.echo, netprobe — проверка сети), по профилю.
   agent:
     profiles: ["agent"]
     image: ${IMAGE:-ghcr.io/epifanovmd/rest-api-template-app}:${TAG:-latest}-agent
     build:
       context: .
-      dockerfile: Dockerfile.agent
+      dockerfile: agent/docker/Dockerfile
     environment:
       AGENT_SERVER_URL: ${AGENT_SERVER_URL:-http://api:8181}
       # Токен регистрации: bootstrap-токен API или выпущенный
@@ -157,107 +164,14 @@ services:
       AGENT_ENROLL_TOKEN: ${AGENT_ENROLL_TOKEN:-${AGENT_BOOTSTRAP_TOKEN:-}}
       AGENT_LOG_LEVEL: ${AGENT_LOG_LEVEL:-info}
     volumes:
-      # Учётные данные и outbox (итоги, недоставленные без связи) переживают рестарт.
+      # Ключ агента, очередь важных сообщений (события без связи), настройки
+      # воркеров и ход работ echo переживают рестарт.
       - agent-data:/var/lib/agent
     depends_on:
       api:
         condition: service_healthy
-    # Нагрузки дорабатывают задачи (stopTimeout в agent.docker.yaml).
+    # Воркеры останавливаются вместе с агентом (stopTimeout в agent/docker/agent.yaml).
     stop_grace_period: 90s
-    read_only: true
-    tmpfs:
-      - /tmp
-    cap_drop:
-      - ALL
-    security_opt:
-      - no-new-privileges:true
-    restart: unless-stopped
-    logging: *logging
-
-  redis:
-    condition: service_healthy
-
-services:
-  # Одноразовый: применяет миграции и выходит. api и worker ждут его успеха.
-  migrate:
-    <<: *app
-    image: ${IMAGE:-ghcr.io/epifanovmd/rest-api-template-app}:${TAG:-latest}
-    command:
-      [
-        "node",
-        "node_modules/typeorm/cli.js",
-        "migration:run",
-        "-d",
-        "build/data-source.js",
-      ]
-    restart: "no"
-
-  api:
-    <<: *app
-    image: ${IMAGE:-ghcr.io/epifanovmd/rest-api-template-app}:${TAG:-latest}-api
-    build:
-      context: .
-      target: api
-      args:
-        APP_VERSION: ${TAG:-latest}
-    environment:
-      <<: *app-env
-      APP_ROLE: api
-    # Несколько реплик: `docker compose up -d --scale api=3` и диапазон
-    # API_PORTS=8181-8183 (или без host-портов — за reverse proxy по имени `api`).
-    ports:
-      - "${API_PORTS:-8181}:8181"
-    volumes:
-      - files:/app/files
-    depends_on: *after-migrate
-    # SIGTERM → drain + in-flight + закрытие БД (SHUTDOWN_TIMEOUT_MS=30s) — с запасом.
-    stop_grace_period: 55s
-    deploy:
-      resources:
-        limits:
-          memory: 1g
-    healthcheck: *ready-check
-    restart: unless-stopped
-
-  worker:
-    <<: *app
-    # Тот же образ использует migrate.
-    image: ${IMAGE:-ghcr.io/epifanovmd/rest-api-template-app}:${TAG:-latest}
-    build:
-      context: .
-      target: worker
-      args:
-        APP_VERSION: ${TAG:-latest}
-    environment:
-      <<: *app-env
-      APP_ROLE: worker
-    volumes:
-      - files:/app/files
-    depends_on: *after-migrate
-    # Активные задачи дорабатывают до JOBS_SHUTDOWN_TIMEOUT_MS (20s).
-    stop_grace_period: 60s
-    deploy:
-      resources:
-        limits:
-          memory: 2g
-    healthcheck: *ready-check
-    restart: unless-stopped
-
-  # Внешний воркер на Python (задачи `external`), по профилю.
-  python-worker:
-    profiles: ["python-worker"]
-    image: ${IMAGE:-ghcr.io/epifanovmd/rest-api-template-app}:${TAG:-latest}-python-worker
-    build:
-      context: .
-      dockerfile: Dockerfile.worker-python
-    environment:
-      WORKER_API_URL: ${WORKER_API_URL:-http://api:8181}
-      # Ключ со scope worker:<очередь>: POST /api/v1/api-keys под админом
-      WORKER_API_KEY: ${WORKER_API_KEY:-}
-      WORKER_CONCURRENCY: ${WORKER_CONCURRENCY:-1}
-    depends_on:
-      api:
-        condition: service_healthy
     read_only: true
     tmpfs:
       - /tmp

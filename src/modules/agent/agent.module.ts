@@ -1,82 +1,91 @@
 import "./agent.permissions";
 
-import { asJobHandler, asSecurityScheme, Module } from "../../core";
 import {
+  asJobHandler,
+  EXTERNAL_JOB_EXECUTOR,
+  Module,
+  RAW_HTTP_HANDLER,
+} from "../../core";
+import {
+  asSocketHandler,
   asSocketListener,
   asSocketRoomPolicy,
   permissionRoomPolicy,
 } from "../socket";
-import { asAgentCapability } from "./agent.capability";
+import { AgentBootstrap } from "./agent.bootstrap";
 import { AgentController } from "./agent.controller";
-import { Agent } from "./agent.entity";
+import { AgentSocketHandler } from "./agent.handler";
 import { AgentListener } from "./agent.listener";
 import { AgentPermissions } from "./agent.permissions";
-import { AgentRepository } from "./agent.repository";
-import { AgentSecurityScheme } from "./agent.scheme";
+import { AgentRuntime } from "./agent.runtime";
 import { AgentService } from "./agent.service";
-import { AgentCapabilityRegistry } from "./agent-capability.registry";
-import { AgentCommandController } from "./agent-command.controller";
-import { AgentCommand } from "./agent-command.entity";
-import { AgentCommandRepository } from "./agent-command.repository";
-import { AgentCommandService } from "./agent-command.service";
-import { AgentCommandsCapability } from "./agent-commands.capability";
-import { AgentEnrollmentTokenController } from "./agent-enrollment.controller";
+import { AgentSignals } from "./agent.signals";
+import { AGENTS_ROOM } from "./agent.types";
+import { AgentAccessService } from "./agent-access.service";
+import { AgentEnrollmentController } from "./agent-enrollment.controller";
 import { AgentEnrollmentService } from "./agent-enrollment.service";
 import { AgentEnrollmentToken } from "./agent-enrollment-token.entity";
 import { AgentEnrollmentTokenRepository } from "./agent-enrollment-token.repository";
-import {
-  AgentLinkLostJob,
-  AgentRetentionJob,
-  AgentSweepJob,
-} from "./agent-jobs";
-import { AgentLinkController } from "./agent-link.controller";
-import { AgentLinkGateway } from "./agent-link.gateway";
-import { AgentPresenceStore } from "./agent-presence.store";
+import { AgentHistoryService } from "./agent-history.service";
+import { AgentJobExecutor } from "./agent-job.executor";
+import { AgentLinkHandler } from "./agent-link.handler";
+import { AgentMetric } from "./agent-metric.entity";
+import { AgentMetricRepository } from "./agent-metric.repository";
+import { AgentPruneJob } from "./agent-prune.job";
+import { AgentRelayServer } from "./agent-relay.server";
 import { AgentReleaseController } from "./agent-release.controller";
-import { AgentReleaseService } from "./agent-release.service";
-import { AgentRoomPolicy, AGENTS_ROOM } from "./agent-room.policy";
-import { AgentSessionHub } from "./agent-session.hub";
-import { AgentSignals } from "./agent-signals";
-import { AgentStateCapability } from "./agent-state.capability";
-import { AgentSyncService } from "./agent-sync.service";
+import { AgentRoomPolicy } from "./agent-room.policy";
+import { AgentWatchService } from "./agent-watch.service";
+import { AgentWorkerController } from "./agent-worker.controller";
+import { AgentWorkerService } from "./agent-worker.service";
+import { AgentWorkerEvent } from "./agent-worker-event.entity";
+import { AgentWorkerEventRepository } from "./agent-worker-event.repository";
+import { AgentStore } from "./store/agent.store";
+import { StoredAgent } from "./store/stored-agent.entity";
+import { StoredAgentConfig } from "./store/stored-agent-config.entity";
 
 /**
- * Агенты: регистрация, канал ALP (WebSocket), сессии и присутствие, команды,
- * желаемое состояние. Задачи и домены подключаются возможностями
- * (`asAgentCapability`, `asAgentStateProvider`).
+ * Агенты на agent-sdk: регистрация по токенам, связь по WebSocket, воркеры
+ * (статус, манифест, перезапуск, обновление, настройки, запросы), события и
+ * история метрик, журнал, выпуск и установка; исполнитель внешних очередей
+ * модуля задач.
  */
 @Module({
-  entities: [Agent, AgentEnrollmentToken, AgentCommand],
+  entities: [
+    StoredAgent,
+    StoredAgentConfig,
+    AgentWorkerEvent,
+    AgentMetric,
+    AgentEnrollmentToken,
+  ],
   providers: [
-    AgentRepository,
-    AgentEnrollmentTokenRepository,
-    AgentCommandRepository,
+    AgentStore,
     AgentSignals,
-    AgentPresenceStore,
-    AgentService,
+    AgentWorkerEventRepository,
+    AgentMetricRepository,
+    AgentHistoryService,
+    AgentEnrollmentTokenRepository,
     AgentEnrollmentService,
-    AgentCommandService,
-    AgentSessionHub,
-    AgentCapabilityRegistry,
-    AgentReleaseService,
-    AgentSyncService,
-    asSecurityScheme(AgentSecurityScheme),
-    asAgentCapability(AgentCommandsCapability),
-    asAgentCapability(AgentStateCapability),
+    AgentAccessService,
+    AgentRuntime,
+    AgentService,
+    AgentWorkerService,
+    AgentWatchService,
+    AgentRelayServer,
     AgentController,
-    AgentCommandController,
-    AgentEnrollmentTokenController,
-    AgentLinkController,
+    AgentWorkerController,
+    AgentEnrollmentController,
     AgentReleaseController,
+    { provide: RAW_HTTP_HANDLER, useClass: AgentLinkHandler },
+    { provide: EXTERNAL_JOB_EXECUTOR, useClass: AgentJobExecutor },
+    asSocketHandler(AgentSocketHandler),
     asSocketListener(AgentListener),
     asSocketRoomPolicy(
       permissionRoomPolicy(AGENTS_ROOM, AgentPermissions.VIEW),
     ),
     asSocketRoomPolicy(AgentRoomPolicy),
-    asJobHandler(AgentLinkLostJob),
-    asJobHandler(AgentSweepJob),
-    asJobHandler(AgentRetentionJob),
+    asJobHandler(AgentPruneJob),
   ],
-  bootstrappers: [AgentLinkGateway],
+  bootstrappers: [AgentBootstrap],
 })
 export class AgentModule {}

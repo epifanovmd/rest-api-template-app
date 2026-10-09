@@ -27,4 +27,4 @@ __pycache__/
 firebaseAccount.json
 .venv
 .agent
-agent/dist
+agent/tools

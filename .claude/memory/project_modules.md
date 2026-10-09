@@ -63,27 +63,29 @@ Bootstrappers: `AdminBootstrap`, `SeedBootstrap` (user; dev-пользовате
 
 ## Эндпоинты по тегам OpenAPI (всего 84, все под `/api/v1`; на 07.10.2026)
 
-User 16, Agent 12, Authorization 10, Profile 9, Files 6, Passkeys 6, Biometric 5, Role 4, Jobs 4, Session 3,
-ApiKey 3, AgentLink 3, Audit 2, Permission 1. Вне спецификации ещё WebSocket агентов `GET /api/v1/agent-link`. Вне спецификации: `/files/*` (storage), системные пробы, `/metrics`,
+Всего 103 (09.10.2026): Agent 22, User 16, Node 12, Authorization 10, Profile 9, Files 6, Passkeys 6, Jobs 4,
+Biometric 5, Role 4, Session 3, ApiKey 3, Audit 2, Permission 1. Вне спецификации ещё агентские `/api/v1/agent-link/*` (WS, enroll,
+releases, install.sh). Вне спецификации: `/files/*` (storage), системные пробы, `/metrics`,
 `/api-docs`.
 
 ## Очереди задач (`JOB_HANDLER`)
 
-| Очередь                      | Модуль   | Тип                                         |
-| ---------------------------- | -------- | ------------------------------------------- |
-| `mail.send`                  | mailer   | служебная, 5 повторов                       |
-| `file.process`               | file     | повторы, ставится в транзакции              |
-| `jobs.lease-reaper`          | jobs     | cron `* * * * *`                            |
-| `jobs.retention`             | jobs     | cron `30 3 * * *` (`JOBS_RETENTION_DAYS`)   |
-| `session.cleanup`            | session  | cron `0 * * * *`                            |
-| `file.cleanup-pending`       | file     | cron `0 * * * *`                            |
-| `otp.cleanup`                | otp      | cron `*/30 * * * *`                         |
-| `passkeys.challenge-cleanup` | passkeys | cron `*/15 * * * *`                         |
-| `audit.cleanup`              | audit    | cron `30 3 * * *`                           |
-| `demo.echo`                  | jobs     | external (эталон: нагрузка агента)          |
-| `agents.link-lost`           | agent    | отложенная (разрыв WS → offline)            |
-| `agents.sweep`               | agent    | cron `* * * * *` (offline, таймауты команд) |
-| `agents.retention`           | agent    | cron `45 3 * * *`                           |
+| Очередь                                       | Модуль   | Тип                                              |
+| --------------------------------------------- | -------- | ------------------------------------------------ |
+| `mail.send`                                   | mailer   | служебная, 5 повторов                            |
+| `file.process`                                | file     | повторы, ставится в транзакции                   |
+| `jobs.lease-reaper`                           | jobs     | cron `* * * * *`                                 |
+| `jobs.retention`                              | jobs     | cron `30 3 * * *` (`JOBS_RETENTION_DAYS`)        |
+| `session.cleanup`                             | session  | cron `0 * * * *`                                 |
+| `file.cleanup-pending`                        | file     | cron `0 * * * *`                                 |
+| `otp.cleanup`                                 | otp      | cron `*/30 * * * *`                              |
+| `passkeys.challenge-cleanup`                  | passkeys | cron `*/15 * * * *`                              |
+| `audit.cleanup`                               | audit    | cron `30 3 * * *`                                |
+| `demo.echo`                                   | jobs     | external (воркер echo: `echo.quick`/`echo.long`) |
+| `jobs.external-sync`                          | jobs     | cron `* * * * *` (срок внешних задач)            |
+| `agents.prune`                                | agent    | cron `15 * * * *` (события, история метрик)      |
+| `node.install-agent` / `node.uninstall-agent` | node     | tracked, SSH                                     |
+| `node.netprobe-sync`                          | node     | cron `*/10 * * * *` + после изменений            |
 
 `tracked`-очередей среди модулей main нет (видимость включается `track: true` при постановке или в доменных
 модулях). `it.*` — очереди интеграционного теста jobs.
@@ -141,13 +143,37 @@ session, file, api-key, audit, jobs). Комнаты: `user_<id>` (всегда,
   `signedFileOf`, `signedUrlOf`, `NO_SIGNED_FILES`).
 - **Аудит**: `audit_events`, `GET /api/v1/audit/my`, `GET /api/v1/audit` (`audit:view`), cron-очистка 180 дней.
 
-## Агенты (модуль `agent`, с 07.10.2026)
+## Агенты (модуль `agent`, agent-sdk 1.0.0 с 09.10.2026)
 
-Протокол ALP v1 — `protocol/alp/v1` (спецификация + эталоны `fixtures/a2s|s2a`), Go-агент — `agent/`
-(`kit/*`, `cmd/agent`), SDK нагрузок — `python/worker_sdk` v2 (IPC через fd 3, без зависимостей).
-Сущности: `agents`, `agent_enrollment_tokens`, `agent_commands`; `job_runs` + `agent_id`, `accepted_at`
-(миграция `AgentPlatform`, она же удалила `job_workers`). Старый HTTP API воркеров `/api/v1/worker/*`,
-`JobsWorkerService`, `JobWorker` — удалены. Возможности: `AgentCommandsCapability`, `AgentStateCapability`
-(в agent), `JobsAgentCapability` (в jobs, импортирует `../agent`). Агентское API — `/api/v1/agent-link/*`
-(enroll, sync, releases; схема `@Security("agent")`), админское — `/api/v1/agents`, `/agent-commands`,
-`/agent-enrollment-tokens`, `/agent-releases`. Права `agent:view|enroll|command|revoke`.
+Агент и SDK — github.com/epifanovmd/agent (локально `../alp-agent`, только читать). Сервер — `Agents` из
+`agent-sdk/server` (`vendor/agent-sdk-1.0.0.tgz`, ESM, грузится из CJS через require(esm)). Воркеры — HTTP-сервисы
+на unix-сокете **без SDK** (обязательны `GET /health`, `GET /manifest`); воркеры проекта — `agent/workers/<имя>`
+(main + исполняемый `run` + `VERSION`), демо — `agent/workers/echo` (Python, stdlib, задачи `/jobs`). Выпуск для
+узлов — `agent/release` (gitignored, `yarn agent:release` = `agent/release.sh`: агент 1.0.0 + netprobe из
+`AGENT_RELEASE_SRC` | `../alp-agent/dist/<v>` | GitHub Release; воркеры проекта → `<имя>-<версия>-<os>-<arch>.tar.gz`
+под каждую платформу выпуска (одно содержимое); manifest — утилитой `agent-release` (`agent/tools/`, gitignored,
+или `go run …/cmd/agent-release@v<v>`); с `AGENT_SIGNING_KEY` — всё переподписано ключом проекта, без —
+подписи агента как были, воркеры проекта без подписи). Раскладка `agent/`: README, dev.sh, release.sh,
+local/agent.yaml, docker/{Dockerfile,agent.yaml}, workers/, release/, tools/.
+Таблицы (миграция `AgentWorkers1791511700000` удалила agent_jobs/commands/states/state_history/state_versions/
+job_inputs и старые agents/events/metrics): Store SDK — `agents` (id varchar(64) = 32 hex, rev, record jsonb),
+`agent_configs` (PK agent+worker+key, version-счётчик переживает удаление: data NULL); история проекта —
+`agent_events` (PK agent_id+id — отсечка повторов onEvent), `agent_metrics` (host/workers jsonb, прореживание
+`AGENT_METRICS_STORE_INTERVAL_MS`); `agent_enrollment_tokens`. `job_runs`: agent_id varchar(64), worker,
+external_id varchar(128), deadline_at; без files/event_seq/event_at/stop_requested. `nodes.agent_id` → varchar(64)
+(обнулён в AgentWorkers), `nodes.agent_name` (миграция `NodeAgentName1791600000000`, заполнена из привязок).
+Права: `agent:view|manage|config|fetch|logs|enroll` (state→config, command→fetch+logs, jobs удалено — миграцией).
+REST: `/agents` (+ `/alerts`, `/events`, `/{id}`, revoke, delete, rotate-key, update, logs, metrics,
+`/{id}/configs`, `/{id}/workers/{w}/restart|update|fetch|configs/{key}`), `/agent-releases`,
+`/agent-enrollment-tokens` (22 операции); `/api/v1/agent-link/*` — вне Swagger, `RAW_HTTP_HANDLER`.
+Подробно — `src/modules/agent/README.md`.
+
+## Модуль node (узлы с агентами, feat/agent-sdk)
+
+- `nodes` (миграция `1791475124953-Nodes`, agentId → varchar(64) в `AgentWorkers`): name, description, host, ownerId/createdById (FK users SET NULL), agentId (unique, без FK). Статус вычисляется (`node-status.ts`): provisioning (активная задача `node.install-agent`/`node.uninstall-agent`, scope `node/<id>`) → created/error (нет агента) → offline → error (воркер invalid/backoff/stopped, health.ok=false, config ok=false, configStatus failed) → online; сводка `config` — по `agents.configStatus`. Последняя задача — `JobRunRepository.findLatestByScopes` (экспорт из jobs index вместе с `JobRun`).
+- Права `node:*` (scoped, кроме create). Доступ к маршрутам агентов: `AgentAccessService` (agent) + политика `NodeAgentAccessPolicy` через `AGENT_ACCESS_POLICY`; маршруты агентов с `*` — `@Security("jwt")`.
+- Привязка: `AgentEnrollmentService.withContext` (AsyncLocalStorage) в `AgentRuntime.handle` → `AgentEnrolledEvent(agent, source{tokenId, createdBy, labels})` → метка `nodeId`; без метки — узел без агента, однозначно по `agentName` → `name` → `host` (`findUnbound` + условный `bindFree`), иначе авто-узел. `agentName` хранится и после отвязки.
+- SSH: ssh2 (`SSH_SESSION_FACTORY` для тестов), `NodeSecretBox` (`NODE_SECRETS_KEY`, иначе от JWT), `--token-file`, `--worker netprobe`, sudo -n / -S.
+- netprobe (release-воркер, `--worker netprobe`): цели — настройка `netprobe/targets` `{targets:[{id: id узла, host, method:"icmp"}], intervalSec, count, timeoutMs}` через `AgentWorkerService.putConfig` (только агентам с воркером netprobe, только при другом содержимом); матрицу считает бэкенд по последней точке `agent.metrics.workers.netprobe` `{at, results[]}` (stale > 2 мин или offline). Очередь `node.netprobe-sync` (cron */10 + после изменений + при появлении агента с netprobe). Dev: блок netprobe в `agent/local/agent.yaml` между метками, `agent/dev.sh` ставит сборку в `<dataDir>/workers/netprobe/current` + `version` или убирает блок.
+- Отзыв и удаление агента — только `agent:manage` (политика узла не открывает); `node:agent` — update, rotate-key, restart/update воркеров, configs, fetch.
+- Gotcha: `mine` в query-схеме — строка `"true"|"false"` (ValidateQuery подменяет query; boolean ломает tsoa). e2e: `auth сброс пароля` падает и без модуля (письмо приходит позже 15 с).
