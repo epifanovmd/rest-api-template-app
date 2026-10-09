@@ -170,21 +170,38 @@ jobs:
           yarn audit --level high --groups dependencies || code=$?
           if [ $((code & 24)) -ne 0 ]; then exit "$code"; fi
 
+  # Образы: на push в main — с подписью воркеров проекта, проверка Trivy и отправка в
+  # ghcr с тегом коммита (<sha>, <sha>-api, <sha>-agent); деплой берёт именно их.
+  # В pull request — только сборка и проверка.
   docker:
     runs-on: ubuntu-latest
     needs: verify
+    permissions:
+      contents: read
+      packages: write
+    env:
+      PUBLISH: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
     strategy:
       matrix:
         include:
           - name: api
             target: api
+            suffix: "-api"
           - name: worker
             target: worker
+            suffix: ""
           - name: agent
             file: agent/docker/Dockerfile
+            suffix: "-agent"
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
+      - if: env.PUBLISH == 'true'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
       - uses: docker/build-push-action@v6
         with:
           context: .
@@ -192,7 +209,17 @@ jobs:
           target: ${{ matrix.target }}
           push: false
           load: true
-          tags: rest-api:ci-${{ matrix.name }}
+          tags: |
+            rest-api:ci-${{ matrix.name }}
+            ghcr.io/${{ github.repository }}:${{ github.sha }}${{ matrix.suffix }}
+          labels: org.opencontainers.image.source=https://github.com/${{ github.repository }}
+          # Подпись воркеров проекта (стадия agent-release): закрытый ключ — секрет
+          # AGENT_SIGNING_KEY (в слои не попадает), открытый — переменная AGENT_UPDATE_PUBLIC_KEY.
+          build-args: |
+            APP_VERSION=${{ github.sha }}
+            AGENT_UPDATE_PUBLIC_KEY=${{ vars.AGENT_UPDATE_PUBLIC_KEY }}
+          secrets: |
+            agent_signing_key=${{ secrets.AGENT_SIGNING_KEY }}
           cache-from: type=gha,scope=${{ matrix.name }}
           cache-to: type=gha,mode=max,scope=${{ matrix.name }}
       - name: Trivy
@@ -203,10 +230,19 @@ jobs:
           ignore-unfixed: true
           exit-code: "1"
           vuln-type: os,library
+      - name: Образ в ghcr
+        if: env.PUBLISH == 'true'
+        run: docker push "ghcr.io/${{ github.repository }}:${{ github.sha }}${{ matrix.suffix }}"
 
-  # Деплой main на хост после всех проверок; без настроек (форки шаблона) — пропуск.
+  # Деплой main на хост после всех проверок: готовые образы коммита из ghcr; без
+  # настроек (форки шаблона) — пропуск.
   deploy:
     needs: [verify, agent-worker, migrations, e2e, docker]
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && vars.DEPLOY_ENV != ''
     uses: ./.github/workflows/deploy.yml
+    permissions:
+      contents: read
+      packages: write
+    with:
+      tag: ${{ github.sha }}
     secrets: inherit
