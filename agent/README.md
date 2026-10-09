@@ -3,15 +3,17 @@
 Здесь всё, что относится к агенту — программе, которая работает на каждой машине (узле) и
 держит связь с бэкендом. Сам агент — отдельный проект
 ([github.com/epifanovmd/agent](https://github.com/epifanovmd/agent)); в этом репозитории —
-то, что бэкенд отдаёт агентам: свои воркеры, выпуск для узлов и настройки для запуска на
-своей машине и в Docker.
+то, что бэкенд отдаёт агентам: свои воркеры, их выпуск и настройки для запуска на своей
+машине и в Docker.
 
 ```
 agent/
 ├── workers/        # воркеры проекта: каждый — своя папка (echo — пример)
 │   └── echo/       # main.py, run (как запустить), VERSION (версия)
-├── release.sh      # собирает выпуск для узлов → agent/release
-├── release/        # готовый выпуск (не в git): его раздаёт API
+├── release.sh      # собирает выпуск воркеров проекта → agent/release
+├── release/        # готовый выпуск воркеров (не в git): его раздаёт API
+├── fetch.mjs       # скачивает выпуск агента с GitHub → agent/dist (yarn agent:fetch)
+├── dist/           # скачанный выпуск агента (не в git): для yarn agent и e2e
 ├── tools/          # утилита agent-release (не в git), если release.sh собрал её сам
 ├── dev.sh          # агент на своей машине (yarn agent)
 ├── local/          # настройки агента для yarn agent
@@ -26,46 +28,67 @@ agent/
 - **Воркер** — небольшой сервис, который делает полезную работу на узле (проверяет сеть,
   считает, собирает отчёт). Пишется на любом языке, без библиотек агента: это обычный
   HTTP-сервис. Воркеры проекта лежат в `agent/workers`.
-- **Выпуск** — папка `agent/release`: программа агента под разные системы, воркеры
-  проекта и `netprobe`, файл `manifest.json` со списком и контрольными суммами и установщик
-  `install.sh`. Её раздаёт бэкенд (`AGENT_RELEASES_DIR`), узлы скачивают оттуда агента и
-  воркеры.
+- **Выпуск агента** — программа агента под разные системы и воркер проверки сети
+  `netprobe`. Их выпускает проект агента на GitHub
+  ([releases](https://github.com/epifanovmd/agent/releases)), подписывает своим ключом
+  (ключ автора агента).
+- **Выпуск воркеров проекта** — папка `agent/release`: архивы воркеров из `agent/workers` и
+  `manifest.json` со списком и контрольными суммами. Её раздаёт бэкенд
+  (`AGENT_RELEASES_DIR`).
 
-## Откуда берётся программа агента
+## Откуда бэкенд берёт агента
 
-`yarn agent:release` (это `agent/release.sh`) собирает выпуск в `agent/release`:
+Бэкенд сам берёт агента и `netprobe` из выпусков GitHub `epifanovmd/agent` — версии в
+диапазоне `^1` (`AGENT_RELEASES_GITHUB`, `AGENT_RELEASES_RANGE`). Раз в час
+(`AGENT_RELEASES_CHECK_INTERVAL_MS`) он проверяет, не вышла ли новая версия. Вышла — в
+журнале запись, в сокете событие `agent:release`, а в `GET /api/v1/agent-releases` агенты
+появляются среди тех, кого можно обновить. **Пересобирать бэкенд ради новой версии агента не
+нужно**: бэкенд пересобирают, только когда меняется его код или воркеры проекта.
 
-1. Скачивает выпуск агента той же версии, что серверный SDK (`agent-sdk` в `package.json` —
-   ссылка на архив выпуска `v<версия>`), с GitHub Release
-   [epifanovmd/agent](https://github.com/epifanovmd/agent/releases): программа агента под
-   linux и darwin (amd64, arm64) и `install.sh`. Взять выпуск агента из своей папки (например,
-   своей сборки агента) — только явно: `AGENT_RELEASE_SRC=/путь yarn agent:release`.
-2. Собирает воркер проверки сети `netprobe` из исходников агента той же версии — под каждую
-   систему выпуска.
-3. Упаковывает каждый воркер проекта (см. ниже).
-4. Записывает общий `manifest.json` утилитой `agent-release`.
+Узлы скачивают агента прямо с GitHub: бэкенд отвечает им ссылкой. Если у узлов нет доступа
+к GitHub — `AGENT_RELEASES_PROXY=true`, и бэкенд отдаёт файлы сам. Взять агента не из
+GitHub, а по ссылке на каталог одного выпуска (своё зеркало, закреплённая версия) —
+`AGENT_RELEASES_URL`.
 
-Для шагов 2 и 4 нужен Go: если его нет на машине, скрипт запускает его в контейнере
-`golang` (нужен Docker). Утилиту `agent-release` скрипт берёт из `AGENT_RELEASE_TOOL`
-(готовая программа), из `agent/tools/agent-release-<os>-<arch>`, иначе запускает
-`go run github.com/epifanovmd/agent/cmd/agent-release@v<версия>` (так в CI), а без Go на
-машине — собирает её в `agent/tools` в контейнере.
+Бэкенд раздаёт итоговый выпуск: агент и `netprobe` — из GitHub, воркеры проекта — из
+`AGENT_RELEASES_DIR`.
 
-**Подпись.** Узел ставит обновления, только если они подписаны ключом, которому он
-доверяет. У проекта два пути:
+## Выпуск воркеров проекта
 
-- **Свой ключ подписи** — для своих воркеров (и обновлений воркеров с бэкенда). Пара
-  ключей создаётся один раз: `agent-release keygen` (например,
-  `agent/tools/agent-release-<os>-<arch> keygen`) выдаёт `AGENT_SIGNING_KEY` (закрытый —
-  только при сборке выпуска: секрет CI) и `AGENT_UPDATE_PUBLIC_KEY` (открытый — его
-  указывают бэкенду, и `install.sh` передаёт его узлу). С `AGENT_SIGNING_KEY` весь выпуск —
-  агент, `netprobe` и воркеры проекта — подписывается ключом проекта, узлы проверяют его
-  открытым ключом проекта.
-- **Выпуск без подписи проекта** — `AGENT_SIGNING_KEY` и `AGENT_UPDATE_PUBLIC_KEY` не
-  заданы. Программа агента остаётся с подписью выпуска агента (ключ проверки вшит в неё):
-  обновления агента с бэкенда работают. Воркеры проекта и `netprobe` — без подписи:
-  установка сверит только контрольную сумму, а обновить такой воркер с бэкенда не
-  получится.
+`yarn agent:release` (это `agent/release.sh`) собирает его в `agent/release`:
+
+1. Упаковывает каждый воркер проекта (см. ниже).
+2. Записывает `manifest.json` утилитой `agent-release` — только с воркерами, без агента.
+
+Утилиту `agent-release` (той же версии, что `agent-sdk` в `package.json`) скрипт берёт из
+`AGENT_RELEASE_TOOL` (готовая программа), из `agent/tools/agent-release-<версия>-<os>-<arch>`,
+иначе запускает `go run github.com/epifanovmd/agent/cmd/agent-release@v<версия>` (так в
+Docker и CI), а без Go на машине — собирает её в `agent/tools` в контейнере `golang` (нужен
+Docker). Образ API собирает этот выпуск сам (стадия `agent-release` в `Dockerfile`).
+
+**Подпись.** Узел ставит обновление воркера, только если оно подписано ключом, которому
+он доверяет. У агента несколько ключей проверки:
+
+- **ключ автора агента** — им подписаны агент и `netprobe` на GitHub; он вшит в программу
+  агента, а бэкенд вписывает его в `install.sh` (`AGENT_RELEASES_PUBLIC_KEY`, по умолчанию —
+  ключ выпусков `epifanovmd/agent`);
+- **ключ проекта** — им подписаны воркеры проекта. Пара создаётся один раз:
+  `agent-release keygen` (например, `agent/tools/agent-release-<версия>-<os>-<arch> keygen`)
+  выдаёт `AGENT_SIGNING_KEY` (закрытый — только при сборке выпуска) и
+  `AGENT_UPDATE_PUBLIC_KEY` (открытый — его указывают бэкенду, и `install.sh` передаёт его
+  узлу).
+
+Где нужен закрытый ключ проекта:
+
+| Где собирается выпуск          | Как передать ключ                                                                                        |
+| ------------------------------ | -------------------------------------------------------------------------------------------------------- |
+| `yarn agent:release`           | `AGENT_SIGNING_KEY=… yarn agent:release`                                                                 |
+| образ в CI (`release.yml`)     | секрет репозитория `AGENT_SIGNING_KEY` и переменная `AGENT_UPDATE_PUBLIC_KEY`                            |
+| образ на хосте (`make deploy`) | файл с ключом на хосте, путь — `AGENT_SIGNING_KEY_FILE`, и `AGENT_UPDATE_PUBLIC_KEY` в `.env.production` |
+| `docker build`                 | `--secret id=agent_signing_key,env=AGENT_SIGNING_KEY --build-arg AGENT_UPDATE_PUBLIC_KEY=…`              |
+
+Без ключа проекта воркеры проекта без подписи: установка сверит только контрольную сумму, а
+обновить такой воркер с бэкенда не получится.
 
 ## Как агент попадает на узел
 
@@ -106,7 +129,8 @@ agent/
 
 1. **Упаковка.** `agent/release.sh` берёт каждую папку `agent/workers/<имя>` с файлом
    `VERSION` и исполняемым `run` и упаковывает её в архив
-   `<имя>-<версия>-<os>-<arch>.tar.gz` — по архиву на каждую систему из выпуска агента.
+   `<имя>-<версия>-<os>-<arch>.tar.gz` — по архиву на каждую систему (linux и darwin,
+   amd64 и arm64; другой список — `AGENT_PLATFORMS`).
    Содержимое одинаковое (Python-воркеру неважна платформа), но агент ищет сборку под свою
    систему, поэтому архивов несколько. Архивы попадают в `manifest.json`.
 2. **Установка.** В команде установки воркер называют: `--worker echo` (в API — поле
@@ -114,7 +138,7 @@ agent/
    `/var/lib/agent-rest/workers/echo/current` и прописывает воркер в `agent.yaml` с
    `release: true`. Агент запускает `./run` из этой папки.
 3. **Обновление.** Новая версия — поднять `VERSION`, пересобрать выпуск
-   (`yarn agent:release`), перезапустить бэкенд с новым выпуском и вызвать
+   (`yarn agent:release` или новый образ API), перезапустить бэкенд с новым выпуском и вызвать
    `POST /api/v1/agents/{id}/workers/echo/update`. Если воркер занят долгой задачей,
    замена ждёт её окончания: ответ приходит сразу (`deferred: true`), итог — событием
    `agent:action` в сокете.
@@ -163,20 +187,22 @@ response? }`, `{id}` в пути — один сегмент). Необъявл�
    даёт `DemoEchoLookupHandler` модуля задач.
 5. Локально — строка в `agent/local/agent.yaml`, в образе — в `agent/docker/agent.yaml` и
    строка `COPY` уже покрывает `agent/workers`.
-6. На узлы — `yarn agent:release` и `--worker <имя>` в команде установки.
+6. На узлы — новый выпуск воркеров (`yarn agent:release` или новый образ API) и
+   `--worker <имя>` в команде установки.
 
 ## Агент на своей машине
 
 ```bash
 yarn dev              # API (в .env.development — AGENT_BOOTSTRAP_TOKEN и AGENT_RELEASES_DIR=agent/release)
-yarn agent:release    # выпуск в agent/release (один раз и после изменений воркеров)
+yarn agent:release    # выпуск воркеров проекта в agent/release (после изменений воркеров)
 yarn agent            # агент с воркерами echo и netprobe; Ctrl+C — остановка
 yarn agent:start | agent:stop [--force] | agent:status | agent:logs   # то же в фоне
 ```
 
-`agent/dev.sh` берёт программу агента из `AGENT_BIN`, `.agent/bin/agent` или `agent/release`;
-воркер `echo` запускает прямо из `agent/workers/echo` (правки видны после перезапуска
-воркера), `netprobe` — из выпуска (или `NETPROBE_BIN`). Настройки —
+`agent/dev.sh` берёт программу агента из `AGENT_BIN`, `.agent/bin/agent` или выпуска агента
+той же версии, что `agent-sdk`, в `agent/dist/v<версия>` (нет его — скачивает с GitHub:
+`yarn agent:fetch`); воркер `echo` запускает прямо из `agent/workers/echo` (правки видны
+после перезапуска воркера), `netprobe` — из того же выпуска агента (или `NETPROBE_BIN`). Настройки —
 `agent/local/agent.yaml`, данные агента — `.agent/` (удалить — агент зарегистрируется
 заново и привяжется к своему узлу по имени). Второй агент — `AGENT_DIR=.agent-2
 AGENT_NAME=dev-2 yarn agent`.
@@ -184,8 +210,8 @@ AGENT_NAME=dev-2 yarn agent`.
 ## Docker
 
 Образ агента с воркерами проекта и `netprobe`: `agent/docker/Dockerfile`, настройки внутри —
-`agent/docker/agent.yaml`. Программа агента и `netprobe` берутся из `agent/release`; без
-выпуска — программа агента с GitHub Release, а образ — без `netprobe`.
+`agent/docker/agent.yaml`. Программа агента и `netprobe` — с GitHub Release агента версии
+`AGENT_VERSION` (build-arg).
 
 ```bash
 docker build -f agent/docker/Dockerfile -t agent .

@@ -2,6 +2,7 @@ import { ChildProcess, spawn } from "child_process";
 import { once } from "events";
 import {
   copyFileSync,
+  cpSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
@@ -11,44 +12,42 @@ import {
 import { tmpdir } from "os";
 import { join, resolve } from "path";
 
-import { BASE_URL } from "./harness";
+import { AGENT_DIST_DIR, BASE_URL, PROJECT_KEYS } from "./harness";
 
 /**
  * Настоящий агент (github.com/epifanovmd/agent) для сценариев: программа и
- * воркер netprobe — из выпуска (`E2E_AGENT_RELEASES_DIR`, по умолчанию
- * `agent/release`, `yarn agent:release`: агент с GitHub Release, netprobe —
- * из исходников агента той же версии), воркер echo — из исходников
- * `agent/workers/echo` (python3). Агент работает в своём временном каталоге
- * данных и останавливается вместе с воркерами.
+ * воркер netprobe — из выпуска агента (`AGENT_DIST_DIR`, `yarn agent:fetch`),
+ * воркер echo — из исходников `agent/workers/echo` (python3) или как воркер
+ * из выпуска (`echo-release`: прежняя версия уже стоит, обновление — из
+ * выпуска воркеров проекта). Агент проверяет подпись воркеров проекта ключом
+ * проекта стенда. Работает в своём временном каталоге данных и
+ * останавливается вместе с воркерами.
  */
 const env = process.env;
 
-/** Каталог выпуска агента: его раздаёт и сервер стенда. */
-export const AGENT_RELEASES_DIR = resolve(
-  env.E2E_AGENT_RELEASES_DIR ?? "agent/release",
-);
-
-const platform = (): string =>
+export const platform = (): string =>
   `${process.platform === "darwin" ? "darwin" : "linux"}-${process.arch === "arm64" ? "arm64" : "amd64"}`;
 
 const agentBinary = (): string => {
-  const file =
-    env.E2E_AGENT_BIN ?? join(AGENT_RELEASES_DIR, `agent-${platform()}`);
+  const file = env.E2E_AGENT_BIN ?? join(AGENT_DIST_DIR, `agent-${platform()}`);
 
   if (!existsSync(file)) {
     throw new Error(
-      `E2E: нет программы агента ${file} — yarn agent:release (или E2E_AGENT_BIN)`,
+      `E2E: нет программы агента ${file} — yarn agent:fetch (или E2E_AGENT_BIN)`,
     );
   }
 
   return file;
 };
 
+/** Версия воркера echo, которая стоит у агента до обновления из выпуска. */
+export const ECHO_PREVIOUS_VERSION = "0.9.0";
+
 /** Сборка netprobe под эту машину и её версия — из `manifest.json` выпуска. */
 const netprobeBuild = (): { file: string; version: string } => {
   const [os, arch] = platform().split("-");
   const manifest = JSON.parse(
-    readFileSync(join(AGENT_RELEASES_DIR, "manifest.json"), "utf8"),
+    readFileSync(join(AGENT_DIST_DIR, "manifest.json"), "utf8"),
   ) as {
     workers?: {
       name: string;
@@ -64,11 +63,11 @@ const netprobeBuild = (): { file: string; version: string } => {
 
   if (!build) {
     throw new Error(
-      `E2E: в выпуске ${AGENT_RELEASES_DIR} нет netprobe для ${platform()} — yarn agent:release`,
+      `E2E: в выпуске ${AGENT_DIST_DIR} нет netprobe для ${platform()} — yarn agent:fetch`,
     );
   }
 
-  return { file: join(AGENT_RELEASES_DIR, build.file), version: build.version };
+  return { file: join(AGENT_DIST_DIR, build.file), version: build.version };
 };
 
 export interface IEnrollResult {
@@ -96,33 +95,64 @@ export const enroll = async (
   return { status: res.status, agentId: data.agentId, secret: data.secret };
 };
 
-export type TWorkerName = "echo" | "netprobe";
+export type TWorkerName = "echo" | "echo-release" | "netprobe";
 
 export interface IStartAgentOptions {
   token: string;
   name: string;
   workers?: TWorkerName[];
+  /**
+   * `disabled` (по умолчанию) — агент ничего не обновляет; `external` —
+   * обновляет воркеры из выпуска, но не себя.
+   */
+  updateMode?: "disabled" | "external";
 }
 
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 
-const workerYaml = (name: TWorkerName, dataDir: string): string =>
-  name === "echo"
-    ? [
+const echoEnv = (dataDir: string): string[] => [
+  "    env:",
+  '      PYTHONUNBUFFERED: "1"',
+  `      ECHO_JOBS_DIR: ${JSON.stringify(join(dataDir, "echo-jobs"))}`,
+  "    lifecycle:",
+  "      { onAgentStop: stop, onAgentRestart: restart, stopTimeout: 5s, health: { interval: 1s, timeout: 1s, failures: 5 } }",
+];
+
+const workerYaml = (name: TWorkerName, dataDir: string): string => {
+  switch (name) {
+    case "echo":
+      return [
         "  - name: echo",
         '    command: ["./run"]',
         `    dir: ${JSON.stringify(resolve("agent/workers/echo"))}`,
-        "    env:",
-        '      PYTHONUNBUFFERED: "1"',
-        `      ECHO_JOBS_DIR: ${JSON.stringify(join(dataDir, "echo-jobs"))}`,
-        "    lifecycle:",
-        "      { onAgentStop: stop, onAgentRestart: restart, stopTimeout: 5s, health: { interval: 1s, timeout: 1s, failures: 5 } }",
-      ].join("\n")
-    : [
+        ...echoEnv(dataDir),
+      ].join("\n");
+    case "echo-release":
+      return ["  - name: echo", "    release: true", ...echoEnv(dataDir)].join(
+        "\n",
+      );
+    case "netprobe":
+      return [
         "  - name: netprobe",
         "    release: true",
         "    lifecycle: { onAgentStop: stop, onAgentRestart: restart, stopTimeout: 5s }",
       ].join("\n");
+  }
+};
+
+/** Сборка воркера из выпуска у агента: `<dataDir>/workers/<имя>/{current,version}`. */
+const installReleaseWorker = (
+  dataDir: string,
+  name: string,
+  version: string,
+  install: (current: string) => void,
+): void => {
+  const target = join(dataDir, "workers", name);
+
+  mkdirSync(target, { recursive: true });
+  install(join(target, "current"));
+  writeFileSync(join(target, "version"), `${version}\n`);
+};
 
 export class RealAgent {
   private readonly _logs: string[] = [];
@@ -142,13 +172,20 @@ export class RealAgent {
     const workers = options.workers ?? ["echo"];
 
     if (workers.includes("netprobe")) {
-      const target = join(dataDir, "workers", "netprobe");
-
       const build = netprobeBuild();
 
-      mkdirSync(target, { recursive: true });
-      copyFileSync(build.file, join(target, "current"));
-      writeFileSync(join(target, "version"), `${build.version}\n`);
+      installReleaseWorker(dataDir, "netprobe", build.version, current =>
+        copyFileSync(build.file, current),
+      );
+    }
+    if (workers.includes("echo-release")) {
+      installReleaseWorker(dataDir, "echo", ECHO_PREVIOUS_VERSION, current => {
+        cpSync(resolve("agent/workers/echo"), current, {
+          recursive: true,
+          filter: src => !src.includes("__pycache__"),
+        });
+        writeFileSync(join(current, "VERSION"), `${ECHO_PREVIOUS_VERSION}\n`);
+      });
     }
 
     const config = join(dir, "agent.yaml");
@@ -164,7 +201,8 @@ export class RealAgent {
         "enroll:",
         `  token: ${JSON.stringify(options.token)}`,
         "update:",
-        "  mode: disabled",
+        `  mode: ${options.updateMode ?? "disabled"}`,
+        `  publicKeys: [${JSON.stringify(PROJECT_KEYS.public)}]`,
         "log:",
         "  forward: info",
         "workers:",

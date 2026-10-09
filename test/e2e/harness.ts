@@ -1,12 +1,17 @@
 import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { SDK_VERSION } from "agent-sdk";
-import { ChildProcess, spawn } from "child_process";
+import { ChildProcess, execFile, spawn } from "child_process";
+import { generateKeyPairSync } from "crypto";
 import { once } from "events";
+import { existsSync, mkdtempSync, rmSync } from "fs";
 import { readFile } from "fs/promises";
+import { createServer as createHttpServer, Server } from "http";
 import { Redis } from "ioredis";
-import { createServer } from "net";
-import { resolve } from "path";
+import { AddressInfo, createServer } from "net";
+import { tmpdir } from "os";
+import { join, resolve } from "path";
 import { Client } from "pg";
+import { promisify } from "util";
 
 /**
  * Интеграционный стенд: настоящий сервер (`APP_ROLE=all`) поверх Postgres,
@@ -131,8 +136,107 @@ export const AGENT_BOOTSTRAP_TOKEN = "e2e-bootstrap-token-0123456789abcdef0123";
 /** Общий секрет копий API: вызовы агентов пересылаются между ними. */
 const AGENT_RELAY_SECRET = "e2e-relay-secret-0123456789abcdef0123456789";
 
-/** Каталог выпуска для агентов (настоящий): его раздаёт сервер. */
-const AGENT_RELEASES = resolve(env.E2E_AGENT_RELEASES_DIR ?? "agent/release");
+/**
+ * Выпуск агента с GitHub (`yarn agent:fetch`): программа агента и netprobe.
+ * Сервер стенда берёт его не из GitHub, а с локального сервера выпусков
+ * (`AGENT_RELEASES_URL`) — как с GitHub, но без сети.
+ */
+export const AGENT_DIST_DIR = resolve(
+  env.E2E_AGENT_DIST_DIR ?? `agent/dist/v${SDK_VERSION}`,
+);
+
+/** Пара ключей проекта (Ed25519, base64): подпись воркеров проекта. */
+const projectKeys = (): { signing: string; public: string } => {
+  const { privateKey, publicKey } = generateKeyPairSync("ed25519");
+  const b64 = (jwkValue: string | undefined) =>
+    Buffer.from(jwkValue ?? "", "base64url").toString("base64");
+
+  return {
+    signing: b64(privateKey.export({ format: "jwk" }).d),
+    public: b64(publicKey.export({ format: "jwk" }).x),
+  };
+};
+
+/** Ключи проекта стенда: ими подписан выпуск воркеров проекта. */
+export const PROJECT_KEYS = projectKeys();
+
+/** Выпуск воркеров проекта стенда (agent/release.sh во временный каталог). */
+let releasesDir = "";
+
+export interface IRemoteRelease {
+  /** База выпуска для `AGENT_RELEASES_URL`. */
+  url: string;
+  /** Пути запросов к серверу выпусков. */
+  requests: string[];
+  /** Версия в `manifest.json` источника (`null` — как в файле). */
+  setVersion: (version: string | null) => void;
+  close: () => Promise<void>;
+}
+
+/** Сервер выпусков агента (как GitHub): файлы `AGENT_DIST_DIR`. */
+const serveRemoteRelease = async (dir: string): Promise<IRemoteRelease> => {
+  if (!existsSync(join(dir, "manifest.json"))) {
+    throw new Error(`E2E: нет выпуска агента в ${dir} — yarn agent:fetch`);
+  }
+  const requests: string[] = [];
+  let version: string | null = null;
+  const http: Server = createHttpServer(async (req, res) => {
+    const path = req.url ?? "";
+    const name = decodeURIComponent(path.split("/").pop() ?? "");
+
+    requests.push(path);
+    try {
+      let body = await readFile(join(dir, name));
+
+      if (name === "manifest.json" && version) {
+        body = Buffer.from(
+          JSON.stringify({ ...JSON.parse(body.toString("utf8")), version }),
+        );
+      }
+      res.writeHead(200, { "content-length": body.length });
+      res.end(body);
+    } catch {
+      res.writeHead(404).end();
+    }
+  });
+
+  http.listen(0, "127.0.0.1");
+  await once(http, "listening");
+
+  return {
+    url: `http://127.0.0.1:${(http.address() as AddressInfo).port}/download/v${SDK_VERSION}`,
+    requests,
+    setVersion: v => {
+      version = v;
+    },
+    close: () =>
+      new Promise<void>(done => {
+        http.closeAllConnections();
+        http.close(() => done());
+      }),
+  };
+};
+
+export let REMOTE_RELEASE: IRemoteRelease;
+
+/** Как часто сервер стенда проверяет источник выпусков агента, мс. */
+export const RELEASE_CHECK_INTERVAL_MS = 500;
+
+/** Выпуск воркеров проекта, подписанный ключом проекта стенда. */
+const buildProjectRelease = async (): Promise<string> => {
+  const dir = mkdtempSync(join(tmpdir(), "e2e-agent-release-"));
+  const out = join(dir, "release");
+
+  await promisify(execFile)("bash", ["agent/release.sh"], {
+    env: {
+      ...env,
+      AGENT_RELEASE_OUT: out,
+      AGENT_SIGNING_KEY: PROJECT_KEYS.signing,
+    },
+  });
+
+  return out;
+};
 
 let server: ChildProcess | undefined;
 
@@ -177,7 +281,12 @@ const serverEnv = (port: number, relayPort: number): NodeJS.ProcessEnv => ({
   ADMIN_EMAIL: E2E.admin.email,
   ADMIN_PASSWORD: E2E.admin.password,
   AGENT_BOOTSTRAP_TOKEN,
-  AGENT_RELEASES_DIR: AGENT_RELEASES,
+  AGENT_RELEASES_DIR: releasesDir,
+  // Агент и netprobe — с локального сервера выпусков, не из GitHub.
+  AGENT_RELEASES_GITHUB: "",
+  AGENT_RELEASES_URL: REMOTE_RELEASE.url,
+  AGENT_RELEASES_CHECK_INTERVAL_MS: String(RELEASE_CHECK_INTERVAL_MS),
+  AGENT_UPDATE_PUBLIC_KEY: PROJECT_KEYS.public,
   AGENT_INSTANCE: "rest",
   AGENT_RELAY_SECRET,
   AGENT_RELAY_HOST: "127.0.0.1",
@@ -221,6 +330,8 @@ const spawnServer = async (
 export const startServer = async (): Promise<void> => {
   await resetDatabase();
   await resetRedis();
+  releasesDir = await buildProjectRelease();
+  REMOTE_RELEASE = await serveRemoteRelease(AGENT_DIST_DIR);
 
   const [port, relayPort] = await freePorts(2);
 
@@ -250,8 +361,11 @@ export const startPeerServer = async (): Promise<{
 };
 
 export const stopServer = async (): Promise<void> => {
-  if (!server || server.exitCode !== null) return;
-
-  server.kill("SIGTERM");
-  await once(server, "exit");
+  if (server && server.exitCode === null) {
+    server.kill("SIGTERM");
+    await once(server, "exit");
+  }
+  await REMOTE_RELEASE?.close();
+  if (releasesDir)
+    rmSync(resolve(releasesDir, ".."), { recursive: true, force: true });
 };

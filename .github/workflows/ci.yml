@@ -138,14 +138,16 @@ jobs:
             amazon/aws-cli:latest --endpoint-url http://localhost:8333 s3 mb s3://e2e
       - run: yarn install --frozen-lockfile --ignore-scripts
       - run: yarn generate
-      # Настоящий агент и воркеры для сценариев агентов и узлов — выпуск в agent/release:
-      # агент версии agent-sdk с GitHub Release (github.com/epifanovmd/agent), netprobe — сборка
-      # из исходников агента той же версии, воркеры проекта; утилита agent-release —
-      # go run github.com/epifanovmd/agent/cmd/agent-release@v<версия>.
+      # Настоящий агент и netprobe для сценариев агентов и узлов — выпуск агента версии
+      # agent-sdk с GitHub Release в agent/dist (yarn agent:fetch, только эта платформа). Сервер
+      # стенда берёт его с локального сервера выпусков, не из GitHub. Выпуск воркеров проекта
+      # стенд собирает сам (agent/release.sh, утилита agent-release — go run).
       - uses: actions/setup-go@v5
         with:
           go-version: stable
-      - run: yarn agent:release
+      - run: yarn agent:fetch
+        env:
+          AGENT_PLATFORMS: linux-amd64
       - run: yarn test:e2e
 
   audit:

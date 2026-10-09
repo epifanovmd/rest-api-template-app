@@ -41,6 +41,7 @@
     "agent:status": "agent/dev.sh status",
     "agent:logs": "agent/dev.sh logs",
     "agent:release": "agent/release.sh",
+    "agent:fetch": "node agent/fetch.mjs",
     "prepare": "lefthook install",
     "migration:run:prod": "typeorm migration:run -d build/data-source.js"
   },
@@ -55,7 +56,7 @@
     "@simplewebauthn/server": "^14",
     "@socket.io/redis-adapter": "^8.3.0",
     "@tsoa/runtime": "6.6.0",
-    "agent-sdk": "https://github.com/epifanovmd/agent/releases/download/v1.0.1/agent-sdk-1.0.1.tgz",
+    "agent-sdk": "https://github.com/epifanovmd/agent/releases/download/v1.1.0/agent-sdk-1.1.0.tgz",
     "bcrypt": "^6.0.0",
     "blurhash": "^2.0.5",
     "ejs": "^6",

@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Агент на этой машине к API из .env.development (`yarn dev`): связь, воркеры, настройки и
 # метрики держит агент (github.com/epifanovmd/agent). Настройки — agent/local/agent.yaml:
-# воркер проекта echo (из исходников agent/workers/echo) и netprobe (проверка сети, сборка из
-# выпуска agent/release). Выпуск для узлов собирает agent/release.sh (yarn agent:release).
+# воркер проекта echo (из исходников agent/workers/echo) и netprobe (проверка сети, из выпуска
+# агента).
 #
 #   yarn agent                  агент на переднем плане (Ctrl+C — остановка агента и воркеров)
 #   yarn agent:start            то же в фоне
@@ -10,10 +10,10 @@
 #   yarn agent:status           запущен ли
 #   yarn agent:logs             журнал фонового агента
 #
-# Программа агента — AGENT_BIN, иначе <AGENT_DIR>/bin/agent или agent/release/agent-<os>-<arch>
-# (выпуск бэкенда, yarn agent:release). Воркер netprobe — NETPROBE_BIN, <AGENT_DIR>/bin/netprobe
-# или сборка из выпуска (netprobe-<версия>-<os>-<arch> по manifest.json); сборки нет — агент
-# запускается без него.
+# Программа агента — AGENT_BIN, иначе <AGENT_DIR>/bin/agent или выпуск агента той же версии, что
+# agent-sdk, в agent/dist/v<версия> (нет — скачивается с GitHub: yarn agent:fetch под эту
+# машину). Воркер netprobe — NETPROBE_BIN, <AGENT_DIR>/bin/netprobe или сборка из того же выпуска
+# (netprobe-<версия>-<os>-<arch> по manifest.json); сборки нет — агент запускается без него.
 #
 # Регистрация — AGENT_BOOTSTRAP_TOKEN из env-файла (тот же, что у API), адрес API —
 # http://localhost:$SERVER_PORT. Другой env-файл — ENV_FILE=..., другие настройки агента —
@@ -31,7 +31,7 @@ case "$RUN_DIR" in /*) ;; *) RUN_DIR="$ROOT/$RUN_DIR" ;; esac
 PID_FILE="$RUN_DIR/agent.pid"
 LOG_FILE="$RUN_DIR/agent.log"
 STOP_TIMEOUT="${STOP_TIMEOUT:-60}"
-RELEASE_DIR=agent/release
+RELEASE_DIR=
 
 env_value() {
   [ -f "$ENV_FILE" ] && grep -E "^$1=" "$ENV_FILE" | tail -1 | cut -d= -f2- || true
@@ -48,21 +48,31 @@ platform() {
   echo "$os-$arch"
 }
 
-# Программа агента: первая найденная; нет — подсказка, где взять.
+# Каталог выпуска агента той же версии, что agent-sdk в package.json.
+release_dir() {
+  local v
+  v="$(node -p "(require('./package.json').dependencies['agent-sdk'].match(/agent-sdk-([^/]+)\\.tgz$/) || [])[1] || ''")"
+  [ -n "$v" ] || {
+    echo "Не понять версию agent-sdk в package.json" >&2
+    exit 1
+  }
+  echo "agent/dist/v$v"
+}
+
+# Программа агента: AGENT_BIN, <AGENT_DIR>/bin/agent или выпуск в RELEASE_DIR (нет — скачать).
 binary() {
-  local file candidate
-  file="agent-$(platform)"
-  for candidate in "${AGENT_BIN:-}" "$RUN_DIR/bin/agent" "$RELEASE_DIR/$file"; do
+  local candidate file="$RELEASE_DIR/agent-$(platform)"
+  for candidate in "${AGENT_BIN:-}" "$RUN_DIR/bin/agent"; do
     if [ -n "$candidate" ] && [ -x "$candidate" ]; then
       echo "$candidate"
       return
     fi
   done
-  cat >&2 <<HINT
-Нет программы агента для $(platform): yarn agent:release (выпуск в $RELEASE_DIR)
-или укажите свою: AGENT_BIN=/путь/к/agent yarn agent
-HINT
-  exit 1
+  if [ ! -x "$file" ]; then
+    echo "Выпуск агента — с GitHub в $RELEASE_DIR" >&2
+    AGENT_VERSION="${RELEASE_DIR##*/v}" AGENT_PLATFORMS="$(platform)" node agent/fetch.mjs >/dev/null
+  fi
+  echo "$file"
 }
 
 # Воркер netprobe из выпуска (release: true в agent/local/agent.yaml): сборка ставится в
@@ -89,13 +99,14 @@ netprobe() {
     fi
   done
   if grep -q "netprobe:begin" "$AGENT_CONFIG"; then
-    echo "Нет сборки netprobe для $(platform) — агент без него (yarn agent:release или NETPROBE_BIN=...)" >&2
+    echo "Нет сборки netprobe для $(platform) — агент без него (yarn agent:fetch или NETPROBE_BIN=...)" >&2
     sed '/netprobe:begin/,/netprobe:end/d' "$AGENT_CONFIG" >"$RUN_DIR/agent.yaml"
     export AGENT_CONFIG="$RUN_DIR/agent.yaml"
   fi
 }
 
 prepare() {
+  RELEASE_DIR="$(release_dir)"
   BIN="$(binary)"
   command -v python3 >/dev/null || {
     echo "Нужен python3 ≥ 3.10 для воркера echo" >&2

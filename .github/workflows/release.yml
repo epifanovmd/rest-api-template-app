@@ -40,7 +40,7 @@ jobs:
           - target: api
             suffix: "-api"
           # Агент с воркерами без SDK (agent/docker/Dockerfile): программа агента и
-          # netprobe — из agent/release (шаг ниже).
+          # netprobe — с GitHub Release агента.
           - target: ""
             file: agent/docker/Dockerfile
             suffix: "-agent"
@@ -48,15 +48,6 @@ jobs:
       - uses: actions/checkout@v4
       - uses: docker/setup-qemu-action@v3
       - uses: docker/setup-buildx-action@v3
-      # Выпуск для агентов (agent/release): агент с GitHub Release, netprobe из исходников
-      # агента и воркеры проекта; подпись — ключ проекта, секрет AGENT_SIGNING_KEY (открытый
-      # ключ пары — AGENT_UPDATE_PUBLIC_KEY API); без него воркеры проекта без подписи.
-      - uses: actions/setup-go@v5
-        with:
-          go-version: stable
-      - run: agent/release.sh
-        env:
-          AGENT_SIGNING_KEY: ${{ secrets.AGENT_SIGNING_KEY }}
       - uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -83,7 +74,14 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          build-args: APP_VERSION=${{ github.ref_name }}
+          # Подпись воркеров проекта в образе (стадия agent-release): закрытый ключ проекта —
+          # секрет AGENT_SIGNING_KEY, открытый ключ пары — переменная AGENT_UPDATE_PUBLIC_KEY
+          # (та же у API); без секрета воркеры проекта без подписи.
+          build-args: |
+            APP_VERSION=${{ github.ref_name }}
+            AGENT_UPDATE_PUBLIC_KEY=${{ vars.AGENT_UPDATE_PUBLIC_KEY }}
+          secrets: |
+            agent_signing_key=${{ secrets.AGENT_SIGNING_KEY }}
           provenance: true
           cache-from: type=gha,scope=release${{ matrix.suffix }}
           cache-to: type=gha,mode=max,scope=release${{ matrix.suffix }}

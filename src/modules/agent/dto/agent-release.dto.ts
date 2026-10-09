@@ -1,3 +1,9 @@
+/**
+ * Откуда сборка: `remote` — источник выпусков агента (GitHub или ссылка),
+ * `local` — каталог выпуска воркеров проекта.
+ */
+export type TAgentReleaseSource = "remote" | "local";
+
 /** Сборка агента в выпуске. */
 export interface IAgentReleaseArtifactDto {
   os: string;
@@ -5,6 +11,9 @@ export interface IAgentReleaseArtifactDto {
   file: string;
   sha256: string;
   signature?: string;
+  source: TAgentReleaseSource;
+  /** Ссылка источника или путь от корня бэкенда. */
+  url: string;
 }
 
 /** Сборка воркера в выпуске. */
@@ -16,11 +25,38 @@ export interface IAgentWorkerArtifactDto extends IAgentReleaseArtifactDto {
   stopTimeout?: string;
 }
 
-/** Манифест каталога выпуска. */
+/** Выпуск агента в источнике: версия, откуда, когда проверен. */
+export interface IAgentReleaseRemoteDto {
+  version: string;
+  /** `github:owner/repo` или ссылка на каталог выпуска. */
+  from: string;
+  /** Время проверки, мс. */
+  checkedAt: number;
+  /** Ключ, которым подписан выпуск (base64). */
+  publicKey?: string;
+}
+
+/**
+ * Выпуск, который раздаёт бэкенд: агент и netprobe — из источника выпусков
+ * агента, воркеры проекта — из `AGENT_RELEASES_DIR`.
+ */
 export interface IAgentReleaseManifestDto {
   version: string;
+  /** Ключ, которым подписан выпуск (base64). */
+  publicKey?: string;
   artifacts: IAgentReleaseArtifactDto[];
   workers?: IAgentWorkerArtifactDto[];
+  /** Нет — источник выпусков агента не задан или ещё не ответил. */
+  remote?: IAgentReleaseRemoteDto;
+}
+
+/** Другая версия агента в источнике выпусков (сокет `agent:release`). */
+export interface IAgentReleaseChangeDto {
+  version: string;
+  /** Прежняя версия; нет — выпуск получен впервые. */
+  previous?: string;
+  /** `github:owner/repo` или ссылка на каталог выпуска. */
+  from: string;
 }
 
 /** Агент, которого можно обновить до версии выпуска. */
@@ -48,7 +84,7 @@ export interface IAgentWorkerUpdateCandidateDto {
 
 /** Выпуск агента и кого можно обновить. */
 export interface IAgentReleaseDto {
-  /** `null` — каталог выпуска не задан или пуст. */
+  /** `null` — нет ни источника выпусков агента, ни каталога выпуска. */
   manifest: IAgentReleaseManifestDto | null;
   candidates: IAgentUpdateCandidateDto[];
   workerCandidates: IAgentWorkerUpdateCandidateDto[];

@@ -1,6 +1,9 @@
+import type { AgentReleasesOptions } from "agent-sdk/server";
 import { z } from "zod";
 
 import {
+  bool,
+  csv,
   defineModuleConfig,
   nonNegativeInt,
   optionalString,
@@ -11,6 +14,62 @@ import { resolveFromRoot } from "../../core";
 
 /** Экземпляр агента проекта на узле, если `AGENT_INSTANCE` не задан. */
 const AGENT_INSTANCE_DEFAULT = "rest";
+
+/** Откуда по умолчанию берутся агент и netprobe: выпуски GitHub. */
+export const AGENT_RELEASES_DEFAULTS = {
+  github: "epifanovmd/agent",
+  range: "^1",
+  checkIntervalMs: 3_600_000,
+  /** Открытый ключ автора агента: им подписаны агент и netprobe в выпусках. */
+  publicKey: "9yYblu2wKJnjKccihbJv2lKtbxvqecCnX67u9LmgSuo=",
+};
+
+/** Источник агента и netprobe из env `AGENT_RELEASES_*`. */
+export const agentReleasesSchema = z.object({
+  /** Репозиторий выпусков `owner/repo`; пустое значение — не брать из GitHub. */
+  github: z.string().default(AGENT_RELEASES_DEFAULTS.github),
+  /** Какие версии брать (semver), например `^1`. */
+  range: z.string().min(1).default(AGENT_RELEASES_DEFAULTS.range),
+  /** Каталог одного выпуска по ссылке (зеркало, своя версия); важнее `github`. */
+  url: optionalString,
+  /** Токен GitHub: только чтобы не упереться в лимит запросов. */
+  token: optionalString,
+  /** Сборки узлам — через бэкенд (узлы без доступа к GitHub). */
+  proxy: bool(false),
+  /** Как часто проверять новую версию, мс. */
+  checkIntervalMs: positiveInt.default(AGENT_RELEASES_DEFAULTS.checkIntervalMs),
+  /** Ключ автора агента (base64) для `install.sh`. */
+  publicKey: z.string().min(1).default(AGENT_RELEASES_DEFAULTS.publicKey),
+});
+
+export type TAgentReleasesConfig = z.output<typeof agentReleasesSchema>;
+
+/**
+ * Настройки источника агента для SDK (`agentReleases`): ссылка важнее
+ * GitHub; ни того, ни другого — `undefined` (агент только из
+ * `AGENT_RELEASES_DIR`).
+ */
+export const toAgentReleasesOptions = (
+  cfg: TAgentReleasesConfig,
+): AgentReleasesOptions | undefined => {
+  const common = {
+    checkIntervalMs: cfg.checkIntervalMs,
+    proxy: cfg.proxy,
+    publicKey: cfg.publicKey,
+  };
+
+  if (cfg.url) return { ...common, url: cfg.url };
+  if (cfg.github) {
+    return {
+      ...common,
+      github: cfg.github,
+      range: cfg.range,
+      ...(cfg.token && { token: cfg.token }),
+    };
+  }
+
+  return undefined;
+};
 
 /** Настройки агентов (env `AGENT_*`). */
 export const agentConfig = defineModuleConfig(
@@ -68,19 +127,21 @@ export const agentConfig = defineModuleConfig(
      */
     instanceUrl: optionalString,
     /**
-     * Каталог выпуска агента (`manifest.json`, сборки, `install.sh`): его
-     * раздаёт `/api/v1/agent-link/releases`. Относительный путь — от корня
-     * проекта; без него выпуска нет.
+     * Каталог выпуска воркеров проекта (`manifest.json` от `agent-release`,
+     * архивы воркеров; `yarn agent:release`). Относительный путь — от корня
+     * проекта.
      */
     releasesDir: optionalString.transform(dir =>
       dir ? resolveFromRoot(dir) : undefined,
     ),
+    /** Откуда брать агента и netprobe: выпуски GitHub или ссылка. */
+    agentReleases: agentReleasesSchema,
     /**
-     * Открытый ключ проверки подписи выпуска (base64) — пара к ключу подписи
-     * проекта (`AGENT_SIGNING_KEY` при сборке выпуска); `install.sh` передаёт
-     * его узлу (`--public-key`).
+     * Открытые ключи проекта (base64, через запятую) — пара к ключу, которым
+     * подписаны воркеры проекта (`AGENT_SIGNING_KEY` при сборке выпуска);
+     * `install.sh` передаёт их узлу.
      */
-    publicKey: optionalString,
+    updatePublicKeys: csv,
     /**
      * Экземпляр агента проекта на узле (`agent install --instance`): свои
      * служба `agent-<имя>`, настройки `/etc/agent-<имя>` и данные
@@ -120,7 +181,17 @@ export const agentConfig = defineModuleConfig(
     relayHost: process.env.AGENT_RELAY_HOST || undefined,
     instanceUrl: process.env.INSTANCE_URL,
     releasesDir: process.env.AGENT_RELEASES_DIR,
-    publicKey: process.env.AGENT_UPDATE_PUBLIC_KEY,
+    agentReleases: {
+      github: process.env.AGENT_RELEASES_GITHUB,
+      range: process.env.AGENT_RELEASES_RANGE || undefined,
+      url: process.env.AGENT_RELEASES_URL,
+      token: process.env.AGENT_RELEASES_TOKEN,
+      proxy: process.env.AGENT_RELEASES_PROXY,
+      checkIntervalMs:
+        process.env.AGENT_RELEASES_CHECK_INTERVAL_MS || undefined,
+      publicKey: process.env.AGENT_RELEASES_PUBLIC_KEY || undefined,
+    },
+    updatePublicKeys: process.env.AGENT_UPDATE_PUBLIC_KEY ?? "",
     instance: process.env.AGENT_INSTANCE ?? AGENT_INSTANCE_DEFAULT,
     publicUrl: process.env.AGENT_PUBLIC_URL,
     validateEvents: process.env.AGENT_VALIDATE_EVENTS || undefined,

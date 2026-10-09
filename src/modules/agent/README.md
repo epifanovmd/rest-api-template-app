@@ -293,10 +293,10 @@ actionId`, `deferred: true`); `force: true` — заменить сразу. О�
 
 ## Socket.IO
 
-| Комната      | Кто входит                                           | События                                                                        |
-| ------------ | ---------------------------------------------------- | ------------------------------------------------------------------------------ |
-| `agents`     | `room:subscribe { type: "agents" }`, `agent:view`    | `agent:updated`, `agent:deleted`, `agent:alert`, `agent:event`                 |
-| `agent_<id>` | `{ type: "agent", id }`: доступ к агенту на просмотр | то же по агенту + `agent:metrics`, `agent:log`, `agent:config`, `agent:action` |
+| Комната      | Кто входит                                           | События                                                                         |
+| ------------ | ---------------------------------------------------- | ------------------------------------------------------------------------------- |
+| `agents`     | `room:subscribe { type: "agents" }`, `agent:view`    | `agent:updated`, `agent:deleted`, `agent:alert`, `agent:event`, `agent:release` |
+| `agent_<id>` | `{ type: "agent", id }`: доступ к агенту на просмотр | то же по агенту + `agent:metrics`, `agent:log`, `agent:config`, `agent:action`  |
 
 Пока сокет в комнате агента, сервер держит наблюдателя `watch`: метрики раз в секунду,
 журнал с уровня клиента (`agent:log-level { agentId, level }`, по умолчанию `info`).
@@ -428,11 +428,31 @@ long?, steps?, delayMs?, fail?, withOutput? }` → итог `{ text, prefix?, ou
 
 ```bash
 yarn dev               # API (AGENT_BOOTSTRAP_TOKEN в .env.development)
-yarn agent:release     # выпуск для узлов agent/release (AGENT_RELEASES_DIR=agent/release)
-yarn agent             # агент 1.0.0 с воркерами echo и netprobe (agent/local/agent.yaml)
+yarn agent:release     # выпуск воркеров проекта agent/release (AGENT_RELEASES_DIR=agent/release)
+yarn agent             # агент версии agent-sdk с воркерами echo и netprobe (agent/local/agent.yaml)
 ```
 
 Подробно про локальный запуск, выпуск и установку на узлы — [agent/README.md](../../../agent/README.md).
+
+## Выпуск агента
+
+Агента и воркер проверки сети `netprobe` бэкенд берёт из выпусков GitHub (`agentReleases`
+SDK): репозиторий `AGENT_RELEASES_GITHUB` (`epifanovmd/agent`; пусто — не из GitHub),
+версии `AGENT_RELEASES_RANGE` (`^1`). Вместо GitHub — каталог одного выпуска по ссылке
+`AGENT_RELEASES_URL`. Проверка новой версии — при старте и раз в
+`AGENT_RELEASES_CHECK_INTERVAL_MS` (3600000); `AGENT_RELEASES_TOKEN` — токен GitHub от лимита
+запросов; `AGENT_RELEASES_PROXY=true` — узлы скачивают агента через бэкенд, иначе бэкенд
+отвечает им ссылкой на GitHub (302). Новая версия — запись в журнале и сокет-событие
+`agent:release` `{ version, previous?, from }` в комнату `agents` (`AgentReleaseChangedEvent`):
+кандидаты на обновление в `GET /agent-releases` уже другие. Ради новой версии агента бэкенд не
+пересобирают.
+
+Воркеры проекта — каталог `AGENT_RELEASES_DIR` (`manifest.json` от `agent-release`, архивы;
+`agent/release.sh`). Итоговый выпуск (`GET /agent-releases`, `manifest`): агент и `netprobe` —
+`source: remote`, воркеры проекта — `source: local`; `remote` — версия в источнике, откуда и
+когда проверена. Ключи проверки в `install.sh`: открытые ключи проекта
+`AGENT_UPDATE_PUBLIC_KEY` (через запятую; ими подписаны воркеры проекта) и ключ автора агента
+`AGENT_RELEASES_PUBLIC_KEY` (им подписаны агент и `netprobe`).
 
 ## Конфигурация
 
@@ -440,8 +460,8 @@ yarn agent             # агент 1.0.0 с воркерами echo и netprobe
 (15000), `AGENT_METRICS_STORE_INTERVAL_MS` (60000), `AGENT_METRICS_RETENTION_HOURS` (168),
 `AGENT_EVENTS_RETENTION_DAYS` (14), `AGENT_OFFLINE_GRACE_MS` (3000), `AGENT_RELAY_SECRET`
 (пересылка между копиями), `AGENT_RELAY_PORT` (8182) и `AGENT_RELAY_HOST` (`127.0.0.1`) —
-внутренний сервер пересылки, `INSTANCE_URL` (адрес сервера пересылки копии), `AGENT_RELEASES_DIR`,
-`AGENT_UPDATE_PUBLIC_KEY` (ключ проверки подписи выпуска проекта), `AGENT_INSTANCE` (`rest` —
+внутренний сервер пересылки, `INSTANCE_URL` (адрес сервера пересылки копии),
+[выпуск](#выпуск-агента) — `AGENT_RELEASES_*` и `AGENT_UPDATE_PUBLIC_KEY`, `AGENT_INSTANCE` (`rest` —
 экземпляр агента проекта на узле, `--instance`; пусто — по умолчанию), `AGENT_PUBLIC_URL`,
 `AGENT_VALIDATE_EVENTS` (`log`; `off | log | reject` —
 [выше](#строгость-манифеста)); `TRUST_PROXY` — адрес агента за прокси.
@@ -449,11 +469,14 @@ yarn agent             # агент 1.0.0 с воркерами echo и netprobe
 ## Тесты
 
 Юнит: доступ, регистрация, ошибки, история, исполнитель внешних очередей, обработчики
-запросов воркеров. Хранилище и
+запросов воркеров, настройки источника выпусков. Хранилище и
 история на Postgres —
 `TEST_DATABASE_URL=postgres://…/<тестовая база> yarn test:file src/modules/agent/store/agent.store.integration.test.ts`.
-E2E — `test/e2e/agents.e2e.ts` с настоящим агентом 1.0.0 и воркером echo (хелпер
-`test/e2e/agent.ts`; программа агента — `agent/release`, `yarn agent:release`): задачи
+E2E — `test/e2e/agent-releases.e2e.ts`: агент и `netprobe` с локального сервера выпусков (не
+GitHub), `install.sh` с ключами, ссылка 302 на сборку, новая версия в источнике — событие
+`agent:release` и кандидат на обновление, обновление воркера проекта из выпуска с подписью
+ключом проекта. `test/e2e/agents.e2e.ts` — с настоящим агентом версии `agent-sdk` и воркером
+echo (хелпер `test/e2e/agent.ts`; программа агента — `agent/dist`, `yarn agent:fetch`): задачи
 быстрые и долгие (`jobType`), файл итога — ссылка на скачивание, отмена, строгость манифеста
 (необъявленный маршрут, тело не по схеме, неизвестный тип задачи), событие не по схеме — с
 замечаниями, запрос воркера к серверу и отказ обработчика, пересылка через вторую копию API

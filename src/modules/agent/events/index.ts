@@ -7,4 +7,5 @@ export * from "./agent-enrolled.event";
 export * from "./agent-event-received.event";
 export * from "./agent-log-received.event";
 export * from "./agent-metrics-received.event";
+export * from "./agent-release-changed.event";
 export * from "./agent-updated.event";

@@ -13,7 +13,7 @@ import { z } from "zod";
 
 import { config } from "../../config";
 import { EventBus, Injectable, logger } from "../../core";
-import { agentConfig } from "./agent.config";
+import { agentConfig, toAgentReleasesOptions } from "./agent.config";
 import { AgentSignals } from "./agent.signals";
 import { AGENT_RELAY_PATH, AGENTS_CHANGED_CHANNEL } from "./agent.types";
 import { AgentEnrollmentService } from "./agent-enrollment.service";
@@ -35,6 +35,7 @@ import {
   AgentEventReceivedEvent,
   AgentLogReceivedEvent,
   AgentMetricsReceivedEvent,
+  AgentReleaseChangedEvent,
   AgentUpdatedEvent,
 } from "./events";
 import { AgentStore } from "./store/agent.store";
@@ -286,7 +287,8 @@ export class AgentRuntime {
         relaySecret: agentConfig.relaySecret,
       }),
       releasesDir: agentConfig.releasesDir,
-      publicKey: agentConfig.publicKey,
+      agentReleases: toAgentReleasesOptions(agentConfig.agentReleases),
+      updatePublicKeys: agentConfig.updatePublicKeys,
       baseUrl: agentConfig.publicUrl,
       trustProxy: config.server.trustProxy,
       validateConfigs: true,
@@ -388,6 +390,25 @@ export class AgentRuntime {
             "[Agent] Точка метрик не сохранена",
           ),
         );
+    });
+    agents.on("release", release => {
+      logger.info(
+        {
+          version: release.version,
+          previous: release.previous ?? null,
+          from: release.from,
+        },
+        release.previous
+          ? "[Agent] Новая версия агента в источнике выпусков"
+          : "[Agent] Выпуск агента получен из источника",
+      );
+      emit(
+        new AgentReleaseChangedEvent({
+          version: release.version,
+          ...(release.previous && { previous: release.previous }),
+          from: release.from,
+        }),
+      );
     });
     agents.on("log", ({ agentId, entries }) =>
       emit(new AgentLogReceivedEvent(agentId, entries)),

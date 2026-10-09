@@ -203,7 +203,10 @@ export class AgentService {
     return { entries };
   }
 
-  /** Выпуск (`AGENT_RELEASES_DIR`) и кого можно обновить до него. */
+  /**
+   * Выпуск (агент — из источника выпусков, воркеры проекта — из
+   * `AGENT_RELEASES_DIR`) и кого можно обновить до него.
+   */
   async release(actor: IAgentActor): Promise<IAgentReleaseDto> {
     const scope = await this._access.scope(actor, "view");
     const agents = this._runtime.agents;

@@ -12,6 +12,7 @@ import type {
   IAgentEventDto,
   IAgentLogEntryDto,
   IAgentMetricsPointDto,
+  IAgentReleaseChangeDto,
 } from "./dto";
 
 /** Точка метрик агента. */
@@ -46,6 +47,11 @@ declare module "../socket/socket.types" {
     "agent:updated": (...args: [AgentDto]) => void;
     /** Агент удалён — `agents` и `agent_<id>`. */
     "agent:deleted": (...args: [{ id: string }]) => void;
+    /**
+     * В источнике выпусков другая версия агента — `agents`: список
+     * кандидатов на обновление (`GET /api/v1/agent-releases`) изменился.
+     */
+    "agent:release": (...args: [IAgentReleaseChangeDto]) => void;
     /** Проблема началась или закончилась — `agents` и `agent_<id>`. */
     "agent:alert": (...args: [AgentAlertDto]) => void;
     /** Событие воркера — `agents` и `agent_<id>`. */

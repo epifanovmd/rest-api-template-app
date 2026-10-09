@@ -1153,6 +1153,11 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "TAgentReleaseSource": {
+        "dataType": "refAlias",
+        "type": {"dataType":"union","subSchemas":[{"dataType":"enum","enums":["remote"]},{"dataType":"enum","enums":["local"]}],"validators":{}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "IAgentReleaseArtifactDto": {
         "dataType": "refObject",
         "properties": {
@@ -1161,6 +1166,8 @@ const models: TsoaRoute.Models = {
             "file": {"dataType":"string","required":true},
             "sha256": {"dataType":"string","required":true},
             "signature": {"dataType":"string"},
+            "source": {"ref":"TAgentReleaseSource","required":true},
+            "url": {"dataType":"string","required":true},
         },
         "additionalProperties": false,
     },
@@ -1173,6 +1180,8 @@ const models: TsoaRoute.Models = {
             "file": {"dataType":"string","required":true},
             "sha256": {"dataType":"string","required":true},
             "signature": {"dataType":"string"},
+            "source": {"ref":"TAgentReleaseSource","required":true},
+            "url": {"dataType":"string","required":true},
             "name": {"dataType":"string","required":true},
             "version": {"dataType":"string","required":true},
             "command": {"dataType":"string"},
@@ -1181,12 +1190,25 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "IAgentReleaseRemoteDto": {
+        "dataType": "refObject",
+        "properties": {
+            "version": {"dataType":"string","required":true},
+            "from": {"dataType":"string","required":true},
+            "checkedAt": {"dataType":"double","required":true},
+            "publicKey": {"dataType":"string"},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "IAgentReleaseManifestDto": {
         "dataType": "refObject",
         "properties": {
             "version": {"dataType":"string","required":true},
+            "publicKey": {"dataType":"string"},
             "artifacts": {"dataType":"array","array":{"dataType":"refObject","ref":"IAgentReleaseArtifactDto"},"required":true},
             "workers": {"dataType":"array","array":{"dataType":"refObject","ref":"IAgentWorkerArtifactDto"}},
+            "remote": {"ref":"IAgentReleaseRemoteDto"},
         },
         "additionalProperties": false,
     },

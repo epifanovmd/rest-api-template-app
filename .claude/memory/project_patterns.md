@@ -55,7 +55,7 @@ message } }`). В main **нет ни одного вызова** (описани
   `file/file-process.job.ts`, прямая загрузка — `file.service.ts` (`signedPutUrl` + complete с условным `UPDATE`).
 - Права модуля — `audit/audit.permissions.ts` (`definePermissions("audit", { VIEW: "audit:view" })`).
 - E2E-сценарий — `test/e2e/platform.e2e.ts` (файлы S3/local, задачи, биометрия/passkeys), агенты —
-  `test/e2e/agents.e2e.ts` (хелпер `test/e2e/agent.ts`: настоящий агент 1.0.0 с воркерами echo/netprobe),
+  `test/e2e/agents.e2e.ts` (хелпер `test/e2e/agent.ts`: настоящий агент из `agent/dist` с воркерами echo/echo-release/netprobe; выпуск агента — `test/e2e/agent-releases.e2e.ts`),
   клиент `test/e2e/client.ts`, письма — Mailpit API.
 - Bootstrapper — `src/modules/socket/socket.bootstrap.ts`, `src/modules/user/*bootstrap*` (AdminBootstrap, Seed).
 - Guards на маршруте — поиск `@UseGuards(` в `src/modules/auth/`.

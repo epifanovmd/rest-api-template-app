@@ -20,28 +20,29 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN yarn build
 
-# ── Выпуск для агентов (раздаёт API: установка, обновления, install.sh) ──────
-# Готовый agent/release (yarn agent:release) берётся как есть; нет его — собирается здесь
-# agent/release.sh: агент — с GitHub Release (версия — из agent-sdk в package.json),
-# netprobe — из исходников агента той же версии, воркеры проекта — из agent/workers.
-# Подпись выпуска ключом проекта — секрет сборки agent_signing_key (необязательно).
-FROM node:${NODE_VERSION} AS agent-release
-COPY --from=golang:1.26-alpine /usr/local/go /usr/local/go
-ENV PATH=/usr/local/go/bin:$PATH CGO_ENABLED=0
-RUN apk add --no-cache bash curl tar
+# ── Выпуск воркеров проекта (раздаёт API: AGENT_RELEASES_DIR) ─────────────────
+# agent/release.sh: архивы agent/workers и manifest.json утилитой agent-release
+# (`go run` модуля github.com/epifanovmd/agent той же версии, что agent-sdk) — Go
+# нужен только ей. Агента и netprobe в образе нет: API берёт их из выпусков GitHub
+# (AGENT_RELEASES_*). Подпись воркеров ключом проекта — секрет сборки
+# agent_signing_key (необязательно; без него воркеры без подписи) вместе с
+# открытым ключом пары в AGENT_UPDATE_PUBLIC_KEY (build-arg): секрет не входит в
+# ключ кеша сборки, а ключ пары входит — с другим ключом выпуск собирается заново.
+FROM golang:1.26-alpine AS agent-release
+ARG AGENT_UPDATE_PUBLIC_KEY=
+RUN apk add --no-cache bash tar
 WORKDIR /src
 COPY package.json ./
-COPY agent/ agent/
-RUN --mount=type=cache,target=/root/go/pkg/mod \
+COPY agent/release.sh agent/
+COPY agent/workers/ agent/workers/
+RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
     --mount=type=secret,id=agent_signing_key,required=false \
-    if [ ! -f agent/release/manifest.json ]; then \
-      if [ -s /run/secrets/agent_signing_key ]; then \
-        AGENT_SIGNING_KEY="$(cat /run/secrets/agent_signing_key)"; export AGENT_SIGNING_KEY; \
-      fi; \
-      bash agent/release.sh; \
+    echo "Ключ проекта: ${AGENT_UPDATE_PUBLIC_KEY:-нет}" && \
+    if [ -s /run/secrets/agent_signing_key ]; then \
+      AGENT_SIGNING_KEY="$(cat /run/secrets/agent_signing_key)"; export AGENT_SIGNING_KEY; \
     fi && \
-    mkdir -p /agent-release && cp agent/release/* /agent-release/
+    CGO_ENABLED=0 AGENT_RELEASE_OUT=/agent-release bash agent/release.sh
 
 # ── Только production-зависимости, без install-скриптов ──────────────────────
 # Кэш yarn — в cache-mount BuildKit, в слой не попадает: чистить не нужно.

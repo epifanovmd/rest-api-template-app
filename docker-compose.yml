@@ -104,6 +104,8 @@ services:
       target: api
       args:
         APP_VERSION: ${TAG:-latest}
+        AGENT_UPDATE_PUBLIC_KEY: ${AGENT_UPDATE_PUBLIC_KEY:-}
+      secrets: [agent_signing_key]
     environment:
       <<: *app-env
       APP_ROLE: api
@@ -135,6 +137,8 @@ services:
       target: worker
       args:
         APP_VERSION: ${TAG:-latest}
+        AGENT_UPDATE_PUBLIC_KEY: ${AGENT_UPDATE_PUBLIC_KEY:-}
+      secrets: [agent_signing_key]
     environment:
       <<: *app-env
       APP_ROLE: worker
@@ -203,6 +207,14 @@ services:
       retries: 12
     restart: unless-stopped
     logging: *logging
+
+# Подпись воркеров проекта при сборке образа: закрытый ключ проекта — файлом
+# AGENT_SIGNING_KEY_FILE на машине сборки (не в .env: env_file попадает в
+# контейнеры), открытый ключ пары — AGENT_UPDATE_PUBLIC_KEY. Без файла воркеры
+# без подписи.
+secrets:
+  agent_signing_key:
+    file: ${AGENT_SIGNING_KEY_FILE:-/dev/null}
 
 volumes:
   agent-data:

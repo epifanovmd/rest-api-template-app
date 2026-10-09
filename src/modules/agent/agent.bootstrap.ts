@@ -55,6 +55,10 @@ export class AgentBootstrap implements IBootstrap {
         relay: this._relay.address,
         bootstrapToken: !!agentConfig.bootstrapToken,
         releasesDir: agentConfig.releasesDir ?? null,
+        agentReleases:
+          agentConfig.agentReleases.url ||
+          agentConfig.agentReleases.github ||
+          null,
         workerRequests: this._requests.types,
         validateEvents: agentConfig.validateEvents,
       },

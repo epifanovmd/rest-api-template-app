@@ -2650,6 +2650,14 @@
 				"type": "object",
 				"additionalProperties": false
 			},
+			"TAgentReleaseSource": {
+				"type": "string",
+				"enum": [
+					"remote",
+					"local"
+				],
+				"description": "Откуда сборка: `remote` — источник выпусков агента (GitHub или ссылка),\n`local` — каталог выпуска воркеров проекта."
+			},
 			"IAgentReleaseArtifactDto": {
 				"description": "Сборка агента в выпуске.",
 				"properties": {
@@ -2667,13 +2675,22 @@
 					},
 					"signature": {
 						"type": "string"
+					},
+					"source": {
+						"$ref": "#/components/schemas/TAgentReleaseSource"
+					},
+					"url": {
+						"type": "string",
+						"description": "Ссылка источника или путь от корня бэкенда."
 					}
 				},
 				"required": [
 					"os",
 					"arch",
 					"file",
-					"sha256"
+					"sha256",
+					"source",
+					"url"
 				],
 				"type": "object",
 				"additionalProperties": false
@@ -2696,6 +2713,13 @@
 					"signature": {
 						"type": "string"
 					},
+					"source": {
+						"$ref": "#/components/schemas/TAgentReleaseSource"
+					},
+					"url": {
+						"type": "string",
+						"description": "Ссылка источника или путь от корня бэкенда."
+					},
 					"name": {
 						"type": "string"
 					},
@@ -2715,17 +2739,51 @@
 					"arch",
 					"file",
 					"sha256",
+					"source",
+					"url",
 					"name",
 					"version"
 				],
 				"type": "object",
 				"additionalProperties": false
 			},
-			"IAgentReleaseManifestDto": {
-				"description": "Манифест каталога выпуска.",
+			"IAgentReleaseRemoteDto": {
+				"description": "Выпуск агента в источнике: версия, откуда, когда проверен.",
 				"properties": {
 					"version": {
 						"type": "string"
+					},
+					"from": {
+						"type": "string",
+						"description": "`github:owner/repo` или ссылка на каталог выпуска."
+					},
+					"checkedAt": {
+						"type": "number",
+						"format": "double",
+						"description": "Время проверки, мс."
+					},
+					"publicKey": {
+						"type": "string",
+						"description": "Ключ, которым подписан выпуск (base64)."
+					}
+				},
+				"required": [
+					"version",
+					"from",
+					"checkedAt"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"IAgentReleaseManifestDto": {
+				"description": "Выпуск, который раздаёт бэкенд: агент и netprobe — из источника выпусков\nагента, воркеры проекта — из `AGENT_RELEASES_DIR`.",
+				"properties": {
+					"version": {
+						"type": "string"
+					},
+					"publicKey": {
+						"type": "string",
+						"description": "Ключ, которым подписан выпуск (base64)."
 					},
 					"artifacts": {
 						"items": {
@@ -2738,6 +2796,10 @@
 							"$ref": "#/components/schemas/IAgentWorkerArtifactDto"
 						},
 						"type": "array"
+					},
+					"remote": {
+						"$ref": "#/components/schemas/IAgentReleaseRemoteDto",
+						"description": "Нет — источник выпусков агента не задан или ещё не ответил."
 					}
 				},
 				"required": [
@@ -2835,7 +2897,7 @@
 							}
 						],
 						"nullable": true,
-						"description": "`null` — каталог выпуска не задан или пуст."
+						"description": "`null` — нет ни источника выпусков агента, ни каталога выпуска."
 					},
 					"candidates": {
 						"items": {
@@ -7557,7 +7619,7 @@
 						}
 					}
 				},
-				"description": "Обновить агента до версии выпуска (`AGENT_RELEASES_DIR`): итог — после\nзапуска новой версии. Агент в контейнере себя не обновляет.",
+				"description": "Обновить агента до версии выпуска (источник выпусков агента — по\nумолчанию GitHub): итог — после запуска новой версии. Агент в контейнере\nсебя не обновляет.",
 				"summary": "Обновление агента",
 				"tags": [
 					"Agent"
@@ -7894,7 +7956,7 @@
 						}
 					}
 				},
-				"description": "Выпуск агента (`AGENT_RELEASES_DIR`: манифест со сборками агента и\nворкеров) и кого из доступных агентов можно обновить до него: агентов и\nворкеры из выпуска.",
+				"description": "Выпуск, который раздаёт бэкенд: агент и netprobe — из источника выпусков\nагента (по умолчанию GitHub, `remote` — версия и когда проверен),\nворкеры проекта — из `AGENT_RELEASES_DIR`; у каждой сборки — источник.\nИ кого из доступных агентов можно обновить: агентов и воркеры из выпуска.",
 				"summary": "Выпуск агента",
 				"tags": [
 					"Agent"

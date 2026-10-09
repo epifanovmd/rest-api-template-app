@@ -159,20 +159,23 @@ Swagger UI — `/api-docs` (в production — по `API_DOCS_ENABLED`). Сист
 
 **Агент на этой машине** — агент ([github.com/epifanovmd/agent](https://github.com/epifanovmd/agent))
 с воркерами из `agent/local/agent.yaml`: `echo` (воркер проекта из `agent/workers/echo`,
-Python на стандартной библиотеке) и `netprobe` (проверка сети, сборка из выпуска `agent/release`).
+Python на стандартной библиотеке) и `netprobe` (проверка сети, из выпуска агента).
 Регистрируется `AGENT_BOOTSTRAP_TOKEN` из `.env.development` (тот же токен у API), адрес
 API — `http://localhost:$SERVER_PORT`. Программа агента — `AGENT_BIN`, `.agent/bin/agent` или
-`agent/release/` (`yarn agent:release`: агент версии `agent-sdk` с GitHub Release). Как
-агент и воркеры попадают на узлы — [agent/README.md](agent/README.md).
+выпуск агента версии `agent-sdk` в `agent/dist/` (нет — скачивается с GitHub). Бэкенд берёт
+агента для узлов из выпусков GitHub сам (`AGENT_RELEASES_*`) и замечает новые версии — ради
+новой версии агента его не пересобирают. Как агент и воркеры попадают на узлы —
+[agent/README.md](agent/README.md).
 
-| Команда                     | Что делает                                                                                    |
-| --------------------------- | --------------------------------------------------------------------------------------------- |
-| `yarn agent`                | агент на переднем плане (Ctrl+C — остановка агента и воркеров)                                |
-| `yarn agent:start`          | то же в фоне (данные, pid и журнал — `.agent/`; другой агент — `AGENT_DIR=… AGENT_NAME=…`)    |
-| `yarn agent:stop [--force]` | остановить агента и воркеры; `--force` — сразу                                                |
-| `yarn agent:status`         | запущен ли агент                                                                              |
-| `yarn agent:logs`           | журнал агента и его воркеров                                                                  |
-| `yarn agent:release`        | выпуск для узлов `agent/release`: агент и воркеры проекта (`AGENT_RELEASES_DIR`, образы, e2e) |
+| Команда                     | Что делает                                                                                 |
+| --------------------------- | ------------------------------------------------------------------------------------------ |
+| `yarn agent`                | агент на переднем плане (Ctrl+C — остановка агента и воркеров)                             |
+| `yarn agent:start`          | то же в фоне (данные, pid и журнал — `.agent/`; другой агент — `AGENT_DIR=… AGENT_NAME=…`) |
+| `yarn agent:stop [--force]` | остановить агента и воркеры; `--force` — сразу                                             |
+| `yarn agent:status`         | запущен ли агент                                                                           |
+| `yarn agent:logs`           | журнал агента и его воркеров                                                               |
+| `yarn agent:release`        | выпуск воркеров проекта в `agent/release` (`AGENT_RELEASES_DIR`)                           |
+| `yarn agent:fetch`          | выпуск агента с GitHub в `agent/dist/` (агент на этой машине, e2e)                         |
 
 **Makefile — сервер по SSH** (настройки — `.env.deploy`, образец `.env.deploy.example`;
 любое значение переопределяется в команде: `make deploy SSH_HOST=…`)
@@ -269,6 +272,7 @@ pre-commit (lefthook): prettier и eslint по staged-файлам, typecheck, �
 
 ```sh
 docker compose -f docker-compose.dev.yml up -d
+yarn agent:fetch     # выпуск агента с GitHub в agent/dist (один раз на версию agent-sdk)
 yarn test:e2e
 ```
 
@@ -278,7 +282,9 @@ Postgres, Redis, Mailpit и S3 и прогоняет сценарии всех �
 (только с `e2e`/`test` в имени) и очищает отдельную базу Redis (не `0`). Последний
 тест проверяет, что вызван каждый эндпоинт спецификации. Параметры — переменные
 `E2E_*` (по умолчанию — сервисы `docker-compose.dev.yml`), драйвер хранилища —
-`E2E_STORAGE_DRIVER=s3|local`.
+`E2E_STORAGE_DRIVER=s3|local`. В GitHub сервер стенда не ходит: агента и `netprobe` он
+берёт с локального сервера выпусков (файлы `agent/dist`), выпуск воркеров проекта стенд
+собирает сам (`agent/release.sh`, нужен Go или Docker) и подписывает своим ключом.
 
 ### Codegen
 
@@ -356,9 +362,9 @@ ENV_FILE=.env.staging docker compose up -d          # другой env-файл
   запускается на push и pull request в `main` (ветки-примеры CI не запускают);
   на push в `main` после всех проверок — deploy.
 - **Release** (`release.yml`): по тегу `v*` на коммите из `main` — образы `api`, `worker` и `agent`
-  (amd64/arm64) в GHCR; выпуск для узлов (агент, воркеры проекта, `install.sh`) собирает
-  `agent/release.sh` (агент — с GitHub Release; подпись — секрет `AGENT_SIGNING_KEY`), образ API
-  раздаёт его.
+  (amd64/arm64) в GHCR; образ API собирает и раздаёт выпуск воркеров проекта (`agent/release.sh`;
+  подпись — секрет `AGENT_SIGNING_KEY` и переменная `AGENT_UPDATE_PUBLIC_KEY`), агента узлы
+  получают из выпусков GitHub.
 - **Deploy** (`deploy.yml`, из CI или вручную с `main`): `make deploy` на хост по SSH — сборка
   там же. Настройки — переменная репозитория `DEPLOY_ENV` (содержимое `.env.deploy`),
   ключ — секрет `SSH_PRIVATE_KEY`; без `DEPLOY_ENV` CI деплой пропускает.
