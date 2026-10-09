@@ -7,6 +7,7 @@ import {
   eventually,
   expectStatus,
   items,
+  signIn,
   signInAdmin,
   signUp,
 } from "./client";
@@ -245,6 +246,42 @@ describe("агенты (настоящий агент и воркер echo)", fu
     expect(all.map((c: any) => `${c.worker}/${c.key}`)).to.include(
       "echo/settings",
     );
+  });
+
+  it("настройки без права agent:config: статус и версия видны, значение — нет", async () => {
+    const created = await signUp("a-config-viewer");
+
+    expectStatus(
+      await call(admin, "PATCH", `/api/v1/user/setPrivileges/${created.id}`, {
+        roles: ["user"],
+        permissions: ["agent:view"],
+      }),
+      200,
+    );
+
+    const viewer = await signIn(created.email, created.password);
+    const all = expectStatus(
+      await call(viewer, "GET", `/api/v1/agents/${agentId}/configs`),
+      200,
+    ).data;
+    const settings = all.find(
+      (c: any) => c.worker === "echo" && c.key === "settings",
+    );
+
+    expect(settings.status.state).to.equal("applied");
+    expect(settings.config.version).to.be.a("number");
+    expect(settings.config).to.not.have.property("data");
+
+    const one = expectStatus(
+      await call(
+        viewer,
+        "GET",
+        `/api/v1/agents/${agentId}/workers/echo/configs/settings`,
+      ),
+      200,
+    ).data;
+
+    expect(one.config).to.not.have.property("data");
   });
 
   it("запрос к воркеру: ответ, поток, двоичное тело, служебный путь — 403, необъявленный маршрут — 404", async () => {

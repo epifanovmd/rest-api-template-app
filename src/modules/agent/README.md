@@ -55,10 +55,10 @@ src/modules/agent/
 `Store` SDK — 8 методов: агенты (`createAgent`, `getAgent`, `listAgents`, `updateAgent`,
 `deleteAgent`) и настройки воркеров (`setConfig`, `listConfigs`, `deleteConfig`).
 
-| Таблица         | Что                                                                                                              |
-| --------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `agents`        | `AgentRecord` целиком в `record` (хеш ключа, учёт потока, последние `hello`, `status`, метрики, проблемы), `rev` |
-| `agent_configs` | строка на ключ «агент, воркер, ключ»: версия, значение (`jsonb`), время, автор                                   |
+| Таблица         | Что                                                                                                                                |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `agents`        | `AgentRecord` целиком в `record` (хеш ключа, учёт потока, последние `hello`, `status`, метрики, проблемы), `rev`                   |
+| `agent_configs` | строка на ключ «агент, воркер, ключ»: версия, значение (`jsonb`; с `AGENT_CONFIGS_KEY` — `{ $sealed }`, AES-256-GCM), время, автор |
 
 - **Условная запись агента:** `UPDATE … WHERE id = … AND rev = …` одним запросом; не
   совпало — `false`, SDK перечитывает и повторяет. Несколько процессов не затирают
@@ -246,8 +246,8 @@ Store общий; соединение агента живёт в одном п�
 | `POST /agents/{id}/workers/{worker}/restart {force}`  | `RestartAgentWorker`               | manage                       |
 | `POST /agents/{id}/workers/{worker}/update {force}`   | `UpdateAgentWorker`                | manage                       |
 | `POST /agents/{id}/workers/{worker}/fetch`            | `FetchAgentWorker` (поток)         | fetch                        |
-| `GET /agents/{id}/configs?worker`                     | `GetAgentConfigs`                  | view                         |
-| `GET /agents/{id}/workers/{worker}/configs/{key}`     | `GetAgentWorkerConfig`             | view                         |
+| `GET /agents/{id}/configs?worker`                     | `GetAgentConfigs`                  | view; значение — с config    |
+| `GET /agents/{id}/workers/{worker}/configs/{key}`     | `GetAgentWorkerConfig`             | view; значение — с config    |
 | `PUT /agents/{id}/workers/{worker}/configs/{key}`     | `SetAgentWorkerConfig`             | config                       |
 | `DELETE /agents/{id}/workers/{worker}/configs/{key}`  | `DeleteAgentWorkerConfig` (204)    | config                       |
 | `GET /agent-releases`                                 | `GetAgentRelease`                  | view (кандидаты — в области) |

@@ -3104,7 +3104,9 @@
 						"type": "number",
 						"format": "double"
 					},
-					"data": {},
+					"data": {
+						"description": "Значение; только с правом на настройки (`agent:config`)."
+					},
 					"updatedAt": {
 						"type": "number",
 						"format": "double",
@@ -3120,7 +3122,6 @@
 					"worker",
 					"key",
 					"version",
-					"data",
 					"updatedAt"
 				],
 				"type": "object",

@@ -8,6 +8,7 @@ import { DataSource } from "typeorm";
 import { AppModule } from "../../../app.module";
 import { collectEntities } from "../../../core";
 import { migrations } from "../../../migrations";
+import { agentConfig } from "../agent.config";
 import { AgentMetric } from "../agent-metric.entity";
 import { AgentMetricRepository } from "../agent-metric.repository";
 import { AgentWorkerEvent } from "../agent-worker-event.entity";
@@ -243,5 +244,36 @@ describe("AgentStore и история агентов (Postgres, TEST_DATABASE_U
     expect(
       (await metrics.findRange({ agentId, limit: 10 })).map(m => m.at),
     ).to.deep.equal([300, 400]);
+  });
+
+  it("настройки с AGENT_CONFIGS_KEY: в БД — зашифрованы, наружу — как есть", async () => {
+    const previous = agentConfig.configsKey;
+
+    agentConfig.configsKey = randomBytes(32).toString("hex");
+    try {
+      const sealing = new AgentStore(dataSource);
+      const agentId = newAgentId();
+      const data = { password: "secret-value", items: [1, 2] };
+      const written = await sealing.setConfig(agentId, "echo", "auth", data);
+
+      expect(written.data).to.deep.equal(data);
+
+      const [row] = await dataSource.query(
+        `SELECT data FROM agent_configs WHERE agent_id = $1`,
+        [agentId],
+      );
+
+      expect(JSON.stringify(row.data)).to.not.include("secret-value");
+      expect(row.data.$sealed).to.match(/^v1:/);
+      expect((await sealing.listConfigs(agentId))[0].data).to.deep.equal(data);
+      // Без ключа зашифрованное значение не читается.
+      agentConfig.configsKey = undefined;
+      await new AgentStore(dataSource).listConfigs(agentId).then(
+        () => expect.fail("должна быть ошибка"),
+        (err: Error) => expect(err.message).to.include("AGENT_CONFIGS_KEY"),
+      );
+    } finally {
+      agentConfig.configsKey = previous;
+    }
   });
 });

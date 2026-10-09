@@ -143,6 +143,12 @@ export const agentConfig = defineModuleConfig(
      */
     updatePublicKeys: csv,
     /**
+     * Ключ шифрования значений настроек воркеров в БД (AES-256-GCM, 32 байта
+     * hex или base64): в настройках бывают ключи и пароли. Без него значения
+     * хранятся как есть.
+     */
+    configsKey: optionalString,
+    /**
      * Экземпляр агента проекта на узле (`agent install --instance`): свои
      * служба `agent-<имя>`, настройки `/etc/agent-<имя>` и данные
      * `/var/lib/agent-<имя>` — агенты других бэкендов на том же узле не
@@ -192,6 +198,7 @@ export const agentConfig = defineModuleConfig(
       publicKey: process.env.AGENT_RELEASES_PUBLIC_KEY || undefined,
     },
     updatePublicKeys: process.env.AGENT_UPDATE_PUBLIC_KEY ?? "",
+    configsKey: process.env.AGENT_CONFIGS_KEY,
     instance: process.env.AGENT_INSTANCE ?? AGENT_INSTANCE_DEFAULT,
     publicUrl: process.env.AGENT_PUBLIC_URL,
     validateEvents: process.env.AGENT_VALIDATE_EVENTS || undefined,

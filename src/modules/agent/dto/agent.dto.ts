@@ -356,7 +356,8 @@ export interface IAgentConfigDto {
   worker: string;
   key: string;
   version: number;
-  data: unknown;
+  /** Значение; только с правом на настройки (`agent:config`). */
+  data?: unknown;
   /** Время записи, мс. */
   updatedAt: number;
   /** Кто изменил. */

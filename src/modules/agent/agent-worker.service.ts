@@ -37,12 +37,19 @@ export interface IAgentFetchResult {
   body: ReadableStream<Uint8Array> | null;
 }
 
-const toConfigDto = (record: ConfigRecord): IAgentConfigDto => ({
+/**
+ * Значение ключа для ответа. Само значение (`data`) — только с правом на
+ * настройки: в нём бывают секреты воркера.
+ */
+const toConfigDto = (
+  record: ConfigRecord,
+  withData: boolean,
+): IAgentConfigDto => ({
   agentId: record.agentId,
   worker: record.worker,
   key: record.key,
   version: record.version,
-  data: record.data,
+  ...(withData && { data: record.data }),
   updatedAt: record.updatedAt,
   ...(record.actor && { actor: record.actor }),
 });
@@ -138,6 +145,8 @@ export class AgentWorkerService {
   ): Promise<IAgentConfigEntryDto[]> {
     await this._access.require(actor, id, "view");
 
+    const withData = await this._access.can(actor, id, "config");
+
     const agents = this._runtime.agents;
     const [records, statuses] = await callAgents(() =>
       Promise.all([agents.listConfigs(id), agents.configStatus(id, worker)]),
@@ -152,7 +161,7 @@ export class AgentWorkerService {
       return {
         worker: status.worker,
         key: status.key,
-        ...(record && { config: toConfigDto(record) }),
+        ...(record && { config: toConfigDto(record, withData) }),
         status: AgentConfigStatusDto.fromModel(status),
       };
     });
@@ -166,7 +175,12 @@ export class AgentWorkerService {
   ): Promise<IAgentConfigEntryDto> {
     await this._access.require(actor, id, "view");
 
-    return this.entry(id, worker, key);
+    return this.entry(
+      id,
+      worker,
+      key,
+      await this._access.can(actor, id, "config"),
+    );
   }
 
   /** Записать значение (новая версия); агент получит его сразу или при подключении. */
@@ -182,7 +196,7 @@ export class AgentWorkerService {
       this._runtime.agents.by(actor.userId).setConfig(id, worker, key, data),
     );
 
-    return this.entry(id, worker, key);
+    return this.entry(id, worker, key, true);
   }
 
   async deleteConfig(
@@ -249,7 +263,7 @@ export class AgentWorkerService {
   ): Promise<IAgentConfigDto | null> {
     const record = await this._runtime.agents.getConfig(id, worker, key);
 
-    return record ? toConfigDto(record) : null;
+    return record ? toConfigDto(record, true) : null;
   }
 
   /** Записать значение от имени системы. */
@@ -263,6 +277,7 @@ export class AgentWorkerService {
       await callAgents(() =>
         this._runtime.agents.setConfig(id, worker, key, data),
       ),
+      true,
     );
   }
 
@@ -270,6 +285,7 @@ export class AgentWorkerService {
     id: string,
     worker: string,
     key: string,
+    withData: boolean,
   ): Promise<IAgentConfigEntryDto> {
     const agents = this._runtime.agents;
     const [record, statuses] = await callAgents(() =>
@@ -285,7 +301,7 @@ export class AgentWorkerService {
     return {
       worker,
       key,
-      ...(record && { config: toConfigDto(record) }),
+      ...(record && { config: toConfigDto(record, withData) }),
       status: AgentConfigStatusDto.fromModel(status),
     };
   }

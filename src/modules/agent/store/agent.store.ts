@@ -7,7 +7,13 @@ import type {
 import { inject } from "inversify";
 import { DataSource } from "typeorm";
 
-import { Injectable } from "../../../core";
+import {
+  Injectable,
+  openSecret,
+  parseSecretBoxKey,
+  sealSecret,
+} from "../../../core";
+import { agentConfig } from "../agent.config";
 import { StoredAgent } from "./stored-agent.entity";
 import { StoredAgentConfig } from "./stored-agent-config.entity";
 
@@ -50,15 +56,43 @@ interface IConfigRow {
   actor: string | null;
 }
 
-const configOf = (row: IConfigRow): ConfigRecord => ({
-  agentId: row.agent_id,
-  worker: row.worker,
-  key: row.key,
-  version: Number(row.version),
-  data: row.data,
-  updatedAt: Number(row.updated_at),
-  ...(row.actor ? { actor: row.actor } : {}),
-});
+/** Зашифрованное значение настройки в `jsonb`. */
+interface ISealedConfig {
+  $sealed: string;
+}
+
+const isSealed = (value: unknown): value is ISealedConfig =>
+  !!value &&
+  typeof value === "object" &&
+  !Array.isArray(value) &&
+  typeof (value as ISealedConfig).$sealed === "string" &&
+  Object.keys(value).length === 1;
+
+/**
+ * Шифрование значений настроек в БД (в них бывают ключи и пароли):
+ * `AGENT_CONFIGS_KEY` — AES-256-GCM, без него значения лежат как есть.
+ * Прочитать можно и то и другое — ключ можно задать позже.
+ */
+class ConfigCipher {
+  private readonly _key = agentConfig.configsKey
+    ? parseSecretBoxKey(agentConfig.configsKey)
+    : null;
+
+  seal(data: unknown): unknown {
+    if (!this._key) return data;
+
+    return { $sealed: sealSecret(JSON.stringify(data ?? null), this._key) };
+  }
+
+  open(data: unknown): unknown {
+    if (!isSealed(data)) return data;
+    if (!this._key) {
+      throw new Error("AGENT_CONFIGS_KEY не задан: настройка зашифрована");
+    }
+
+    return JSON.parse(openSecret(data.$sealed, this._key));
+  }
+}
 
 /** Строки запроса `INSERT … RETURNING` (драйвер pg через TypeORM). */
 const rowsOf = <T>(result: unknown): T[] =>
@@ -67,7 +101,8 @@ const rowsOf = <T>(result: unknown): T[] =>
     : result) as T[];
 
 /**
- * `Store` SDK агентов на Postgres. Агент — строка `agents` с записью целиком в
+ * `Store` SDK агентов на Postgres. Значения настроек — зашифрованы, если
+ * задан `AGENT_CONFIGS_KEY`. Агент — строка `agents` с записью целиком в
  * `jsonb` и `rev` колонкой: запись — одним условным `UPDATE … WHERE rev = …`,
  * несколько процессов не затирают изменения друг друга. Настройки — строка
  * `agent_configs` на ключ; после удаления строка остаётся (`data = NULL`) со
@@ -75,7 +110,21 @@ const rowsOf = <T>(result: unknown): T[] =>
  */
 @Injectable()
 export class AgentStore implements Store {
+  private readonly _cipher = new ConfigCipher();
+
   constructor(@inject(DataSource) private readonly _db: DataSource) {}
+
+  private _configOf(row: IConfigRow): ConfigRecord {
+    return {
+      agentId: row.agent_id,
+      worker: row.worker,
+      key: row.key,
+      version: Number(row.version),
+      data: this._cipher.open(row.data),
+      updatedAt: Number(row.updated_at),
+      ...(row.actor ? { actor: row.actor } : {}),
+    };
+  }
 
   async createAgent(agent: AgentRecord): Promise<void> {
     const safe = jsonSafe(agent);
@@ -158,13 +207,13 @@ export class AgentStore implements Store {
         worker,
         key,
         opts.minVersion ?? 0,
-        JSON.stringify(jsonSafe(data) ?? null),
+        JSON.stringify(this._cipher.seal(jsonSafe(data) ?? null)),
         Date.now(),
         opts.actor ?? null,
       ],
     );
 
-    return configOf(rowsOf<IConfigRow>(result)[0]);
+    return this._configOf(rowsOf<IConfigRow>(result)[0]);
   }
 
   async listConfigs(agentId: string): Promise<ConfigRecord[]> {
@@ -174,7 +223,7 @@ export class AgentStore implements Store {
       [agentId],
     );
 
-    return rows.map(configOf);
+    return rows.map(row => this._configOf(row));
   }
 
   async deleteConfig(

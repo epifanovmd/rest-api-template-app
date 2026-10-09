@@ -1322,7 +1322,7 @@ const models: TsoaRoute.Models = {
             "worker": {"dataType":"string","required":true},
             "key": {"dataType":"string","required":true},
             "version": {"dataType":"double","required":true},
-            "data": {"dataType":"any","required":true},
+            "data": {"dataType":"any"},
             "updatedAt": {"dataType":"double","required":true},
             "actor": {"dataType":"string"},
         },
