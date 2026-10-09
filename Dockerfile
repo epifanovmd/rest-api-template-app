@@ -21,14 +21,27 @@ COPY . .
 RUN yarn build
 
 # ── Выпуск для агентов (раздаёт API: установка, обновления, install.sh) ──────
-# Берётся из agent/release (yarn agent:release: агент и воркеры проекта); нет его —
-# каталог пуст и выпуска нет.
+# Готовый agent/release (yarn agent:release) берётся как есть; нет его — собирается здесь
+# agent/release.sh: агент — с GitHub Release (версия — из agent-sdk в package.json),
+# netprobe — из исходников агента той же версии, воркеры проекта — из agent/workers.
+# Подпись выпуска ключом проекта — секрет сборки agent_signing_key (необязательно).
 FROM node:${NODE_VERSION} AS agent-release
-COPY agent/ /src/agent/
-RUN mkdir -p /agent-release && \
-    if [ -f /src/agent/release/manifest.json ]; then \
-      cp /src/agent/release/* /agent-release/; \
-    fi
+COPY --from=golang:1.26-alpine /usr/local/go /usr/local/go
+ENV PATH=/usr/local/go/bin:$PATH CGO_ENABLED=0
+RUN apk add --no-cache bash curl tar
+WORKDIR /src
+COPY package.json ./
+COPY agent/ agent/
+RUN --mount=type=cache,target=/root/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    --mount=type=secret,id=agent_signing_key,required=false \
+    if [ ! -f agent/release/manifest.json ]; then \
+      if [ -s /run/secrets/agent_signing_key ]; then \
+        AGENT_SIGNING_KEY="$(cat /run/secrets/agent_signing_key)"; export AGENT_SIGNING_KEY; \
+      fi; \
+      bash agent/release.sh; \
+    fi && \
+    mkdir -p /agent-release && cp agent/release/* /agent-release/
 
 # ── Только production-зависимости, без install-скриптов ──────────────────────
 # Кэш yarn — в cache-mount BuildKit, в слой не попадает: чистить не нужно.
