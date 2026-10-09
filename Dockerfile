@@ -20,14 +20,14 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN yarn build
 
-# ── Выпуск воркеров проекта (раздаёт API: AGENT_RELEASES_DIR) ─────────────────
+# ── Сборки воркеров проекта (раздаёт API: AGENT_RELEASES_DIR) ─────────────────
 # agent/release.sh: архивы agent/workers и manifest.json утилитой agent-release
 # (`go run` модуля github.com/epifanovmd/agent той же версии, что agent-sdk) — Go
-# нужен только ей. Агента и netprobe в образе нет: API берёт их из выпусков GitHub
+# нужен только ей. Агента и netprobe в образе нет: API берёт их из релизов GitHub
 # (AGENT_RELEASES_*). Подпись воркеров ключом проекта — секрет сборки
 # agent_signing_key (необязательно; без него воркеры без подписи) вместе с
 # открытым ключом пары в AGENT_UPDATE_PUBLIC_KEY (build-arg): секрет не входит в
-# ключ кеша сборки, а ключ пары входит — с другим ключом выпуск собирается заново.
+# ключ кеша сборки, а ключ пары входит — с другим ключом сборки собираются заново.
 FROM golang:1.26-alpine AS agent-release
 ARG AGENT_UPDATE_PUBLIC_KEY=
 RUN apk add --no-cache bash tar

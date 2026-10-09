@@ -24,7 +24,7 @@ export interface ICreateNodeInstallCommandBody {
   baseUrl?: string;
   /** Срок одноразового токена, минут (по умолчанию сутки). */
   expiresInMinutes?: number;
-  /** Воркеры из выпуска агента (по умолчанию — проверка сети `netprobe`). */
+  /** Воркеры из сборок агента (по умолчанию — проверка сети `netprobe`). */
   workers?: string[];
 }
 
@@ -66,7 +66,7 @@ export interface INodeSshAccessBody {
 
 /** Установка агента по SSH. */
 export interface IInstallNodeAgentBody extends INodeSshAccessBody {
-  /** Воркеры из выпуска агента (по умолчанию — проверка сети `netprobe`). */
+  /** Воркеры из сборок агента (по умолчанию — проверка сети `netprobe`). */
   workers?: string[];
 }
 

@@ -55,7 +55,7 @@ message } }`). В main **нет ни одного вызова** (описани
   `file/file-process.job.ts`, прямая загрузка — `file.service.ts` (`signedPutUrl` + complete с условным `UPDATE`).
 - Права модуля — `audit/audit.permissions.ts` (`definePermissions("audit", { VIEW: "audit:view" })`).
 - E2E-сценарий — `test/e2e/platform.e2e.ts` (файлы S3/local, задачи, биометрия/passkeys), агенты —
-  `test/e2e/agents.e2e.ts` (хелпер `test/e2e/agent.ts`: настоящий агент из `agent/dist` с воркерами echo/echo-release/netprobe; выпуск агента — `test/e2e/agent-releases.e2e.ts`),
+  `test/e2e/agents.e2e.ts` (хелпер `test/e2e/agent.ts`: настоящий агент из `agent/dist` с воркерами echo/echo-release/netprobe; сборки агента — `test/e2e/agent-releases.e2e.ts`),
   клиент `test/e2e/client.ts`, письма — Mailpit API.
 - Bootstrapper — `src/modules/socket/socket.bootstrap.ts`, `src/modules/user/*bootstrap*` (AdminBootstrap, Seed).
 - Guards на маршруте — поиск `@UseGuards(` в `src/modules/auth/`.
@@ -78,7 +78,7 @@ message } }`). В main **нет ни одного вызова** (описани
   `files` и берут ссылки через `signedUrlOf`/`signedFileOf` (`file/signed-files.ts`). Геттеров `File.url`/`toDTO()`
   и `signStorageUrl` нет. Gotcha: `list.map(Dto.fromEntity)` с картой вторым аргументом не компилируется.
 
-## Точки расширения для модулей (с 25.09.2026)
+## Точки расширения для модулей
 
 Через них ветки-примеры подключают свои модули, не трогая код main.
 
@@ -97,8 +97,7 @@ userIds)` → кто из `userIds` держит viewer в принятых ко
    `contacts` = только сам, presence — никому.
 3. **Конфиг модуля.** `src/config.ts` экспортирует хелперы `positiveInt`, `nonNegativeInt`, `port`, `bool(fallback)`,
    `optionalString`, `csv` и `defineModuleConfig(section, zodSchema, values)` (ошибка → throw «Конфигурация
-   модуля «section»: …» при импорте). Настройки модуля — в `<feature>.config.ts` (например `workspace.config.ts`,
-   `push.config.ts` в ветках), в `config.ts` их не добавлять. Env модуля — в `.env.example` отдельной секцией.
+   модуля «section»: …» при импорте). Настройки модуля — в `<feature>.config.ts` (например `example.config.ts`), в `config.ts` их не добавлять. Env модуля — в `.env.example` отдельной секцией.
 4. **Письма.** `IMailTemplateData` (`mailer/mailer.types.ts`) дополняется модулем
    (`declare module "../mailer/mailer.types" { interface IMailTemplateData { "name": {...} } }`), файлы шаблона —
    во всех локалях `templates/mail/<locale>/<name>{.ejs,.txt.ejs,.subject.ejs}`. `MAIL_TEMPLATE_NAMES` удалён: тест

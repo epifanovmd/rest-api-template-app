@@ -51,9 +51,9 @@ type: project
 
 | Токен (файл)                                                       | Хелпер                                        | Реализации                                                                                                                                                                                 |
 | ------------------------------------------------------------------ | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `SECURITY_SCHEME` (`core/auth/security-scheme.ts`)                 | `asSecurityScheme`                            | `JwtSecurityScheme` (CoreModule), `ApiKeySecurityScheme` (api-key); `BotSecurityScheme` — в `example/messenger`                                                                            |
+| `SECURITY_SCHEME` (`core/auth/security-scheme.ts`)                 | `asSecurityScheme`                            | `JwtSecurityScheme` (CoreModule), `ApiKeySecurityScheme` (api-key)                                                                                                                         |
 | `JOB_HANDLER` (`core/jobs/jobs.types.ts`)                          | `asJobHandler` / `asExternalJobHandler`       | см. project_modules.md «Очереди»                                                                                                                                                           |
-| `JOB_ACCESS_POLICY` (`core/jobs`, optional)                        | `asJobAccessPolicy`                           | в main никто (`WorkspaceJobAccessPolicy` — `example/workspaces`)                                                                                                                           |
+| `JOB_ACCESS_POLICY` (`core/jobs`, optional)                        | `asJobAccessPolicy`                           | в main никто                                                                                                                                                                               |
 | `JOB_METRICS` (`core/jobs`, optional)                              | `{ provide }`                                 | `PrometheusJobMetrics` (ObservabilityModule)                                                                                                                                               |
 | `ROUTE_PROVIDER` (`core/routing/route-provider.ts`)                | `{ provide }`                                 | `StorageRouteProvider` (`/files/*`)                                                                                                                                                        |
 | `RAW_HTTP_HANDLER` (`core/routing/raw-http.ts`)                    | `{ provide }`                                 | `AgentLinkHandler` (`/api/v1/agent-link/*`, до bodyParser/CORS/лимита); пересылка `POST /internal/agent-relay` — только `AgentRelayServer` на `AGENT_RELAY_PORT`                           |
@@ -64,9 +64,9 @@ type: project
 | `SOCKET_HANDLER` / `SOCKET_EVENT_LISTENER` (socket)                | `asSocketHandler` / `asSocketListener`        | profile (handlers), auth, user, role, profile, session, file, api-key, audit, jobs (listeners)                                                                                             |
 | `SOCKET_ROOM_PROVIDER` / `SOCKET_ROOM_POLICY` (`socket-rooms.ts`)  | `asSocketRoomProvider` / `asSocketRoomPolicy` | provider: в main никто; policy: `JobRoomPolicy` (`job`), `permissionRoomPolicy`: users, roles, api-keys, audit                                                                             |
 | `PASSWORD_POLICY` (`modules/user/password-policy.ts`)              | `asPasswordPolicy`                            | `AuthPasswordPolicy` (auth)                                                                                                                                                                |
-| `FILE_USAGE_PROBE` (`modules/file/file-usage.probe.ts`, optional)  | `{ provide }`                                 | в main никто (`MessageFileUsageProbe` — `example/messenger`)                                                                                                                               |
-| `CONTACT_RELATION` (`modules/profile/profile.relations.ts`, opt.)  | `asContactRelation`                           | в main никто (contact — `example/messenger`)                                                                                                                                               |
-| `PRESENCE_AUDIENCE` (`modules/profile/profile.relations.ts`, opt.) | `asPresenceAudience`                          | в main никто (contact, chat — `example/messenger`)                                                                                                                                         |
+| `FILE_USAGE_PROBE` (`modules/file/file-usage.probe.ts`, optional)  | `{ provide }`                                 | в main никто                                                                                                                                                                               |
+| `CONTACT_RELATION` (`modules/profile/profile.relations.ts`, opt.)  | `asContactRelation`                           | в main никто                                                                                                                                                                               |
+| `PRESENCE_AUDIENCE` (`modules/profile/profile.relations.ts`, opt.) | `asPresenceAudience`                          | в main никто                                                                                                                                                                               |
 | реестр прав (`modules/permission/permission.registry.ts`)          | `definePermissions(domain, group, {...})`     | `<module>.permissions.ts`: api-key, audit, jobs, profile, role, user                                                                                                                       |
 | `GRANT_RESOLVER` (`core/auth/access.ts`)                           | `asGrantResolver`                             | `UserGrantResolver` (user) → `AccessService` ядра (права по userId, без кэша)                                                                                                              |
 | конфиг модуля (`src/config.ts`)                                    | `defineModuleConfig(section, schema, values)` | в main никто (`<feature>.config.ts` в ветках-примерах)                                                                                                                                     |
@@ -77,14 +77,12 @@ type: project
 Как пользоваться последними пятью — project_patterns.md «Точки расширения для модулей».
 Страж границ — `src/core/auth/core-boundaries.test.ts` (`src/core/**`, `src/types/**` → `src/modules/**` запрещено).
 `koa-authentication.ts` — только диспетчер по имени схемы (кэш карты, `resetSecuritySchemes()` для тестов),
-незарегистрированная схема → 500. Схемы также описаны в `tsoa.json → securityDefinitions` (`jwt`, `apiKey`;
-`bot` добавляет ветка `example/messenger`).
+незарегистрированная схема → 500. Схемы также описаны в `tsoa.json → securityDefinitions` (`jwt`, `apiKey`).
 
 ## Пути и ассеты
 
 `core/paths.ts`: `PROJECT_ROOT` (= `__dirname/../..`, одинаково для `src/core` и `build/core`),
-`TEMPLATES_DIR` (`templates/`), `resolveFromRoot`. `.env*`, `STORAGE_LOCAL_PATH` (и пути в конфигах модулей,
-например ключ Firebase в `example/messenger`) — от корня проекта, не от cwd. Шаблоны писем — `templates/mail/<locale>/<name>{.ejs,.txt.ejs,.subject.ejs}`
+`TEMPLATES_DIR` (`templates/`), `resolveFromRoot`. `.env*`, `STORAGE_LOCAL_PATH` (и пути в конфигах модулей) — от корня проекта, не от cwd. Шаблоны писем — `templates/mail/<locale>/<name>{.ejs,.txt.ejs,.subject.ejs}`
 (+ `footer.txt.ejs` в локали, общие `templates/mail/layout.ejs`/`layout.txt.ejs`), рендер
 `MailRenderer.render(name, locale, data)` с кэшем. Спецификация — `src/routing/swagger.json`
 (tsoa `outputDirectory`), импортируется JSON-ом → попадает в build.
@@ -96,7 +94,7 @@ type: project
 `MAIL_NOT_CONFIGURED` (503), задача — `JobError` без повторов; dev/test → письмо в лог. Локали `ru`/`en`
 (`resolveMailLocale`, язык — `profile.locale`). Шаблоны main: `otp-code`, `reset-password`, `email-change-code`,
 `email-change-notice`; типы данных — `IMailTemplateData` (`mailer.types.ts`), модули дополняют его
-`declare module "../mailer/mailer.types"` (так `workspace-invite` в `example/workspaces`). `MAIL_TEMPLATE_NAMES`
+`declare module "../mailer/mailer.types"` (так добавляют свои письма модули веток-примеров). `MAIL_TEMPLATE_NAMES`
 нет: `mail-renderer.test.ts` берёт имена из `templates/mail/<locale>/*.subject.ejs`, требует одинаковые наборы во
 всех локалях, все три файла и `footer.txt.ejs`. `UserService._sendVerificationCode` отзывает код, если письмо не
 встало в очередь. Смена email — `EmailChangeService` (код на новый адрес, `POST user/my/email/confirm`).
@@ -112,7 +110,7 @@ type: project
 - presence: `SocketClientRegistry` (`modules/socket/socket-client-registry.ts`) — локальная карта сокетов
   процесса + `IPresenceStore`: `RedisPresenceStore` (`SET presence:<userId>` из socket id, TTL 60 с,
   heartbeat `touch` раз в 20 с) или `MemoryPresenceStore`; `isOnline`/`filterOnline` — async; `stop()`
-  снимает свои записи. Используется только для `isOnline`/`filterOnline` (presence; в `example/messenger` — ещё push офлайн), доставка — комнатами;
+  снимает свои записи. Используется только для `isOnline`/`filterOnline` (presence), доставка — комнатами;
 - адаптер Socket.IO (`@socket.io/redis-adapter`, pub/sub) — `SocketEmitterService.joinRoom/leaveRoom/
 disconnectUser/disconnectSession` работают на всех процессах;
 - отзыв access-токенов (`core/auth/session-revocation.ts`: `revoked:session:<id>`, `revoked:user:<id>`);
@@ -130,7 +128,7 @@ disconnectUser/disconnectSession` работают на всех процесс�
 
 `ModuleLoader.ensureInjectable` сам навешивает `injectable()`, если забыли `@Injectable()`.
 Все биндинги `inSingletonScope()`; повторный bind класса пропускается (`isBound`).
-Доменные декораторы маршрутов живут в модулях (например `@WorkspaceRole` в `example/workspaces`); middleware
+Доменные декораторы маршрутов живут в модулях (в main таких нет); middleware
 tsoa создаётся без DI — сервисы брать из `iocContainer` (`src/app.container`).
 
 ## Базовые классы и контракты (`core`)
@@ -215,7 +213,7 @@ s3.{bucket, region, endpoint, publicEndpoint, accessKeyId, secretAccessKey, forc
 (+ `trustProxy`, `docsEnabled`, `docsServers` ← `API_DOCS_SERVERS` csv, `shutdown.*`), `logging`, `redis.url`,
 `rateLimit`, `cors.allowedOrigins`, `auth.jwt.{secretKey ≥ 32, accessTtl, refreshTtlDays, refreshCookie}`,
 `auth.{admin, otp, resetPassword, webAuthn}`, `database.postgres` (ssl, pool, таймауты, `migrationsRun`),
-`email.smtp`. Секций модулей (workspace, firebase) больше нет. `superRefine` в production: пароль БД, не `*` в
+`email.smtp`. Секций предметных модулей нет. `superRefine` в production: пароль БД, не `*` в
 CORS, `REDIS_URL`, `S3_BUCKET` + ключи при `STORAGE_DRIVER=s3`. В тестах JWT/admin — `testOnly`.
 Экспортируемые хелперы схем: `positiveInt`, `nonNegativeInt`, `port`, `bool(fallback)`, `optionalString`, `csv`;
 `defineModuleConfig(section, schema, values)` — `safeParse`, ошибка → `Error("Конфигурация модуля «section»: …")`
@@ -230,7 +228,7 @@ Env: `APP_ROLE`, `APP_PUBLIC_URL`, `JOBS_*`, `STORAGE_*`, `S3_*` (`S3_PUBLIC_END
 `applicationName`, `maxQueryExecutionTime` (slow log), pool, `connectionTimeoutMillis`, `statement_timeout`.
 Сущности — из `@Module({ entities })`; тест `core/db/entity-registry.test.ts`. Миграции — список
 `src/migrations/index.ts`; в main **одна базовая** `InitialSchema1790353961289`
-(`src/migrations/1790353961289-InitialSchema.ts`, сгенерирована после разделения, только базовые таблицы: users,
+(`src/migrations/1790353961289-InitialSchema.ts`, только базовые таблицы: users,
 roles, permissions, role_permissions, user_roles, user_permissions, profiles, privacy_settings, files, api_keys,
 audit_events, sessions, email_change_requests, otp, reset_password_tokens, biometrics, passkeys,
 passkey_challenges, job_runs). **Больше не пересоздаётся**: на неё опираются ветки-примеры, их миграции идут поверх.
@@ -250,7 +248,7 @@ pino: уровень `LOG_LEVEL`, `pino-pretty` только при `LOG_PRETTY`
 Юнит: Mocha (`.mocharc.yml`: `require: tsx`, `spec: src/**/*.test.ts`, timeout 10s) + Chai + Sinon.
 Хелперы `src/test/helpers.ts`: `createMockRepository`, `createMockQueryBuilder`, `createMockEventBus`,
 `createMockEmitter`, `createMockEntityManager`, `createMockDataSource`, `uuid/uuid2/uuid3`.
-На 25.09.2026 (после разделения): 94 тест-файла, **873 passing, 13 pending** (pending — интеграции без env: `TEST_DATABASE_URL`
+На 25.09.2026: 94 тест-файла, **873 passing, 13 pending** (pending — интеграции без env: `TEST_DATABASE_URL`
 для `jobs.integration.test.ts`, `TEST_S3_ENDPOINT` для `s3-file.storage.test.ts`).
 
 E2E: `yarn test:e2e` (`.mocharc.e2e.yml`: `test/e2e/**/*.e2e.ts`, `setup.ts` — корневые хуки, timeout 30s).
@@ -258,8 +256,8 @@ E2E: `yarn test:e2e` (`.mocharc.e2e.yml`: `test/e2e/**/*.e2e.ts`, `setup.ts` —
 `NODE_ENV=test`), перед этим `DROP/CREATE DATABASE` (имя обязано содержать `e2e|test`) и `FLUSHDB` Redis
 (база ≠ 0, по умолчанию `/15`). Env `E2E_*` (Postgres, Redis, SMTP, `E2E_MAILPIT_URL`, `E2E_S3_*`,
 `E2E_STORAGE_DRIVER`), умолчания — dev-compose. Файлы: `auth`, `user` (профиль, email, пароль и удаление,
-администрирование, сессии, аудит), `agents` (настоящий агент версии agent-sdk + воркер echo: регистрация, статус и манифест, настройки, fetch, demo.echo быстрая/долгая/файл/отмена, relay через вторую копию, отложенная замена, offline ≤ 5 с, метрики, журнал, перезапуск, выпуск), `nodes` (привязка агента, netprobe и матрица), `platform` (файлы S3/local, задачи, api-keys,
-биометрия/passkeys); ветки-примеры добавляют свои (`messenger.e2e.ts`, блоки в `platform`). `client.ts`
+администрирование, сессии, аудит), `agents` (настоящий агент версии agent-sdk + воркер echo: регистрация, статус и манифест, настройки, fetch, demo.echo быстрая/долгая/файл/отмена, relay через вторую копию, отложенная замена, offline ≤ 5 с, метрики, журнал, перезапуск, сборки агента), `nodes` (привязка агента, netprobe и матрица), `platform` (файлы S3/local, задачи, api-keys,
+биометрия/passkeys); ветки-примеры добавляют свои. `client.ts`
 (HTTP-клиент, пишет `calledEndpoints`),
 `zz-coverage.e2e.ts` — последний: каждый path+method из `swagger.json` должен быть вызван.
 
@@ -275,10 +273,10 @@ E2E: `yarn test:e2e` (`.mocharc.e2e.yml`: `test/e2e/**/*.e2e.ts`, `setup.ts` —
 - `Dockerfile`: стадии deps → builder → prod-deps → `api` (tini, без yarn, `USER node`, `templates/`,
   `VOLUME /app/files`, HEALTHCHECK `/ping`) → `worker` (= api + `ffmpeg`, последняя стадия — дефолт).
   `APP_VERSION` build-arg; deps/prod-deps ставят agent-sdk архивом с GitHub Release (ссылка в package.json); стадия
-  `agent-release` (golang:1.26-alpine, `agent/release.sh` → выпуск воркеров проекта, секрет `agent_signing_key`)
-  → `/app/agent-release` (`AGENT_RELEASES_DIR`); агента в образе нет — из выпусков GitHub.
+  `agent-release` (golang:1.26-alpine, `agent/release.sh` → сборки воркеров проекта, секрет `agent_signing_key`)
+  → `/app/agent-release` (`AGENT_RELEASES_DIR`); агента в образе нет — из релизов GitHub.
   `agent/docker/Dockerfile` — агент `AGENT_VERSION` (1.1.0, GitHub Release, sha256 по
-  manifest) + python 3.12-slim (без SDK) + `agent/workers` (echo) + netprobe (из того же выпуска) →
+  manifest) + python 3.12-slim (без SDK) + `agent/workers` (echo) + netprobe (из тех же сборок) →
   `/usr/local/bin/netprobe`, конфиг
   `agent/docker/agent.yaml`, том `/var/lib/agent`. На машине: `agent/dev.sh` —
   `yarn agent|agent:start|stop|status|logs` (`AGENT_DIR`, по умолчанию `.agent/`; агент — `agent/dist`),
@@ -291,10 +289,10 @@ E2E: `yarn test:e2e` (`.mocharc.e2e.yml`: `test/e2e/**/*.e2e.ts`, `setup.ts` —
 - `docker-compose.dev.yml`: Postgres, Redis, Mailpit (1025/8025), SeaweedFS (8333, `storage`/`storage12345`),
   `s3-init` создаёт bucket-ы `rest-api` и `e2e`.
 - `.gitignore`/`.dockerignore`: Python `__pycache__/`, `*.pyc` игнорируются (из git убраны). `firebaseAccount.json`
-  (ключ Firebase для `example/messenger`) игнорируется и в main — чтобы локальный ключ не попал в коммит.
+  (ключ сервисного аккаунта) игнорируется — чтобы локальный ключ не попал в коммит.
 - CI `.github/workflows/ci.yml` (push и pull_request в `main`; ветки-примеры CI не запускают): verify (generate + `git diff --exit-code src/routing`, lint, typecheck, test,
   build), migrations (чистый Postgres + дрейф через `migration:generate CiDrift`), e2e (матрица `storage: [s3, local]`,
-  SeaweedFS запускается `docker run`; перед ним setup-go + `yarn agent:fetch` (linux-amd64); стенд сам собирает выпуск воркеров (release.sh, свой ключ) и раздаёт выпуск агента с локального сервера — в GitHub не ходит), audit (`continue-on-error`), agent-worker (py_compile `agent/workers/echo/main.py`), docker (api/worker/agent + Trivy CRITICAL/HIGH, ignore-unfixed). `release.yml`: тег `v*` →
+  SeaweedFS запускается `docker run`; перед ним setup-go + `yarn agent:fetch` (linux-amd64); стенд сам собирает воркеры проекта (release.sh, свой ключ) и раздаёт сборки агента с локального сервера — в GitHub не ходит), audit (`continue-on-error`), agent-worker (py_compile `agent/workers/echo/main.py`), docker (api/worker/agent + Trivy CRITICAL/HIGH, ignore-unfixed). `release.yml`: тег `v*` →
   GHCR, amd64+arm64, worker без суффикса, api `-api`, agent `-agent`.
   `deploy.yml`: после Release или вручную — scp `docker-compose.yml`, `pull` → `run --rm migrate` → `up -d`.
   `Makefile`: `deploy` (compose/pull/migrate/up), `env`, `logs`, `backup`, `build`.

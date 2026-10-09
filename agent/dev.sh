@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Агент на этой машине к API из .env.development (`yarn dev`): связь, воркеры, настройки и
 # метрики держит агент (github.com/epifanovmd/agent). Настройки — agent/local/agent.yaml:
-# воркер проекта echo (из исходников agent/workers/echo) и netprobe (проверка сети, из выпуска
+# воркер проекта echo (из исходников agent/workers/echo) и netprobe (проверка сети, из сборок
 # агента).
 #
 #   yarn agent                  агент на переднем плане (Ctrl+C — остановка агента и воркеров)
@@ -10,9 +10,9 @@
 #   yarn agent:status           запущен ли
 #   yarn agent:logs             журнал фонового агента
 #
-# Программа агента — AGENT_BIN, иначе <AGENT_DIR>/bin/agent или выпуск агента той же версии, что
+# Программа агента — AGENT_BIN, иначе <AGENT_DIR>/bin/agent или сборки агента той же версии, что
 # agent-sdk, в agent/dist/v<версия> (нет — скачивается с GitHub: yarn agent:fetch под эту
-# машину). Воркер netprobe — NETPROBE_BIN, <AGENT_DIR>/bin/netprobe или сборка из того же выпуска
+# машину). Воркер netprobe — NETPROBE_BIN, <AGENT_DIR>/bin/netprobe или сборка оттуда же
 # (netprobe-<версия>-<os>-<arch> по manifest.json); сборки нет — агент запускается без него.
 #
 # Регистрация — AGENT_BOOTSTRAP_TOKEN из env-файла (тот же, что у API), адрес API —
@@ -48,7 +48,7 @@ platform() {
   echo "$os-$arch"
 }
 
-# Каталог выпуска агента той же версии, что agent-sdk в package.json.
+# Каталог сборок агента той же версии, что agent-sdk в package.json.
 release_dir() {
   local v
   v="$(node -p "(require('./package.json').dependencies['agent-sdk'].match(/agent-sdk-([^/]+)\\.tgz$/) || [])[1] || ''")"
@@ -59,7 +59,7 @@ release_dir() {
   echo "agent/dist/v$v"
 }
 
-# Программа агента: AGENT_BIN, <AGENT_DIR>/bin/agent или выпуск в RELEASE_DIR (нет — скачать).
+# Программа агента: AGENT_BIN, <AGENT_DIR>/bin/agent или сборка в RELEASE_DIR (нет — скачать).
 binary() {
   local candidate file="$RELEASE_DIR/agent-$(platform)"
   for candidate in "${AGENT_BIN:-}" "$RUN_DIR/bin/agent"; do
@@ -69,13 +69,13 @@ binary() {
     fi
   done
   if [ ! -x "$file" ]; then
-    echo "Выпуск агента — с GitHub в $RELEASE_DIR" >&2
+    echo "Сборки агента — с GitHub в $RELEASE_DIR" >&2
     AGENT_VERSION="${RELEASE_DIR##*/v}" AGENT_PLATFORMS="$(platform)" node agent/fetch.mjs >/dev/null
   fi
   echo "$file"
 }
 
-# Воркер netprobe из выпуска (release: true в agent/local/agent.yaml): сборка ставится в
+# Воркер netprobe из сборок агента (release: true в agent/local/agent.yaml): сборка ставится в
 # <dataDir>/workers/netprobe, как это делает `agent install --worker netprobe`. Сборки нет —
 # блок между метками netprobe:begin/end убирается из своей копии настроек.
 netprobe() {

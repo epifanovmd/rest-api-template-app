@@ -48,7 +48,7 @@ declare module "../socket/socket.types" {
     /** Агент удалён — `agents` и `agent_<id>`. */
     "agent:deleted": (...args: [{ id: string }]) => void;
     /**
-     * В источнике выпусков другая версия агента — `agents`: список
+     * Вышла другая версия агента — `agents`: список
      * кандидатов на обновление (`GET /api/v1/agent-releases`) изменился.
      */
     "agent:release": (...args: [IAgentReleaseChangeDto]) => void;

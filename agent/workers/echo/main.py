@@ -1,5 +1,5 @@
 """Воркер echo — воркер проекта без SDK на Python (только стандартная библиотека, Python ≥ 3.10).
-Запуск — ./run; версия — файл VERSION рядом (agent/release.sh пакует каталог в выпуск).
+Запуск — ./run; версия — файл VERSION рядом (agent/release.sh пакует каталог в архив).
 
 HTTP-сервис на unix-сокете AGENT_WORKER_SOCKET (формат — sdk/spec §12 агента):
 

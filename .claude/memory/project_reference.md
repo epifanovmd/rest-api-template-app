@@ -4,36 +4,34 @@ description: Справочник main — стек, карта документ
 type: project
 ---
 
-# REST API шаблон (базовая платформа, ветка main) — справочник
+# Справочник (базовая платформа, ветка main)
 
 Эндпоинты, сущности, события и ошибки каждого модуля — в `src/modules/<name>/README.md` (здесь не
 дублируются). Точная карта ядра — `project_architecture.md`, сводка модулей, очередей и веток — `project_modules.md`,
 доступ — `project_access_control.md`, эталоны и точки расширения — `project_patterns.md`. Спецификация —
 `src/routing/swagger.json` (72 операции, все `/api/v1/...`), Swagger UI — `/api-docs`. Предметные модули
-(workspace, мессенджер) — в ветках `example/workspaces`, `example/messenger`.
+— в ветках-примерах (`example/*`).
 
 ## Стек
 
-| Компонент     | Технология                                                                                                                                                                   |
-| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Runtime       | Node.js >= 22.13 (Docker 24-alpine), TypeScript ~6, сборка `tsc`                                                                                                             |
-| HTTP          | Koa 3 + tsoa 6.6.0 (закреплён), `@koa/router` 14, `@koa/multer`, koa2-swagger-ui                                                                                             |
-| DI            | inversify 8                                                                                                                                                                  |
-| БД            | PostgreSQL 16 + TypeORM 1.x                                                                                                                                                  |
-| Очередь задач | pg-boss 12 (схема `pgboss` в той же БД)                                                                                                                                      |
-| Межпроцессное | Redis (ioredis 6), `@socket.io/redis-adapter`                                                                                                                                |
-| Real-time     | Socket.IO 4 (только websocket)                                                                                                                                               |
-| Хранилище     | `@aws-sdk/client-s3` + presigner (S3/SeaweedFS) или локальный диск                                                                                                           |
-| Auth          | jsonwebtoken (HS256), scrypt (bcrypt — только проверка старых хешей), @simplewebauthn/server 14                                                                              |
-| Почта         | nodemailer 10 + EJS, шаблоны `templates/mail/<locale>/`                                                                                                                      |
-| Медиа         | sharp, blurhash, ffmpeg/ffprobe (только образ worker), file-type                                                                                                             |
-| Валидация     | Zod 4                                                                                                                                                                        |
-| Наблюдаемость | pino, prom-client, Sentry                                                                                                                                                    |
-| Безопасность  | helmet (koa-helmet), CORS, koa-ratelimit                                                                                                                                     |
-| Тесты         | Mocha 12 + Chai 6 + Sinon 22; e2e — `test/e2e` против настоящего сервера                                                                                                     |
-| Агенты        | `agent-sdk` 1.1.0 (GitHub Release, github.com/epifanovmd/agent), агент — из выпусков GitHub, всё про узлы — `agent/` (воркеры, выпуск воркеров `agent/release`, dev, Docker) |
-
-firebase-admin в main нет (push — ветка `example/messenger`).
+| Компонент     | Технология                                                                                                                                                                  |
+| ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Runtime       | Node.js >= 22.13 (Docker 24-alpine), TypeScript ~6, сборка `tsc`                                                                                                            |
+| HTTP          | Koa 3 + tsoa 6.6.0 (закреплён), `@koa/router` 14, `@koa/multer`, koa2-swagger-ui                                                                                            |
+| DI            | inversify 8                                                                                                                                                                 |
+| БД            | PostgreSQL 16 + TypeORM 1.x                                                                                                                                                 |
+| Очередь задач | pg-boss 12 (схема `pgboss` в той же БД)                                                                                                                                     |
+| Межпроцессное | Redis (ioredis 6), `@socket.io/redis-adapter`                                                                                                                               |
+| Real-time     | Socket.IO 4 (только websocket)                                                                                                                                              |
+| Хранилище     | `@aws-sdk/client-s3` + presigner (S3/SeaweedFS) или локальный диск                                                                                                          |
+| Auth          | jsonwebtoken (HS256), scrypt (bcrypt — только проверка старых хешей), @simplewebauthn/server 14                                                                             |
+| Почта         | nodemailer 10 + EJS, шаблоны `templates/mail/<locale>/`                                                                                                                     |
+| Медиа         | sharp, blurhash, ffmpeg/ffprobe (только образ worker), file-type                                                                                                            |
+| Валидация     | Zod 4                                                                                                                                                                       |
+| Наблюдаемость | pino, prom-client, Sentry                                                                                                                                                   |
+| Безопасность  | helmet (koa-helmet), CORS, koa-ratelimit                                                                                                                                    |
+| Тесты         | Mocha 12 + Chai 6 + Sinon 22; e2e — `test/e2e` против настоящего сервера                                                                                                    |
+| Агенты        | `agent-sdk` 1.1.0 (GitHub Release, github.com/epifanovmd/agent), агент — из релизов GitHub, всё про узлы — `agent/` (воркеры, сборки воркеров `agent/release`, dev, Docker) |
 
 ## Документация модулей (`src/modules/*/README.md`)
 
@@ -105,7 +103,7 @@ EFileStatus:       pending | processing | ready | failed
 EJobRunStatus:     queued | running | completed | failed | cancelled
 EPrivacyLevel:     everyone | contacts | nobody
 Roles (const):     admin (= SUPERUSER_ROLE) | user | guest
-AuthContext.kind:  user | bot | service   (bot — только в example/messenger)
+AuthContext.kind:  user | bot | service | agent   (схемы `bot` в main нет)
 APP_ROLE:          api | worker | all
 ```
 
@@ -126,13 +124,12 @@ APP_ROLE:          api | worker | all
   `WEB_AUTHN_RP_*`.
 - БД: `POSTGRES_*` (host, port, db, user, password, ssl, ssl CA, pool, таймауты, slow query), `DB_MIGRATIONS_RUN`.
 - Почта: `SMTP_HOST` (пусто — выкл.), `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`.
-- Env модулей веток-примеров (`WEB_URL_WORKSPACE_INVITE`, `WORKSPACE_INVITE_TTL_HOURS`,
-  `FIREBASE_SERVICE_ACCOUNT_PATH`) в main **нет** — они в `<feature>.config.ts` и `.env.example` веток.
+- Env предметных модулей в main **нет** — они в `<feature>.config.ts` и `.env.example` веток-примеров.
 - Compose: `ENV_FILE`, `IMAGE`, `TAG`, `API_PORTS`, `S3_ROOT_ACCESS_KEY`/`S3_ROOT_SECRET_KEY`, `S3_PORTS`;
   агенты (сервер) — `AGENT_BOOTSTRAP_TOKEN`, `AGENT_STATUS_INTERVAL_MS`, `AGENT_METRICS_INTERVAL_MS`,
   `AGENT_METRICS_STORE_INTERVAL_MS`, `AGENT_METRICS_RETENTION_HOURS`, `AGENT_EVENTS_RETENTION_DAYS`,
   `AGENT_OFFLINE_GRACE_MS` (3000), `AGENT_RELAY_SECRET`, `AGENT_RELAY_PORT` (8182), `AGENT_RELAY_HOST` (127.0.0.1; compose api — 0.0.0.0), `INSTANCE_URL` (адрес сервера пересылки), `AGENT_RELEASES_DIR`, `AGENT_RELEASES_GITHUB|RANGE|URL|TOKEN|PROXY|CHECK_INTERVAL_MS|PUBLIC_KEY`, `AGENT_UPDATE_PUBLIC_KEY` (csv), `AGENT_INSTANCE` (rest),
-  `AGENT_PUBLIC_URL`, `AGENT_VALIDATE_EVENTS` (off|log|reject, по умолчанию log); выпуск воркеров — `AGENT_SIGNING_KEY`, `AGENT_SIGNING_KEY_FILE` (compose), `AGENT_RELEASE_OUT`, `AGENT_RELEASE_TOOL`, `AGENT_RELEASE_VERSION`, `AGENT_PLATFORMS`, `AGENT_GO_IMAGE`; `yarn agent:fetch` — `AGENT_VERSION`, `AGENT_PLATFORMS`; агент — `AGENT_SERVER_URL`,
+  `AGENT_PUBLIC_URL`, `AGENT_VALIDATE_EVENTS` (off|log|reject, по умолчанию log); сборки воркеров — `AGENT_SIGNING_KEY`, `AGENT_SIGNING_KEY_FILE` (compose), `AGENT_RELEASE_OUT`, `AGENT_RELEASE_TOOL`, `AGENT_RELEASE_VERSION`, `AGENT_PLATFORMS`, `AGENT_GO_IMAGE`; `yarn agent:fetch` — `AGENT_VERSION`, `AGENT_PLATFORMS`; агент — `AGENT_SERVER_URL`,
   `AGENT_ENROLL_TOKEN`, `AGENT_DATA_DIR`, `AGENT_NAME`, `AGENT_LABELS`, `AGENT_UPDATE_MODE`, `AGENT_CONFIG`.
 - E2E: `E2E_POSTGRES_*`, `E2E_REDIS_URL`, `E2E_SMTP_*`, `E2E_MAILPIT_URL`, `E2E_S3_*`, `E2E_STORAGE_DRIVER`,
   `E2E_LOG_LEVEL`, `E2E_AGENT_DIST_DIR`, `E2E_AGENT_BIN`; интеграционные юнит-тесты — `TEST_DATABASE_URL`,

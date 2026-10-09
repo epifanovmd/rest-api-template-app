@@ -7,14 +7,11 @@ type: project
 Подробности каждого модуля (сущности, эндпоинты, события, ошибки, задачи) — в `src/modules/<name>/README.md`,
 здесь не дублируются. Каркас нового модуля — `yarn gen:module <name>`.
 
-## Ветки (с 25.09.2026)
+## Ветки
 
 - `main` — только базовая платформа (ядро, пользователи и доступ, сессии, файлы, задачи, почта, сокеты).
   Предметных модулей нет; блок «Модули проекта» в `src/app.module.ts` пуст.
-- `example/workspaces` = main + модуль `workspace` (пространства, участники с ролями, приглашения).
-- `example/messenger` = main + chat (с chat-moderation), message, contact, call, poll, sync, push, bot —
-  бэкенд фронтенда react-vite.
-- `archive/full-before-split` — снимок до разделения (всё вместе), источник для веток-примеров.
+- Ветки-примеры этого шаблона (`example/*`) = main + предметные модули примера и их миграции.
 - Общий код правится в main и вливается в примеры (`git merge main`); в ветке-примере меняется только код
   её модулей. Модули main не импортируют модули примеров — связь только через точки расширения
   (project_patterns.md «Точки расширения для модулей»).
@@ -131,7 +128,7 @@ session, file, api-key, audit, jobs). Комнаты: `user_<id>` (всегда,
   (по умолчанию `showLastOnline`/`showAvatar` — everyone, `showPhone` — contacts). Уровень `contacts` решают
   провайдеры `CONTACT_RELATION`, аудиторию `user:online`/`user:offline` и `presence:init` — `PRESENCE_AUDIENCE`
   (`profile.relations.ts`). **В main провайдеров нет**: `contacts` открывает поле только самому пользователю,
-  presence не рассылается никому. В `example/messenger` их регистрируют contact и chat.
+  presence не рассылается никому; провайдеров добавляют предметные модули.
 - **Файлы**: `files.owner_id`; права с областью `file:view`/`file:delete` (+`:own`), `FileAccess`
   (`OwnedAccess` по `ownerId`, без создателя); маршруты `permission:file:<действие>:own`; невидимый — 404, без права
   на действие — 403; `GET /file?mine=false` с `file:view` — все файлы (по умолчанию `mine=true`, operationId
@@ -145,24 +142,24 @@ session, file, api-key, audit, jobs). Комнаты: `user_<id>` (всегда,
 
 ## Агенты (модуль `agent`, agent-sdk 1.1.0)
 
-Агент и SDK — github.com/epifanovmd/agent (локально `../alp-agent`, только читать). Сервер — `Agents` из
+Агент и SDK — github.com/epifanovmd/agent (внешняя зависимость). Сервер — `Agents` из
 `agent-sdk/server` (зависимость — архив GitHub Release
 `https://github.com/epifanovmd/agent/releases/download/v1.1.0/agent-sdk-1.1.0.tgz`, `vendor/` нет; ESM, грузится из CJS через require(esm)). Воркеры — HTTP-сервисы
 на unix-сокете **без SDK** (обязательны `GET /health`, `GET /manifest`); воркеры проекта — `agent/workers/<имя>`
 (main + исполняемый `run` + `VERSION`), демо — `agent/workers/echo` (Python, stdlib, задачи `/jobs`).
-Агент и netprobe — **из выпусков GitHub** (`agentReleases` SDK, `toAgentReleasesOptions` в agent.config.ts):
+Агент и netprobe — **из релизов GitHub** (`agentReleases` SDK, `toAgentReleasesOptions` в agent.config.ts):
 `AGENT_RELEASES_GITHUB` (epifanovmd/agent; пусто — выкл), `AGENT_RELEASES_RANGE` (^1), `AGENT_RELEASES_URL` (важнее
 github), `AGENT_RELEASES_TOKEN`, `AGENT_RELEASES_PROXY`, `AGENT_RELEASES_CHECK_INTERVAL_MS` (1 ч),
 `AGENT_RELEASES_PUBLIC_KEY` (ключ автора, по умолчанию 9yYb…uo=). Событие SDK `release` → журнал +
 `AgentReleaseChangedEvent` → сокет `agent:release` в `agents`. Бэкенд не пересобирают ради новой версии агента.
-Выпуск воркеров проекта — `agent/release` (gitignored, `yarn agent:release` = `agent/release.sh`: архивы
+Сборки воркеров проекта — `agent/release` (gitignored, `yarn agent:release` = `agent/release.sh`: архивы
 `<имя>-<версия>-<os>-<arch>.tar.gz` под `AGENT_PLATFORMS`, manifest с `artifacts: []` (версия — package.json)
 утилитой `agent-release` версии agent-sdk: `AGENT_RELEASE_TOOL` | `agent/tools/agent-release-<v>-<os>-<arch>` |
 `go run …@v<v>` | без Go — сборка в agent/tools в контейнере `golang:1.26-alpine`, том `agent-release-go`;
 каталог — `AGENT_RELEASE_OUT`). Подпись — `AGENT_SIGNING_KEY` (ключ проекта), API — `AGENT_UPDATE_PUBLIC_KEY`
-(csv → `updatePublicKeys`). Образ API собирает выпуск сам (стадия agent-release на golang, секрет
+(csv → `updatePublicKeys`). Образ API собирает воркеры проекта сам (стадия agent-release на golang, секрет
 `agent_signing_key` + build-arg `AGENT_UPDATE_PUBLIC_KEY` для ключа кеша; compose — `AGENT_SIGNING_KEY_FILE`).
-Выпуск агента локально — `agent/dist/v<v>` (`yarn agent:fetch` = `agent/fetch.mjs`): для `agent/dev.sh` и e2e.
+Сборки агента локально — `agent/dist/v<v>` (`yarn agent:fetch` = `agent/fetch.mjs`): для `agent/dev.sh` и e2e.
 Экземпляр на узле — `AGENT_INSTANCE` (по умолчанию `rest`, пусто — default): `AgentService.instance()`
 → `installCommand({instance})`, SSH-задачи — `instance` в данных задачи → `install.sh --instance … [--uninstall]`.
 Локальный агент пользователя может работать из `agent/release/agent-darwin-arm64` или `agent/dist/…` — не

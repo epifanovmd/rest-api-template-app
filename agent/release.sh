@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2016 # сценарий sh для контейнера — в одинарных кавычках, раскрывается там
-# Выпуск воркеров проекта — каталог agent/release (его раздаёт API: AGENT_RELEASES_DIR). Агента
-# и netprobe здесь нет: бэкенд берёт их из выпусков GitHub сам (AGENT_RELEASES_*).
+# Сборки воркеров проекта — каталог agent/release (его раздаёт API: AGENT_RELEASES_DIR). Агента
+# и netprobe здесь нет: бэкенд берёт их из релизов GitHub сам (AGENT_RELEASES_*).
 #
 #   1. Каждый каталог agent/workers/<имя> с файлом VERSION и исполняемым run упаковывается в
 #      архив <имя>-<версия>-<os>-<arch>.tar.gz под каждую платформу AGENT_PLATFORMS (по
 #      умолчанию linux и darwin × amd64 и arm64; содержимое одно и то же — агент берёт сборку
 #      под свою ОС и процессор).
 #   2. manifest.json — утилитой agent-release (`manifest DIR VERSION --worker NAME=VERSION`):
-#      сборок агента нет (artifacts: []), версия выпуска — версия проекта из package.json. С
+#      сборок агента нет (artifacts: []), версия сборок — версия проекта из package.json. С
 #      AGENT_SIGNING_KEY (закрытый ключ проекта из `agent-release keygen`) воркеры подписаны —
 #      API нужен открытый ключ пары AGENT_UPDATE_PUBLIC_KEY; без ключа подписи нет (установка
 #      сверяет только sha256, обновление воркера агент не примет).
@@ -129,9 +129,9 @@ main() {
   if [ -n "${AGENT_SIGNING_KEY:-}" ]; then
     echo "Воркеры подписаны ключом проекта: API нужен AGENT_UPDATE_PUBLIC_KEY этой пары" >&2
   else
-    echo "Без AGENT_SIGNING_KEY: воркеры проекта в выпуске без подписи" >&2
+    echo "Без AGENT_SIGNING_KEY: воркеры проекта собраны без подписи" >&2
   fi
-  echo "Выпуск воркеров проекта $version — в $OUT (AGENT_RELEASES_DIR для API)"
+  echo "Сборки воркеров проекта $version — в $OUT (AGENT_RELEASES_DIR для API)"
 }
 
 main "$@"

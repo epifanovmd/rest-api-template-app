@@ -9,7 +9,7 @@ import { UserService } from "./user.service";
 /** Пароль демо-пользователей (только development). */
 export const SEED_USER_PASSWORD = "test1234";
 
-/** Демо-пользователи. Чаты и сообщения с ними засевает модуль мессенджера. */
+/** Демо-пользователи. */
 export const SEED_USERS = [
   {
     email: "alice@test.local",

@@ -13,10 +13,10 @@
 Chai + Sinon, сборка `tsc`. Агенты — github.com/epifanovmd/agent: серверный
 `agent-sdk` (архив с GitHub Release агента, ссылка в `package.json`); всё про агента
 на узлах — в `agent/` (README простыми словами): воркеры проекта без SDK
-(`agent/workers/<имя>`), выпуск воркеров проекта (`agent/release`, собирается
-`agent/release.sh`), локальный запуск (`agent/dev.sh`, `agent/local`; выпуск агента —
+(`agent/workers/<имя>`), сборки воркеров проекта (`agent/release`, собираются
+`agent/release.sh`), локальный запуск (`agent/dev.sh`, `agent/local`; сборки агента —
 `agent/dist`, `yarn agent:fetch`), образ (`agent/docker`). Агента и `netprobe` бэкенд берёт
-из выпусков GitHub сам (`AGENT_RELEASES_*`) и замечает новые версии.
+из релизов GitHub сам (`AGENT_RELEASES_*`) и замечает новые версии.
 Node >= 22.13 (Docker — 24 LTS). Роль процесса — `APP_ROLE=api|worker|all`.
 
 ## Команды
@@ -34,8 +34,8 @@ yarn test:e2e             # интеграционный набор test/e2e/*.e
 yarn gen:module <name>    # каркас модуля по конвенциям (--dry-run — список файлов)
 yarn agent                # агент с воркерами echo и netprobe (agent/local/agent.yaml; AGENT_BOOTSTRAP_TOKEN)
 yarn agent:start | agent:stop [--force] | agent:status | agent:logs   # тот же агент в фоне
-yarn agent:release        # выпуск воркеров проекта agent/release (AGENT_RELEASES_DIR)
-yarn agent:fetch          # выпуск агента с GitHub в agent/dist (yarn agent, e2e)
+yarn agent:release        # собрать воркеры проекта в agent/release (AGENT_RELEASES_DIR)
+yarn agent:fetch          # скачать сборки агента с GitHub в agent/dist (yarn agent, e2e)
 yarn migration:generate src/migrations/<Name> | migration:run | migration:revert
 yarn migration:run:prod   # миграции из build/ (в контейнере)
 ```

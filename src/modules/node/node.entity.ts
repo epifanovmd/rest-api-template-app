@@ -47,7 +47,7 @@ export class Node {
   @JoinColumn({ name: "owner_id" })
   owner!: User | null;
 
-  /** Кто создал (или выпустил токен, которым зарегистрирован агент). */
+  /** Кто создал (или создал токен, которым зарегистрирован агент). */
   @Column({ name: "created_by_id", type: "uuid", nullable: true })
   createdById!: string | null;
 

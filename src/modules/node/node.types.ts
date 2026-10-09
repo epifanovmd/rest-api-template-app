@@ -60,7 +60,7 @@ export const nodeRoom = (nodeId: string): string =>
  */
 export const NODE_JOB_SCOPE = NODE_ROOM_TYPE;
 
-/** Воркер проверки сети из выпуска агента: ставится вместе с агентом. */
+/** Воркер проверки сети из сборок агента: ставится вместе с агентом. */
 export const NETPROBE_WORKER = "netprobe";
 
 /** Очередь установки агента по SSH. */
@@ -91,7 +91,7 @@ export const NODE_INSTALL_TOKEN_TTL_MINUTES = 24 * 60;
 export const NODE_SSH_TOKEN_TTL_MINUTES = 60;
 
 /**
- * Проверка сети между узлами: воркер `netprobe` из выпуска агента. Цели —
+ * Проверка сети между узлами: воркер `netprobe` из сборок агента. Цели —
  * его настройка `targets`, итоги — его метрики (`metrics.workers.netprobe`).
  */
 export const NETPROBE = {
@@ -132,7 +132,7 @@ export interface INodeSshJobData {
 export interface INodeInstallJobData extends INodeSshJobData {
   tokenId: string;
   tokenEnc: string;
-  /** Воркеры из выпуска (`--worker`). */
+  /** Воркеры с сервера (`--worker`). */
   workers: string[];
 }
 

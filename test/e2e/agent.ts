@@ -16,10 +16,10 @@ import { AGENT_DIST_DIR, BASE_URL, PROJECT_KEYS } from "./harness";
 
 /**
  * Настоящий агент (github.com/epifanovmd/agent) для сценариев: программа и
- * воркер netprobe — из выпуска агента (`AGENT_DIST_DIR`, `yarn agent:fetch`),
+ * воркер netprobe — из сборок агента (`AGENT_DIST_DIR`, `yarn agent:fetch`),
  * воркер echo — из исходников `agent/workers/echo` (python3) или как воркер
- * из выпуска (`echo-release`: прежняя версия уже стоит, обновление — из
- * выпуска воркеров проекта). Агент проверяет подпись воркеров проекта ключом
+ * со сборкой с сервера (`echo-release`: прежняя версия уже стоит, обновление — из
+ * сборок воркеров проекта). Агент проверяет подпись воркеров проекта ключом
  * проекта стенда. Работает в своём временном каталоге данных и
  * останавливается вместе с воркерами.
  */
@@ -40,10 +40,10 @@ const agentBinary = (): string => {
   return file;
 };
 
-/** Версия воркера echo, которая стоит у агента до обновления из выпуска. */
+/** Версия воркера echo, которая стоит у агента до обновления с сервера. */
 export const ECHO_PREVIOUS_VERSION = "0.9.0";
 
-/** Сборка netprobe под эту машину и её версия — из `manifest.json` выпуска. */
+/** Сборка netprobe под эту машину и её версия — из `manifest.json` сборок. */
 const netprobeBuild = (): { file: string; version: string } => {
   const [os, arch] = platform().split("-");
   const manifest = JSON.parse(
@@ -63,7 +63,7 @@ const netprobeBuild = (): { file: string; version: string } => {
 
   if (!build) {
     throw new Error(
-      `E2E: в выпуске ${AGENT_DIST_DIR} нет netprobe для ${platform()} — yarn agent:fetch`,
+      `E2E: в сборках ${AGENT_DIST_DIR} нет netprobe для ${platform()} — yarn agent:fetch`,
     );
   }
 
@@ -103,7 +103,7 @@ export interface IStartAgentOptions {
   workers?: TWorkerName[];
   /**
    * `disabled` (по умолчанию) — агент ничего не обновляет; `external` —
-   * обновляет воркеры из выпуска, но не себя.
+   * обновляет воркеры с сервера, но не себя.
    */
   updateMode?: "disabled" | "external";
 }
@@ -140,7 +140,7 @@ const workerYaml = (name: TWorkerName, dataDir: string): string => {
   }
 };
 
-/** Сборка воркера из выпуска у агента: `<dataDir>/workers/<имя>/{current,version}`. */
+/** Сборка воркера с сервера у агента: `<dataDir>/workers/<имя>/{current,version}`. */
 const installReleaseWorker = (
   dataDir: string,
   name: string,

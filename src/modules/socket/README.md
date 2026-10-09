@@ -151,11 +151,11 @@ asSocketRoomPolicy(permissionRoomPolicy(USERS_ROOM, UserPermissions.VIEW));
 События модулей объявлены в их `<feature>.socket-events.ts` дополнением интерфейсов:
 
 ```ts
-import type { PollDto } from "./dto/poll.dto";
+import type { ExampleDto } from "./dto/example.dto";
 
 declare module "../socket/socket.types" {
   interface ISocketEmitEvents {
-    "poll:voted": (...args: [PollDto]) => void;
+    "example:updated": (...args: [ExampleDto]) => void;
   }
 }
 ```

@@ -3,7 +3,7 @@
 Общие принципы, архитектура и правила — в корневых документах (`ARCHITECTURE.md`,
 `MODULE-CHEATSHEET.md`, `CONVENTIONS.md`, `CLEAN-CODE.md`, `DESIGN-PRINCIPLES.md`).
 Здесь — проектная конкретика; обновлять свободно. Описывает ветку `main` (базовая платформа);
-предметные примеры — ветки `example/workspaces`, `example/messenger` (у каждой свой `project_example.md`).
+предметные примеры — в ветках-примерах этого шаблона (`example/*`).
 
 ## User
 

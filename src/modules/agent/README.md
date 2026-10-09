@@ -1,7 +1,7 @@
 # Модуль Agent
 
 Агенты на узлах и их воркеры. Связь с агентами (регистрация, WebSocket, подтверждения и
-повторы), запросы к воркерам, настройки воркеров, наблюдение, встроенные действия, выпуск и
+повторы), запросы к воркерам, настройки воркеров, наблюдение, встроенные действия, раздачу сборок агента и
 установку ведёт `Agents` из `agent-sdk/server` (агент и SDK —
 [github.com/epifanovmd/agent](https://github.com/epifanovmd/agent), формат —
 [sdk/spec/README.md](https://github.com/epifanovmd/agent/blob/main/sdk/spec/README.md)).
@@ -34,7 +34,7 @@ src/modules/agent/
 ├── agent-enrollment.service.ts # токены регистрации + хук enroll, контекст регистрации
 ├── agent-enrollment-token.*    # сущность и репозиторий токенов
 ├── agent-access.service.ts     # доступ: право модуля или политики AGENT_ACCESS_POLICY
-├── agent.service.ts            # агенты: список, карточка, проблемы, отзыв, удаление, ключ, обновление, журнал, выпуск
+├── agent.service.ts            # агенты: список, карточка, проблемы, отзыв, удаление, ключ, обновление, журнал, сборки агента
 ├── agent-worker.service.ts     # воркеры: перезапуск, обновление, настройки, запрос к воркеру
 ├── agent-job.executor.ts       # EXTERNAL_JOB_EXECUTOR: внешние очереди модуля задач → воркеры
 ├── agent-worker-request.registry.ts # WORKER_REQUEST_HANDLER модулей: ответ на запрос воркера (onWorkerRequest)
@@ -86,13 +86,13 @@ cron `agents.prune` (раз в час). Итоги действий и «кто 
 
 ## Связь и регистрация
 
-- `/api/v1/agent-link/*` (регистрация, выпуск, `install.sh`) — `RAW_HTTP_HANDLER`: до
+- `/api/v1/agent-link/*` (регистрация, сборки агента, `install.sh`) — `RAW_HTTP_HANDLER`: до
   разбора тела, CORS и лимита запросов; в Swagger не входят. WebSocket того же пути —
   `agents.attach(HttpServer)` на ролях `api` и `all`.
-- Регистрация: общий токен окружения `AGENT_BOOTSTRAP_TOKEN` или выпущенный токен
+- Регистрация: общий токен окружения `AGENT_BOOTSTRAP_TOKEN` или созданный токен
   (`<prefix>.<secret>`, в БД — префикс и хеш; срок, отзыв, лимит использований). Метки
   токена сильнее меток агента. Новый агент — событие `AgentEnrolledEvent` с источником
-  (токен, кто выпустил, метки): по метке `nodeId` модуль узлов привязывает агента к узлу.
+  (токен, кто создал, метки): по метке `nodeId` модуль узлов привязывает агента к узлу.
 - `onEvent`: обработчики модулей (ход внешних задач, события `job.*`) → запись в
   `agent_events` → событие `AgentEventReceivedEvent` → подтверждение агенту. Ошибка — без
   подтверждения: агент пришлёт событие снова с тем же id. Подписки SDK (`subscribeEvents`,
@@ -139,7 +139,7 @@ Store общий; соединение агента живёт в одном п�
 
 | Право          | Что                                                                               |
 | -------------- | --------------------------------------------------------------------------------- |
-| `agent:view`   | агенты, воркеры, настройки (чтение), события, метрики, проблемы, выпуск           |
+| `agent:view`   | агенты, воркеры, настройки (чтение), события, метрики, проблемы, сборки агента    |
 | `agent:manage` | отзыв, удаление, смена ключа, обновление агента, перезапуск и обновление воркеров |
 | `agent:config` | запись и удаление настроек воркеров                                               |
 | `agent:fetch`  | запросы к воркерам                                                                |
@@ -284,7 +284,7 @@ previous? }`. Свободный воркер заменяется сразу (`
   версии). Занятый (`health.busy`) — ответ сразу `{ deferred: true, pending, actionId }`,
   замена — после окончания работы, её итог — событие сокета `agent:action` (`id =
 actionId`, `deferred: true`); `force: true` — заменить сразу. Обновление — только воркер
-  из выпуска (`release: true`), иначе 409 `AGENT_WORKER_NOT_RELEASED`.
+  со сборкой с сервера (`release: true`), иначе 409 `AGENT_WORKER_NOT_RELEASED`.
 - **Ошибки SDK** → `AGENT_*` (`NOT_FOUND`, `REVOKED`, `OFFLINE` 503, `ELSEWHERE` 503 — только
   без пересылки, `CONFIG_INVALID`, `ROUTE_UNDECLARED` 404, `JOB_UNKNOWN` 409,
   `REQUEST_INVALID` 400, `EVENT_UNDECLARED` 409, `UPDATE_NOT_AVAILABLE`, `TIMEOUT`, …; текст
@@ -408,7 +408,7 @@ result }` или `202 { id }` (повтор с тем же `jobId` — та же
    Образец — `agent/workers/echo` (Python, только стандартная библиотека).
 
 3. **Агенту — воркер в настройках** (`agent.yaml`, раздел `workers`): на узле его
-   прописывает `agent install --worker <имя>` (воркер из выпуска, `release: true`); локально —
+   прописывает `agent install --worker <имя>` (воркер со сборкой с сервера, `release: true`); локально —
    `agent/local/agent.yaml`, в образе — `agent/docker/agent.yaml`.
 
 ## Демо-воркер `echo`
@@ -428,17 +428,17 @@ long?, steps?, delayMs?, fail?, withOutput? }` → итог `{ text, prefix?, ou
 
 ```bash
 yarn dev               # API (AGENT_BOOTSTRAP_TOKEN в .env.development)
-yarn agent:release     # выпуск воркеров проекта agent/release (AGENT_RELEASES_DIR=agent/release)
+yarn agent:release     # собрать воркеры проекта в agent/release (AGENT_RELEASES_DIR=agent/release)
 yarn agent             # агент версии agent-sdk с воркерами echo и netprobe (agent/local/agent.yaml)
 ```
 
-Подробно про локальный запуск, выпуск и установку на узлы — [agent/README.md](../../../agent/README.md).
+Подробно про локальный запуск, сборки и установку на узлы — [agent/README.md](../../../agent/README.md).
 
-## Выпуск агента
+## Откуда берутся сборки агента
 
-Агента и воркер проверки сети `netprobe` бэкенд берёт из выпусков GitHub (`agentReleases`
+Агента и воркер проверки сети `netprobe` бэкенд берёт из релизов GitHub (`agentReleases`
 SDK): репозиторий `AGENT_RELEASES_GITHUB` (`epifanovmd/agent`; пусто — не из GitHub),
-версии `AGENT_RELEASES_RANGE` (`^1`). Вместо GitHub — каталог одного выпуска по ссылке
+версии `AGENT_RELEASES_RANGE` (`^1`). Вместо GitHub — каталог одной версии по ссылке
 `AGENT_RELEASES_URL`. Проверка новой версии — при старте и раз в
 `AGENT_RELEASES_CHECK_INTERVAL_MS` (3600000); `AGENT_RELEASES_TOKEN` — токен GitHub от лимита
 запросов; `AGENT_RELEASES_PROXY=true` — узлы скачивают агента через бэкенд, иначе бэкенд
@@ -448,7 +448,7 @@ SDK): репозиторий `AGENT_RELEASES_GITHUB` (`epifanovmd/agent`; пус
 пересобирают.
 
 Воркеры проекта — каталог `AGENT_RELEASES_DIR` (`manifest.json` от `agent-release`, архивы;
-`agent/release.sh`). Итоговый выпуск (`GET /agent-releases`, `manifest`): агент и `netprobe` —
+`agent/release.sh`). Итоговый манифест сборок (`GET /agent-releases`, `manifest`): агент и `netprobe` —
 `source: remote`, воркеры проекта — `source: local`; `remote` — версия в источнике, откуда и
 когда проверена. Ключи проверки в `install.sh`: открытые ключи проекта
 `AGENT_UPDATE_PUBLIC_KEY` (через запятую; ими подписаны воркеры проекта) и ключ автора агента
@@ -461,7 +461,7 @@ SDK): репозиторий `AGENT_RELEASES_GITHUB` (`epifanovmd/agent`; пус
 `AGENT_EVENTS_RETENTION_DAYS` (14), `AGENT_OFFLINE_GRACE_MS` (3000), `AGENT_RELAY_SECRET`
 (пересылка между копиями), `AGENT_RELAY_PORT` (8182) и `AGENT_RELAY_HOST` (`127.0.0.1`) —
 внутренний сервер пересылки, `INSTANCE_URL` (адрес сервера пересылки копии),
-[выпуск](#выпуск-агента) — `AGENT_RELEASES_*` и `AGENT_UPDATE_PUBLIC_KEY`, `AGENT_INSTANCE` (`rest` —
+[сборки агента](#откуда-берутся-сборки-агента) — `AGENT_RELEASES_*` и `AGENT_UPDATE_PUBLIC_KEY`, `AGENT_INSTANCE` (`rest` —
 экземпляр агента проекта на узле, `--instance`; пусто — по умолчанию), `AGENT_PUBLIC_URL`,
 `AGENT_VALIDATE_EVENTS` (`log`; `off | log | reject` —
 [выше](#строгость-манифеста)); `TRUST_PROXY` — адрес агента за прокси.
@@ -469,12 +469,12 @@ SDK): репозиторий `AGENT_RELEASES_GITHUB` (`epifanovmd/agent`; пус
 ## Тесты
 
 Юнит: доступ, регистрация, ошибки, история, исполнитель внешних очередей, обработчики
-запросов воркеров, настройки источника выпусков. Хранилище и
+запросов воркеров, настройки источника сборок агента. Хранилище и
 история на Postgres —
 `TEST_DATABASE_URL=postgres://…/<тестовая база> yarn test:file src/modules/agent/store/agent.store.integration.test.ts`.
-E2E — `test/e2e/agent-releases.e2e.ts`: агент и `netprobe` с локального сервера выпусков (не
+E2E — `test/e2e/agent-releases.e2e.ts`: агент и `netprobe` с локального сервера сборок (не
 GitHub), `install.sh` с ключами, ссылка 302 на сборку, новая версия в источнике — событие
-`agent:release` и кандидат на обновление, обновление воркера проекта из выпуска с подписью
+`agent:release` и кандидат на обновление, обновление воркера проекта с сервера с подписью
 ключом проекта. `test/e2e/agents.e2e.ts` — с настоящим агентом версии `agent-sdk` и воркером
 echo (хелпер `test/e2e/agent.ts`; программа агента — `agent/dist`, `yarn agent:fetch`): задачи
 быстрые и долгие (`jobType`), файл итога — ссылка на скачивание, отмена, строгость манифеста

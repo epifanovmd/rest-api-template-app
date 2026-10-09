@@ -60,7 +60,7 @@ describe("агенты (настоящий агент и воркер echo)", fu
     await agent?.stop();
   });
 
-  it("токены регистрации: выпуск, список без секрета, лимит, отзыв; неверный — 401", async () => {
+  it("токены регистрации: создание, список без секрета, лимит, отзыв; неверный — 401", async () => {
     const created = expectStatus(
       await call(admin, "POST", "/api/v1/agent-enrollment-tokens", {
         name: "e2e",
@@ -888,7 +888,7 @@ describe("агенты (настоящий агент и воркер echo)", fu
     expect((await jobSettled(long.jobId)).status).to.equal("completed");
   });
 
-  it("перезапуск воркера; обновление не из выпуска — 409; обновление агента — отказ агента", async () => {
+  it("перезапуск воркера; обновление воркера, прописанного командой, — 409; обновление агента — отказ агента", async () => {
     const before = items(
       (
         await call(
@@ -942,7 +942,7 @@ describe("агенты (настоящий агент и воркер echo)", fu
     );
   });
 
-  it("выпуск: манифест, команда установки, install.sh; проблемы", async () => {
+  it("сборки агента: манифест, команда установки, install.sh; проблемы", async () => {
     const release = expectStatus(
       await call(admin, "GET", "/api/v1/agent-releases"),
       200,

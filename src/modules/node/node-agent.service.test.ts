@@ -129,7 +129,7 @@ describe("NodeAgentService", () => {
     expect(repo.createAndSave.called).to.be.false;
   });
 
-  it("регистрация без метки — новый узел: имя агента, владелец — кто выпустил токен", async () => {
+  it("регистрация без метки — новый узел: имя агента, владелец — кто создал токен", async () => {
     await service.onEnrolled(agent(), {
       tokenId: "t1",
       createdBy: "u1",

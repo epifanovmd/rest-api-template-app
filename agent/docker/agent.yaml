@@ -15,7 +15,7 @@ workers:
       ECHO_JOBS_DIR: /var/lib/agent/echo-jobs
     lifecycle:
       stopTimeout: 30s
-  # Проверка сети между узлами: сборка из выпуска агента (Dockerfile). ICMP без прав —
+  # Проверка сети между узлами: сборка с GitHub Release агента (Dockerfile). ICMP без прав —
   # ping-сокет или команда ping, иначе TCP до порта цели.
   - name: netprobe
     command: ["/usr/local/bin/netprobe"]

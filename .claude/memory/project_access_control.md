@@ -28,15 +28,15 @@ users ──ManyToMany──▶ roles ──ManyToMany──▶ permissions
 - Каждый JWT несёт `scope`: `access` | `refresh` | `2fa`; `TokenService.decode` требует точного
   совпадения (`verify` → access, `verifyRefresh`, `verifyTwoFactor`). HS256, `iss`/`aud` = `config.app.name`.
 - Access/refresh payload: `{ scope, userId, sessionId, roles[], permissions[], emailVerified }`;
-  refresh дополнительно с `jti` (уникален каждый выпуск). 2FA payload: `{ scope: "2fa", userId, jti }`, 5 мин.
+  refresh дополнительно с `jti` (уникален у каждого токена). 2FA payload: `{ scope: "2fa", userId, jti }`, 5 мин.
 - Токен сброса пароля — opaque (32 байта base64url), в БД sha256 (`hashToken` из `core/auth/token-hash.ts`).
 - `SocketAuthMiddleware` → `TokenService.verify` → только access.
 - Схемы — реестр `SECURITY_SCHEME` (`asSecurityScheme`), `koa-authentication.ts` только диспетчер:
   `jwt` — `core/auth/jwt.scheme.ts`; `apiKey` — `modules/api-key/api-key.scheme.ts`
   (`X-Api-Key` / `Authorization: ApiKey`, `kind: "service"`, `userId` — владелец ключа,
   `sessionId: "apikey:<id>"`, `permissions` — scopes ключа; ошибки `APIKEY_REQUIRED/INVALID` 401,
-  `APIKEY_SCOPE_DENIED` 403). Схема `bot` (`kind: "bot"`) и её
-  `securityDefinitions` в `tsoa.json` — в `example/messenger`; в main в `AuthContext.kind` осталось только значение.
+  `APIKEY_SCOPE_DENIED` 403). Схемы `bot` в main
+  нет; в `AuthContext.kind` осталось только значение `bot`.
 
 ## Session-Bound Auth Flow
 
@@ -192,9 +192,7 @@ Scope API-ключа: точное совпадение, wildcard (`reports:*`, 
 
 В main нет ролей внутри сущностей: доступ — глобальные роли/права, для сущностей с владельцем — области
 «все / свои» (`OwnedAccess`; образец — модуль file: `file.permissions.ts`, `file.access.ts`, `FileService._findFor`);
-задачи — пока владелец/суперпользователь или `IJobAccessPolicy` по scope (в main политик нет), на области не переведены. Роли участника
-пространства (`owner ⊃ admin ⊃ editor ⊃ viewer`, `WorkspaceAccessService`, `@WorkspaceRole`) — ветка
-`example/workspaces`.
+задачи — пока владелец/суперпользователь или `IJobAccessPolicy` по scope (в main политик нет), на области не переведены.
 
 ## Session Entity
 

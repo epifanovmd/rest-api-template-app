@@ -139,7 +139,7 @@ export class NodeAgentService {
    * ему однозначно подходит: прежнее имя агента узла, затем имя узла, затем
    * адрес узла совпадают с именем и адресом агента (агент переустановлен
    * или зарегистрирован заново); иначе создаётся узел с именем агента,
-   * владелец и создатель — кто выпустил токен (если известен).
+   * владелец и создатель — кто создал токен (если известен).
    */
   async onEnrolled(
     agent: AgentDto,
@@ -277,7 +277,7 @@ export class NodeAgentService {
     try {
       node = await create(createdBy);
     } catch (err) {
-      // Выпустивший токен удалён — узел без владельца.
+      // Создавший токен удалён — узел без владельца.
       if (pgErrorCode(err) !== PG_ERROR.FOREIGN_KEY_VIOLATION) throw err;
       node = await create(null);
     }

@@ -36,7 +36,7 @@ export class ApiKey {
   @Column({ type: "varchar", length: 100, array: true, default: () => "'{}'" })
   scopes!: string[];
 
-  /** Кто выпустил ключ; от его имени действует сервис. */
+  /** Кто создал ключ; от его имени действует сервис. */
   @Column({ name: "owner_id", type: "uuid" })
   ownerId!: string;
 

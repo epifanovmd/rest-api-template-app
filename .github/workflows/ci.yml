@@ -138,9 +138,9 @@ jobs:
             amazon/aws-cli:latest --endpoint-url http://localhost:8333 s3 mb s3://e2e
       - run: yarn install --frozen-lockfile --ignore-scripts
       - run: yarn generate
-      # Настоящий агент и netprobe для сценариев агентов и узлов — выпуск агента версии
+      # Настоящий агент и netprobe для сценариев агентов и узлов — сборки агента версии
       # agent-sdk с GitHub Release в agent/dist (yarn agent:fetch, только эта платформа). Сервер
-      # стенда берёт его с локального сервера выпусков, не из GitHub. Выпуск воркеров проекта
+      # стенда берёт их с локального сервера сборок, не из GitHub. Воркеры проекта
       # стенд собирает сам (agent/release.sh, утилита agent-release — go run).
       - uses: actions/setup-go@v5
         with:
@@ -153,7 +153,7 @@ jobs:
   audit:
     runs-on: ubuntu-latest
     # yarn v1 audit не умеет игнор-листы: транзитивные high без фикса
-    # (tsoa, typeorm CLI, firebase-admin) краснили бы каждый PR. Отчёт видно в
+    # (tsoa, typeorm CLI) краснили бы каждый PR. Отчёт видно в
     # логе, блокирует — Trivy по образу (только исправимые CRITICAL/HIGH).
     continue-on-error: true
     steps:

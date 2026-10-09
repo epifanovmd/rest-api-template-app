@@ -9,8 +9,8 @@ import {
 const options = (env: Record<string, string | undefined>) =>
   toAgentReleasesOptions(agentReleasesSchema.parse(env));
 
-describe("настройки агентов: источник выпусков агента", () => {
-  it("по умолчанию — выпуски GitHub, версии ^1, ключ автора агента", () => {
+describe("настройки агентов: откуда берутся сборки агента", () => {
+  it("по умолчанию — релизы GitHub, версии ^1, ключ автора агента", () => {
     expect(options({})).to.deep.equal({
       github: "epifanovmd/agent",
       range: "^1",
@@ -40,7 +40,7 @@ describe("настройки агентов: источник выпусков �
     });
   });
 
-  it("ссылка на каталог выпуска важнее GitHub", () => {
+  it("ссылка на каталог сборок важнее GitHub", () => {
     expect(
       options({ url: "https://example.com/agent/v1.1.0", github: "x/y" }),
     ).to.deep.equal({

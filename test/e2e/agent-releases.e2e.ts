@@ -15,14 +15,14 @@ import {
 } from "./harness";
 import { connectSocket, TestSocket } from "./socket";
 
-/** manifest.json выпуска агента (как на GitHub). */
+/** manifest.json сборок агента (как на GitHub). */
 const distManifest = () =>
   JSON.parse(readFileSync(join(AGENT_DIST_DIR, "manifest.json"), "utf8")) as {
     publicKey: string;
     artifacts: { os: string; arch: string; file: string; sha256: string }[];
   };
 
-/** Версия воркера echo в исходниках — она же в выпуске воркеров проекта. */
+/** Версия воркера echo в исходниках — она же в сборках воркеров проекта. */
 const ECHO_VERSION = readFileSync("agent/workers/echo/VERSION", "utf8").trim();
 
 /** Следующая версия агента: патч + 1. */
@@ -31,7 +31,7 @@ const NEXT_VERSION = AGENT_VERSION.replace(
   patch => `${Number(patch) + 1}`,
 );
 
-describe("выпуск агента из источника и воркеры проекта", function () {
+describe("сборки агента из источника и воркеры проекта", function () {
   this.timeout(120_000);
 
   let admin: Actor;
@@ -61,7 +61,7 @@ describe("выпуск агента из источника и воркеры п
     await agent?.stop();
   });
 
-  it("агент из выпуска на связи; итоговый выпуск: агент и netprobe — из источника, воркеры проекта — из AGENT_RELEASES_DIR", async () => {
+  it("агент из скачанных сборок на связи; итоговый манифест: агент и netprobe — из источника, воркеры проекта — из AGENT_RELEASES_DIR", async () => {
     const card = await eventually(
       async () => {
         const a = (await call(admin, "GET", `/api/v1/agents/${agentId}`)).data;
@@ -163,7 +163,7 @@ describe("выпуск агента из источника и воркеры п
     ).to.equal(false);
   });
 
-  it("воркер проекта обновляется из выпуска: подпись ключом проекта", async () => {
+  it("воркер проекта обновляется с сервера: подпись ключом проекта", async () => {
     const { workerCandidates } = await release();
 
     expect(

@@ -27,7 +27,7 @@ workers:
       PYTHONUNBUFFERED: "1"
       ECHO_JOBS_DIR: ${AGENT_DATA_DIR}/echo-jobs
   # netprobe:begin — проверка сети между узлами (настройка targets, итоги — в метриках),
-  # воркер из выпуска агента: agent/dev.sh кладёт сборку в dataDir/workers/netprobe;
+  # воркер из сборок агента: agent/dev.sh кладёт сборку в dataDir/workers/netprobe;
   # сборки нет — блок пропускается.
   - name: netprobe
     release: true

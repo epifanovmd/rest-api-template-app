@@ -2119,7 +2119,7 @@
 					},
 					"release": {
 						"type": "boolean",
-						"description": "Ставится и обновляется из выпуска."
+						"description": "Ставится и обновляется с сервера (`release: true`)."
 					},
 					"builtin": {
 						"type": "boolean",
@@ -2656,10 +2656,10 @@
 					"remote",
 					"local"
 				],
-				"description": "Откуда сборка: `remote` — источник выпусков агента (GitHub или ссылка),\n`local` — каталог выпуска воркеров проекта."
+				"description": "Откуда сборка: `remote` — откуда берутся сборки агента (GitHub или ссылка),\n`local` — каталог сборок воркеров проекта."
 			},
 			"IAgentReleaseArtifactDto": {
-				"description": "Сборка агента в выпуске.",
+				"description": "Сборка агента.",
 				"properties": {
 					"os": {
 						"type": "string"
@@ -2696,7 +2696,7 @@
 				"additionalProperties": false
 			},
 			"IAgentWorkerArtifactDto": {
-				"description": "Сборка воркера в выпуске.",
+				"description": "Сборка воркера.",
 				"properties": {
 					"os": {
 						"type": "string"
@@ -2748,14 +2748,14 @@
 				"additionalProperties": false
 			},
 			"IAgentReleaseRemoteDto": {
-				"description": "Выпуск агента в источнике: версия, откуда, когда проверен.",
+				"description": "Версия агента в источнике: какая, откуда, когда проверена.",
 				"properties": {
 					"version": {
 						"type": "string"
 					},
 					"from": {
 						"type": "string",
-						"description": "`github:owner/repo` или ссылка на каталог выпуска."
+						"description": "`github:owner/repo` или ссылка на каталог сборок."
 					},
 					"checkedAt": {
 						"type": "number",
@@ -2764,7 +2764,7 @@
 					},
 					"publicKey": {
 						"type": "string",
-						"description": "Ключ, которым подписан выпуск (base64)."
+						"description": "Ключ, которым подписаны сборки (base64)."
 					}
 				},
 				"required": [
@@ -2776,14 +2776,14 @@
 				"additionalProperties": false
 			},
 			"IAgentReleaseManifestDto": {
-				"description": "Выпуск, который раздаёт бэкенд: агент и netprobe — из источника выпусков\nагента, воркеры проекта — из `AGENT_RELEASES_DIR`.",
+				"description": "Сборки, которые раздаёт бэкенд: агент и netprobe — из источника сборок\nагента, воркеры проекта — из `AGENT_RELEASES_DIR`.",
 				"properties": {
 					"version": {
 						"type": "string"
 					},
 					"publicKey": {
 						"type": "string",
-						"description": "Ключ, которым подписан выпуск (base64)."
+						"description": "Ключ, которым подписаны сборки (base64)."
 					},
 					"artifacts": {
 						"items": {
@@ -2799,7 +2799,7 @@
 					},
 					"remote": {
 						"$ref": "#/components/schemas/IAgentReleaseRemoteDto",
-						"description": "Нет — источник выпусков агента не задан или ещё не ответил."
+						"description": "Нет — источник сборок агента не задан или ещё не ответил."
 					}
 				},
 				"required": [
@@ -2810,7 +2810,7 @@
 				"additionalProperties": false
 			},
 			"IAgentUpdateCandidateDto": {
-				"description": "Агент, которого можно обновить до версии выпуска.",
+				"description": "Агент, которого можно обновить до новой версии.",
 				"properties": {
 					"agentId": {
 						"type": "string"
@@ -2847,7 +2847,7 @@
 				"additionalProperties": false
 			},
 			"IAgentWorkerUpdateCandidateDto": {
-				"description": "Воркер из выпуска, которого можно обновить.",
+				"description": "Воркер со сборкой с сервера, которого можно обновить.",
 				"properties": {
 					"agentId": {
 						"type": "string"
@@ -2888,7 +2888,7 @@
 				"additionalProperties": false
 			},
 			"IAgentReleaseDto": {
-				"description": "Выпуск агента и кого можно обновить.",
+				"description": "Сборки агента и кого можно обновить.",
 				"properties": {
 					"manifest": {
 						"allOf": [
@@ -2897,7 +2897,7 @@
 							}
 						],
 						"nullable": true,
-						"description": "`null` — нет ни источника выпусков агента, ни каталога выпуска."
+						"description": "`null` — нет ни источника сборок агента, ни каталога сборок воркеров."
 					},
 					"candidates": {
 						"items": {
@@ -2993,7 +2993,7 @@
 							"type": "string"
 						},
 						"type": "array",
-						"description": "Воркеры из выпуска."
+						"description": "Воркеры с сервера."
 					},
 					"stopTimeout": {
 						"type": "string",
@@ -3581,7 +3581,7 @@
 					},
 					"updateAvailable": {
 						"type": "boolean",
-						"description": "В выпуске есть другая версия под этот узел."
+						"description": "Есть другая версия агента под этот узел."
 					},
 					"workers": {
 						"items": {
@@ -4106,7 +4106,7 @@
 							"type": "string"
 						},
 						"type": "array",
-						"description": "Воркеры из выпуска агента (по умолчанию — проверка сети `netprobe`)."
+						"description": "Воркеры из сборок агента (по умолчанию — проверка сети `netprobe`)."
 					}
 				},
 				"type": "object",
@@ -4167,7 +4167,7 @@
 							"type": "string"
 						},
 						"type": "array",
-						"description": "Воркеры из выпуска агента (по умолчанию — проверка сети `netprobe`)."
+						"description": "Воркеры из сборок агента (по умолчанию — проверка сети `netprobe`)."
 					}
 				},
 				"type": "object",
@@ -7620,7 +7620,7 @@
 						}
 					}
 				},
-				"description": "Обновить агента до версии выпуска (источник выпусков агента — по\nумолчанию GitHub): итог — после запуска новой версии. Агент в контейнере\nсебя не обновляет.",
+				"description": "Обновить агента до доступной версии (сборки агента — по\nумолчанию с GitHub): итог — после запуска новой версии. Агент в контейнере\nсебя не обновляет.",
 				"summary": "Обновление агента",
 				"tags": [
 					"Agent"
@@ -7808,8 +7808,8 @@
 						}
 					}
 				},
-				"description": "Выпустить токен регистрации агентов. Полный токен (`token`) — только в\nэтом ответе: он кладётся в настройки агента (`enroll.token`) или в\nкоманду установки. `maxUses` не задан — многоразовый (парк машин).",
-				"summary": "Выпуск токена регистрации",
+				"description": "Создать токен регистрации агентов. Полный токен (`token`) — только в\nэтом ответе: он кладётся в настройки агента (`enroll.token`) или в\nкоманду установки. `maxUses` не задан — многоразовый (парк машин).",
+				"summary": "Создание токена регистрации",
 				"tags": [
 					"Agent"
 				],
@@ -7957,8 +7957,8 @@
 						}
 					}
 				},
-				"description": "Выпуск, который раздаёт бэкенд: агент и netprobe — из источника выпусков\nагента (по умолчанию GitHub, `remote` — версия и когда проверен),\nворкеры проекта — из `AGENT_RELEASES_DIR`; у каждой сборки — источник.\nИ кого из доступных агентов можно обновить: агентов и воркеры из выпуска.",
-				"summary": "Выпуск агента",
+				"description": "Сборки, которые раздаёт бэкенд: агент и netprobe — из источника сборок\nагента (по умолчанию GitHub, `remote` — версия и когда проверен),\nворкеры проекта — из `AGENT_RELEASES_DIR`; у каждой сборки — источник.\nИ кого из доступных агентов можно обновить: агентов и воркеры с сервера.",
+				"summary": "Сборки агента",
 				"tags": [
 					"Agent"
 				],
@@ -7995,7 +7995,7 @@
 						}
 					}
 				},
-				"description": "Команда установки агента на новый узел одной строкой:\n`curl …/api/v1/agent-link/install.sh | sudo sh -s -- --token … [флаги]`\n(воркеры из выпуска — `workers`, флаг `--worker`).",
+				"description": "Команда установки агента на новый узел одной строкой:\n`curl …/api/v1/agent-link/install.sh | sudo sh -s -- --token … [флаги]`\n(воркеры с сервера — `workers`, флаг `--worker`).",
 				"summary": "Команда установки агента",
 				"tags": [
 					"Agent"
@@ -8110,7 +8110,7 @@
 						}
 					}
 				},
-				"description": "Обновить воркер из выпуска до новейшей сборки под агента. Свободный — сразу\n(версии в ответе); занятый — как у перезапуска: ответ `deferred: true`,\nитог — событие `agent:action`; `force` — сразу. Новая сборка не\nзаработала — агент возвращает прежнюю.",
+				"description": "Обновить воркер (`release: true`) до новейшей сборки под агента. Свободный — сразу\n(версии в ответе); занятый — как у перезапуска: ответ `deferred: true`,\nитог — событие `agent:action`; `force` — сразу. Новая сборка не\nзаработала — агент возвращает прежнюю.",
 				"summary": "Обновление воркера",
 				"tags": [
 					"Agent"
@@ -9731,7 +9731,7 @@
 						}
 					}
 				},
-				"description": "Выпустить API-ключ сервиса. Полный ключ (`key`) возвращается только в\nэтом ответе — сохраните его: в БД хранится лишь хеш.",
+				"description": "Создать API-ключ сервиса. Полный ключ (`key`) возвращается только в\nэтом ответе — сохраните его: в БД хранится лишь хеш.",
 				"summary": "Создание API-ключа",
 				"tags": [
 					"ApiKey"

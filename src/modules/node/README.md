@@ -73,7 +73,7 @@ src/modules/node/
 
 `agent` в DTO — кратко: `online`, `revoked`, `version`, `address`,
 `lastSeenAt`, `host {hostname, os, arch}`, `updateAvailable` (кандидат обновления
-до выпуска), `workers [{name, state, version, healthy, busy}]`.
+до новой версии), `workers [{name, state, version, healthy, busy}]`.
 
 ## Права (`NodePermissions`, группа «Узлы»)
 
@@ -106,11 +106,11 @@ src/modules/node/
 
 ## Агент узла
 
-**Команда установки.** `install-command` выпускает одноразовый токен регистрации
+**Команда установки.** `install-command` создаёт одноразовый токен регистрации
 (`maxUses: 1`, срок `expiresInMinutes`, по умолчанию сутки) с меткой
 `nodeId=<id узла>` и строку `curl …/api/v1/agent-link/install.sh | sudo sh -s --
---instance 'rest' --token … --worker 'netprobe'` (`agents.installCommand`; воркеры из
-выпуска — `workers`, по умолчанию воркер проверки сети `netprobe`). Токен — только в ответе.
+--instance 'rest' --token … --worker 'netprobe'` (`agents.installCommand`; воркеры с
+сервера — `workers`, по умолчанию воркер проверки сети `netprobe`). Токен — только в ответе.
 
 **Экземпляр агента.** Агент проекта ставится на узел отдельным экземпляром
 `AGENT_INSTANCE` (по умолчанию `rest`; пусто — экземпляр по умолчанию): служба
@@ -173,7 +173,7 @@ password?, privateKey?, passphrase?, sudo?, backendUrl?}` (+ `workers` / `purge`
 
 ## Связность
 
-Воркер `netprobe` из выпуска агента (ставится на узел `agent install --worker
+Воркер `netprobe` из сборок агента (ставится на узел `agent install --worker
 netprobe`, в dev — `agent/dev.sh`) проверяет связность до целей своей
 настройки `targets` и отдаёт итог последнего круга в `GET /metrics`: агент кладёт его в
 `metrics.workers.netprobe` — `{at, results: [{id, host, method, via?, sent, received,

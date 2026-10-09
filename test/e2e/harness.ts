@@ -128,7 +128,7 @@ export const readStored = async (key: string): Promise<string> => {
 };
 
 /** Агенты стенда: общий токен регистрации. */
-/** Версия агента в выпуске — та же, что у agent-sdk. */
+/** Версия сборок агента — та же, что у agent-sdk. */
 export const AGENT_VERSION = SDK_VERSION;
 
 export const AGENT_BOOTSTRAP_TOKEN = "e2e-bootstrap-token-0123456789abcdef0123";
@@ -137,8 +137,8 @@ export const AGENT_BOOTSTRAP_TOKEN = "e2e-bootstrap-token-0123456789abcdef0123";
 const AGENT_RELAY_SECRET = "e2e-relay-secret-0123456789abcdef0123456789";
 
 /**
- * Выпуск агента с GitHub (`yarn agent:fetch`): программа агента и netprobe.
- * Сервер стенда берёт его не из GitHub, а с локального сервера выпусков
+ * Сборки агента с GitHub (`yarn agent:fetch`): программа агента и netprobe.
+ * Сервер стенда берёт их не из GitHub, а с локального сервера сборок
  * (`AGENT_RELEASES_URL`) — как с GitHub, но без сети.
  */
 export const AGENT_DIST_DIR = resolve(
@@ -157,26 +157,26 @@ const projectKeys = (): { signing: string; public: string } => {
   };
 };
 
-/** Ключи проекта стенда: ими подписан выпуск воркеров проекта. */
+/** Ключи проекта стенда: ими подписаны сборки воркеров проекта. */
 export const PROJECT_KEYS = projectKeys();
 
-/** Выпуск воркеров проекта стенда (agent/release.sh во временный каталог). */
+/** Сборки воркеров проекта стенда (agent/release.sh во временный каталог). */
 let releasesDir = "";
 
 export interface IRemoteRelease {
-  /** База выпуска для `AGENT_RELEASES_URL`. */
+  /** Адрес каталога сборок для `AGENT_RELEASES_URL`. */
   url: string;
-  /** Пути запросов к серверу выпусков. */
+  /** Пути запросов к серверу сборок. */
   requests: string[];
   /** Версия в `manifest.json` источника (`null` — как в файле). */
   setVersion: (version: string | null) => void;
   close: () => Promise<void>;
 }
 
-/** Сервер выпусков агента (как GitHub): файлы `AGENT_DIST_DIR`. */
+/** Сервер сборок агента (как GitHub): файлы `AGENT_DIST_DIR`. */
 const serveRemoteRelease = async (dir: string): Promise<IRemoteRelease> => {
   if (!existsSync(join(dir, "manifest.json"))) {
-    throw new Error(`E2E: нет выпуска агента в ${dir} — yarn agent:fetch`);
+    throw new Error(`E2E: нет сборок агента в ${dir} — yarn agent:fetch`);
   }
   const requests: string[] = [];
   let version: string | null = null;
@@ -219,10 +219,10 @@ const serveRemoteRelease = async (dir: string): Promise<IRemoteRelease> => {
 
 export let REMOTE_RELEASE: IRemoteRelease;
 
-/** Как часто сервер стенда проверяет источник выпусков агента, мс. */
+/** Как часто сервер стенда проверяет, не вышла ли новая версия агента, мс. */
 export const RELEASE_CHECK_INTERVAL_MS = 500;
 
-/** Выпуск воркеров проекта, подписанный ключом проекта стенда. */
+/** Сборки воркеров проекта, подписанные ключом проекта стенда. */
 const buildProjectRelease = async (): Promise<string> => {
   const dir = mkdtempSync(join(tmpdir(), "e2e-agent-release-"));
   const out = join(dir, "release");
@@ -282,7 +282,7 @@ const serverEnv = (port: number, relayPort: number): NodeJS.ProcessEnv => ({
   ADMIN_PASSWORD: E2E.admin.password,
   AGENT_BOOTSTRAP_TOKEN,
   AGENT_RELEASES_DIR: releasesDir,
-  // Агент и netprobe — с локального сервера выпусков, не из GitHub.
+  // Агент и netprobe — с локального сервера сборок, не из GitHub.
   AGENT_RELEASES_GITHUB: "",
   AGENT_RELEASES_URL: REMOTE_RELEASE.url,
   AGENT_RELEASES_CHECK_INTERVAL_MS: String(RELEASE_CHECK_INTERVAL_MS),

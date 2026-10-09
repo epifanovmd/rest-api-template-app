@@ -15,22 +15,22 @@ import { resolveFromRoot } from "../../core";
 /** Экземпляр агента проекта на узле, если `AGENT_INSTANCE` не задан. */
 const AGENT_INSTANCE_DEFAULT = "rest";
 
-/** Откуда по умолчанию берутся агент и netprobe: выпуски GitHub. */
+/** Откуда по умолчанию берутся агент и netprobe: релизы GitHub. */
 export const AGENT_RELEASES_DEFAULTS = {
   github: "epifanovmd/agent",
   range: "^1",
   checkIntervalMs: 3_600_000,
-  /** Открытый ключ автора агента: им подписаны агент и netprobe в выпусках. */
+  /** Открытый ключ автора агента: им подписаны сборки агента и netprobe. */
   publicKey: "9yYblu2wKJnjKccihbJv2lKtbxvqecCnX67u9LmgSuo=",
 };
 
 /** Источник агента и netprobe из env `AGENT_RELEASES_*`. */
 export const agentReleasesSchema = z.object({
-  /** Репозиторий выпусков `owner/repo`; пустое значение — не брать из GitHub. */
+  /** Репозиторий релизов `owner/repo`; пустое значение — не брать из GitHub. */
   github: z.string().default(AGENT_RELEASES_DEFAULTS.github),
   /** Какие версии брать (semver), например `^1`. */
   range: z.string().min(1).default(AGENT_RELEASES_DEFAULTS.range),
-  /** Каталог одного выпуска по ссылке (зеркало, своя версия); важнее `github`. */
+  /** Каталог одной версии по ссылке (зеркало, своя версия); важнее `github`. */
   url: optionalString,
   /** Токен GitHub: только чтобы не упереться в лимит запросов. */
   token: optionalString,
@@ -77,7 +77,7 @@ export const agentConfig = defineModuleConfig(
   z.object({
     /**
      * Общий токен регистрации из окружения (многоразовый, без записи в БД):
-     * агенты в compose и dev регистрируются без выпуска токена. Не короче 32
+     * агенты в compose и dev регистрируются без создания токена. Не короче 32
      * символов; без него — только токены из БД.
      */
     bootstrapToken: z
@@ -127,18 +127,18 @@ export const agentConfig = defineModuleConfig(
      */
     instanceUrl: optionalString,
     /**
-     * Каталог выпуска воркеров проекта (`manifest.json` от `agent-release`,
+     * Каталог сборок воркеров проекта (`manifest.json` от `agent-release`,
      * архивы воркеров; `yarn agent:release`). Относительный путь — от корня
      * проекта.
      */
     releasesDir: optionalString.transform(dir =>
       dir ? resolveFromRoot(dir) : undefined,
     ),
-    /** Откуда брать агента и netprobe: выпуски GitHub или ссылка. */
+    /** Откуда брать агента и netprobe: релизы GitHub или ссылка. */
     agentReleases: agentReleasesSchema,
     /**
      * Открытые ключи проекта (base64, через запятую) — пара к ключу, которым
-     * подписаны воркеры проекта (`AGENT_SIGNING_KEY` при сборке выпуска);
+     * подписаны воркеры проекта (`AGENT_SIGNING_KEY` при сборке воркеров);
      * `install.sh` передаёт их узлу.
      */
     updatePublicKeys: csv,

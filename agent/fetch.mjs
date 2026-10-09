@@ -1,14 +1,14 @@
 #!/usr/bin/env node
-// Выпуск агента с GitHub (github.com/epifanovmd/agent) — в agent/dist/v<версия>: программа агента
+// Сборки агента с GitHub (github.com/epifanovmd/agent) — в agent/dist/v<версия>: программа агента
 // под платформы, воркер netprobe, manifest.json и install.sh. Контрольные суммы сверяются с
 // manifest.json. Бэкенду этот каталог не нужен (он берёт агента из GitHub сам) — он нужен агенту
-// на машине разработчика (agent/dev.sh) и сквозным тестам (сервер выпусков без GitHub).
+// на машине разработчика (agent/dev.sh) и сквозным тестам (сервер сборок без GitHub).
 //
 //   yarn agent:fetch                 версия — как у agent-sdk в package.json
 //   AGENT_VERSION=1.1.0 yarn agent:fetch
 //   AGENT_PLATFORMS="linux-amd64 darwin-arm64" yarn agent:fetch   только эти платформы
 //
-// Печатает каталог выпуска. Уже скачанные файлы с верной суммой не скачиваются заново.
+// Печатает каталог сборок. Уже скачанные файлы с верной суммой не скачиваются заново.
 import { createHash } from "node:crypto";
 import { chmod, mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
@@ -51,7 +51,7 @@ const main = async () => {
   const manifest = JSON.parse(manifestRaw.toString("utf8"));
 
   if (manifest.version !== version) {
-    throw new Error(`в ${base} выпуск ${manifest.version}, ожидался ${version}`);
+    throw new Error(`в ${base} версия ${manifest.version}, ожидалась ${version}`);
   }
   const builds = [...manifest.artifacts, ...(manifest.workers ?? [])].filter(
     b => !only || only.includes(`${b.os}-${b.arch}`),
