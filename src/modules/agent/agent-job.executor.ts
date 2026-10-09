@@ -43,12 +43,18 @@ const STATE_KINDS: Record<string, TExternalJobUpdateKind> = {
   cancelled: "cancelled",
 };
 
-/** Ошибки SDK, при которых повтор передачи бессмыслен. */
+/**
+ * Ошибки SDK, при которых повтор передачи бессмыслен: неверная задача или
+ * воркер её не объявил (`JOB_UNKNOWN` — тип не из `manifest.jobs`,
+ * `ROUTE_UNDECLARED` — у воркера нет задач).
+ */
 const FINAL_SDK_ERRORS = new Set([
   "MESSAGE_INVALID",
   "PATH_FORBIDDEN",
   "BODY_TOO_LARGE",
   "JOB_INVALID",
+  "JOB_UNKNOWN",
+  "ROUTE_UNDECLARED",
 ]);
 
 type TRecord = Record<string, unknown>;

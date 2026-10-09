@@ -188,7 +188,7 @@ describe("AgentJobExecutor", () => {
     }
   });
 
-  it("отказ воркера: неверная задача (400) — без повторов; занят (409), сбой и связь — с повтором", async () => {
+  it("отказ воркера: неверная или необъявленная задача — без повторов; занят (409), сбой и связь — с повтором", async () => {
     const codeOf = () =>
       executor.dispatch(job()).then(
         () => expect.fail("должно было упасть"),
@@ -201,6 +201,13 @@ describe("AgentJobExecutor", () => {
     expect(await codeOf()).to.deep.equal(["JOB_REJECTED", true]);
     agents.runJob.rejects(new AgentsError("JOB_INVALID", "схема", 400));
     expect(await codeOf()).to.deep.equal(["JOB_INVALID", false]);
+    // Тип не объявлен в манифесте воркера (агент проверяет сам) — окончательно.
+    agents.runJob.rejects(new AgentsError("JOB_UNKNOWN", "нет типа", 409));
+    expect(await codeOf()).to.deep.equal(["JOB_UNKNOWN", false]);
+    agents.runJob.rejects(
+      new AgentsError("ROUTE_UNDECLARED", "нет задач", 404),
+    );
+    expect(await codeOf()).to.deep.equal(["ROUTE_UNDECLARED", false]);
     agents.runJob.rejects(new AgentsError("WORKER_UNAVAILABLE", "нет", 502));
     expect(await codeOf()).to.deep.equal(["WORKER_UNAVAILABLE", true]);
   });

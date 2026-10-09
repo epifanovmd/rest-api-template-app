@@ -98,12 +98,40 @@ agent/
      полное описание — `sdk/docs/workers.md` в репозитории агента);
    - `run` — исполняемый файл, который запускает сервис (`#!/bin/sh` и `exec …`);
    - `VERSION` — версия, та же, что в ответе `GET /manifest`.
-2. Работа для воркера — задача его типа: тип объявляется в манифесте (`jobs`), бэкенд
+2. **Манифест — всё, что воркер умеет.** Агент пропускает только объявленное, остальное
+   отклоняет сам, не беспокоя воркер:
+   - `routes` — маршруты для запросов с бэкенда (`{ method, path, description?, request?,
+response? }`, `{id}` в пути — один сегмент). Необъявленный путь бэкенд не отправит
+     (ошибка `AGENT_ROUTE_UNDECLARED`). `request` — схема тела: бэкенд проверит тело до
+     отправки (`AGENT_REQUEST_INVALID`), а экран «Запрос» построит по ней форму;
+     `response` — описание ответа для людей;
+   - `events` — типы событий воркера (`{ type, description?, schema? }`). Событие
+     другого типа агент не примет (воркер получит `400 EVENT_UNDECLARED`); `data` не по
+     `schema` бэкенд пометит замечаниями (`AGENT_VALIDATE_EVENTS`);
+   - `jobs` — типы задач (`{ type, description?, schema? }`): задачу другого типа агент не
+     пропустит (`AGENT_JOB_UNKNOWN`);
+   - `requests` — запросы воркера к бэкенду (`{ type, description?, schema?, response? }`);
+   - `configs` — ключи настроек со схемой значения.
+
+   Пример целиком — `MANIFEST` в `echo/main.py`. Если воркер ещё не описал маршруты, узел
+   может выключить их проверку для него — `routes: open` в его блоке `agent.yaml`
+   (события, задачи по типу и запросы к бэкенду проверяются и тогда).
+
+3. **Работа для воркера** — задача его типа: тип объявляется в манифесте (`jobs`), бэкенд
    ставит её очередью (`definition.job.type`) — см. README модуля
    [agent](../src/modules/agent/README.md#своя-очередь-задач-и-воркер).
-3. Локально — строка в `agent/local/agent.yaml`, в образе — в `agent/docker/agent.yaml` и
+4. **Запрос к бэкенду** — когда воркеру что-то нужно прямо сейчас (данные, решение):
+   `POST /requests` с телом `{ type, data, timeoutMs? }` на сокет агента `AGENT_SOCKET`
+   (заголовок `Authorization: Bearer $AGENT_WORKER_TOKEN`), тип — в `requests` манифеста.
+   Ответ бэкенда — `200 { data }`; отказ — `422 { code, message }`; нет связи — `503`
+   (повторить — дело воркера). На бэкенде ответ даёт обработчик в модуле-владельце:
+   класс с `type` и `handle()`, регистрация `asWorkerRequestHandler(Класс)` — см. README
+   модуля [agent](../src/modules/agent/README.md#запросы-воркеров-к-серверу). Пример —
+   задача `echo.quick` с `lookup: true`: `echo` спрашивает префикс (`echo.lookup`), ответ
+   даёт `DemoEchoLookupHandler` модуля задач.
+5. Локально — строка в `agent/local/agent.yaml`, в образе — в `agent/docker/agent.yaml` и
    строка `COPY` уже покрывает `agent/workers`.
-4. На узлы — `yarn agent:release` и `--worker <имя>` в команде установки.
+6. На узлы — `yarn agent:release` и `--worker <имя>` в команде установки.
 
 ## Агент на своей машине
 

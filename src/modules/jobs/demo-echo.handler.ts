@@ -19,6 +19,11 @@ export const DEMO_ECHO_JOB_TYPES = {
 
 export interface IDemoEchoData {
   text: string;
+  /**
+   * Быстрая задача берёт префикс у сервера: воркер шлёт запрос `echo.lookup`
+   * (`DemoEchoLookupHandler`).
+   */
+  lookup?: boolean;
   /** Долгая задача `echo.long`: шаги с событиями хода; иначе — `echo.quick`. */
   long?: boolean;
   /** Шагов долгой задачи (по умолчанию 5). */
@@ -33,6 +38,8 @@ export interface IDemoEchoData {
 
 export interface IDemoEchoResult {
   text: string;
+  /** Префикс от сервера (`lookup`). */
+  prefix?: string;
   /** Имя выходного файла, если итог записан в файл. */
   output?: string;
 }
@@ -43,9 +50,10 @@ export const demoEchoOutputKey = (jobId: string): string =>
 
 /**
  * Эталон внешней очереди: воркер `echo` агента выполняет задачу своего типа —
- * `echo.quick` (итог в ответе) или `echo.long` (`202`, ход и итог событиями,
- * отмена, файл итога по подписанной ссылке) — и возвращает текст по своим
- * настройкам (префикс, регистр). Проверка агентов, воркеров и путей отказа.
+ * `echo.quick` (итог в ответе; с `lookup` — префикс по запросу воркера к
+ * серверу) или `echo.long` (`202`, ход и итог событиями, отмена, файл итога
+ * по подписанной ссылке) — и возвращает текст по своим настройкам (префикс,
+ * регистр). Проверка агентов, воркеров и путей отказа.
  */
 @Injectable()
 export class DemoEchoJobHandler implements IExternalJobHandler<

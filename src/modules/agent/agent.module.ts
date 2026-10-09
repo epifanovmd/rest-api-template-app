@@ -40,6 +40,7 @@ import { AgentWorkerController } from "./agent-worker.controller";
 import { AgentWorkerService } from "./agent-worker.service";
 import { AgentWorkerEvent } from "./agent-worker-event.entity";
 import { AgentWorkerEventRepository } from "./agent-worker-event.repository";
+import { AgentWorkerRequestRegistry } from "./agent-worker-request.registry";
 import { AgentStore } from "./store/agent.store";
 import { StoredAgent } from "./store/stored-agent.entity";
 import { StoredAgentConfig } from "./store/stored-agent-config.entity";
@@ -48,7 +49,8 @@ import { StoredAgentConfig } from "./store/stored-agent-config.entity";
  * Агенты на agent-sdk: регистрация по токенам, связь по WebSocket, воркеры
  * (статус, манифест, перезапуск, обновление, настройки, запросы), события и
  * история метрик, журнал, выпуск и установка; исполнитель внешних очередей
- * модуля задач.
+ * модуля задач; ответы на запросы воркеров к серверу (обработчики модулей —
+ * `WORKER_REQUEST_HANDLER`).
  */
 @Module({
   entities: [
@@ -67,6 +69,7 @@ import { StoredAgentConfig } from "./store/stored-agent-config.entity";
     AgentEnrollmentTokenRepository,
     AgentEnrollmentService,
     AgentAccessService,
+    AgentWorkerRequestRegistry,
     AgentRuntime,
     AgentService,
     AgentWorkerService,

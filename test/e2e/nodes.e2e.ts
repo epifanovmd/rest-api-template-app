@@ -345,7 +345,8 @@ describe("узлы", function () {
       await call(bob, "POST", `/api/v1/agents/${agentBId}/workers/echo/fetch`, {
         method: "POST",
         path: "/echo",
-        body: "узел",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ text: "узел" }),
       }),
       200,
     ).data;

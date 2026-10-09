@@ -47,6 +47,8 @@ message } }`). В main **нет ни одного вызова** (описани
   `file/file-process.job.ts`, `mailer.service.ts`; cron — `*-cleanup.job.ts` (audit, otp, session, passkeys, file);
   outbox — `file.service.ts::_enqueueProcessing(manager, …)`, `mailer.service.ts` (`{ manager }`); внешняя очередь —
   `jobs/demo-echo.handler.ts` (`asExternalJobHandler`, `job` + `jobType` + `io` + `onComplete`), воркер — `agent/workers/echo`;
+  ответ на запрос воркера к серверу — `jobs/demo-echo-lookup.handler.ts` (`asWorkerRequestHandler`, `type` + `workers` +
+  `handle`, отказ — `WorkerRequestError`);
   health-индикатор — `jobs/jobs.health.ts` (`asHealthIndicator(JobsHealthIndicator)`). Политик доступа к задачам
   (`asJobAccessPolicy`) в main нет — только владелец/суперпользователь.
 - Хранилище: ключи — `file/file-keys.ts` (`files/<id>/original.<ext>`), обработка через `withLocalFile` —

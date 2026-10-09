@@ -34,6 +34,7 @@ src/modules/jobs/
 ├── jobs.listener.ts          # JobUpdatedEvent → сокет job:updated
 ├── job-room.policy.ts        # Комната job_<id> по room:subscribe
 ├── demo-echo.handler.ts      # Внешняя демо-очередь demo.echo
+├── demo-echo-lookup.handler.ts # Ответ на запрос воркера echo.lookup (asWorkerRequestHandler)
 ├── jobs.errors.ts            # JobsError (JOB_*)
 ├── jobs.types.ts             # EJobRunStatus, константы
 ├── dto/, validation/, events/
@@ -179,12 +180,12 @@ prom-client не использует.
 
 ## REST (jwt)
 
-| Метод | Путь                       | Описание                                                                                                                               |
-| ----- | -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| GET   | `/api/v1/jobs`             | Свои задачи или задачи scope (`scopeType`+`scopeId`), `status`, `offset`/`limit` → `IPaginatedDto<JobRunDto>`                          |
-| GET   | `/api/v1/jobs/{id}`        | Задача; `?waitSeconds=0–25` — long-poll: ответ в момент завершения или через `waitSeconds` с текущим прогрессом                        |
-| POST  | `/api/v1/jobs/{id}/cancel` | Отмена (204); завершённая — 409 `JOB_NOT_CANCELLABLE`                                                                                  |
-| POST  | `/api/v1/jobs/demo/echo`   | Демо-задача `demo.echo` воркеру `echo` (`text`, `long`, `steps`, `delayMs`, `fail`, `withOutput`) → 201 `{ jobId }`; право `jobs:demo` |
+| Метод | Путь                       | Описание                                                                                                                                         |
+| ----- | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| GET   | `/api/v1/jobs`             | Свои задачи или задачи scope (`scopeType`+`scopeId`), `status`, `offset`/`limit` → `IPaginatedDto<JobRunDto>`                                    |
+| GET   | `/api/v1/jobs/{id}`        | Задача; `?waitSeconds=0–25` — long-poll: ответ в момент завершения или через `waitSeconds` с текущим прогрессом                                  |
+| POST  | `/api/v1/jobs/{id}/cancel` | Отмена (204); завершённая — 409 `JOB_NOT_CANCELLABLE`                                                                                            |
+| POST  | `/api/v1/jobs/demo/echo`   | Демо-задача `demo.echo` воркеру `echo` (`text`, `lookup`, `long`, `steps`, `delayMs`, `fail`, `withOutput`) → 201 `{ jobId }`; право `jobs:demo` |
 
 Доступ: владелец, суперпользователь или `IJobAccessPolicy` scope — токен
 `JOB_ACCESS_POLICY` (`asJobAccessPolicy(Cls)`): модуль-владелец scope решает,

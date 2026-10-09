@@ -31,6 +31,7 @@ const isEventCursor = (value: unknown): value is IEventCursor =>
 
 export const toAgentEventDto = (
   event: AgentEvent | AgentWorkerEvent,
+  problems = "problems" in event ? event.problems : null,
 ): IAgentEventDto => ({
   id: event.id,
   agentId: event.agentId,
@@ -39,6 +40,7 @@ export const toAgentEventDto = (
   ...(event.data !== undefined && event.data !== null && { data: event.data }),
   at: event.at,
   receivedAt: event.receivedAt,
+  ...(problems?.length && { problems }),
 });
 
 const toPointDto = (row: AgentMetric): IAgentMetricsPointDto => ({
@@ -81,7 +83,7 @@ export class AgentHistoryService {
   ) {}
 
   /** Сохранить событие; `false` — оно уже было (повтор доставки). */
-  saveEvent(event: AgentEvent): Promise<boolean> {
+  saveEvent(event: AgentEvent, problems?: string[] | null): Promise<boolean> {
     return this._events.insertIfNew(
       this._events.create({
         agentId: event.agentId,
@@ -91,6 +93,7 @@ export class AgentHistoryService {
         data: event.data === undefined ? null : jsonSafe(event.data),
         at: event.at,
         receivedAt: event.receivedAt,
+        problems: problems?.length ? problems : null,
       }),
     );
   }
@@ -137,7 +140,7 @@ export class AgentHistoryService {
     const last = rows[rows.length - 1];
 
     return {
-      items: rows.map(toAgentEventDto),
+      items: rows.map(row => toAgentEventDto(row)),
       nextCursor:
         rows.length === query.limit && last
           ? encodeCursor({ receivedAt: last.receivedAt, id: last.id })

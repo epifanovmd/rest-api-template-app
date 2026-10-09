@@ -155,12 +155,24 @@ describe("агенты (настоящий агент и воркер echo)", fu
     const echo = worker(card, "echo");
 
     expect(echo.health.ok).to.equal(true);
-    expect(echo.manifest.version).to.equal("1.0.0");
-    expect(echo.manifest.routes).to.deep.include({
+    expect(echo.manifest.version).to.equal("1.1.0");
+
+    // Каталог возможностей: маршруты, события, запросы к серверу — со схемами.
+    const route = echo.manifest.routes.find((r: any) => r.path === "/echo");
+
+    expect(route).to.include({
       method: "POST",
-      path: "/echo",
       description: "Текст с префиксом",
     });
+    expect(route.request.required).to.deep.equal(["text"]);
+    expect(route.response).to.be.an("object");
+    expect(
+      echo.manifest.events.find((e: any) => e.type === "echo.echoed").schema
+        .required,
+    ).to.deep.equal(["text", "length"]);
+    expect(echo.manifest.requests.map((r: any) => r.type)).to.deep.equal([
+      "echo.lookup",
+    ]);
     expect(echo.manifest.jobs.map((j: any) => j.type)).to.deep.equal([
       "echo.quick",
       "echo.long",
@@ -230,7 +242,7 @@ describe("агенты (настоящий агент и воркер echo)", fu
     );
   });
 
-  it("запрос к воркеру: ответ, поток, двоичное тело, служебный путь — 403", async () => {
+  it("запрос к воркеру: ответ, поток, двоичное тело, служебный путь — 403, необъявленный маршрут — 404", async () => {
     const echo = await fetchWorker({
       method: "POST",
       path: "/echo",
@@ -273,11 +285,19 @@ describe("агенты (настоящий агент и воркер echo)", fu
     );
 
     expect(forbidden.headers.get("x-agent-worker-status")).to.equal(null);
+    // Маршрута нет в манифесте — агент не передаёт запрос воркеру.
     expect(
-      expectStatus(await fetchWorker({ path: "/nope" }), 404).headers.get(
-        "x-agent-worker-status",
-      ),
-    ).to.equal("404");
+      expectStatus(
+        await fetchWorker({ path: "/nope" }),
+        404,
+        "AGENT_ROUTE_UNDECLARED",
+      ).headers.get("x-agent-worker-status"),
+    ).to.equal(null);
+    expectStatus(
+      await fetchWorker({ method: "GET", path: "/echo" }),
+      404,
+      "AGENT_ROUTE_UNDECLARED",
+    );
     expectStatus(
       await call(
         admin,
@@ -290,6 +310,114 @@ describe("агенты (настоящий агент и воркер echo)", fu
       404,
     );
     expectStatus(await fetchWorker({ path: "/echo" }, bob), 404);
+  });
+
+  it("строгость манифеста: тело по схеме маршрута, тип задачи из manifest.jobs", async () => {
+    const invalid = expectStatus(
+      await fetchWorker({
+        method: "POST",
+        path: "/echo",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ text: 5, extra: true }),
+      }),
+      400,
+      "AGENT_REQUEST_INVALID",
+    );
+
+    expect(invalid.data.details.reason).to.include("text");
+    expectStatus(
+      await fetchWorker({ method: "POST", path: "/echo", body: "не JSON" }),
+      400,
+      "AGENT_REQUEST_INVALID",
+    );
+
+    const shaped = expectStatus(
+      await fetchWorker({
+        method: "POST",
+        path: "/echo",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          text: "аб",
+          repeat: 2,
+          case: "lower",
+          reverse: true,
+        }),
+      }),
+      200,
+    ).data;
+
+    expect(shaped).to.deep.equal({ text: "> ба ба" });
+    expectStatus(
+      await fetchWorker({
+        method: "POST",
+        path: "/jobs",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ type: "echo.unknown", jobId: "x", data: {} }),
+      }),
+      409,
+      "AGENT_JOB_UNKNOWN",
+    );
+  });
+
+  it("события: data не по схеме — в истории с замечаниями (политика log), необъявленный тип агент не принимает", async () => {
+    const emit = (body: object) =>
+      fetchWorker({
+        method: "POST",
+        path: "/emit",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+      });
+    const marker = `метка-${Date.now()}`;
+
+    expectStatus(
+      await emit({ type: "echo.echoed", data: { text: marker, length: "x" } }),
+      202,
+    );
+
+    const undeclared = expectStatus(await emit({ type: "echo.nope" }), 400);
+
+    expect(undeclared.data.code).to.equal("EVENT_UNDECLARED");
+
+    const stored = await eventually(
+      async () =>
+        items(
+          (
+            await call(
+              admin,
+              "GET",
+              `/api/v1/agents/events?agentId=${agentId}&type=echo.echoed&limit=50`,
+            )
+          ).data,
+        ).find((e: any) => e.data?.text === marker),
+      { what: "событие не по схеме — в истории" },
+    );
+
+    expect(stored.problems).to.be.an("array").with.length.above(0);
+    expect(stored.problems.join(" ")).to.include("length");
+
+    // Ответ на POST /echo — событие echo.echoed по схеме, без замечаний.
+    await fetchWorker({
+      method: "POST",
+      path: "/echo",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ text: marker }),
+    });
+
+    const valid = await eventually(
+      async () =>
+        items(
+          (
+            await call(
+              admin,
+              "GET",
+              `/api/v1/agents/events?agentId=${agentId}&type=echo.echoed&limit=50`,
+            )
+          ).data,
+        ).find((e: any) => e.data?.text === `> ${marker.toUpperCase()}`),
+      { what: "событие по схеме" },
+    );
+
+    expect(valid).to.not.have.property("problems");
   });
 
   it("комната агента: метрики раз в секунду и журнал (watch), уровень журнала", async () => {
@@ -361,6 +489,36 @@ describe("агенты (настоящий агент и воркер echo)", fu
     expect(events.some((e: any) => e.data?.jobId === created.jobId)).to.equal(
       false,
     );
+  });
+
+  it("запрос воркера к серверу: задача echo.quick с lookup — префикс от обработчика echo.lookup; отказ обработчика — провал без повторов", async () => {
+    const created = expectStatus(
+      await call(admin, "POST", "/api/v1/jobs/demo/echo", {
+        text: "запрос",
+        lookup: true,
+      }),
+      201,
+    ).data;
+    const job = await jobSettled(created.jobId);
+
+    expect(job.status, JSON.stringify(job.error)).to.equal("completed");
+    expect(job.result).to.deep.equal({
+      text: "[e2e-agent] > ЗАПРОС",
+      prefix: "[e2e-agent] ",
+    });
+
+    const refused = expectStatus(
+      await call(admin, "POST", "/api/v1/jobs/demo/echo", {
+        text: "x".repeat(201),
+        lookup: true,
+      }),
+      201,
+    ).data;
+    const failed = await jobSettled(refused.jobId);
+
+    expect(failed.status).to.equal("failed");
+    expect(failed.attempt ?? 0, "без повторов").to.be.at.most(1);
+    expect(JSON.stringify(failed.error)).to.include("ECHO_TEXT_TOO_LONG");
   });
 
   it("очередь demo.echo, долгая задача echo.long: ход событиями job.progress, итог job.done, файл итога — ссылка на скачивание", async () => {
@@ -529,7 +687,12 @@ describe("агенты (настоящий агент и воркер echo)", fu
           admin,
           "POST",
           `/api/v1/agents/${agentId}/workers/echo/fetch`,
-          { method: "POST", path: "/echo", body: "через копию" },
+          {
+            method: "POST",
+            path: "/echo",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ text: "через копию" }),
+          },
           via,
         ),
         200,

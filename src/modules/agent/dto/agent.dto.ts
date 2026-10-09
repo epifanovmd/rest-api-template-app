@@ -55,17 +55,36 @@ export interface IAgentManifestConfigDto {
   schema?: Record<string, unknown>;
 }
 
-/** Маршрут воркера в манифесте: `{name}` в пути — один сегмент. */
+/**
+ * Маршрут воркера в манифесте: `{name}` в пути — один сегмент. Агент
+ * пропускает к воркеру только объявленные маршруты (`ROUTE_UNDECLARED`).
+ */
 export interface IAgentManifestRouteDto {
   method: string;
   path: string;
   description?: string;
+  /** JSON Schema тела запроса: сервер проверяет тело до отправки. */
+  request?: Record<string, unknown>;
+  /** JSON Schema тела ответа `2xx` — описание, не проверяется. */
+  response?: Record<string, unknown>;
 }
 
-/** Тип события воркера в манифесте. */
+/** Тип события воркера в манифесте: другие типы агент не принимает. */
 export interface IAgentManifestEventDto {
   type: string;
   description?: string;
+  /** JSON Schema `data` события. */
+  schema?: Record<string, unknown>;
+}
+
+/** Запрос воркера к серверу (`POST /requests` на сокете агента). */
+export interface IAgentManifestRequestDto {
+  type: string;
+  description?: string;
+  /** JSON Schema `data` запроса: сервер проверяет до обработчика. */
+  schema?: Record<string, unknown>;
+  /** JSON Schema `data` ответа — описание, не проверяется. */
+  response?: Record<string, unknown>;
 }
 
 /** Тип задачи воркера в манифесте (`POST /jobs`). */
@@ -76,7 +95,11 @@ export interface IAgentManifestJobDto {
   schema?: Record<string, unknown>;
 }
 
-/** Манифест воркера — ответ `GET /manifest`: что воркер умеет. */
+/**
+ * Манифест воркера — ответ `GET /manifest`: что воркер умеет (каталог
+ * возможностей). Агент пропускает только объявленное: маршруты, типы задач,
+ * события, запросы к серверу, ключи настроек.
+ */
 export interface IAgentWorkerManifestDto {
   version: string;
   description?: string;
@@ -84,6 +107,7 @@ export interface IAgentWorkerManifestDto {
   routes: IAgentManifestRouteDto[];
   events: IAgentManifestEventDto[];
   jobs: IAgentManifestJobDto[];
+  requests: IAgentManifestRequestDto[];
 }
 
 /** Что агент сообщил о ключе настроек: версия на диске и итог применения. */
@@ -178,6 +202,7 @@ const manifestDto = (
     routes: manifest.routes ?? [],
     events: manifest.events ?? [],
     jobs: manifest.jobs ?? [],
+    requests: manifest.requests ?? [],
   };
 
 const workerDto = (worker: AgentWorker): IAgentWorkerDto => ({
@@ -359,6 +384,8 @@ export interface IAgentEventDto {
   at: number;
   /** Когда принято, мс. */
   receivedAt: number;
+  /** `data` не подошло под схему события из манифеста воркера: замечания. */
+  problems?: string[];
 }
 
 /** Запись журнала агента или воркера. */

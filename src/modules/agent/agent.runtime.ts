@@ -2,6 +2,7 @@ import {
   type Agent,
   type AgentEvent,
   Agents,
+  type InvalidEvent,
   type RelayFunction,
 } from "agent-sdk/server";
 import { randomBytes } from "crypto";
@@ -17,6 +18,7 @@ import { AgentSignals } from "./agent.signals";
 import { AGENT_RELAY_PATH, AGENTS_CHANGED_CHANNEL } from "./agent.types";
 import { AgentEnrollmentService } from "./agent-enrollment.service";
 import { AgentHistoryService, toAgentEventDto } from "./agent-history.service";
+import { AgentWorkerRequestRegistry } from "./agent-worker-request.registry";
 import {
   AgentAlertDto,
   AgentConfigStatusDto,
@@ -41,6 +43,11 @@ import { AgentStore } from "./store/agent.store";
 const COALESCE_MS = 100;
 /** Больше агентов в одном сигнале — «обновить всех» (предел NOTIFY — 8000 байт). */
 const MAX_SIGNAL_IDS = 100;
+/** Замечания к событиям, ждущим `onEvent`, — не больше (защита от утечки). */
+const MAX_PENDING_PROBLEMS = 1_000;
+
+const eventKey = (event: Pick<AgentEvent, "agentId" | "id">): string =>
+  `${event.agentId}\n${event.id}`;
 
 /** Сигнал другим процессам: кого перечитать. */
 const ChangeSignalSchema = z.object({
@@ -156,6 +163,8 @@ export class AgentRuntime {
   private readonly _connectedAt = new Map<string, number>();
   /** Воркеры агента в работе: «имя → перезапуски», — чтобы заметить их перезапуск. */
   private readonly _running = new Map<string, Map<string, number>>();
+  /** Замечания проверки по схеме к событиям, которые ещё придут в `onEvent`. */
+  private readonly _problems = new Map<string, string[]>();
 
   constructor(
     @inject(AgentStore) private readonly _store: AgentStore,
@@ -164,6 +173,8 @@ export class AgentRuntime {
     @inject(AgentHistoryService) private readonly _history: AgentHistoryService,
     @inject(AgentSignals) private readonly _signals: AgentSignals,
     @inject(EventBus) private readonly _eventBus: EventBus,
+    @inject(AgentWorkerRequestRegistry)
+    private readonly _requests: AgentWorkerRequestRegistry,
   ) {}
 
   /** `Agents` процесса; создаётся при первом обращении. */
@@ -280,21 +291,72 @@ export class AgentRuntime {
       trustProxy: config.server.trustProxy,
       validateConfigs: true,
       validateJobs: true,
+      validateRequests: true,
+      validateEvents: agentConfig.validateEvents,
       onEvent: event => this.handleWorkerEvent(event),
+      onWorkerRequest: request => this._requests.handle(request),
       log: (msg, extra) => logger.info({ ...extra }, `[Agent] ${msg}`),
     });
   }
 
   /**
-   * Событие воркера: обработчики модулей (задачи), затем история; новое —
-   * в EventBus. Подтверждение агенту — после успеха.
+   * Событие воркера: обработчики модулей (задачи), затем история (с
+   * замечаниями проверки по схеме, если были); новое — в EventBus.
+   * Подтверждение агенту — после успеха.
    */
   private async handleWorkerEvent(event: AgentEvent): Promise<void> {
-    for (const handler of this._eventHandlers) await handler(event);
+    const key = eventKey(event);
+    const problems = this._problems.get(key);
 
-    if (await this._history.saveEvent(event)) {
-      this._eventBus.emit(new AgentEventReceivedEvent(toAgentEventDto(event)));
+    for (const handler of this._eventHandlers) await handler(event);
+    this._problems.delete(key);
+    await this.saveEvent(event, problems);
+  }
+
+  private async saveEvent(
+    event: AgentEvent,
+    problems: string[] | undefined,
+  ): Promise<void> {
+    if (await this._history.saveEvent(event, problems)) {
+      this._eventBus.emit(
+        new AgentEventReceivedEvent(toAgentEventDto(event, problems)),
+      );
     }
+  }
+
+  /**
+   * `data` события не по схеме манифеста (`validateEvents`): журнал;
+   * `log` — замечания попадут в историю вместе с событием (`onEvent`
+   * следует сразу), `reject` — событие только в историю, обработчикам
+   * модулей не передаётся.
+   */
+  private onInvalidEvent({ event, problems, rejected }: InvalidEvent): void {
+    logger.warn(
+      {
+        agentId: event.agentId,
+        worker: event.worker,
+        type: event.type,
+        problems,
+        rejected,
+      },
+      "[Agent] data события не подходит под схему манифеста воркера",
+    );
+    if (rejected) {
+      this.saveEvent(event, problems).catch(err =>
+        logger.warn(
+          { err, agentId: event.agentId },
+          "[Agent] Отклонённое событие не сохранено",
+        ),
+      );
+
+      return;
+    }
+    if (this._problems.size >= MAX_PENDING_PROBLEMS) {
+      const oldest = this._problems.keys().next().value;
+
+      if (oldest !== undefined) this._problems.delete(oldest);
+    }
+    this._problems.set(eventKey(event), problems);
   }
 
   /** События SDK этого процесса → доменные события модуля. */
@@ -310,6 +372,7 @@ export class AgentRuntime {
       if (source) emit(new AgentEnrolledEvent(dto, source));
       this.detectReconnect(agent);
     });
+    agents.on("invalidEvent", invalid => this.onInvalidEvent(invalid));
     agents.on("alert", alert =>
       emit(new AgentAlertChangedEvent(AgentAlertDto.fromModel(alert))),
     );

@@ -3,12 +3,17 @@
 
 HTTP-сервис на unix-сокете AGENT_WORKER_SOCKET (формат — sdk/spec §12 агента):
 
-  POST /echo            тело {"text": "…"} или текст → {"text": "<префикс>ТЕКСТ"}
+  POST /echo            тело {"text", "repeat"?, "case"?, "reverse"?} или текст → {"text": "<префикс>ТЕКСТ"};
+                          после ответа — событие echo.echoed {text, length}
   GET  /stream?n=5      ответ по частям: n строк с паузой (потоковый ответ fetch)
   GET  /bytes?n=256     двоичный ответ: n байт 0, 1, …, 255, 0, …
   POST /hang            «зависнуть»: GET /health больше не отвечает (агент перезапустит воркер)
+  POST /emit            {"type", "data"?} — отправить событие как есть: проверка схем событий на сервере
+                          (data не по схеме) и отказа агента (тип не из манифеста — 400 EVENT_UNDECLARED)
   POST /jobs            задачи (§12): {"type", "jobId", "data"}
-                          echo.quick {"text"} → 200 {"result": {"text"}} — итог сразу;
+                          echo.quick {"text", "lookup"?} → 200 {"result": {"text"}} — итог сразу;
+                          lookup: true — префикс спросить у сервера (запрос echo.lookup): отказ
+                          сервера — 422, сервер недоступен — 503 (повтор задачи);
                           echo.long {"steps": 5, "delayMs": 500, "text"?, "fail"?} → 202 {"id"}; дальше
                           события job.progress {jobId, id, progress, message} и job.done {jobId, id,
                           result} (fail — job.failed) через агента; пока задача идёт, GET /health
@@ -21,7 +26,8 @@ HTTP-сервис на unix-сокете AGENT_WORKER_SOCKET (формат — s
   DELETE /config/settings  вернуть значения по умолчанию
   GET  /metrics         счётчики
   GET  /health          {ok, message, info}
-  GET  /manifest        что воркер умеет: версия, ключ настроек settings со схемой, маршруты, события
+  GET  /manifest        что воркер умеет: версия, ключ настроек settings, маршруты, события, задачи
+                        и запросы к серверу — со схемами
   POST /cleanup         убрать созданное на узле: файл ECHO_STATE_FILE, настройку и счётчики
 
 ECHO_STATE_FILE (необязательно) — файл на узле, куда echo записывает применённую настройку:
@@ -31,7 +37,8 @@ ECHO_JOBS_DIR (необязательно) — каталог, где echo хр�
 после каждого шага: запущенный заново воркер продолжает незаконченные задачи с сохранённого шага.
 
 События уходят агенту: POST /events на AGENT_SOCKET с заголовком
-Authorization: Bearer $AGENT_WORKER_TOKEN. Запускает воркер агент (agent.yaml → workers).
+Authorization: Bearer $AGENT_WORKER_TOKEN; запрос к серверу — POST /requests туда же, ответ —
+когда сервер ответит. Запускает воркер агент (agent.yaml → workers).
 """
 
 import http.client
@@ -51,9 +58,13 @@ from urllib.parse import parse_qs, urlparse
 VERSION = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "VERSION"), encoding="utf-8").read().strip()
 DEFAULTS = {"prefix": "", "upper": True}
 MAX_PREFIX = 64
+MAX_TEXT = 1000
+MAX_REPEAT = 10
+CASES = ("settings", "upper", "lower")
 
-# Манифест (sdk/spec §12): по нему сервер знает, что умеет воркер, и может проверить настройку
-# по схеме до отправки агенту.
+# Манифест (sdk/spec §12): по нему агент пропускает к воркеру только объявленные маршруты, задачи,
+# события и запросы к серверу, а сервер проверяет по схемам настройку, тело запроса, data задачи,
+# запроса и события.
 MANIFEST = {
     "version": VERSION,
     "description": "Эхо: текст, потоковый и двоичный ответ, быстрые и долгие задачи",
@@ -72,19 +83,73 @@ MANIFEST = {
         }
     ],
     "routes": [
-        {"method": "POST", "path": "/echo", "description": "Текст с префиксом"},
+        {
+            "method": "POST",
+            "path": "/echo",
+            "description": "Текст с префиксом",
+            "request": {
+                "type": "object",
+                "properties": {
+                    "text": {"type": "string", "maxLength": MAX_TEXT, "description": "Текст"},
+                    "repeat": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": MAX_REPEAT,
+                        "description": "Сколько раз повторить",
+                    },
+                    "case": {
+                        "type": "string",
+                        "enum": list(CASES),
+                        "description": "Регистр: как в настройках, заглавные или строчные",
+                    },
+                    "reverse": {"type": "boolean", "description": "Задом наперёд"},
+                },
+                "required": ["text"],
+                "additionalProperties": False,
+            },
+            "response": {"type": "object", "properties": {"text": {"type": "string"}}, "required": ["text"]},
+        },
         {"method": "GET", "path": "/stream", "description": "Ответ по частям, ?n= строк"},
         {"method": "GET", "path": "/bytes", "description": "Двоичный ответ, ?n= байт"},
         {"method": "POST", "path": "/hang", "description": "Зависнуть: GET /health больше не отвечает"},
+        {
+            "method": "POST",
+            "path": "/emit",
+            "description": "Отправить событие как есть (проверка схем событий)",
+            "request": {
+                "type": "object",
+                "properties": {"type": {"type": "string"}, "data": {}},
+                "required": ["type"],
+                "additionalProperties": False,
+            },
+        },
     ],
     "events": [
-        {"type": "echo.started", "description": "Воркер запущен"},
+        {
+            "type": "echo.started",
+            "description": "Воркер запущен",
+            "schema": {
+                "type": "object",
+                "properties": {"version": {"type": "string"}, "pid": {"type": "integer"}},
+                "required": ["version", "pid"],
+            },
+        },
+        {
+            "type": "echo.echoed",
+            "description": "Ответ на POST /echo отправлен",
+            "schema": {
+                "type": "object",
+                "properties": {"text": {"type": "string"}, "length": {"type": "integer", "minimum": 0}},
+                "required": ["text", "length"],
+                "additionalProperties": False,
+            },
+        },
     ],
     "jobs": [
         {
             "type": "echo.quick",
-            "description": "Текст с префиксом — итог сразу",
-            "schema": {"type": "object", "properties": {"text": {"type": "string"}}},
+            "description": "Текст с префиксом — итог сразу; lookup: true — префикс от сервера",
+            "schema": {"type": "object", "properties": {"text": {"type": "string"}, "lookup": {"type": "boolean"}}},
         },
         {
             "type": "echo.long",
@@ -98,6 +163,18 @@ MANIFEST = {
                     "fail": {"type": "boolean"},
                 },
             },
+        },
+    ],
+    "requests": [
+        {
+            "type": "echo.lookup",
+            "description": "Спросить у сервера префикс для текста",
+            "schema": {
+                "type": "object",
+                "properties": {"text": {"type": "string"}},
+                "required": ["text"],
+            },
+            "response": {"type": "object", "properties": {"prefix": {"type": "string"}}, "required": ["prefix"]},
         },
     ],
 }
@@ -176,6 +253,20 @@ def event(type_, data, wait=30):
         return
 
 
+def lookup(text):
+    """Запрос к серверу echo.lookup: (префикс, None, None) или (None, статус агента, текст ошибки)."""
+    try:
+        status, body = agent("POST", "/requests", {"type": "echo.lookup", "data": {"text": text}, "timeoutMs": 5000})
+    except OSError as e:
+        return None, 503, f"агент недоступен: {e}"
+    if status != 200:
+        return None, status, f"{(body or {}).get('code', '')}: {(body or {}).get('message', '')}"
+    prefix = ((body or {}).get("data") or {}).get("prefix")
+    if not isinstance(prefix, str):
+        return None, 502, "сервер не прислал prefix"
+    return prefix, None, None
+
+
 def save_state():
     """Применённая настройка — в ECHO_STATE_FILE (если задан)."""
     if not STATE_FILE:
@@ -191,10 +282,32 @@ def remove_state():
         os.unlink(STATE_FILE)
 
 
-def transform(text):
+def transform(text, case="settings"):
+    """Префикс из настроек и регистр: settings — как в настройках (upper), upper, lower."""
     with lock:
         prefix, upper = settings["prefix"], settings["upper"]
-    return prefix + (text.upper() if upper else text)
+    if case == "lower":
+        return prefix + text.lower()
+    if case == "upper" or upper:
+        return prefix + text.upper()
+    return prefix + text
+
+
+def echo_options(body):
+    """Тело POST /echo: (текст, повторы, регистр, задом наперёд) или текст ошибки."""
+    if not isinstance(body, dict):
+        return str(body), 1, "settings", False
+    text, repeat = body.get("text", ""), body.get("repeat", 1)
+    case, reverse = body.get("case", "settings"), body.get("reverse", False)
+    if not isinstance(text, str) or len(text) > MAX_TEXT:
+        return f"text: строка до {MAX_TEXT} символов"
+    if not isinstance(repeat, int) or isinstance(repeat, bool) or not 1 <= repeat <= MAX_REPEAT:
+        return f"repeat: целое от 1 до {MAX_REPEAT}"
+    if case not in CASES:
+        return "case: " + " | ".join(CASES)
+    if not isinstance(reverse, bool):
+        return "reverse: true или false"
+    return text, repeat, case, reverse
 
 
 def validate(data):
@@ -439,12 +552,19 @@ class Handler(BaseHTTPRequestHandler):
             count("requests")
             raw = self.raw_body()
             try:
-                body = json.loads(raw) if raw else {}
-                text = body.get("text", "") if isinstance(body, dict) else str(body)
+                options = echo_options(json.loads(raw) if raw else {})
             except ValueError:
-                text = raw.decode(errors="replace")
+                options = echo_options(raw.decode(errors="replace"))
+            if isinstance(options, str):
+                return self.reply(400, {"message": options})
+            text, repeat, case, reverse = options
+            out = transform(" ".join([text[::-1] if reverse else text] * repeat), case)
             count("echoed")
-            return self.reply(200, {"text": transform(str(text))})
+            self.reply(200, {"text": out})
+            threading.Thread(target=event, args=("echo.echoed", {"text": out, "length": len(out)}), daemon=True).start()
+            return
+        if path == "/emit":
+            return self.emit()
         if path == "/jobs":
             return self.post_job()
         if path.startswith("/jobs/") and path.endswith("/cancel"):
@@ -464,6 +584,23 @@ class Handler(BaseHTTPRequestHandler):
             return self.reply(200, body)
         self.reply(404, {"message": "нет маршрута"})
 
+    def emit(self):
+        """POST /emit: событие как есть — ответ агента (202 или его ошибка)."""
+        try:
+            body = self.json_body()
+            if not isinstance(body, dict) or not isinstance(body.get("type"), str):
+                raise TypeError
+        except (ValueError, TypeError):
+            return self.reply(400, {"message": "тело: {type, data?}"})
+        try:
+            payload = {"type": body["type"], **({"data": body["data"]} if "data" in body else {})}
+            status, reply = agent("POST", "/events", payload)
+        except OSError as e:
+            return self.reply(503, {"message": f"агент недоступен: {e}"})
+        if status == 202:
+            count("events")
+        return self.reply(status, reply if reply is not None else {"sent": True})
+
     def post_job(self):
         """POST /jobs: echo.quick — итог сразу (200), echo.long — 202 {id} и события job.*."""
         count("requests")
@@ -478,7 +615,14 @@ class Handler(BaseHTTPRequestHandler):
         text = str(data.get("text", ""))
         if type_ == "echo.quick":
             count("echoed")
-            return self.reply(200, {"result": {"text": transform(text)}})
+            if not data.get("lookup"):
+                return self.reply(200, {"result": {"text": transform(text)}})
+            prefix, status, err = lookup(text)
+            if err:
+                # Отказ сервера (422) — окончательный, остальное — повтор задачи (503).
+                code = 422 if status == 422 else 503
+                return self.reply(code, {"message": "префикс от сервера не получен: " + err})
+            return self.reply(200, {"result": {"text": prefix + transform(text), "prefix": prefix}})
         if type_ != "echo.long":
             return self.reply(400, {"message": f"задачи {type_} нет: есть echo.quick и echo.long"})
         try:

@@ -1914,7 +1914,7 @@
 				"additionalProperties": false
 			},
 			"IAgentManifestRouteDto": {
-				"description": "Маршрут воркера в манифесте: `{name}` в пути — один сегмент.",
+				"description": "Маршрут воркера в манифесте: `{name}` в пути — один сегмент. Агент\nпропускает к воркеру только объявленные маршруты (`ROUTE_UNDECLARED`).",
 				"properties": {
 					"method": {
 						"type": "string"
@@ -1924,6 +1924,14 @@
 					},
 					"description": {
 						"type": "string"
+					},
+					"request": {
+						"$ref": "#/components/schemas/Record_string.unknown_",
+						"description": "JSON Schema тела запроса: сервер проверяет тело до отправки."
+					},
+					"response": {
+						"$ref": "#/components/schemas/Record_string.unknown_",
+						"description": "JSON Schema тела ответа `2xx` — описание, не проверяется."
 					}
 				},
 				"required": [
@@ -1934,13 +1942,17 @@
 				"additionalProperties": false
 			},
 			"IAgentManifestEventDto": {
-				"description": "Тип события воркера в манифесте.",
+				"description": "Тип события воркера в манифесте: другие типы агент не принимает.",
 				"properties": {
 					"type": {
 						"type": "string"
 					},
 					"description": {
 						"type": "string"
+					},
+					"schema": {
+						"$ref": "#/components/schemas/Record_string.unknown_",
+						"description": "JSON Schema `data` события."
 					}
 				},
 				"required": [
@@ -1969,8 +1981,32 @@
 				"type": "object",
 				"additionalProperties": false
 			},
+			"IAgentManifestRequestDto": {
+				"description": "Запрос воркера к серверу (`POST /requests` на сокете агента).",
+				"properties": {
+					"type": {
+						"type": "string"
+					},
+					"description": {
+						"type": "string"
+					},
+					"schema": {
+						"$ref": "#/components/schemas/Record_string.unknown_",
+						"description": "JSON Schema `data` запроса: сервер проверяет до обработчика."
+					},
+					"response": {
+						"$ref": "#/components/schemas/Record_string.unknown_",
+						"description": "JSON Schema `data` ответа — описание, не проверяется."
+					}
+				},
+				"required": [
+					"type"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
 			"IAgentWorkerManifestDto": {
-				"description": "Манифест воркера — ответ `GET /manifest`: что воркер умеет.",
+				"description": "Манифест воркера — ответ `GET /manifest`: что воркер умеет (каталог\nвозможностей). Агент пропускает только объявленное: маршруты, типы задач,\nсобытия, запросы к серверу, ключи настроек.",
 				"properties": {
 					"version": {
 						"type": "string"
@@ -2001,6 +2037,12 @@
 							"$ref": "#/components/schemas/IAgentManifestJobDto"
 						},
 						"type": "array"
+					},
+					"requests": {
+						"items": {
+							"$ref": "#/components/schemas/IAgentManifestRequestDto"
+						},
+						"type": "array"
 					}
 				},
 				"required": [
@@ -2008,7 +2050,8 @@
 					"configs",
 					"routes",
 					"events",
-					"jobs"
+					"jobs",
+					"requests"
 				],
 				"type": "object",
 				"additionalProperties": false
@@ -2347,6 +2390,13 @@
 						"type": "number",
 						"format": "double",
 						"description": "Когда принято, мс."
+					},
+					"problems": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array",
+						"description": "`data` не подошло под схему события из манифеста воркера: замечания."
 					}
 				},
 				"required": [
@@ -3326,6 +3376,10 @@
 				"properties": {
 					"text": {
 						"type": "string"
+					},
+					"lookup": {
+						"type": "boolean",
+						"description": "Быстрая задача берёт префикс у сервера: воркер шлёт запрос `echo.lookup`\n(`DemoEchoLookupHandler`)."
 					},
 					"long": {
 						"type": "boolean",
@@ -8556,7 +8610,7 @@
 						}
 					}
 				},
-				"description": "Поставить демо-задачу `demo.echo` воркеру `echo` агента — проверка, что\nагенты на связи. Быстрая (`echo.quick`) — итог сразу; долгая (`long`,\n`echo.long`) — `steps` шагов по `delayMs` с ходом, `fail` — провал после\nшагов, `withOutput` — итог ещё и в файл хранилища по подписанной ссылке.\nИтог — текст по настройкам воркера.",
+				"description": "Поставить демо-задачу `demo.echo` воркеру `echo` агента — проверка, что\nагенты на связи. Быстрая (`echo.quick`) — итог сразу (`lookup` — воркер\nберёт префикс у сервера запросом `echo.lookup`); долгая (`long`,\n`echo.long`) — `steps` шагов по `delayMs` с ходом, `fail` — провал после\nшагов, `withOutput` — итог ещё и в файл хранилища по подписанной ссылке.\nИтог — текст по настройкам воркера.",
 				"summary": "Проверка агентов",
 				"tags": [
 					"Jobs"

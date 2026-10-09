@@ -2153,7 +2153,7 @@ acorn@^8.16.0:
 
 "agent-sdk@file:vendor/agent-sdk-1.0.0.tgz":
   version "1.0.0"
-  resolved "file:vendor/agent-sdk-1.0.0.tgz#8d4d8b9675f95b9325d5073c0e845f60472aca07"
+  resolved "file:vendor/agent-sdk-1.0.0.tgz#dd114c2e25756f8aa6e55489f407835ad3eac4c8"
   dependencies:
     "@cfworker/json-schema" "^4.1.1"
     lru-cache "^11.5.3"

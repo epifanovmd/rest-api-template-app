@@ -61,6 +61,23 @@ export const AgentError = defineErrors("AGENT", {
     status: HttpStatus.BAD_REQUEST,
     message: "Некорректный запрос к агенту",
   },
+  ROUTE_UNDECLARED: {
+    status: HttpStatus.NOT_FOUND,
+    message:
+      "Воркер не объявил такой маршрут в манифесте: агент не передаёт запрос",
+  },
+  JOB_UNKNOWN: {
+    status: HttpStatus.CONFLICT,
+    message: "Воркер не объявил такой тип задачи в манифесте",
+  },
+  REQUEST_INVALID: {
+    status: HttpStatus.BAD_REQUEST,
+    message: "Тело запроса не подходит под схему маршрута из манифеста воркера",
+  },
+  EVENT_UNDECLARED: {
+    status: HttpStatus.CONFLICT,
+    message: "Воркер не объявил такой тип события в манифесте",
+  },
   NOT_WATCHED: {
     status: HttpStatus.CONFLICT,
     message: "Сначала войдите в комнату агента (room:subscribe)",
@@ -84,6 +101,10 @@ const SDK_ERRORS: Record<string, ErrorFactory> = {
   TIMEOUT: AgentError.TIMEOUT,
   BODY_TOO_LARGE: AgentError.TOO_LARGE,
   MESSAGE_INVALID: AgentError.INVALID_REQUEST,
+  ROUTE_UNDECLARED: AgentError.ROUTE_UNDECLARED,
+  JOB_UNKNOWN: AgentError.JOB_UNKNOWN,
+  REQUEST_INVALID: AgentError.REQUEST_INVALID,
+  EVENT_UNDECLARED: AgentError.EVENT_UNDECLARED,
 };
 
 /**

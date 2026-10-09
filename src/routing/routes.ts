@@ -871,6 +871,8 @@ const models: TsoaRoute.Models = {
             "method": {"dataType":"string","required":true},
             "path": {"dataType":"string","required":true},
             "description": {"dataType":"string"},
+            "request": {"ref":"Record_string.unknown_"},
+            "response": {"ref":"Record_string.unknown_"},
         },
         "additionalProperties": false,
     },
@@ -880,6 +882,7 @@ const models: TsoaRoute.Models = {
         "properties": {
             "type": {"dataType":"string","required":true},
             "description": {"dataType":"string"},
+            "schema": {"ref":"Record_string.unknown_"},
         },
         "additionalProperties": false,
     },
@@ -894,6 +897,17 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "IAgentManifestRequestDto": {
+        "dataType": "refObject",
+        "properties": {
+            "type": {"dataType":"string","required":true},
+            "description": {"dataType":"string"},
+            "schema": {"ref":"Record_string.unknown_"},
+            "response": {"ref":"Record_string.unknown_"},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "IAgentWorkerManifestDto": {
         "dataType": "refObject",
         "properties": {
@@ -903,6 +917,7 @@ const models: TsoaRoute.Models = {
             "routes": {"dataType":"array","array":{"dataType":"refObject","ref":"IAgentManifestRouteDto"},"required":true},
             "events": {"dataType":"array","array":{"dataType":"refObject","ref":"IAgentManifestEventDto"},"required":true},
             "jobs": {"dataType":"array","array":{"dataType":"refObject","ref":"IAgentManifestJobDto"},"required":true},
+            "requests": {"dataType":"array","array":{"dataType":"refObject","ref":"IAgentManifestRequestDto"},"required":true},
         },
         "additionalProperties": false,
     },
@@ -1032,6 +1047,7 @@ const models: TsoaRoute.Models = {
             "data": {"dataType":"any"},
             "at": {"dataType":"double","required":true},
             "receivedAt": {"dataType":"double","required":true},
+            "problems": {"dataType":"array","array":{"dataType":"string"}},
         },
         "additionalProperties": false,
     },
@@ -1395,6 +1411,7 @@ const models: TsoaRoute.Models = {
         "dataType": "refObject",
         "properties": {
             "text": {"dataType":"string","required":true},
+            "lookup": {"dataType":"boolean"},
             "long": {"dataType":"boolean"},
             "steps": {"dataType":"double"},
             "delayMs": {"dataType":"double"},

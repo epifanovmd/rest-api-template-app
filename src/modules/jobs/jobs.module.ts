@@ -4,11 +4,13 @@ import {
   asExternalJobHandler,
   asHealthIndicator,
   asJobHandler,
+  asWorkerRequestHandler,
   JobQueue,
   Module,
 } from "../../core";
 import { asSocketListener, asSocketRoomPolicy } from "../socket";
 import { DemoEchoJobHandler } from "./demo-echo.handler";
+import { DemoEchoLookupHandler } from "./demo-echo-lookup.handler";
 import { ExternalJobService } from "./external-job.service";
 import { ExternalSyncJobHandler } from "./external-sync.handler";
 import { JobRunner } from "./job.runner";
@@ -60,6 +62,7 @@ import { PgBossJobQueue } from "./pg-boss-job.queue";
     asJobHandler(JobRetentionJobHandler),
     asJobHandler(ExternalSyncJobHandler),
     asExternalJobHandler(DemoEchoJobHandler),
+    asWorkerRequestHandler(DemoEchoLookupHandler),
   ],
   bootstrappers: [JobsBootstrap],
 })

@@ -166,6 +166,19 @@ external_id varchar(128), deadline_at; без files/event_seq/event_at/stop_requ
 REST: `/agents` (+ `/alerts`, `/events`, `/{id}`, revoke, delete, rotate-key, update, logs, metrics,
 `/{id}/configs`, `/{id}/workers/{w}/restart|update|fetch|configs/{key}`), `/agent-releases`,
 `/agent-enrollment-tokens` (22 операции); `/api/v1/agent-link/*` — вне Swagger, `RAW_HTTP_HANDLER`.
+Строгость манифеста (SDK от 09.10.2026, тот же 1.0.0): агент пропускает только `routes` (иначе
+`AGENT_ROUTE_UNDECLARED` 404), типы задач из `jobs` (`AGENT_JOB_UNKNOWN` 409, во внешней очереди — final),
+события из `events`, запросы из `requests`. `AgentRuntime`: `validateConfigs|Jobs|Requests: true`,
+`validateEvents` = `AGENT_VALIDATE_EVENTS` (по умолчанию `log`; `invalidEvent` → warn + `agent_events.problems`
+(миграция `AgentEventProblems1791800000000`), `reject` — сохраняется из `invalidEvent`, обработчики модулей не
+вызываются). Тело не по `routes[].request` — `AGENT_REQUEST_INVALID` 400 (`details.reason`). Каталог возможностей —
+`AgentDto.workers[].manifest` (routes.request/response, events.schema, jobs, requests, configs), отдельного
+маршрута нет; `routes: open` в данных не видно. Запросы воркеров: core-токен `WORKER_REQUEST_HANDLER`
+(`IWorkerRequestHandler {type, workers?, handle}`, `WorkerRequestError(code, message)` → воркеру 422),
+нет обработчика — `REQUEST_UNHANDLED`, не тот воркер — `REQUEST_FORBIDDEN`, исключение — `REQUEST_FAILED`.
+Демо — `echo.lookup` (`jobs/demo-echo-lookup.handler.ts`: метка `echoPrefix` или `[<имя агента>] `, текст > 200 —
+`ECHO_TEXT_TOO_LONG`); echo 1.1.0: `POST /echo {text, repeat?, case?, reverse?}` + событие `echo.echoed`, `POST /emit`.
+`subscribeEvents`/`waitEvent` в модулях не используются: job-события нужны до подтверждения (`onEvent`).
 Подробно — `src/modules/agent/README.md`.
 
 ## Модуль node (узлы с агентами, feat/agent-sdk)

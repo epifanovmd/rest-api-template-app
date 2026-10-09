@@ -25,6 +25,10 @@ export class AgentWorkerEvent {
   @Column({ type: "jsonb", nullable: true })
   data!: unknown;
 
+  /** Замечания проверки `data` по схеме манифеста; `null` — подошло или не проверялось. */
+  @Column({ type: "jsonb", nullable: true })
+  problems!: string[] | null;
+
   /** Когда случилось на узле, мс. */
   @Column({ type: "bigint", transformer: bigintNumber })
   at!: number;

@@ -27,6 +27,24 @@ describe("ошибки агентов", () => {
     ]);
   });
 
+  it("отказы по манифесту воркера — доменные коды с понятным статусом, текст SDK — в details.reason", () => {
+    const cases: Array<[string, number, string]> = [
+      ["ROUTE_UNDECLARED", 404, AgentError.codes.ROUTE_UNDECLARED],
+      ["JOB_UNKNOWN", 409, AgentError.codes.JOB_UNKNOWN],
+      ["REQUEST_INVALID", 400, AgentError.codes.REQUEST_INVALID],
+      ["EVENT_UNDECLARED", 409, AgentError.codes.EVENT_UNDECLARED],
+    ];
+
+    for (const [code, status, domain] of cases) {
+      const err = toAgentError(
+        new AgentsError(code, `${code}: подробности`, 400),
+      ) as HttpException;
+
+      expect([err.status, err.code], code).to.deep.equal([status, domain]);
+      expect(err.reason).to.deep.include({ reason: `${code}: подробности` });
+    }
+  });
+
   it("withRetryAfter: заголовок Retry-After только для AGENT_ELSEWHERE", async () => {
     const headers: Record<string, string> = {};
     const set = (name: string, value: string) => {

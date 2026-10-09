@@ -10,6 +10,7 @@ import { Nodes1791475124953 } from "./1791475124953-Nodes";
 import { AgentWorkers1791511700000 } from "./1791511700000-AgentWorkers";
 import { NodeAgentName1791600000000 } from "./1791600000000-NodeAgentName";
 import { JobRunOutputs1791700000000 } from "./1791700000000-JobRunOutputs";
+import { AgentEventProblems1791800000000 } from "./1791800000000-AgentEventProblems";
 import { OwnFilePermissions1790770000000 } from "./1790770000000-OwnFilePermissions";
 
 /**
@@ -31,4 +32,5 @@ export const migrations: Function[] = [
   AgentWorkers1791511700000,
   NodeAgentName1791600000000,
   JobRunOutputs1791700000000,
+  AgentEventProblems1791800000000,
 ];

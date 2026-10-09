@@ -76,6 +76,16 @@ export const agentConfig = defineModuleConfig(
     publicKey: optionalString,
     /** Адрес сервера для агентов (`install.sh`, ссылки); без него — из запроса. */
     publicUrl: optionalString,
+    /**
+     * Проверка `data` событий воркеров по `events[].schema` манифеста:
+     * `off` — нет; `log` — не подошло: журнал и пометка в истории, событие
+     * обрабатывается как обычно; `reject` — то же, но обработчикам модулей
+     * оно не передаётся (в истории — с пометкой).
+     */
+    validateEvents: z
+      .string()
+      .default("log")
+      .pipe(z.enum(["off", "log", "reject"])),
   }),
   {
     bootstrapToken: process.env.AGENT_BOOTSTRAP_TOKEN || undefined,
@@ -92,5 +102,6 @@ export const agentConfig = defineModuleConfig(
     releasesDir: process.env.AGENT_RELEASES_DIR,
     publicKey: process.env.AGENT_PUBLIC_KEY,
     publicUrl: process.env.AGENT_PUBLIC_URL,
+    validateEvents: process.env.AGENT_VALIDATE_EVENTS || undefined,
   },
 );
