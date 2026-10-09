@@ -58,7 +58,6 @@ src/
 templates/           ← ассеты рантайма вне кода (шаблоны писем по локалям); путь — от корня проекта
 test/e2e/            ← интеграционный набор
 agent/               ← всё про агента на узлах: воркеры проекта, выпуск, локальный запуск, образ (agent/README.md)
-vendor/              ← серверный SDK агентов agent-sdk (tgz)
 scripts/             ← генератор модуля
 ```
 
@@ -160,10 +159,10 @@ Swagger UI — `/api-docs` (в production — по `API_DOCS_ENABLED`). Сист
 
 **Агент на этой машине** — агент ([github.com/epifanovmd/agent](https://github.com/epifanovmd/agent))
 с воркерами из `agent/local/agent.yaml`: `echo` (воркер проекта из `agent/workers/echo`,
-Python на стандартной библиотеке) и `netprobe` (проверка сети, сборка из выпуска агента).
+Python на стандартной библиотеке) и `netprobe` (проверка сети, сборка из выпуска `agent/release`).
 Регистрируется `AGENT_BOOTSTRAP_TOKEN` из `.env.development` (тот же токен у API), адрес
-API — `http://localhost:$SERVER_PORT`. Программа агента — `AGENT_BIN`, `.agent/bin/agent`,
-`agent/release/` или `../alp-agent/dist/<версия>/` (версия — как у `agent-sdk`). Как
+API — `http://localhost:$SERVER_PORT`. Программа агента — `AGENT_BIN`, `.agent/bin/agent` или
+`agent/release/` (`yarn agent:release`: агент версии `agent-sdk` с GitHub Release). Как
 агент и воркеры попадают на узлы — [agent/README.md](agent/README.md).
 
 | Команда                     | Что делает                                                                                    |
@@ -358,7 +357,8 @@ ENV_FILE=.env.staging docker compose up -d          # другой env-файл
   на push в `main` после всех проверок — deploy.
 - **Release** (`release.yml`): по тегу `v*` на коммите из `main` — образы `api`, `worker` и `agent`
   (amd64/arm64) в GHCR; выпуск для узлов (агент, воркеры проекта, `install.sh`) собирает
-  `agent/release.sh` (подпись — секрет `AGENT_SIGNING_KEY`), образ API раздаёт его.
+  `agent/release.sh` (агент — с GitHub Release; подпись — секрет `AGENT_SIGNING_KEY`), образ API
+  раздаёт его.
 - **Deploy** (`deploy.yml`, из CI или вручную с `main`): `make deploy` на хост по SSH — сборка
   там же. Настройки — переменная репозитория `DEPLOY_ENV` (содержимое `.env.deploy`),
   ключ — секрет `SSH_PRIVATE_KEY`; без `DEPLOY_ENV` CI деплой пропускает.

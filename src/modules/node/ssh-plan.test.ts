@@ -49,8 +49,22 @@ describe("ssh-plan", () => {
     );
   });
 
-  it("удаление: --uninstall и --purge по запросу", () => {
+  it("установка экземпляра: --instance перед остальными флагами", () => {
     const dir = "/tmp/agent-node.abc123";
+    const [, install] = buildInstallPlan(dir, "https://x", [], "rest");
+
+    expect(install.command).to.equal(
+      `sh ${dir}/install.sh --instance 'rest' --server 'https://x' --token-file ${dir}/token; ` +
+        `code=$?; rm -rf ${dir}; exit $code`,
+    );
+  });
+
+  it("удаление: --uninstall и --purge по запросу, экземпляр — --instance", () => {
+    const dir = "/tmp/agent-node.abc123";
+
+    expect(
+      buildUninstallPlan(dir, "https://x", false, "rest")[1].command,
+    ).to.match(/install\.sh --instance 'rest' --uninstall; /);
 
     expect(buildUninstallPlan(dir, "https://x", false)[1].command).to.match(
       /install\.sh --uninstall; /,

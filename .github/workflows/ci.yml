@@ -139,8 +139,9 @@ jobs:
       - run: yarn install --frozen-lockfile --ignore-scripts
       - run: yarn generate
       # Настоящий агент и воркеры для сценариев агентов и узлов — выпуск в agent/release:
-      # агент версии agent-sdk из GitHub Release и воркеры проекта (утилита agent-release —
-      # go run из репозитория агента).
+      # агент версии agent-sdk с GitHub Release (github.com/epifanovmd/agent), netprobe — сборка
+      # из исходников агента той же версии, воркеры проекта; утилита agent-release —
+      # go run github.com/epifanovmd/agent/cmd/agent-release@v<версия>.
       - uses: actions/setup-go@v5
         with:
           go-version: stable

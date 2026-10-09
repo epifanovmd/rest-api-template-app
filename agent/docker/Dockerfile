@@ -2,16 +2,17 @@
 # Агент в контейнере: агент (github.com/epifanovmd/agent, PID 1 — связь, очередь
 # важных сообщений, запуск воркеров), Python для воркеров без SDK и воркеры: echo
 # (воркер проекта, agent/workers/echo) и netprobe (проверка сети, сборка из выпуска
-# агента); настройки — agent/docker/agent.yaml. Свой воркер — каталогом в
+# agent/release); настройки — agent/docker/agent.yaml. Свой воркер — каталогом в
 # agent/workers и строкой в agent/docker/agent.yaml (или образом `FROM` этого).
 #
 #   docker build -f agent/docker/Dockerfile -t agent .
 #   docker run --rm -e AGENT_SERVER_URL=http://api:8181 \
 #     -e AGENT_ENROLL_TOKEN=<токен регистрации> -v agent-data:/var/lib/agent agent
 #
-# Программа агента — из каталога выпуска agent/release (yarn agent:release), иначе —
-# из GitHub Release версии AGENT_VERSION; контрольная сумма сверяется с manifest.json
-# выпуска. Обновление — новым образом (update.mode=external); ключ
+# Программа агента и netprobe — из каталога выпуска agent/release (yarn agent:release:
+# агент с GitHub Release, netprobe — из исходников агента), иначе программа агента — с
+# GitHub Release версии AGENT_VERSION, а образ — без netprobe; контрольная сумма
+# сверяется с manifest.json выпуска. Обновление — новым образом (update.mode=external); ключ
 # агента — в томе /var/lib/agent (без тома агент регистрируется заново при каждом
 # старте).
 ARG PYTHON_VERSION=3.12-slim
@@ -48,7 +49,8 @@ if digest != artifact["sha256"]:
     raise SystemExit(f"{name}: sha256 {digest} не совпадает с manifest.json")
 os.chmod("/out/agent", 0o755)
 
-# Воркер проверки сети netprobe — из того же выпуска; нет сборки — образ без него.
+# Воркер проверки сети netprobe — из того же выпуска; нет сборки — образ без него
+# (в выпуске агента на GitHub его нет: его собирает agent/release.sh).
 probe = next((w for w in manifest.get("workers", []) if w["name"] == "netprobe"
               and w["os"] == "linux" and w["arch"] == arch), None)
 if probe:

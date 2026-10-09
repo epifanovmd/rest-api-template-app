@@ -58,6 +58,10 @@ export const workFiles = (workDir: string) => ({
   token: `${workDir}/token`,
 });
 
+/** Флаг экземпляра агента проекта (`--instance`); нет — пусто. */
+const instanceFlag = (instance?: string): string =>
+  instance ? ` --instance ${shQuote(instance)}` : "";
+
 /** Скачать установщик с сервера (curl, иначе wget) — без root. */
 const downloadStep = (workDir: string, backendUrl: string): ISshStep => {
   const url = shQuote(installScriptUrl(backendUrl));
@@ -77,11 +81,14 @@ const downloadStep = (workDir: string, backendUrl: string): ISshStep => {
  * Установка: установщик сервера ставит зависимости, скачивает агента и
  * воркеры из выпуска, регистрирует агента токеном и запускает службу. Токен — файлом
  * (`--token-file`): в аргументах его видел бы любой пользователь узла.
+ * `instance` — экземпляр агента проекта (`--instance`): свои служба, настройки
+ * и данные рядом с агентами других бэкендов.
  */
 export const buildInstallPlan = (
   workDir: string,
   backendUrl: string,
   workers: string[] = [],
+  instance?: string,
 ): ISshStep[] => {
   const files = workFiles(workDir);
 
@@ -90,7 +97,7 @@ export const buildInstallPlan = (
     {
       title: "Установка агента",
       command:
-        `sh ${files.script} --server ${shQuote(backendUrl)} --token-file ${files.token}` +
+        `sh ${files.script}${instanceFlag(instance)} --server ${shQuote(backendUrl)} --token-file ${files.token}` +
         `${workers.map(worker => ` --worker ${shQuote(worker)}`).join("")}; ` +
         `code=$?; rm -rf ${workDir}; exit $code`,
       privileged: true,
@@ -100,19 +107,21 @@ export const buildInstallPlan = (
 };
 
 /**
- * Удаление: воркеры убирают за собой, служба и программа агента удаляются;
- * `purge` — ещё конфигурация, данные, пакеты и пользователь службы.
+ * Удаление экземпляра `instance` (как при установке): воркеры убирают за собой,
+ * служба и программа агента удаляются; `purge` — ещё конфигурация, данные,
+ * пакеты и пользователь службы. Агенты других экземпляров не затрагиваются.
  */
 export const buildUninstallPlan = (
   workDir: string,
   backendUrl: string,
   purge: boolean,
+  instance?: string,
 ): ISshStep[] => [
   downloadStep(workDir, backendUrl),
   {
     title: "Удаление агента",
     command:
-      `sh ${workFiles(workDir).script} --uninstall${purge ? " --purge" : ""}; ` +
+      `sh ${workFiles(workDir).script}${instanceFlag(instance)} --uninstall${purge ? " --purge" : ""}; ` +
       `code=$?; rm -rf ${workDir}; exit $code`,
     privileged: true,
     timeoutMs: 300_000,

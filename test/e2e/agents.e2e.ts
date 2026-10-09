@@ -909,6 +909,7 @@ describe("агенты (настоящий агент и воркер echo)", fu
     ).data.command;
 
     expect(command).to.include("/api/v1/agent-link/install.sh");
+    expect(command).to.include("--instance 'rest'");
     expect(command).to.include("--worker 'netprobe'");
     expectStatus(
       await call(admin, "POST", "/api/v1/agent-releases/install-command", {

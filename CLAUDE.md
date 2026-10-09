@@ -11,10 +11,11 @@
 (очередь задач на Postgres), Redis (между процессами), Socket.IO, S3-совместимое
 хранилище (SeaweedFS в compose) или диск, Zod, pino, prom-client + Sentry, Mocha +
 Chai + Sinon, сборка `tsc`. Агенты — github.com/epifanovmd/agent: серверный
-`agent-sdk` (архив в `vendor/`); всё про агента на узлах — в `agent/` (README простыми
-словами): воркеры проекта без SDK (`agent/workers/<имя>`), выпуск для узлов
-(`agent/release`, собирается `agent/release.sh`), локальный запуск (`agent/dev.sh`,
-`agent/local`), образ (`agent/docker`).
+`agent-sdk` (архив с GitHub Release агента, ссылка в `package.json`); всё про агента
+на узлах — в `agent/` (README простыми словами): воркеры проекта без SDK
+(`agent/workers/<имя>`), выпуск для узлов (`agent/release`, собирается
+`agent/release.sh`), локальный запуск (`agent/dev.sh`, `agent/local`), образ
+(`agent/docker`).
 Node >= 22.13 (Docker — 24 LTS). Роль процесса — `APP_ROLE=api|worker|all`.
 
 ## Команды

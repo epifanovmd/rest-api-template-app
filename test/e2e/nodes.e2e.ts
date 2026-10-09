@@ -216,6 +216,7 @@ describe("узлы", function () {
 
     expect(command.command).to.include("/api/v1/agent-link/install.sh");
     expect(command.command).to.include(command.token);
+    expect(command.command).to.include("--instance 'rest'");
     expect(command.command).to.include("--worker 'netprobe'");
     expectStatus(
       await call(bob, "POST", `/api/v1/nodes/${nodeA.id}/install-command`, {}),

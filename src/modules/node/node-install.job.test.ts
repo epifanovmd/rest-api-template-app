@@ -76,6 +76,7 @@ const sshData = {
   sudo: true,
   passwordEnc: "enc:pw",
   backendUrl: "https://api.example.com",
+  instance: "rest",
 };
 
 describe("NodeInstallAgentJob", () => {
@@ -117,6 +118,7 @@ describe("NodeInstallAgentJob", () => {
       "'https://api.example.com/api/v1/agent-link/install.sh'",
     );
     expect(commands[2]).to.match(/^sudo -S -p '' sh -c '/);
+    expect(commands[2]).to.include(`install.sh --instance '\\''rest'\\''`);
     expect(commands[2]).to.include(`--token-file ${WORK_DIR}/token`);
     expect(commands[2]).to.include("--worker");
     expect(commands[2]).to.not.include("pref.secret");
@@ -184,7 +186,7 @@ describe("NodeUninstallAgentJob", () => {
     purge: true,
   };
 
-  it("--uninstall --purge от root, затем агент отзывается и удаляется", async () => {
+  it("--instance экземпляра проекта, --uninstall --purge от root, затем агент отзывается и удаляется", async () => {
     const { session, execs } = fakeSession();
     const nodeAgents = { detach: sinon.stub().resolves() };
     const job = new NodeUninstallAgentJob(
@@ -196,7 +198,7 @@ describe("NodeUninstallAgentJob", () => {
     await job.handle(context(data).ctx);
 
     expect(execs[2].command).to.equal(
-      `sh ${WORK_DIR}/install.sh --uninstall --purge; code=$?; rm -rf ${WORK_DIR}; exit $code`,
+      `sh ${WORK_DIR}/install.sh --instance 'rest' --uninstall --purge; code=$?; rm -rf ${WORK_DIR}; exit $code`,
     );
     expect(nodeAgents.detach.calledOnceWith("n1", "u1")).to.be.true;
   });

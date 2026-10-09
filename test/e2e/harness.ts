@@ -166,6 +166,7 @@ const serverEnv = (port: number, relayPort: number): NodeJS.ProcessEnv => ({
   ADMIN_PASSWORD: E2E.admin.password,
   AGENT_BOOTSTRAP_TOKEN,
   AGENT_RELEASES_DIR: AGENT_RELEASES,
+  AGENT_INSTANCE: "rest",
   AGENT_RELAY_SECRET,
   AGENT_RELAY_HOST: "127.0.0.1",
   AGENT_RELAY_PORT: String(relayPort),

@@ -109,8 +109,15 @@ src/modules/node/
 **Команда установки.** `install-command` выпускает одноразовый токен регистрации
 (`maxUses: 1`, срок `expiresInMinutes`, по умолчанию сутки) с меткой
 `nodeId=<id узла>` и строку `curl …/api/v1/agent-link/install.sh | sudo sh -s --
---token … --worker 'netprobe'` (`agents.installCommand`; воркеры из выпуска —
-`workers`, по умолчанию воркер проверки сети `netprobe`). Токен — только в ответе.
+--instance 'rest' --token … --worker 'netprobe'` (`agents.installCommand`; воркеры из
+выпуска — `workers`, по умолчанию воркер проверки сети `netprobe`). Токен — только в ответе.
+
+**Экземпляр агента.** Агент проекта ставится на узел отдельным экземпляром
+`AGENT_INSTANCE` (по умолчанию `rest`; пусто — экземпляр по умолчанию): служба
+`agent-rest`, настройки `/etc/agent-rest`, данные и воркеры `/var/lib/agent-rest`,
+программа `/opt/agent-rest/bin/agent`. Агенты других бэкендов на том же узле не мешают,
+удаление затрагивает только свой экземпляр. На узле: `sudo agent-rest status`,
+`sudo systemctl reload agent-rest`, `sudo agent uninstall --instance rest [--purge]`.
 
 **Привязка.** Модуль `agent` выполняет запрос регистрации в своём контексте: хук
 `enroll` запоминает источник (id токена, автор, метки токена — только выданные
@@ -153,7 +160,8 @@ password?, privateKey?, passphrase?, sudo?, backendUrl?}` (+ `workers` / `purge`
 Задача (воркер, `tracked`, без повторов): подключение ssh2 → рабочий каталог
 `mktemp -d /tmp/agent-node.XXXXXXXX` → токен файлом (umask 077) → установщик с
 этого сервера (`/api/v1/agent-link/install.sh`, curl или wget) → `sh install.sh
---server … --token-file … --worker …` (удаление — `--uninstall [--purge]`) с
+--instance … --server … --token-file … --worker …` (удаление — `--instance …
+--uninstall [--purge]`; экземпляр — `AGENT_INSTANCE` на момент постановки) с
 `sudo -n` (вход по ключу) или `sudo -S` (пароль в stdin). Вывод команд — в журнал
 задачи построчно, прогресс — по шагам; каталог удаляется и при сбое. Провал
 установки отзывает токен; узел получает агента, когда тот зарегистрируется.

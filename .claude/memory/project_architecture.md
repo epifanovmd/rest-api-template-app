@@ -274,10 +274,11 @@ E2E: `yarn test:e2e` (`.mocharc.e2e.yml`: `test/e2e/**/*.e2e.ts`, `setup.ts` —
   validation, errors, events, module, README, тесты; печатает шаги (app.module до SocketModule, generate, миграция).
 - `Dockerfile`: стадии deps → builder → prod-deps → `api` (tini, без yarn, `USER node`, `templates/`,
   `VOLUME /app/files`, HEALTHCHECK `/ping`) → `worker` (= api + `ffmpeg`, последняя стадия — дефолт).
-  `APP_VERSION` build-arg; deps/prod-deps копируют `vendor/agent-sdk-*.tgz` до `yarn install`; стадия
+  `APP_VERSION` build-arg; deps/prod-deps ставят agent-sdk архивом с GitHub Release (ссылка в package.json); стадия
   `agent-release` берёт `agent/release` (если есть) → `/app/agent-release` (`AGENT_RELEASES_DIR`).
   `agent/docker/Dockerfile` — агент 1.0.0 (из `agent/release` или GitHub Release `AGENT_VERSION`, sha256 по
-  manifest) + python 3.12-slim (без SDK) + `agent/workers` (echo) + netprobe → `/usr/local/bin/netprobe`, конфиг
+  manifest) + python 3.12-slim (без SDK) + `agent/workers` (echo) + netprobe (только из `agent/release`) →
+  `/usr/local/bin/netprobe`, конфиг
   `agent/docker/agent.yaml`, том `/var/lib/agent`. На машине: `agent/dev.sh` —
   `yarn agent|agent:start|stop|status|logs` (`AGENT_DIR`, по умолчанию `.agent/`), `yarn agent:release` —
   `agent/release.sh`.

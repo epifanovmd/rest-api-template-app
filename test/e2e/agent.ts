@@ -16,17 +16,12 @@ import { BASE_URL } from "./harness";
 /**
  * Настоящий агент (github.com/epifanovmd/agent) для сценариев: программа и
  * воркер netprobe — из выпуска (`E2E_AGENT_RELEASES_DIR`, по умолчанию
- * `agent/release`, `yarn agent:release`), воркер echo — из исходников
+ * `agent/release`, `yarn agent:release`: агент с GitHub Release, netprobe —
+ * из исходников агента той же версии), воркер echo — из исходников
  * `agent/workers/echo` (python3). Агент работает в своём временном каталоге
  * данных и останавливается вместе с воркерами.
  */
 const env = process.env;
-
-const SDK_VERSION = (
-  JSON.parse(
-    readFileSync(resolve("node_modules/agent-sdk/package.json"), "utf8"),
-  ) as { version: string }
-).version;
 
 /** Каталог выпуска агента: его раздаёт и сервер стенда. */
 export const AGENT_RELEASES_DIR = resolve(
@@ -49,8 +44,32 @@ const agentBinary = (): string => {
   return file;
 };
 
-const netprobeBinary = (): string =>
-  join(AGENT_RELEASES_DIR, `netprobe-${SDK_VERSION}-${platform()}`);
+/** Сборка netprobe под эту машину и её версия — из `manifest.json` выпуска. */
+const netprobeBuild = (): { file: string; version: string } => {
+  const [os, arch] = platform().split("-");
+  const manifest = JSON.parse(
+    readFileSync(join(AGENT_RELEASES_DIR, "manifest.json"), "utf8"),
+  ) as {
+    workers?: {
+      name: string;
+      version: string;
+      os: string;
+      arch: string;
+      file: string;
+    }[];
+  };
+  const build = manifest.workers?.find(
+    w => w.name === "netprobe" && w.os === os && w.arch === arch,
+  );
+
+  if (!build) {
+    throw new Error(
+      `E2E: в выпуске ${AGENT_RELEASES_DIR} нет netprobe для ${platform()} — yarn agent:release`,
+    );
+  }
+
+  return { file: join(AGENT_RELEASES_DIR, build.file), version: build.version };
+};
 
 export interface IEnrollResult {
   status: number;
@@ -125,9 +144,11 @@ export class RealAgent {
     if (workers.includes("netprobe")) {
       const target = join(dataDir, "workers", "netprobe");
 
+      const build = netprobeBuild();
+
       mkdirSync(target, { recursive: true });
-      copyFileSync(netprobeBinary(), join(target, "current"));
-      writeFileSync(join(target, "version"), `${SDK_VERSION}\n`);
+      copyFileSync(build.file, join(target, "current"));
+      writeFileSync(join(target, "version"), `${build.version}\n`);
     }
 
     const config = join(dir, "agent.yaml");

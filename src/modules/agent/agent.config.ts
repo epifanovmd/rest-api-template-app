@@ -9,6 +9,9 @@ import {
 } from "../../config";
 import { resolveFromRoot } from "../../core";
 
+/** Экземпляр агента проекта на узле, если `AGENT_INSTANCE` не задан. */
+const AGENT_INSTANCE_DEFAULT = "rest";
+
 /** Настройки агентов (env `AGENT_*`). */
 export const agentConfig = defineModuleConfig(
   "agent",
@@ -72,8 +75,25 @@ export const agentConfig = defineModuleConfig(
     releasesDir: optionalString.transform(dir =>
       dir ? resolveFromRoot(dir) : undefined,
     ),
-    /** Открытый ключ подписи выпуска (base64) — подставляется в `install.sh`. */
+    /**
+     * Открытый ключ проверки подписи выпуска (base64) — пара к ключу подписи
+     * проекта (`AGENT_SIGNING_KEY` при сборке выпуска); `install.sh` передаёт
+     * его узлу (`--public-key`).
+     */
     publicKey: optionalString,
+    /**
+     * Экземпляр агента проекта на узле (`agent install --instance`): свои
+     * служба `agent-<имя>`, настройки `/etc/agent-<имя>` и данные
+     * `/var/lib/agent-<имя>` — агенты других бэкендов на том же узле не
+     * мешают. Пустое значение — экземпляр по умолчанию (`agent`).
+     */
+    instance: z
+      .string()
+      .regex(
+        /^([a-z][a-z0-9-]{0,31})?$/,
+        "AGENT_INSTANCE — строчная латиница, цифры и «-», первая — буква, до 32 символов",
+      )
+      .transform(name => name || undefined),
     /** Адрес сервера для агентов (`install.sh`, ссылки); без него — из запроса. */
     publicUrl: optionalString,
     /**
@@ -100,7 +120,8 @@ export const agentConfig = defineModuleConfig(
     relayHost: process.env.AGENT_RELAY_HOST || undefined,
     instanceUrl: process.env.INSTANCE_URL,
     releasesDir: process.env.AGENT_RELEASES_DIR,
-    publicKey: process.env.AGENT_PUBLIC_KEY,
+    publicKey: process.env.AGENT_UPDATE_PUBLIC_KEY,
+    instance: process.env.AGENT_INSTANCE ?? AGENT_INSTANCE_DEFAULT,
     publicUrl: process.env.AGENT_PUBLIC_URL,
     validateEvents: process.env.AGENT_VALIDATE_EVENTS || undefined,
   },

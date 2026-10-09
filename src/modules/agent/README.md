@@ -441,7 +441,9 @@ yarn agent             # агент 1.0.0 с воркерами echo и netprobe
 `AGENT_EVENTS_RETENTION_DAYS` (14), `AGENT_OFFLINE_GRACE_MS` (3000), `AGENT_RELAY_SECRET`
 (пересылка между копиями), `AGENT_RELAY_PORT` (8182) и `AGENT_RELAY_HOST` (`127.0.0.1`) —
 внутренний сервер пересылки, `INSTANCE_URL` (адрес сервера пересылки копии), `AGENT_RELEASES_DIR`,
-`AGENT_PUBLIC_KEY`, `AGENT_PUBLIC_URL`, `AGENT_VALIDATE_EVENTS` (`log`; `off | log | reject` —
+`AGENT_UPDATE_PUBLIC_KEY` (ключ проверки подписи выпуска проекта), `AGENT_INSTANCE` (`rest` —
+экземпляр агента проекта на узле, `--instance`; пусто — по умолчанию), `AGENT_PUBLIC_URL`,
+`AGENT_VALIDATE_EVENTS` (`log`; `off | log | reject` —
 [выше](#строгость-манифеста)); `TRUST_PROXY` — адрес агента за прокси.
 
 ## Тесты

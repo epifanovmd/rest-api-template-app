@@ -146,14 +146,22 @@ session, file, api-key, audit, jobs). Комнаты: `user_<id>` (всегда,
 ## Агенты (модуль `agent`, agent-sdk 1.0.0 с 09.10.2026)
 
 Агент и SDK — github.com/epifanovmd/agent (локально `../alp-agent`, только читать). Сервер — `Agents` из
-`agent-sdk/server` (`vendor/agent-sdk-1.0.0.tgz`, ESM, грузится из CJS через require(esm)). Воркеры — HTTP-сервисы
+`agent-sdk/server` (зависимость — архив GitHub Release
+`https://github.com/epifanovmd/agent/releases/download/v1.0.0/agent-sdk-1.0.0.tgz`, `vendor/` нет; ESM, грузится из CJS через require(esm)). Воркеры — HTTP-сервисы
 на unix-сокете **без SDK** (обязательны `GET /health`, `GET /manifest`); воркеры проекта — `agent/workers/<имя>`
 (main + исполняемый `run` + `VERSION`), демо — `agent/workers/echo` (Python, stdlib, задачи `/jobs`). Выпуск для
-узлов — `agent/release` (gitignored, `yarn agent:release` = `agent/release.sh`: агент 1.0.0 + netprobe из
-`AGENT_RELEASE_SRC` | `../alp-agent/dist/<v>` | GitHub Release; воркеры проекта → `<имя>-<версия>-<os>-<arch>.tar.gz`
-под каждую платформу выпуска (одно содержимое); manifest — утилитой `agent-release` (`agent/tools/`, gitignored,
-или `go run …/cmd/agent-release@v<v>`); с `AGENT_SIGNING_KEY` — всё переподписано ключом проекта, без —
-подписи агента как были, воркеры проекта без подписи). Раскладка `agent/`: README, dev.sh, release.sh,
+узлов — `agent/release` (gitignored, `yarn agent:release` = `agent/release.sh`: агент v<версия agent-sdk из
+package.json> с GitHub Release (там только agent-*, manifest, install.sh, sdk — **netprobe в выпуске агента нет**),
+свой каталог — только явно `AGENT_RELEASE_SRC`; netprobe — `go build` из `examples/workers/netprobe` модуля агента той же
+версии (`go mod download -json …@v<v>` → Dir; версия — const в manifest.go) под все платформы; воркеры проекта →
+`<имя>-<версия>-<os>-<arch>.tar.gz`; manifest — утилитой `agent-release` (`AGENT_RELEASE_TOOL` | `agent/tools/` |
+`go run …/cmd/agent-release@v<v>` | без Go — сборка в agent/tools в контейнере). Go нет на машине → контейнер
+`golang:1.26-bookworm` (`AGENT_GO_IMAGE`), кеш — том `agent-release-go`. С `AGENT_SIGNING_KEY` — всё переподписано
+ключом проекта (API — `AGENT_UPDATE_PUBLIC_KEY`), без — подписи агента как были, netprobe и воркеры проекта без
+подписи). Экземпляр на узле — `AGENT_INSTANCE` (по умолчанию `rest`, пусто — default): `AgentService.instance()`
+→ `installCommand({instance})`, SSH-задачи — `instance` в данных задачи → `install.sh --instance … [--uninstall]`.
+Локальный агент пользователя работает из `agent/release/agent-darwin-arm64` — не перезаписывать при проверках
+(выпуск для e2e — в копии репозитория, `E2E_AGENT_RELEASES_DIR`). Раскладка `agent/`: README, dev.sh, release.sh,
 local/agent.yaml, docker/{Dockerfile,agent.yaml}, workers/, release/, tools/.
 Таблицы (миграция `AgentWorkers1791511700000` удалила agent_jobs/commands/states/state_history/state_versions/
 job_inputs и старые agents/events/metrics): Store SDK — `agents` (id varchar(64) = 32 hex, rev, record jsonb),

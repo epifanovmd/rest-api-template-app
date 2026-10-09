@@ -220,7 +220,10 @@ export class AgentService {
     };
   }
 
-  /** Команда установки агента одной строкой (`curl … | sudo sh -s -- …`). */
+  /**
+   * Команда установки агента одной строкой (`curl … | sudo sh -s -- …`):
+   * экземпляр проекта (`--instance`) — из `AGENT_INSTANCE`.
+   */
   installCommand(
     body: ICreateAgentInstallCommandBody,
   ): IAgentInstallCommandDto {
@@ -228,11 +231,17 @@ export class AgentService {
     const command = this.callSync(() =>
       this._runtime.agents.installCommand({
         ...rest,
+        instance: this.instance(),
         baseUrl: baseUrl ?? this.publicUrl(),
       }),
     );
 
     return { command };
+  }
+
+  /** Экземпляр агента проекта на узле (`AGENT_INSTANCE`); нет — по умолчанию. */
+  instance(): string | undefined {
+    return agentConfig.instance;
   }
 
   /** Адрес сервера для агентов: `AGENT_PUBLIC_URL` или `APP_PUBLIC_URL`. */

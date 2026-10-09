@@ -133,6 +133,7 @@ export class NodeProvisionService {
       privateKeyEnc: seal(body.privateKey),
       passphraseEnc: seal(body.passphrase),
       backendUrl: body.backendUrl ?? this._agents.publicUrl(),
+      instance: this._agents.instance(),
     };
   }
 }

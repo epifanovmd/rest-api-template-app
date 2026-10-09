@@ -124,6 +124,8 @@ export interface INodeSshJobData {
   passphraseEnc?: string;
   /** Адрес сервера: установщик и связь агента. */
   backendUrl: string;
+  /** Экземпляр агента проекта на узле (`--instance`); нет — по умолчанию. */
+  instance?: string;
 }
 
 /** Данные задачи установки: одноразовый токен регистрации зашифрован. */

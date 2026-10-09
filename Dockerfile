@@ -8,9 +8,8 @@ ARG NODE_VERSION=24-alpine
 # ── Все зависимости для сборки ───────────────────────────────────────────────
 FROM node:${NODE_VERSION} AS deps
 WORKDIR /app
-# SDK агентов ставится из архива в vendor/ (file:vendor/agent-sdk-<версия>.tgz).
+# SDK агентов (agent-sdk) — архив с GitHub Release агента (ссылка в package.json).
 COPY package.json yarn.lock ./
-COPY vendor/agent-sdk-*.tgz ./vendor/
 RUN --mount=type=cache,target=/usr/local/share/.cache/yarn,sharing=locked \
     yarn install --frozen-lockfile --ignore-scripts --network-timeout 600000
 
@@ -36,7 +35,6 @@ RUN mkdir -p /agent-release && \
 FROM node:${NODE_VERSION} AS prod-deps
 WORKDIR /app
 COPY package.json yarn.lock ./
-COPY vendor/agent-sdk-*.tgz ./vendor/
 RUN --mount=type=cache,target=/usr/local/share/.cache/yarn,sharing=locked \
     yarn install --frozen-lockfile --production --ignore-scripts --network-timeout 600000
 
