@@ -1,7 +1,7 @@
 # Деплой по SSH. Настройки — .env.deploy (образец .env.deploy.example); секреты
 # приложения — .env.production (кладёт `make env`).
-#   make deploy   — исходники на хост и сборка там же
-#   make release  — готовый образ из registry (TAG=v1.2.3)
+#   make release  — готовые образы коммита из ghcr (TAG=<sha>; их собирает CI)
+#   make deploy   — запасной путь: исходники на хост и сборка там же
 ifeq ($(wildcard .env.deploy),)
 $(error Нет .env.deploy — скопируйте .env.deploy.example и заполните)
 endif

@@ -22,23 +22,32 @@ describe("JobHandlerRegistry", () => {
     ).to.throw(/больше суток/);
   });
 
-  it("аренда внешней задачи дольше срока выполнения — ошибка", () => {
+  it("внешней очереди нужен тип задачи воркера", () => {
+    const registry = new JobHandlerRegistry();
+
     expect(() =>
-      new JobHandlerRegistry().register([
-        handler({
-          queue: "ext",
-          external: true,
-          leaseSeconds: 600,
-          expireInSeconds: 300,
-        }),
-      ]),
-    ).to.throw(/аренда/);
+      registry.register([handler({ queue: "ext", external: true })]),
+    ).to.throw(/job\.type/);
+
+    registry.register([
+      handler({
+        queue: "ext2",
+        external: true,
+        job: { type: "report.build", worker: "report" },
+      }),
+    ]);
+    expect(registry.definition("ext2")?.job).to.deep.equal({
+      type: "report.build",
+      worker: "report",
+    });
   });
 
   it("внешняя очередь всегда видимая", () => {
     const registry = new JobHandlerRegistry();
 
-    registry.register([handler({ queue: "ext", external: true })]);
+    registry.register([
+      handler({ queue: "ext", external: true, job: { type: "x.run" } }),
+    ]);
     expect(registry.definition("ext")).to.include({
       tracked: true,
       external: true,

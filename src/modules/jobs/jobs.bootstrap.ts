@@ -9,6 +9,7 @@ import {
   JOB_HANDLER,
   logger,
 } from "../../core";
+import { ExternalJobService } from "./external-job.service";
 import { JobRunner } from "./job.runner";
 import { JobCancelWatcher } from "./job-cancel.watcher";
 import {
@@ -18,6 +19,7 @@ import {
 } from "./job-handler.registry";
 import { JobLeaseReaper } from "./job-lease.reaper";
 import { JobSignals } from "./job-signals";
+import { JOB_QUEUED_CHANNEL } from "./jobs.types";
 import { isJobsWorkerRole, PgBossService } from "./pg-boss.service";
 
 const queueOptions = (
@@ -34,7 +36,9 @@ const queueOptions = (
  * Запуск очереди задач, строго по порядку:
  * 1) `start` pg-boss (схема `pgboss`, миграции);
  * 2) очереди всех обработчиков с политикой из `definition`;
- * 3) сигналы задач (LISTEN) — на всех ролях;
+ * 3) сигналы задач (LISTEN) и ход внешних задач — на всех ролях; передача
+ *    внешних задач воркерам агентов (сразу по сигналу `job_queued` и
+ *    повтором pg-boss) — там, где исполнитель может их передать;
  * 4) на ролях `worker`/`all` — слушатель отмен, возврат задач с истёкшей
  *    арендой, `work` Node-очередей и `schedule` для cron.
  * Остановка — graceful: активные задачи дорабатывают до `JOBS_SHUTDOWN_TIMEOUT_MS`.
@@ -50,6 +54,7 @@ export class JobsBootstrap implements IBootstrap {
     @inject(JobCancelWatcher) private readonly _watcher: JobCancelWatcher,
     @inject(JobSignals) private readonly _signals: JobSignals,
     @inject(JobLeaseReaper) private readonly _reaper: JobLeaseReaper,
+    @inject(ExternalJobService) private readonly _external: ExternalJobService,
     @multiInject(JOB_HANDLER)
     @optional()
     private readonly _handlers: AnyJobHandler[] = [],
@@ -67,13 +72,26 @@ export class JobsBootstrap implements IBootstrap {
       await this.ensureQueue(boss, definition);
     }
 
-    // Сигналы нужны и API: ожидание `request` и long-poll внешних воркеров.
+    // Сигналы нужны и API: ожидание `request` и long-poll итога задачи.
     await this._signals.start();
+    // Ход внешних задач приходит в процесс с соединением агента.
+    this._external.listen();
+    // Передать задачу воркеру может процесс, которому доступны агенты.
+    if (this._external.canDispatch) {
+      this._signals.on(JOB_QUEUED_CHANNEL, id => {
+        this._external
+          .startNow(id)
+          .catch(err =>
+            logger.warn({ err, jobId: id }, "[Jobs] Передача задачи воркеру"),
+          );
+      });
+      await this.workExternal(boss);
+    }
 
     if (!isJobsWorkerRole()) {
       logger.info(
-        { queues: definitions.length },
-        "[Jobs] Очередь готова (только постановка)",
+        { queues: definitions.length, external: this._external.canDispatch },
+        "[Jobs] Очередь готова (постановка и передача внешних задач)",
       );
 
       return;
@@ -115,9 +133,35 @@ export class JobsBootstrap implements IBootstrap {
   }
 
   async destroy(): Promise<void> {
+    this._external.unlisten();
     await this._boss.stop(config.jobs.shutdownTimeoutMs);
     await this._watcher.stop();
     await this._signals.stop();
+  }
+
+  /**
+   * Внешние очереди: задача pg-boss только передаёт задачу воркеру агента,
+   * если её не передали сразу (ход и итог приходят от воркера).
+   */
+  private async workExternal(boss: PgBoss): Promise<void> {
+    for (const handler of this._registry.all()) {
+      const definition = resolveDefinition(handler.definition);
+
+      if (!definition.external) continue;
+
+      await boss.work(
+        definition.queue,
+        {
+          localConcurrency: definition.concurrency,
+          pollingIntervalSeconds: 2,
+          notifyPollingIntervalSeconds: 2,
+          batchSize: 1,
+          includeMetadata: true,
+        },
+        (jobs: JobWithMetadata<unknown>[]) =>
+          Promise.all(jobs.map(job => this._external.dispatch(job))),
+      );
+    }
   }
 
   /** Создать очередь или привести её политику к `definition`. */

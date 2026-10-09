@@ -17,10 +17,13 @@ import {
   hasPendingMigrations,
   HttpServer,
   IBootstrap,
+  IRawHttpHandler,
   IRouteProvider,
   logger,
   metricsMiddleware,
   ModuleLoader,
+  RAW_HTTP_HANDLER,
+  rawHttpMiddleware,
   ROUTE_PROVIDER,
   runMigrations,
 } from "./core";
@@ -73,6 +76,8 @@ export class App {
   private readonly rootModule: Constructor;
   private _isReady = false;
   private _stopping: Promise<void> | null = null;
+  /** Обработчики со своим протоколом: заполняются после загрузки модулей. */
+  private _rawHandlers: IRawHttpHandler[] = [];
 
   constructor({ rootModule, dataSource }: AppOptions) {
     this.rootModule = rootModule;
@@ -94,6 +99,7 @@ export class App {
     this.koa.use(metricsMiddleware);
     RegisterBaseMiddlewares(this.koa);
     this.configureSystemRoutes();
+    this.koa.use(rawHttpMiddleware(() => this._rawHandlers));
     RegisterAppMiddlewares(this.koa);
     await this.listen();
 
@@ -153,6 +159,11 @@ export class App {
       );
     }
     RegisterRoutes(router, { multer: multer(multerOpts) });
+
+    if (iocContainer.isBound(RAW_HTTP_HANDLER)) {
+      this._rawHandlers =
+        iocContainer.getAll<IRawHttpHandler>(RAW_HTTP_HANDLER);
+    }
 
     // Маршруты модулей вне tsoa (потоковая раздача файлов и т. п.)
     if (iocContainer.isBound(ROUTE_PROVIDER)) {

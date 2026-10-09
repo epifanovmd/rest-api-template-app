@@ -28,15 +28,15 @@ users ──ManyToMany──▶ roles ──ManyToMany──▶ permissions
 - Каждый JWT несёт `scope`: `access` | `refresh` | `2fa`; `TokenService.decode` требует точного
   совпадения (`verify` → access, `verifyRefresh`, `verifyTwoFactor`). HS256, `iss`/`aud` = `config.app.name`.
 - Access/refresh payload: `{ scope, userId, sessionId, roles[], permissions[], emailVerified }`;
-  refresh дополнительно с `jti` (уникален каждый выпуск). 2FA payload: `{ scope: "2fa", userId, jti }`, 5 мин.
+  refresh дополнительно с `jti` (уникален у каждого токена). 2FA payload: `{ scope: "2fa", userId, jti }`, 5 мин.
 - Токен сброса пароля — opaque (32 байта base64url), в БД sha256 (`hashToken` из `core/auth/token-hash.ts`).
 - `SocketAuthMiddleware` → `TokenService.verify` → только access.
 - Схемы — реестр `SECURITY_SCHEME` (`asSecurityScheme`), `koa-authentication.ts` только диспетчер:
   `jwt` — `core/auth/jwt.scheme.ts`; `apiKey` — `modules/api-key/api-key.scheme.ts`
   (`X-Api-Key` / `Authorization: ApiKey`, `kind: "service"`, `userId` — владелец ключа,
   `sessionId: "apikey:<id>"`, `permissions` — scopes ключа; ошибки `APIKEY_REQUIRED/INVALID` 401,
-  `APIKEY_SCOPE_DENIED` 403). Схема `bot` (`kind: "bot"`) и её
-  `securityDefinitions` в `tsoa.json` — в `example/messenger`; в main в `AuthContext.kind` осталось только значение.
+  `APIKEY_SCOPE_DENIED` 403). Схемы `bot` в main
+  нет; в `AuthContext.kind` осталось только значение `bot`.
 
 ## Session-Bound Auth Flow
 
@@ -108,15 +108,16 @@ scopes API-ключей; down собирает `manage` обратно у име
 `*` «Система». `PermissionController` зарегистрирован в `UserModule`. Совместимого `Permissions`/`KnownPermission`
 нет: `TPermission = string`, `*` — `ALL_PERMISSIONS` из `core/auth/superuser.ts`.
 
-| Группа                        | Права                                                                                  |
-| ----------------------------- | -------------------------------------------------------------------------------------- |
-| `user` «Пользователи»         | `user:view`, `user:update` (контакты), `user:delete`, `user:privileges` (роли и права) |
-| `role` «Роли»                 | `role:view`, `role:create`, `role:update` (права роли), `role:delete`                  |
-| `profile` «Профили»           | `profile:view`, `profile:update`, `profile:delete` (очистка)                           |
-| `apikey` «API-ключи»          | `apikey:view`, `apikey:create`, `apikey:revoke`                                        |
-| `audit` «Журнал безопасности» | `audit:view`                                                                           |
-| `jobs` «Фоновые задачи»       | `jobs:demo` (демо-задача проверки внешних воркеров)                                    |
-| `file` «Файлы»                | `file:view`, `file:delete` — scoped, есть `file:view:own`, `file:delete:own`           |
+| Группа                        | Права                                                                                     |
+| ----------------------------- | ----------------------------------------------------------------------------------------- |
+| `user` «Пользователи»         | `user:view`, `user:update` (контакты), `user:delete`, `user:privileges` (роли и права)    |
+| `role` «Роли»                 | `role:view`, `role:create`, `role:update` (права роли), `role:delete`                     |
+| `profile` «Профили»           | `profile:view`, `profile:update`, `profile:delete` (очистка)                              |
+| `apikey` «API-ключи»          | `apikey:view`, `apikey:create`, `apikey:revoke`                                           |
+| `audit` «Журнал безопасности» | `audit:view`                                                                              |
+| `jobs` «Фоновые задачи»       | `jobs:demo` (демо-задача проверки агентов)                                                |
+| `agent` «Агенты»              | `agent:view`, `agent:manage`, `agent:config`, `agent:fetch`, `agent:logs`, `agent:enroll` |
+| `file` «Файлы»                | `file:view`, `file:delete` — scoped, есть `file:view:own`, `file:delete:own`              |
 
 Засев ролей (`RoleService.seedDefaultPermissions`) берёт `getRegisteredPermissions()`. Страж —
 `src/routing/spec.test.ts`: каждое `permission:`-право в security спецификации объявлено.
@@ -181,19 +182,17 @@ effectivePermissions = Set(
 @Security("jwt")                                    // только авторизация
 @Security("jwt", ["permission:audit:view"])         // нужен permission
 @Security("jwt", ["permission:user:update"])        // admin endpoints
-@Security("apiKey", ["worker"])                     // сервис; точный scope worker:<queue> проверяет сервис
+@Security("apiKey", ["reports"])                    // сервис (интеграция); точный scope проверяет сервис
 ```
 
-Scope API-ключа: точное совпадение, wildcard (`worker:*`, `*`), требование без действия (`worker`) покрывается
+Scope API-ключа: точное совпадение, wildcard (`reports:*`, `*`), требование без действия (`reports`) покрывается
 любым scope домена (`api-key.scopes.ts::scopeSatisfied`).
 
 ## Доступ к данным предметных модулей
 
 В main нет ролей внутри сущностей: доступ — глобальные роли/права, для сущностей с владельцем — области
 «все / свои» (`OwnedAccess`; образец — модуль file: `file.permissions.ts`, `file.access.ts`, `FileService._findFor`);
-задачи — пока владелец/суперпользователь или `IJobAccessPolicy` по scope (в main политик нет), на области не переведены. Роли участника
-пространства (`owner ⊃ admin ⊃ editor ⊃ viewer`, `WorkspaceAccessService`, `@WorkspaceRole`) — ветка
-`example/workspaces`.
+задачи — пока владелец/суперпользователь или `IJobAccessPolicy` по scope (в main политик нет), на области не переведены.
 
 ## Session Entity
 

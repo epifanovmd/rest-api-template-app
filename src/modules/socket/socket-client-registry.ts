@@ -92,7 +92,7 @@ export class RedisPresenceStore implements IPresenceStore {
 /**
  * Реестр активных соединений и присутствие пользователей.
  * Доставка сообщений идёт через комнаты Socket.IO (`user_<id>`), реестр
- * нужен только для `isOnline` (push офлайн-пользователям, presence).
+ * нужен только для `isOnline` (presence).
  * С Redis присутствие общее для всех реплик.
  */
 @Injectable()

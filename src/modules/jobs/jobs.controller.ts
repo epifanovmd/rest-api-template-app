@@ -107,9 +107,13 @@ export class JobsController extends Controller {
   }
 
   /**
-   * Поставить демо-задачу `demo.echo` внешнему воркеру — проверка, что
-   * воркеры подключены (`python/examples/echo_worker.py`). Только для админов.
-   * @summary Проверка внешних воркеров
+   * Поставить демо-задачу `demo.echo` воркеру `echo` агента — проверка, что
+   * агенты на связи. Быстрая (`echo.quick`) — итог сразу (`lookup` — воркер
+   * берёт префикс у сервера запросом `echo.lookup`); долгая (`long`,
+   * `echo.long`) — `steps` шагов по `delayMs` с ходом, `fail` — провал после
+   * шагов, `withOutput` — итог ещё и в файл хранилища по подписанной ссылке.
+   * Итог — текст по настройкам воркера.
+   * @summary Проверка агентов
    */
   @Security("jwt", ["permission:jobs:demo"])
   @ValidateBody(DemoEchoSchema)

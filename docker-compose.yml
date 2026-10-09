@@ -13,7 +13,12 @@
 # docker-compose.postgres.yml, POSTGRES_HOST в .env.production (с хоста —
 # host.docker.internal). Без docker-compose.s3.yml — STORAGE_DRIVER=local (том
 # files) или внешний S3 через S3_*.
-# Python-воркер: `docker compose --profile python-worker up -d`.
+# Агент с воркерами echo и netprobe (agent/docker/Dockerfile): `docker compose --profile
+# agent up -d`; регистрация — AGENT_BOOTSTRAP_TOKEN (тот же у API). Один агент — один том
+# данных: ещё агенты — своими сервисами со своими томами. Несколько реплик api пересылают
+# вызовы агентов друг другу (AGENT_RELAY_SECRET в .env.production) через внутренний сервер
+# пересылки: порт AGENT_RELAY_PORT (8182) внутри сети compose, на хост не публикуется; адрес
+# копии — http://<IP контейнера>:8182.
 
 x-logging: &logging
   driver: json-file
@@ -100,9 +105,14 @@ services:
       target: api
       args:
         APP_VERSION: ${TAG:-latest}
+        AGENT_UPDATE_PUBLIC_KEY: ${AGENT_UPDATE_PUBLIC_KEY:-}
+      secrets: [agent_signing_key]
     environment:
       <<: *app-env
       APP_ROLE: api
+      # Сервер пересылки между репликами — только в сети compose (без ports).
+      AGENT_RELAY_HOST: 0.0.0.0
+      AGENT_RELAY_PORT: "8182"
     # Несколько реплик: `docker compose up -d --scale api=3` и диапазон
     # API_PORTS=8181-8183 (или без host-портов — за reverse proxy по имени `api`).
     ports:
@@ -130,6 +140,8 @@ services:
       target: worker
       args:
         APP_VERSION: ${TAG:-latest}
+        AGENT_UPDATE_PUBLIC_KEY: ${AGENT_UPDATE_PUBLIC_KEY:-}
+      secrets: [agent_signing_key]
     environment:
       <<: *app-env
       APP_ROLE: worker
@@ -145,21 +157,28 @@ services:
     healthcheck: *ready-check
     restart: unless-stopped
 
-  # Внешний воркер на Python (задачи `external`), по профилю.
-  python-worker:
-    profiles: ["python-worker"]
-    image: ${IMAGE:-ghcr.io/epifanovmd/rest-api-template-app}:${TAG:-latest}-python-worker
+  # Агент и воркеры без SDK (echo — очередь demo.echo, netprobe — проверка сети), по профилю.
+  agent:
+    profiles: ["agent"]
+    image: ${IMAGE:-ghcr.io/epifanovmd/rest-api-template-app}:${TAG:-latest}-agent
     build:
       context: .
-      dockerfile: Dockerfile.worker-python
+      dockerfile: agent/docker/Dockerfile
     environment:
-      WORKER_API_URL: ${WORKER_API_URL:-http://api:8181}
-      # Ключ со scope worker:<очередь>: POST /api/v1/api-keys под админом
-      WORKER_API_KEY: ${WORKER_API_KEY:-}
-      WORKER_CONCURRENCY: ${WORKER_CONCURRENCY:-1}
+      AGENT_SERVER_URL: ${AGENT_SERVER_URL:-http://api:8181}
+      # Токен регистрации: bootstrap-токен API или выпущенный
+      # (POST /api/v1/agent-enrollment-tokens).
+      AGENT_ENROLL_TOKEN: ${AGENT_ENROLL_TOKEN:-${AGENT_BOOTSTRAP_TOKEN:-}}
+      AGENT_LOG_LEVEL: ${AGENT_LOG_LEVEL:-info}
+    volumes:
+      # Ключ агента, очередь важных сообщений (события без связи), настройки
+      # воркеров и ход работ echo переживают рестарт.
+      - agent-data:/var/lib/agent
     depends_on:
       api:
         condition: service_healthy
+    # Воркеры останавливаются вместе с агентом (stopTimeout в agent/docker/agent.yaml).
+    stop_grace_period: 90s
     read_only: true
     tmpfs:
       - /tmp
@@ -192,5 +211,14 @@ services:
     restart: unless-stopped
     logging: *logging
 
+# Подпись воркеров проекта при сборке образа: закрытый ключ проекта — файлом
+# AGENT_SIGNING_KEY_FILE на машине сборки (не в .env: env_file попадает в
+# контейнеры), открытый ключ пары — AGENT_UPDATE_PUBLIC_KEY. Без файла воркеры
+# без подписи.
+secrets:
+  agent_signing_key:
+    file: ${AGENT_SIGNING_KEY_FILE:-/dev/null}
+
 volumes:
+  agent-data:
   files:

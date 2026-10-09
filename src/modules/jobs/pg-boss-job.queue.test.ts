@@ -5,7 +5,11 @@ import sinon from "sinon";
 
 import { HttpException } from "../../core";
 import { JobsError } from "./jobs.errors";
-import { EJobRunStatus } from "./jobs.types";
+import {
+  EJobRunStatus,
+  JOB_EXTERNAL_START_DELAY_SECONDS,
+  JOB_QUEUED_CHANNEL,
+} from "./jobs.types";
 import { PgBossJobQueue } from "./pg-boss-job.queue";
 
 const expectCode = async (promise: Promise<unknown>, code: string) => {
@@ -27,6 +31,7 @@ describe("PgBossJobQueue", () => {
   let registry: { definition: sinon.SinonStub; external: sinon.SinonStub };
   let tracker: Record<string, sinon.SinonStub>;
   let watcher: { notify: sinon.SinonStub };
+  let external: { cancelJob: sinon.SinonStub };
   let signals: { notify: sinon.SinonStub };
   let waiter: { wait: sinon.SinonStub };
   let dataSource: { transaction: sinon.SinonStub };
@@ -56,6 +61,7 @@ describe("PgBossJobQueue", () => {
       update: sinon.stub().resolves(),
     };
     watcher = { notify: sinon.stub().resolves() };
+    external = { cancelJob: sinon.stub().resolves() };
     signals = { notify: sinon.stub().resolves() };
     waiter = { wait: sinon.stub().resolves(null) };
     txManager = {
@@ -71,8 +77,9 @@ describe("PgBossJobQueue", () => {
       registry as any,
       tracker as any,
       watcher as any,
-      signals as any,
+      external as any,
       waiter as any,
+      signals as any,
       dataSource as any,
     );
   });
@@ -161,21 +168,6 @@ describe("PgBossJobQueue", () => {
     expect(tracker.publish.called).to.be.false;
   });
 
-  it("внешняя очередь: сигнал job_available в транзакции постановки", async () => {
-    registry.definition.returns({
-      queue: "ml.predict",
-      external: true,
-      tracked: true,
-    });
-    registry.external.returns({});
-
-    await queue.enqueue("ml.predict", {});
-
-    expect(
-      signals.notify.calledOnceWith("job_available", "ml.predict", txManager),
-    ).to.be.true;
-  });
-
   describe("request", () => {
     beforeEach(() => {
       registry.definition.returns({
@@ -241,35 +233,39 @@ describe("PgBossJobQueue", () => {
     });
   });
 
-  describe("stop", () => {
-    it("выполняющаяся внешняя задача — флаг stopRequested, без отмены", async () => {
-      const run = {
-        id: "job-1",
-        queue: "ml.train",
-        status: EJobRunStatus.RUNNING,
-      };
-
-      tracker.find.resolves(run);
-      registry.external.returns({});
-      await queue.stop("job-1");
-
-      expect(tracker.update.calledOnceWith(run, { stopRequested: true })).to.be
-        .true;
-      expect(boss.cancel.called).to.be.false;
-      // Воркер, ждущий сигналов задачи, узнаёт сразу.
-      expect(signals.notify.calledWith("job_stop", "job-1")).to.be.true;
+  describe("внешняя очередь", () => {
+    beforeEach(() => {
+      registry.definition.returns({
+        queue: "demo.echo",
+        tracked: true,
+        external: true,
+      });
     });
 
-    it("ждущая задача — обычная отмена", async () => {
-      tracker.find.resolves({
-        id: "job-1",
-        queue: "ml.train",
-        status: EJobRunStatus.QUEUED,
-      });
-      registry.external.returns({});
-      await queue.stop("job-1");
+    it("сигнал job_queued в транзакции постановки, задача pg-boss — позже (повтор)", async () => {
+      await queue.enqueue("demo.echo", { text: "a" });
 
-      expect(tracker.cancelled.calledOnce).to.be.true;
+      expect(boss.send.firstCall.args[2].startAfter).to.equal(
+        JOB_EXTERNAL_START_DELAY_SECONDS,
+      );
+      expect(
+        signals.notify.calledOnceWith(JOB_QUEUED_CHANNEL, "job-1", txManager),
+      ).to.be.true;
+    });
+
+    it("с outbox-транзакцией — сигнал в ней же (дойдёт после коммита)", async () => {
+      const manager = { ...txManager };
+
+      await queue.enqueue("demo.echo", {}, { manager: manager as any });
+
+      expect(signals.notify.firstCall.args[2]).to.equal(manager);
+    });
+
+    it("отложенная (startAfter) — без сигнала, срок вызывающего", async () => {
+      await queue.enqueue("demo.echo", {}, { startAfter: 60 });
+
+      expect(boss.send.firstCall.args[2].startAfter).to.equal(60);
+      expect(signals.notify.called).to.be.false;
     });
   });
 
@@ -297,16 +293,20 @@ describe("PgBossJobQueue", () => {
       expect(watcher.notify.calledOnce).to.be.true;
     });
 
-    it("выполняющаяся внешняя задача — cancelled сразу", async () => {
-      tracker.find.resolves({
+    it("выполняющаяся внешняя задача — cancelled сразу и отмена у исполнителя", async () => {
+      const run = {
         id: "job-1",
         queue: "demo.echo",
         status: EJobRunStatus.RUNNING,
-      });
+        externalId: "ext-1",
+      };
+
+      tracker.find.resolves(run);
       registry.external.returns({});
       await queue.cancel("job-1");
 
       expect(tracker.cancelled.calledOnce).to.be.true;
+      expect(external.cancelJob.calledOnceWith(run)).to.be.true;
     });
 
     it("завершённая — ничего не делает", async () => {

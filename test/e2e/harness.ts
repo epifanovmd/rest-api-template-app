@@ -1,8 +1,17 @@
-import { ChildProcess, spawn } from "child_process";
+import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { SDK_VERSION } from "agent-sdk";
+import { ChildProcess, execFile, spawn } from "child_process";
+import { generateKeyPairSync } from "crypto";
 import { once } from "events";
+import { existsSync, mkdtempSync, rmSync } from "fs";
+import { readFile } from "fs/promises";
+import { createServer as createHttpServer, Server } from "http";
 import { Redis } from "ioredis";
-import { createServer } from "net";
+import { AddressInfo, createServer } from "net";
+import { tmpdir } from "os";
+import { join, resolve } from "path";
 import { Client } from "pg";
+import { promisify } from "util";
 
 /**
  * Интеграционный стенд: настоящий сервер (`APP_ROLE=all`) поверх Postgres,
@@ -34,15 +43,23 @@ export const E2E = {
   admin: { email: "admin@e2e.local", password: "admin-e2e-password" },
 };
 
-const freePort = async (): Promise<number> => {
-  const server = createServer().listen(0);
+/**
+ * Свободные порты, все разные: слушатели держатся, пока не выбраны все, —
+ * иначе два вызова подряд могут получить один и тот же порт.
+ */
+const freePorts = async (count: number): Promise<number[]> => {
+  const servers = Array.from({ length: count }, () => createServer().listen(0));
 
-  await once(server, "listening");
-  const { port } = server.address() as { port: number };
+  await Promise.all(servers.map(server => once(server, "listening")));
+  const ports = servers.map(
+    server => (server.address() as { port: number }).port,
+  );
 
-  server.close();
+  await Promise.all(
+    servers.map(server => new Promise(done => server.close(done))),
+  );
 
-  return port;
+  return ports;
 };
 
 /**
@@ -83,76 +100,273 @@ const resetRedis = async (): Promise<void> => {
   redis.disconnect();
 };
 
+/** Содержимое объекта хранилища стенда (S3 или диск) как текст. */
+export const readStored = async (key: string): Promise<string> => {
+  if ((env.E2E_STORAGE_DRIVER ?? "s3") !== "s3") {
+    return readFile(resolve("files", ...key.split("/")), "utf8");
+  }
+
+  const s3 = new S3Client({
+    endpoint: E2E.s3.endpoint,
+    region: "us-east-1",
+    forcePathStyle: true,
+    credentials: {
+      accessKeyId: E2E.s3.accessKeyId,
+      secretAccessKey: E2E.s3.secretAccessKey,
+    },
+  });
+
+  try {
+    const object = await s3.send(
+      new GetObjectCommand({ Bucket: E2E.s3.bucket, Key: key }),
+    );
+
+    return (await object.Body?.transformToString("utf-8")) ?? "";
+  } finally {
+    s3.destroy();
+  }
+};
+
+/** Агенты стенда: общий токен регистрации. */
+/** Версия сборок агента — та же, что у agent-sdk. */
+export const AGENT_VERSION = SDK_VERSION;
+
+export const AGENT_BOOTSTRAP_TOKEN = "e2e-bootstrap-token-0123456789abcdef0123";
+
+/** Общий секрет копий API: вызовы агентов пересылаются между ними. */
+const AGENT_RELAY_SECRET = "e2e-relay-secret-0123456789abcdef0123456789";
+
+/**
+ * Сборки агента с GitHub (`yarn agent:fetch`): программа агента и netprobe.
+ * Сервер стенда берёт их не из GitHub, а с локального сервера сборок
+ * (`AGENT_RELEASES_URL`) — как с GitHub, но без сети.
+ */
+export const AGENT_DIST_DIR = resolve(
+  env.E2E_AGENT_DIST_DIR ?? `agent/dist/v${SDK_VERSION}`,
+);
+
+/** Пара ключей проекта (Ed25519, base64): подпись воркеров проекта. */
+const projectKeys = (): { signing: string; public: string } => {
+  const { privateKey, publicKey } = generateKeyPairSync("ed25519");
+  const b64 = (jwkValue: string | undefined) =>
+    Buffer.from(jwkValue ?? "", "base64url").toString("base64");
+
+  return {
+    signing: b64(privateKey.export({ format: "jwk" }).d),
+    public: b64(publicKey.export({ format: "jwk" }).x),
+  };
+};
+
+/** Ключи проекта стенда: ими подписаны сборки воркеров проекта. */
+export const PROJECT_KEYS = projectKeys();
+
+/** Сборки воркеров проекта стенда (agent/release.sh во временный каталог). */
+let releasesDir = "";
+
+export interface IRemoteRelease {
+  /** Адрес каталога сборок для `AGENT_RELEASES_URL`. */
+  url: string;
+  /** Пути запросов к серверу сборок. */
+  requests: string[];
+  /** Версия в `manifest.json` источника (`null` — как в файле). */
+  setVersion: (version: string | null) => void;
+  close: () => Promise<void>;
+}
+
+/** Сервер сборок агента (как GitHub): файлы `AGENT_DIST_DIR`. */
+const serveRemoteRelease = async (dir: string): Promise<IRemoteRelease> => {
+  if (!existsSync(join(dir, "manifest.json"))) {
+    throw new Error(`E2E: нет сборок агента в ${dir} — yarn agent:fetch`);
+  }
+  const requests: string[] = [];
+  let version: string | null = null;
+  const http: Server = createHttpServer(async (req, res) => {
+    const path = req.url ?? "";
+    const name = decodeURIComponent(path.split("/").pop() ?? "");
+
+    requests.push(path);
+    try {
+      let body = await readFile(join(dir, name));
+
+      if (name === "manifest.json" && version) {
+        body = Buffer.from(
+          JSON.stringify({ ...JSON.parse(body.toString("utf8")), version }),
+        );
+      }
+      res.writeHead(200, { "content-length": body.length });
+      res.end(body);
+    } catch {
+      res.writeHead(404).end();
+    }
+  });
+
+  http.listen(0, "127.0.0.1");
+  await once(http, "listening");
+
+  return {
+    url: `http://127.0.0.1:${(http.address() as AddressInfo).port}/download/v${SDK_VERSION}`,
+    requests,
+    setVersion: v => {
+      version = v;
+    },
+    close: () =>
+      new Promise<void>(done => {
+        http.closeAllConnections();
+        http.close(() => done());
+      }),
+  };
+};
+
+export let REMOTE_RELEASE: IRemoteRelease;
+
+/** Как часто сервер стенда проверяет, не вышла ли новая версия агента, мс. */
+export const RELEASE_CHECK_INTERVAL_MS = 500;
+
+/** Сборки воркеров проекта, подписанные ключом проекта стенда. */
+const buildProjectRelease = async (): Promise<string> => {
+  const dir = mkdtempSync(join(tmpdir(), "e2e-agent-release-"));
+  const out = join(dir, "release");
+
+  await promisify(execFile)("bash", ["agent/release.sh"], {
+    env: {
+      ...env,
+      AGENT_RELEASE_OUT: out,
+      AGENT_SIGNING_KEY: PROJECT_KEYS.signing,
+    },
+  });
+
+  return out;
+};
+
 let server: ChildProcess | undefined;
 
 export let BASE_URL = "";
 
-export const startServer = async (): Promise<void> => {
-  await resetDatabase();
-  await resetRedis();
+/** Внутренний сервер пересылки основной копии (её `instanceId`). */
+export let RELAY_URL = "";
 
-  const port = await freePort();
+/**
+ * Окружение копии API: публичный порт `port`, внутренний сервер пересылки —
+ * `relayPort` (адрес копии — `http://127.0.0.1:<relayPort>`).
+ */
+const serverEnv = (port: number, relayPort: number): NodeJS.ProcessEnv => ({
+  ...env,
+  NODE_ENV: "test",
+  APP_ROLE: "all",
+  APP_PUBLIC_URL: BASE_URL,
+  SERVER_HOST: "127.0.0.1",
+  SERVER_PORT: String(port),
+  TRUST_PROXY: "true",
+  API_DOCS_ENABLED: "true",
+  SHUTDOWN_DRAIN_MS: "0",
+  LOG_LEVEL: env.E2E_LOG_LEVEL ?? "warn",
+  RATE_LIMIT: "100000",
+  POSTGRES_HOST: E2E.db.host,
+  POSTGRES_PORT: String(E2E.db.port),
+  POSTGRES_USER: E2E.db.user,
+  POSTGRES_PASSWORD: E2E.db.password,
+  POSTGRES_DB: E2E.db.database,
+  REDIS_URL: E2E.redisUrl,
+  SMTP_HOST: E2E.smtp.host,
+  SMTP_PORT: E2E.smtp.port,
+  SMTP_SECURE: "false",
+  SMTP_FROM: "no-reply@e2e.local",
+  STORAGE_DRIVER: env.E2E_STORAGE_DRIVER ?? "s3",
+  S3_ENDPOINT: E2E.s3.endpoint,
+  S3_BUCKET: E2E.s3.bucket,
+  S3_ACCESS_KEY_ID: E2E.s3.accessKeyId,
+  S3_SECRET_ACCESS_KEY: E2E.s3.secretAccessKey,
+  S3_FORCE_PATH_STYLE: "true",
+  JWT_SECRET_KEY: "e2e-secret-key-0123456789abcdef0123456789",
+  ADMIN_EMAIL: E2E.admin.email,
+  ADMIN_PASSWORD: E2E.admin.password,
+  FIREBASE_SERVICE_ACCOUNT_PATH: "",
+  AGENT_BOOTSTRAP_TOKEN,
+  AGENT_RELEASES_DIR: releasesDir,
+  // Агент и netprobe — с локального сервера сборок, не из GitHub.
+  AGENT_RELEASES_GITHUB: "",
+  AGENT_RELEASES_URL: REMOTE_RELEASE.url,
+  AGENT_RELEASES_CHECK_INTERVAL_MS: String(RELEASE_CHECK_INTERVAL_MS),
+  AGENT_UPDATE_PUBLIC_KEY: PROJECT_KEYS.public,
+  AGENT_INSTANCE: "rest",
+  AGENT_RELAY_SECRET,
+  AGENT_RELAY_HOST: "127.0.0.1",
+  AGENT_RELAY_PORT: String(relayPort),
+  AGENT_STATUS_INTERVAL_MS: "1000",
+  AGENT_METRICS_INTERVAL_MS: "1000",
+  AGENT_METRICS_STORE_INTERVAL_MS: "0",
+});
 
-  BASE_URL = `http://127.0.0.1:${port}`;
-  server = spawn(process.execPath, ["--import", "tsx", "src/main.ts"], {
+/** Запустить копию API и дождаться готовности. */
+const spawnServer = async (
+  port: number,
+  relayPort: number,
+): Promise<ChildProcess> => {
+  const child = spawn(process.execPath, ["--import", "tsx", "src/main.ts"], {
     cwd: process.cwd(),
     stdio: ["ignore", "pipe", "pipe"],
-    env: {
-      ...env,
-      NODE_ENV: "test",
-      APP_ROLE: "all",
-      APP_PUBLIC_URL: BASE_URL,
-      SERVER_HOST: "127.0.0.1",
-      SERVER_PORT: String(port),
-      TRUST_PROXY: "true",
-      API_DOCS_ENABLED: "true",
-      SHUTDOWN_DRAIN_MS: "0",
-      LOG_LEVEL: env.E2E_LOG_LEVEL ?? "warn",
-      RATE_LIMIT: "100000",
-      POSTGRES_HOST: E2E.db.host,
-      POSTGRES_PORT: String(E2E.db.port),
-      POSTGRES_USER: E2E.db.user,
-      POSTGRES_PASSWORD: E2E.db.password,
-      POSTGRES_DB: E2E.db.database,
-      REDIS_URL: E2E.redisUrl,
-      SMTP_HOST: E2E.smtp.host,
-      SMTP_PORT: E2E.smtp.port,
-      SMTP_SECURE: "false",
-      SMTP_FROM: "no-reply@e2e.local",
-      STORAGE_DRIVER: env.E2E_STORAGE_DRIVER ?? "s3",
-      S3_ENDPOINT: E2E.s3.endpoint,
-      S3_BUCKET: E2E.s3.bucket,
-      S3_ACCESS_KEY_ID: E2E.s3.accessKeyId,
-      S3_SECRET_ACCESS_KEY: E2E.s3.secretAccessKey,
-      S3_FORCE_PATH_STYLE: "true",
-      JWT_SECRET_KEY: "e2e-secret-key-0123456789abcdef0123456789",
-      ADMIN_EMAIL: E2E.admin.email,
-      ADMIN_PASSWORD: E2E.admin.password,
-      FIREBASE_SERVICE_ACCOUNT_PATH: "",
-    },
+    env: serverEnv(port, relayPort),
   });
-
   const logs: string[] = [];
 
-  server.stdout?.on("data", chunk => logs.push(String(chunk)));
-  server.stderr?.on("data", chunk => logs.push(String(chunk)));
+  child.stdout?.on("data", chunk => logs.push(String(chunk)));
+  child.stderr?.on("data", chunk => logs.push(String(chunk)));
 
   for (let i = 0; i < 120; i += 1) {
-    if (server.exitCode !== null) break;
+    if (child.exitCode !== null) break;
     try {
-      if ((await fetch(`${BASE_URL}/ready`)).status === 200) return;
+      if ((await fetch(`http://127.0.0.1:${port}/ready`)).status === 200) {
+        return child;
+      }
     } catch {
       // сервер ещё поднимается
     }
     await new Promise(r => setTimeout(r, 500));
   }
 
+  child.kill("SIGKILL");
   throw new Error(`E2E: сервер не стал готов\n${logs.join("").slice(-4000)}`);
 };
 
-export const stopServer = async (): Promise<void> => {
-  if (!server || server.exitCode !== null) return;
+export const startServer = async (): Promise<void> => {
+  await resetDatabase();
+  await resetRedis();
+  releasesDir = await buildProjectRelease();
+  REMOTE_RELEASE = await serveRemoteRelease(AGENT_DIST_DIR);
 
-  server.kill("SIGTERM");
-  await once(server, "exit");
+  const [port, relayPort] = await freePorts(2);
+
+  BASE_URL = `http://127.0.0.1:${port}`;
+  RELAY_URL = `http://127.0.0.1:${relayPort}`;
+  server = await spawnServer(port, relayPort);
+};
+
+/** Вторая копия API над той же БД и Redis (пересылка вызовов агентов). */
+export const startPeerServer = async (): Promise<{
+  url: string;
+  relayUrl: string;
+  stop: () => Promise<void>;
+}> => {
+  const [port, relayPort] = await freePorts(2);
+  const child = await spawnServer(port, relayPort);
+
+  return {
+    url: `http://127.0.0.1:${port}`,
+    relayUrl: `http://127.0.0.1:${relayPort}`,
+    stop: async () => {
+      if (child.exitCode !== null) return;
+      child.kill("SIGTERM");
+      await once(child, "exit");
+    },
+  };
+};
+
+export const stopServer = async (): Promise<void> => {
+  if (server && server.exitCode === null) {
+    server.kill("SIGTERM");
+    await once(server, "exit");
+  }
+  await REMOTE_RELEASE?.close();
+  if (releasesDir)
+    rmSync(resolve(releasesDir, ".."), { recursive: true, force: true });
 };

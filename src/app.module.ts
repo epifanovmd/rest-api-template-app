@@ -1,6 +1,7 @@
 import "reflect-metadata";
 
 import { CoreModule, Module, ObservabilityModule } from "./core";
+import { AgentModule } from "./modules/agent";
 import { ApiKeyModule } from "./modules/api-key";
 import { AuditModule } from "./modules/audit";
 import { AuthModule } from "./modules/auth";
@@ -14,6 +15,7 @@ import { FileModule } from "./modules/file";
 import { JobsModule } from "./modules/jobs";
 import { MailerModule } from "./modules/mailer";
 import { MessageModule } from "./modules/message";
+import { NodeModule } from "./modules/node";
 import { OtpModule } from "./modules/otp";
 import { PasskeysModule } from "./modules/passkeys";
 import { PollModule } from "./modules/poll/poll.module";
@@ -36,6 +38,7 @@ import { UserModule } from "./modules/user";
     ObservabilityModule,
     StorageModule,
     JobsModule,
+    AgentModule,
 
     // Вспомогательные модули
     MailerModule,
@@ -52,6 +55,9 @@ import { UserModule } from "./modules/user";
     AuditModule,
     BiometricModule,
     PasskeysModule,
+
+    // Модули проекта: узлы
+    NodeModule,
 
     // Модули проекта: мессенджер
     ContactModule,

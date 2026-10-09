@@ -49,7 +49,7 @@
 Правила меток (кардинальность):
 
 - `route` — шаблон маршрута `@koa/router` (`ctx._matchedRoute`, например
-  `/api/v1/contact/:id`), никогда не URL с идентификаторами. Запрос без маршрута
+  `/api/v1/user/:id`), никогда не URL с идентификаторами. Запрос без маршрута
   (404, сканеры) — `route="unmatched"`.
 - `code` — машинный код из тела ошибки (`USER_NOT_FOUND`, `VALIDATION_ERROR`);
   без кода — код по статусу (`NOT_FOUND`, `INTERNAL_ERROR`).

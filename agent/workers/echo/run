@@ -1,0 +1,3 @@
+#!/bin/sh
+# Запуск воркера: агент выполняет run из каталога сборки (с сервера) или из agent/workers/echo.
+exec python3 "$(dirname "$0")/main.py"

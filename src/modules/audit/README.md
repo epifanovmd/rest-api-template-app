@@ -1,8 +1,10 @@
 # Модуль Audit
 
 Журнал событий безопасности: входы (успешные и неудачные), блокировки, 2FA, смена
-и сброс пароля, завершение сессий, выход, passkeys и биометрия. Пользователь видит
-свой журнал, администратор с правом `audit:view` — все события.
+и сброс пароля, завершение сессий, выход, passkeys и биометрия, действия над
+агентами (кто задал настройку воркеру, отправил запрос воркеру, перезапустил воркер,
+отозвал агента) и итоги действий агентов.
+Пользователь видит свой журнал, администратор с правом `audit:view` — все события.
 
 ## Структура файлов
 
@@ -54,17 +56,19 @@ src/modules/audit/
 
 ## События → записи (`AuditListener`)
 
-| Событие (модуль)                          | Тип записи                                                     |
-| ----------------------------------------- | -------------------------------------------------------------- |
-| `UserLoggedInEvent` (auth)                | `auth.login.succeeded` (`meta.method`)                         |
-| `LoginFailedEvent` (auth)                 | `auth.login.failed` (`meta.login`, `reason`)                   |
-| `AccountLockedEvent` (auth)               | `auth.account.locked` (`meta.until`)                           |
-| `TwoFactorEnabled/DisabledEvent` (auth)   | `auth.2fa.enabled` / `auth.2fa.disabled`                       |
-| `PasswordChangedEvent` (user)             | `auth.password.changed` / `auth.password.reset`                |
-| `UserSignedOutEvent` (auth)               | `auth.signed-out` / `auth.signed-out-all`                      |
-| `SessionTerminatedEvent` (session)        | `session.terminated` (`meta.reason`; кроме завершений выходом) |
-| `PasskeyAdded/RemovedEvent` (passkeys)    | `passkey.added` / `passkey.removed`                            |
-| `BiometricAdded/RemovedEvent` (biometric) | `biometric.added` / `biometric.removed`                        |
+| Событие (модуль)                          | Тип записи                                                              |
+| ----------------------------------------- | ----------------------------------------------------------------------- |
+| `UserLoggedInEvent` (auth)                | `auth.login.succeeded` (`meta.method`)                                  |
+| `LoginFailedEvent` (auth)                 | `auth.login.failed` (`meta.login`, `reason`)                            |
+| `AccountLockedEvent` (auth)               | `auth.account.locked` (`meta.until`)                                    |
+| `TwoFactorEnabled/DisabledEvent` (auth)   | `auth.2fa.enabled` / `auth.2fa.disabled`                                |
+| `PasswordChangedEvent` (user)             | `auth.password.changed` / `auth.password.reset`                         |
+| `UserSignedOutEvent` (auth)               | `auth.signed-out` / `auth.signed-out-all`                               |
+| `SessionTerminatedEvent` (session)        | `session.terminated` (`meta.reason`; кроме завершений выходом)          |
+| `PasskeyAdded/RemovedEvent` (passkeys)    | `passkey.added` / `passkey.removed`                                     |
+| `BiometricAdded/RemovedEvent` (biometric) | `biometric.added` / `biometric.removed`                                 |
+| `AgentActionAuditedEvent` (agent)         | `agent.action` (`meta.action`, `agentId`, подробности SDK)              |
+| `AgentActionFinishedEvent` (agent)        | `agent.action-result` (`meta.action`, `status`, `error`; кроме журнала) |
 
 Типы `api-key.created` / `api-key.revoked` зарезервированы: модуль api-key пока не
 публикует событий — подписка добавляется, когда они появятся.

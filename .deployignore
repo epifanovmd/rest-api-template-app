@@ -14,3 +14,6 @@ coverage
 __pycache__
 *.dump
 backup_*.sql.gz
+/agent/release
+/agent/tools
+/agent/dist

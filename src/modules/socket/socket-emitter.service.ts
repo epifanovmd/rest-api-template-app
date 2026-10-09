@@ -36,6 +36,18 @@ export class SocketEmitterService {
     this.server.io.to(room).emit<any>(event, ...args);
   }
 
+  /**
+   * Отправляет событие клиентам нескольких комнат: сокет, состоящий в
+   * нескольких из них, получает событие один раз.
+   */
+  toRooms<K extends keyof ISocketEmitEvents>(
+    rooms: string[],
+    event: K,
+    ...args: Parameters<ISocketEmitEvents[K]>
+  ): void {
+    if (rooms.length) this.server.io.to(rooms).emit<any>(event, ...args);
+  }
+
   /** Все сокеты пользователя (на всех репликах) входят в комнату. */
   joinRoom(userId: string, room: string): void {
     this.server.io.in(userSocketRoom(userId)).socketsJoin(room);

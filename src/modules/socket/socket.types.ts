@@ -8,7 +8,7 @@ import { AuthContext } from "../../types/koa";
  *
  * ```ts
  * declare module "../socket/socket.types" {
- *   interface ISocketEmitEvents { "chat:created": (...args: [ChatDto]) => void }
+ *   interface ISocketEmitEvents { "example:created": (...args: [ExampleDto]) => void }
  * }
  * ```
  */

@@ -3,10 +3,10 @@
 # docker-контейнере — локально или на сервере по SSH. Файл передаётся через
 # stdin: копировать его на сервер или в каталог данных Postgres не нужно.
 #
-#   ./restore_dump_db.sh --container ml-labeling-postgres --user labeling --db labeling \
+#   ./restore_dump_db.sh --container app-postgres-1 --user postgres --db app \
 #     --file ./prod.dump
 #   ./restore_dump_db.sh --host root@1.2.3.4 --container app-postgres-1 --user postgres \
-#     --db labeling
+#     --db app
 #
 # Параметры (или переменные окружения):
 #   --host       SSH-адрес сервера; пусто — локальный docker          (DB_HOST)

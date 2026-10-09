@@ -20,7 +20,7 @@
         "type": "apiKey",
         "in": "header",
         "name": "X-Api-Key",
-        "description": "API-ключ сервиса (внешний воркер, интеграция)"
+        "description": "API-ключ сервиса (интеграция)"
       }
     },
     "spec": {

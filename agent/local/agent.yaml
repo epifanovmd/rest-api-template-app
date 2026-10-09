@@ -1,0 +1,34 @@
+# Агент на машине разработчика (yarn agent): ${…} подставляет агент из окружения, которое
+# готовит agent/dev.sh (адрес API, токен, корень проекта, каталог данных, имя). На узлы этот
+# файл не попадает: там настройки создаёт `agent install` (/etc/agent/agent.yaml).
+server:
+  url: http://localhost:${SERVER_PORT}
+dataDir: ${AGENT_DATA_DIR}
+name: ${AGENT_NAME}
+labels:
+  env: dev
+enroll:
+  token: ${AGENT_BOOTSTRAP_TOKEN}
+update:
+  mode: disabled
+log:
+  level: info
+  # Какие записи журнала уходят на сервер без наблюдения; пока клиент в комнате агента — подробнее.
+  forward: warn
+workers:
+  # Воркер проекта из исходников (agent/workers/echo): задачи echo.quick и echo.long очереди
+  # demo.echo, настройка settings, метрики, события. Ход долгих задач — в ECHO_JOBS_DIR:
+  # перезапущенный воркер продолжает их с сохранённого шага. Жизнь воркера — по умолчанию:
+  # перезапуск и остановка агента его не прерывают.
+  - name: echo
+    command: ["./run"]
+    dir: ${AGENT_ROOT}/agent/workers/echo
+    env:
+      PYTHONUNBUFFERED: "1"
+      ECHO_JOBS_DIR: ${AGENT_DATA_DIR}/echo-jobs
+  # netprobe:begin — проверка сети между узлами (настройка targets, итоги — в метриках),
+  # воркер из сборок агента: agent/dev.sh кладёт сборку в dataDir/workers/netprobe;
+  # сборки нет — блок пропускается.
+  - name: netprobe
+    release: true
+  # netprobe:end

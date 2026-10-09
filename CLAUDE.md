@@ -10,7 +10,13 @@
 (маршруты и OpenAPI из декораторов), Inversify (DI), TypeORM + PostgreSQL, pg-boss
 (очередь задач на Postgres), Redis (между процессами), Socket.IO, S3-совместимое
 хранилище (SeaweedFS в compose) или диск, Zod, pino, prom-client + Sentry, Mocha +
-Chai + Sinon, сборка `tsc`. Python SDK внешних воркеров — `python/`.
+Chai + Sinon, сборка `tsc`. Агенты — github.com/epifanovmd/agent: серверный
+`agent-sdk` (архив с GitHub Release агента, ссылка в `package.json`); всё про агента
+на узлах — в `agent/` (README простыми словами): воркеры проекта без SDK
+(`agent/workers/<имя>`), сборки воркеров проекта (`agent/release`, собираются
+`agent/release.sh`), локальный запуск (`agent/dev.sh`, `agent/local`; сборки агента —
+`agent/dist`, `yarn agent:fetch`), образ (`agent/docker`). Агента и `netprobe` бэкенд берёт
+из релизов GitHub сам (`AGENT_RELEASES_*`) и замечает новые версии.
 Node >= 22.13 (Docker — 24 LTS). Роль процесса — `APP_ROLE=api|worker|all`.
 
 ## Команды
@@ -26,15 +32,19 @@ yarn typecheck            # проверка типов (yarn dev:types — watc
 yarn test                 # юнит, src/**/*.test.ts (один файл: yarn test:file <path>)
 yarn test:e2e             # интеграционный набор test/e2e/*.e2e.ts (нужен dev-compose)
 yarn gen:module <name>    # каркас модуля по конвенциям (--dry-run — список файлов)
-yarn worker:setup         # Python-окружение внешнего воркера (.venv)
-yarn worker [файл]        # Python-воркер на этой машине (по умолчанию пример demo.echo; ключ — WORKER_API_KEY)
-yarn worker:start [файл] | worker:stop [--force] | worker:status | worker:logs   # тот же воркер в фоне
+yarn agent                # агент с воркерами echo и netprobe (agent/local/agent.yaml; AGENT_BOOTSTRAP_TOKEN)
+yarn agent:start | agent:stop [--force] | agent:status | agent:logs   # тот же агент в фоне
+yarn agent:release        # собрать воркеры проекта в agent/release (AGENT_RELEASES_DIR)
+yarn agent:fetch          # скачать сборки агента с GitHub в agent/dist (yarn agent, e2e)
 yarn migration:generate src/migrations/<Name> | migration:run | migration:revert
 yarn migration:run:prod   # миграции из build/ (в контейнере)
 ```
 
 Перед завершением задачи обязательны: `yarn generate`, `yarn lint`, `yarn typecheck`,
-`yarn test`; при изменении API, схемы БД или инфраструктуры — ещё `yarn test:e2e`.
+`yarn test`; при изменении API, схемы БД или инфраструктуры — ещё `yarn test:e2e`;
+при изменении хранилища агентов — интеграционный тест Store (`TEST_DATABASE_URL`);
+e2e агентов и узлов — с настоящим агентом из `agent/dist` (`yarn agent:fetch`); в GitHub
+стенд не ходит.
 
 ## Никогда не редактировать вручную
 
@@ -136,5 +146,8 @@ yarn migration:run:prod   # миграции из build/ (в контейнер�
 modules, patterns, reference. Загружай тематический файл, когда работаешь в
 соответствующей области. Внутри каждого модуля есть `README.md` с описанием его
 сущностей, эндпоинтов и событий — это часть кода модуля, а не общей документации.
-Воркеры (Node и внешние, где код, как добавить очередь, SDK, диагностика) —
-[docs/WORKERS.md](docs/WORKERS.md); протокол внешних воркеров — [python/README.md](python/README.md).
+Воркеры и агенты (где код, как добавить очередь и воркер без SDK, диагностика) —
+[src/modules/agent/README.md](src/modules/agent/README.md), узлы с агентами (привязка,
+установка по SSH, связность) — [src/modules/node/README.md](src/modules/node/README.md);
+формат сообщений агентов —
+[sdk/spec/README.md](https://github.com/epifanovmd/agent/blob/main/sdk/spec/README.md).

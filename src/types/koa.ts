@@ -4,10 +4,10 @@ import type { TokenScope } from "../core/auth/jwt";
 
 export type AuthContext = {
   /**
-   * Кто вызывает: пользователь (jwt), бот, сервис по API-ключу (внешний
-   * воркер, интеграция). По умолчанию — пользователь.
+   * Кто вызывает: пользователь (jwt), бот, сервис по API-ключу (интеграция),
+   * агент (`userId` — id агента). По умолчанию — пользователь.
    */
-  kind?: "user" | "bot" | "service";
+  kind?: "user" | "bot" | "service" | "agent";
   userId: string;
   sessionId: string;
   /** Все роли, назначенные этому пользователю. */

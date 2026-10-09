@@ -46,13 +46,16 @@ message } }`). В main **нет ни одного вызова** (описани
 - Задачи: служебная очередь с повторами — `mailer/mail-send.job.ts`; `JobError(code, msg, retryable)` —
   `file/file-process.job.ts`, `mailer.service.ts`; cron — `*-cleanup.job.ts` (audit, otp, session, passkeys, file);
   outbox — `file.service.ts::_enqueueProcessing(manager, …)`, `mailer.service.ts` (`{ manager }`); внешняя очередь —
-  `jobs/demo-echo.handler.ts` (`asExternalJobHandler`, `io` + `onComplete`), воркер — `python/examples/echo_worker.py`;
+  `jobs/demo-echo.handler.ts` (`asExternalJobHandler`, `job` + `jobType` + `io` + `onComplete`), воркер — `agent/workers/echo`;
+  ответ на запрос воркера к серверу — `jobs/demo-echo-lookup.handler.ts` (`asWorkerRequestHandler`, `type` + `workers` +
+  `handle`, отказ — `WorkerRequestError`);
   health-индикатор — `jobs/jobs.health.ts` (`asHealthIndicator(JobsHealthIndicator)`). Политик доступа к задачам
   (`asJobAccessPolicy`) в main нет — только владелец/суперпользователь.
 - Хранилище: ключи — `file/file-keys.ts` (`files/<id>/original.<ext>`), обработка через `withLocalFile` —
   `file/file-process.job.ts`, прямая загрузка — `file.service.ts` (`signedPutUrl` + complete с условным `UPDATE`).
 - Права модуля — `audit/audit.permissions.ts` (`definePermissions("audit", { VIEW: "audit:view" })`).
-- E2E-сценарий — `test/e2e/platform.e2e.ts` (файлы S3/local, задачи и внешние воркеры, биометрия/passkeys),
+- E2E-сценарий — `test/e2e/platform.e2e.ts` (файлы S3/local, задачи, биометрия/passkeys), агенты —
+  `test/e2e/agents.e2e.ts` (хелпер `test/e2e/agent.ts`: настоящий агент из `agent/dist` с воркерами echo/echo-release/netprobe; сборки агента — `test/e2e/agent-releases.e2e.ts`),
   клиент `test/e2e/client.ts`, письма — Mailpit API.
 - Bootstrapper — `src/modules/socket/socket.bootstrap.ts`, `src/modules/user/*bootstrap*` (AdminBootstrap, Seed).
 - Guards на маршруте — поиск `@UseGuards(` в `src/modules/auth/`.
@@ -75,7 +78,7 @@ message } }`). В main **нет ни одного вызова** (описани
   `files` и берут ссылки через `signedUrlOf`/`signedFileOf` (`file/signed-files.ts`). Геттеров `File.url`/`toDTO()`
   и `signStorageUrl` нет. Gotcha: `list.map(Dto.fromEntity)` с картой вторым аргументом не компилируется.
 
-## Точки расширения для модулей (с 25.09.2026)
+## Точки расширения для модулей
 
 Через них ветки-примеры подключают свои модули, не трогая код main.
 
@@ -94,8 +97,7 @@ userIds)` → кто из `userIds` держит viewer в принятых ко
    `contacts` = только сам, presence — никому.
 3. **Конфиг модуля.** `src/config.ts` экспортирует хелперы `positiveInt`, `nonNegativeInt`, `port`, `bool(fallback)`,
    `optionalString`, `csv` и `defineModuleConfig(section, zodSchema, values)` (ошибка → throw «Конфигурация
-   модуля «section»: …» при импорте). Настройки модуля — в `<feature>.config.ts` (например `workspace.config.ts`,
-   `push.config.ts` в ветках), в `config.ts` их не добавлять. Env модуля — в `.env.example` отдельной секцией.
+   модуля «section»: …» при импорте). Настройки модуля — в `<feature>.config.ts` (например `example.config.ts`), в `config.ts` их не добавлять. Env модуля — в `.env.example` отдельной секцией.
 4. **Письма.** `IMailTemplateData` (`mailer/mailer.types.ts`) дополняется модулем
    (`declare module "../mailer/mailer.types" { interface IMailTemplateData { "name": {...} } }`), файлы шаблона —
    во всех локалях `templates/mail/<locale>/<name>{.ejs,.txt.ejs,.subject.ejs}`. `MAIL_TEMPLATE_NAMES` удалён: тест
@@ -184,21 +186,29 @@ describe("FeatureService", () => {
 ответа старые сессии уже недействительны (иначе гонка — e2e «смена пароля» падал ~1 из 5).
 Остальные события — `emit` (не блокируют ответ).
 
-## Задачи: запрос-ответ, события воркера, штатная остановка
+## Задачи: запрос-ответ, внешние задачи агентов
 
-- `JobQueue.request(queue, data, { timeoutMs, priority })` — синхронный вызов воркера из HTTP-запроса:
+- `JobQueue.request(queue, data, { timeoutMs, priority })` — синхронный вызов исполнителя из HTTP-запроса:
   видимая задача + ожидание итога (`JobResultWaiter`: сигнал `job_settled` из транзакции завершения,
-  опрос 5 с / 1 с без LISTEN). Ошибка воркера → 502 `JOB_REQUEST_FAILED` (`details.code`), таймаут → 504
+  опрос 5 с / 1 с без LISTEN). Ошибка → 502 `JOB_REQUEST_FAILED` (`details.code`), таймаут → 504
   `JOB_REQUEST_TIMEOUT` и задача снимается. `manager` передать нельзя (ждать чужого коммита некому).
-- Постановка во внешнюю очередь шлёт `job_available` (в транзакции постановки) — long-poll `claim`
-  просыпается сразу. Проверено интеграционным тестом (< 0,9 с вместо шага опроса 1 с).
-- `JobSignals` — одно LISTEN-соединение на процесс, стартует на всех ролях в `JobsBootstrap`
-  (API тоже ждёт `request` и держит long-poll). `JobCancelWatcher` — подписчик канала `job_cancel`.
-- Heartbeat: `events: [{type, data}]` (≤ 100) → хук `onEvent(job, event)` по порядку, ошибка хука
-  логируется; ответ `{ cancel, stop }`. SDK: `job.event(type, data)`, `job.stop_requested`.
-- `JobQueue.stop(id)`: running внешняя задача → `stop_requested` (миграция `JobRunStop`), `complete`
-  после stop принимается; ждущая/Node-задача — обычная отмена.
-- Python SDK покрыт `python/tests` (unittest), в CI — job `python-sdk`.
+- Внешние задачи (с 09.10.2026 — стандарт `/jobs` SDK): core-токен `EXTERNAL_JOB_EXECUTOR`
+  (`IExternalJobExecutor`: canDispatch/dispatch → `ExternalJobUpdate`/poll/cancel/onUpdate/onReconnect), реализация —
+  `AgentJobExecutor` (agent). Jobs не импортирует agent. `definition.job: { type, worker? }` (обязателен, иначе
+  ошибка регистрации), хуки `jobType?(info)`, `io?(info)` (ключи FileStorage → подписанные GET/PUT, ttl ≥
+  expireInSeconds), `onComplete(ctx{outputs})`, `onFail`. Штатной остановки нет (`JobQueue.stop`, `POST /jobs/{id}/stop`,
+  `stopRequested` удалены миграцией `NodeAgentName1791600000000`).
+- Старт без опроса pg-boss: `enqueue` внешней без `startAfter` → `startAfter: 10 с` у pg-boss + `NOTIFY job_queued`
+  в транзакции (outbox — дойдёт после коммита) → `JobsBootstrap` в процессах с `canDispatch` → `startNow`.
+  Захват записи — `claimDispatch` (status queued, external_id NULL, started_at NULL или старше 90 с → ставит
+  started_at; статус остаётся queued), неудача — `releaseDispatch` (started_at NULL, error). pg-boss `dispatch`
+  — тот же захват; захвачено другим → `JOB_DISPATCHING` (retry). Reconnect агента → `reconcile` + `startQueued`.
+- `AgentJobExecutor.dispatch`: агенты online, воркер running с типом в `workerManifest().jobs` (supports не умеет
+  jobs), без relay — только local; `runJob(..., { jobId: run.id, timeoutMs: 1 })` — 200 → `done` (workId = run.id),
+  202 → `progress` (workId = id воркера). JOB_REJECTED: 408/409/429/5xx — retry, иначе final; JOB_INVALID — final.
+  События `job.*` (JOB_EVENTS) → `ExternalJobService.apply`. Логгер редактирует ключ `code` — писать `errorCode`.
+- S3 (SeaweedFS) presigned PUT: `content-type` должен быть подписан и совпадать (без ContentType — 403) →
+  выходам задавать `contentType`, воркер шлёт ровно его (echo — `text/plain`).
 
 ## Файлы: владение, создание сервером, сборка мусора
 
@@ -212,11 +222,23 @@ describe("FeatureService", () => {
 - Белый список загрузок расширяется модулем: `defineUploadRules`; `signatures: "binary"` — формат без
   сигнатуры (веса моделей).
 
-## Воркеры: статус, пределы очередей, SDK
+## Очереди: пределы
 
-- `claim` принимает `worker: { name, meta }` → `job_workers` (миграция `JobWorkers`); `GET /api/v1/worker/status`
-  (jwt) — внешние очереди, воркеры, `online` (claim за 90 с). Забываются через 7 дней (`jobs.retention`).
 - `JobHandlerRegistry.register` отклоняет `expireInSeconds > 86400` (предел pg-boss — иначе падение при старте) и
   `leaseSeconds > expireInSeconds` у внешней очереди.
-- SDK: `job.download(name, target)` — атомарно в своё место (кэш весов); `Worker(name=, meta=)`.
 - `bigintNumber` — `core/db/transformers.ts` (колонки `bigint` → number).
+
+### Агенты и задачи: файлы итога, своим лично, пересылка
+
+- Файлы итога внешней задачи: при `done` выходы `io(job).outputs`, которые есть в хранилище
+  (`storage.stat`), пишутся в `job_runs.outputs` `[{name,key,size}]`; ссылки (`GET`, срок
+  `STORAGE_SIGNED_URL_TTL_SECONDS`) подписывает `JobRunViews` при каждой выдаче
+  (`JobsService`, `JobRunTracker.publish` — для записи с `outputs` событие уходит после подписи).
+  `job_runs.job_type` (+ `worker` очереди) пишется `setTarget` до `executor.dispatch`.
+- `node:mesh` своим — `NodeMeshService.byOwner(mesh)` + `OwnedEntityEmitter.toOwners`; нагрузка
+  — `node:load {nodeId, agentId, point:{at, host}}` из `AgentMetricsReceivedEvent` (не чаще
+  `NODE_LOAD_EMIT_MS` на агента; при watch метрики идут раз в секунду).
+- Пересылка — отдельный `AgentRelayServer` (`AGENT_RELAY_PORT`/`HOST`), `instanceId` с секретом —
+  адрес сервера пересылки, без секрета — адрес API. В e2e у каждой копии свой порт пересылки
+  (`RELAY_URL`, `peer.relayUrl`). Миграционный тест `node.repository.integration` откатывает
+  последние миграции по порядку — новая миграция добавляет туда шаг.

@@ -63,6 +63,7 @@ JWT-аутентификация при каждом подключении. И�
 | -------------------------------------- | ------------------------------------------------------ |
 | `toUser(userId, event, ...args)`       | Отправить событие пользователю (room `user_${userId}`) |
 | `toRoom(room, event, ...args)`         | Отправить в комнату                                    |
+| `toRooms(rooms, event, ...args)`       | Отправить в несколько комнат (сокету — один раз)       |
 | `broadcast(event, ...args)`            | Широковещательная рассылка                             |
 | `joinRoom` / `leaveRoom`               | Все сокеты пользователя входят в комнату / выходят     |
 | `disconnectUser` / `disconnectSession` | Разорвать соединения пользователя / сессии             |
@@ -150,11 +151,11 @@ asSocketRoomPolicy(permissionRoomPolicy(USERS_ROOM, UserPermissions.VIEW));
 События модулей объявлены в их `<feature>.socket-events.ts` дополнением интерфейсов:
 
 ```ts
-import type { PollDto } from "./dto/poll.dto";
+import type { ExampleDto } from "./dto/example.dto";
 
 declare module "../socket/socket.types" {
   interface ISocketEmitEvents {
-    "poll:voted": (...args: [PollDto]) => void;
+    "example:updated": (...args: [ExampleDto]) => void;
   }
 }
 ```
