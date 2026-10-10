@@ -1,7 +1,7 @@
 # Не уходит на хост при `make sync`. Исключённое не удаляется на хосте (секреты там сохраняются).
 .git
 node_modules
-build
+/build
 coverage
 /files
 /storage

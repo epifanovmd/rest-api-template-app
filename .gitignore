@@ -1,5 +1,5 @@
 dist
-build
+/build
 .vscode/
 node_modules
 .idea
@@ -8,6 +8,7 @@ files/
 .env*
 !.env.example
 !.env.deploy.example
+!agent/.env.prod.example
 .DS_Store
 coverage
 
