@@ -6,7 +6,9 @@ import { JOB_EXTERNAL_SYNC_QUEUE } from "./jobs.types";
 
 /**
  * Раз в минуту проваливает внешние задачи с истёкшим сроком
- * (`expireInSeconds` очереди) и отменяет их работу у воркеров.
+ * (`expireInSeconds` очереди) и отменяет их работу у воркеров, а ждущие
+ * передаёт: повторы pg-boss могли кончиться, пока задачу передавал другой
+ * процесс, и без этого она осталась бы `queued` до подключения агента.
  */
 @Injectable()
 export class ExternalSyncJobHandler implements IJobHandler<object, number> {
@@ -21,7 +23,11 @@ export class ExternalSyncJobHandler implements IJobHandler<object, number> {
     @inject(ExternalJobService) private readonly _external: ExternalJobService,
   ) {}
 
-  handle(): Promise<number> {
-    return this._external.failExpired();
+  async handle(): Promise<number> {
+    const expired = await this._external.failExpired();
+
+    await this._external.startQueued();
+
+    return expired;
   }
 }

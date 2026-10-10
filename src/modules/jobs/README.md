@@ -30,7 +30,7 @@ src/modules/jobs/
 ├── jobs.service.ts           # Список, карточка, отмена — с проверкой доступа
 ├── jobs.controller.ts        # REST /api/v1/jobs (jwt)
 ├── external-job.service.ts   # Внешние задачи: передача воркеру (сразу и повтором), файлы, ход и итог в job_runs, сверка, срок, хуки
-├── external-sync.handler.ts  # cron-очередь jobs.external-sync: внешние задачи с истёкшим сроком
+├── external-sync.handler.ts  # cron-очередь jobs.external-sync: внешние задачи с истёкшим сроком и ждущие
 ├── jobs.listener.ts          # JobUpdatedEvent → сокет job:updated
 ├── job-room.policy.ts        # Комната job_<id> по room:subscribe
 ├── demo-echo.handler.ts      # Внешняя демо-очередь demo.echo
@@ -244,7 +244,8 @@ prom-client не использует.
   задачи опрашиваются (`GET /jobs/{id}`); воркер о задаче не знает — `failed` с
   `EXTERNAL_JOB_LOST`; ждущие внешние задачи передаются.
 - **Срок** — cron `jobs.external-sync` раз в минуту: задача с истёкшим `deadlineAt` —
-  `failed` с `JOB_TIMEOUT`, задача у воркера отменяется.
+  `failed` с `JOB_TIMEOUT`, задача у воркера отменяется. Тот же cron передаёт ждущие внешние
+  задачи: повторы pg-boss могли кончиться, пока задачу передавал другой процесс.
 - **Отмена** — `JobQueue.cancel`: запись сразу `cancelled`, воркеру — `POST
 /jobs/{id}/cancel` (из любого процесса — SDK пересылает в процесс с соединением).
 
@@ -264,12 +265,12 @@ prom-client не использует.
 
 ## Очереди модуля
 
-| Очередь              | Тип               | Что делает                                              |
-| -------------------- | ----------------- | ------------------------------------------------------- |
-| `jobs.lease-reaper`  | cron `* * * * *`  | возвращает задачи с истёкшей арендой                    |
-| `jobs.retention`     | cron `30 3 * * *` | удаляет завершённые записи старше `JOBS_RETENTION_DAYS` |
-| `jobs.external-sync` | cron `* * * * *`  | проваливает внешние задачи с истёкшим сроком            |
-| `demo.echo`          | external          | эталон внешней очереди (воркер `agent/workers/echo`)    |
+| Очередь              | Тип               | Что делает                                               |
+| -------------------- | ----------------- | -------------------------------------------------------- |
+| `jobs.lease-reaper`  | cron `* * * * *`  | возвращает задачи с истёкшей арендой                     |
+| `jobs.retention`     | cron `30 3 * * *` | удаляет завершённые записи старше `JOBS_RETENTION_DAYS`  |
+| `jobs.external-sync` | cron `* * * * *`  | проваливает просроченные внешние задачи, передаёт ждущие |
+| `demo.echo`          | external          | эталон внешней очереди (воркер `agent/workers/echo`)     |
 
 ## Конфиг
 
