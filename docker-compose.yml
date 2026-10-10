@@ -104,7 +104,6 @@ services:
       target: api
       args:
         APP_VERSION: ${TAG:-latest}
-        AGENT_UPDATE_PUBLIC_KEY: ${AGENT_UPDATE_PUBLIC_KEY:-}
       secrets: [agent_signing_key]
     environment:
       <<: *app-env
@@ -137,7 +136,6 @@ services:
       target: worker
       args:
         APP_VERSION: ${TAG:-latest}
-        AGENT_UPDATE_PUBLIC_KEY: ${AGENT_UPDATE_PUBLIC_KEY:-}
       secrets: [agent_signing_key]
     environment:
       <<: *app-env
@@ -174,7 +172,7 @@ services:
     depends_on:
       api:
         condition: service_healthy
-    # Воркеры останавливаются вместе с агентом (stopTimeout в agent/docker/agent.yaml).
+    # Воркеры останавливаются вместе с агентом (lifecycle.stopTimeout в agent/agent.yaml).
     stop_grace_period: 90s
     read_only: true
     tmpfs:
@@ -208,10 +206,10 @@ services:
     restart: unless-stopped
     logging: *logging
 
-# Подпись воркеров проекта при сборке образа: закрытый ключ проекта — файлом
-# AGENT_SIGNING_KEY_FILE на машине сборки (не в .env: env_file попадает в
-# контейнеры), открытый ключ пары — AGENT_UPDATE_PUBLIC_KEY. Без файла воркеры
-# без подписи.
+# Подпись воркеров проекта при сборке образа (agent pack): закрытый ключ проекта
+# (agent keygen) — файлом AGENT_SIGNING_KEY_FILE на машине сборки (не в .env: env_file
+# попадает в контейнеры); открытый ключ pack кладёт в архив сам. Без файла воркеры
+# без подписи: ставятся, но с API не обновляются.
 secrets:
   agent_signing_key:
     file: ${AGENT_SIGNING_KEY_FILE:-/dev/null}

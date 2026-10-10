@@ -32,7 +32,7 @@ jobs:
       - run: yarn test
       - run: yarn build
 
-  # Воркер проекта echo (Python без SDK, стандартная библиотека): синтаксис.
+  # Воркер проекта echo (Python, база agent_worker.py — стандартная библиотека): синтаксис.
   agent-worker:
     runs-on: ubuntu-latest
     steps:
@@ -40,7 +40,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: python -m py_compile agent/workers/echo/main.py
+      - run: python -m py_compile agent/workers/echo/worker.py agent/workers/echo/agent_worker.py
 
   migrations:
     runs-on: ubuntu-latest
@@ -140,11 +140,8 @@ jobs:
       - run: yarn generate
       # Настоящий агент и netprobe для сценариев агентов и узлов — сборки агента версии
       # agent-sdk с GitHub Release в agent/dist (yarn agent:fetch, только эта платформа). Сервер
-      # стенда берёт их с локального сервера сборок, не из GitHub. Воркеры проекта
-      # стенд собирает сам (agent/release.sh, утилита agent-release — go run).
-      - uses: actions/setup-go@v5
-        with:
-          go-version: stable
+      # стенда берёт их с локального сервера сборок, не из GitHub; архив папки агента стенд
+      # собирает сам (agent pack, свой ключ проекта).
       - run: yarn agent:fetch
         env:
           AGENT_PLATFORMS: linux-amd64
@@ -213,11 +210,10 @@ jobs:
             rest-api:ci-${{ matrix.name }}
             ghcr.io/${{ github.repository }}:${{ github.sha }}${{ matrix.suffix }}
           labels: org.opencontainers.image.source=https://github.com/${{ github.repository }}
-          # Подпись воркеров проекта (стадия agent-release): закрытый ключ — секрет
-          # AGENT_SIGNING_KEY (в слои не попадает), открытый — переменная AGENT_UPDATE_PUBLIC_KEY.
+          # Подпись воркеров проекта (стадия agent-bundle, agent pack): закрытый ключ — секрет
+          # AGENT_SIGNING_KEY (в слои не попадает); открытый pack кладёт в архив сам.
           build-args: |
             APP_VERSION=${{ github.sha }}
-            AGENT_UPDATE_PUBLIC_KEY=${{ vars.AGENT_UPDATE_PUBLIC_KEY }}
           secrets: |
             agent_signing_key=${{ secrets.AGENT_SIGNING_KEY }}
           cache-from: type=gha,scope=${{ matrix.name }}

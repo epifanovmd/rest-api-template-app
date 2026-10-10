@@ -74,12 +74,11 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          # Подпись воркеров проекта в образе (стадия agent-release): закрытый ключ проекта —
-          # секрет AGENT_SIGNING_KEY, открытый ключ пары — переменная AGENT_UPDATE_PUBLIC_KEY
-          # (та же у API); без секрета воркеры проекта без подписи.
+          # Подпись воркеров проекта в образе (стадия agent-bundle, agent pack): закрытый ключ
+          # проекта — секрет AGENT_SIGNING_KEY; открытый pack кладёт в архив сам. Без секрета
+          # воркеры проекта без подписи.
           build-args: |
             APP_VERSION=${{ github.ref_name }}
-            AGENT_UPDATE_PUBLIC_KEY=${{ vars.AGENT_UPDATE_PUBLIC_KEY }}
           secrets: |
             agent_signing_key=${{ secrets.AGENT_SIGNING_KEY }}
           provenance: true

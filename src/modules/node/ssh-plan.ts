@@ -1,7 +1,7 @@
-import { LINK_PATH } from "agent-sdk";
 import type { ConnectConfig } from "ssh2";
 
 import { JobContext, JobError } from "../../core";
+import { bundleInstallUrl } from "../agent";
 import type { ISshSession } from "./ssh-runner";
 
 /** Значение в одинарных кавычках POSIX sh. */
@@ -18,9 +18,9 @@ export const WORK_DIR_COMMAND = "mktemp -d /tmp/agent-node.XXXXXXXX";
 /** Путь из вывода `mktemp` — только такой попадает в команды. */
 export const WORK_DIR_PATTERN = /^\/tmp\/agent-node\.[A-Za-z0-9]+$/;
 
-/** Установщик агента на этом сервере. */
+/** Установщик агента на этом сервере: архив папки агента под машину узла. */
 export const installScriptUrl = (backendUrl: string): string =>
-  `${backendUrl.replace(/\/+$/, "")}${LINK_PATH}/install.sh`;
+  bundleInstallUrl(backendUrl);
 
 /** Как повышать права: sudo без пароля (`-n`) или с паролем в stdin (`-S`). */
 export interface ISshPrivilege {
@@ -58,10 +58,6 @@ export const workFiles = (workDir: string) => ({
   token: `${workDir}/token`,
 });
 
-/** Флаг экземпляра агента проекта (`--instance`); нет — пусто. */
-const instanceFlag = (instance?: string): string =>
-  instance ? ` --instance ${shQuote(instance)}` : "";
-
 /** Скачать установщик с сервера (curl, иначе wget) — без root. */
 const downloadStep = (workDir: string, backendUrl: string): ISshStep => {
   const url = shQuote(installScriptUrl(backendUrl));
@@ -78,17 +74,15 @@ const downloadStep = (workDir: string, backendUrl: string): ISshStep => {
 };
 
 /**
- * Установка: установщик сервера ставит зависимости, скачивает агента и
- * воркеры с сервера, регистрирует агента токеном и запускает службу. Токен — файлом
- * (`--token-file`): в аргументах его видел бы любой пользователь узла.
- * `instance` — экземпляр агента проекта (`--instance`): свои служба, настройки
- * и данные рядом с агентами других бэкендов.
+ * Установка: установщик сервера скачивает архив папки агента под машину узла
+ * и запускает из него `agent install` — пакеты, экземпляр, воркеры и
+ * настройки берутся из архива; агент регистрируется токеном и встаёт
+ * службой. Токен — файлом (`--token-file`): в аргументах его видел бы любой
+ * пользователь узла.
  */
 export const buildInstallPlan = (
   workDir: string,
   backendUrl: string,
-  workers: string[] = [],
-  instance?: string,
 ): ISshStep[] => {
   const files = workFiles(workDir);
 
@@ -97,8 +91,7 @@ export const buildInstallPlan = (
     {
       title: "Установка агента",
       command:
-        `sh ${files.script}${instanceFlag(instance)} --server ${shQuote(backendUrl)} --token-file ${files.token}` +
-        `${workers.map(worker => ` --worker ${shQuote(worker)}`).join("")}; ` +
+        `sh ${files.script} --token-file ${files.token}; ` +
         `code=$?; rm -rf ${workDir}; exit $code`,
       privileged: true,
       timeoutMs: 900_000,
@@ -107,21 +100,21 @@ export const buildInstallPlan = (
 };
 
 /**
- * Удаление экземпляра `instance` (как при установке): воркеры убирают за собой,
- * служба и программа агента удаляются; `purge` — ещё конфигурация, данные,
- * пакеты и пользователь службы. Агенты других экземпляров не затрагиваются.
+ * Удаление тем же архивом (экземпляр — из его настроек): воркеры убирают за
+ * собой, служба и программа агента удаляются; `purge` — ещё конфигурация,
+ * данные, пакеты и пользователь службы. Агенты других экземпляров не
+ * затрагиваются.
  */
 export const buildUninstallPlan = (
   workDir: string,
   backendUrl: string,
   purge: boolean,
-  instance?: string,
 ): ISshStep[] => [
   downloadStep(workDir, backendUrl),
   {
     title: "Удаление агента",
     command:
-      `sh ${workFiles(workDir).script}${instanceFlag(instance)} --uninstall${purge ? " --purge" : ""}; ` +
+      `sh ${workFiles(workDir).script} --uninstall${purge ? " --purge" : ""}; ` +
       `code=$?; rm -rf ${workDir}; exit $code`,
     privileged: true,
     timeoutMs: 300_000,

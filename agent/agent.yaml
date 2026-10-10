@@ -1,0 +1,28 @@
+# Агент на машине разработчика: yarn agent (порт API и токен регистрации — из .env.development).
+# Боевые узлы — agent.prod.yaml поверх этого файла, контейнер — agent.docker.yaml.
+# Что получилось и откуда каждое значение: yarn agent config check.
+server:
+  url: "http://localhost:${SERVER_PORT}"
+enroll:
+  token: "${AGENT_BOOTSTRAP_TOKEN}"
+dataDir: ../.agent/data
+labels:
+  env: dev
+# Здесь агент не обновляет себя по команде сервера: новую версию ставит yarn agent upgrade.
+update:
+  mode: disabled
+log:
+  level: info
+  # Какие записи журнала уходят на сервер без наблюдения; пока клиент в комнате агента — подробнее.
+  forward: warn
+workers:
+  # Воркер проекта (workers/echo): задачи echo.quick и echo.long очереди demo.echo, настройка
+  # settings, метрики, события. Ход долгих задач — в WORKER_STATE_DIR: перезапущенный воркер
+  # продолжает их с сохранённого шага.
+  - path: workers/echo
+    env:
+      PYTHONUNBUFFERED: "1"
+      WORKER_STATE_DIR: "${AGENT_DATA_DIR}/echo-state"
+  # Проверка сети между узлами (настройка targets, итоги — в метриках) — сборка из релиза агента.
+  - name: netprobe
+    from: agent

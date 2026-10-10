@@ -1,0 +1,24 @@
+# Боевые узлы: этот файл поверх agent.yaml (воркеры — оттуда же). Архив для узлов — yarn agent:pack
+# (его же раздаёт API), установка на узле — sudo ./agent install --token <токен> из архива или
+# одной командой с API. Адрес API и токен узлу передаёт установка; свои значения — в .env.prod.
+extends: agent.yaml
+envFiles: [.env.prod]
+# Экземпляр агента проекта: свои служба (agent-rest), настройки и данные рядом с агентами других бэкендов.
+instance: rest
+install:
+  packages: [python3]
+server:
+  url: "${AGENT_SERVER_URL}"
+enroll:
+  token: "${AGENT_ENROLL_TOKEN}"
+labels:
+  env: prod
+update:
+  mode: self
+log:
+  format: json
+workers:
+  - path: workers/echo
+    env:
+      # Рядом со сборкой воркера (<dataDir>/workers/echo/state): переживает её обновление.
+      WORKER_STATE_DIR: ../state

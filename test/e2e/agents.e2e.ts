@@ -1,4 +1,5 @@
 import { expect } from "chai";
+import { readFileSync } from "fs";
 
 import { enroll, RealAgent } from "./agent";
 import {
@@ -161,7 +162,9 @@ describe("агенты (настоящий агент и воркер echo)", fu
     const echo = worker(card, "echo");
 
     expect(echo.health.ok).to.equal(true);
-    expect(echo.manifest.version).to.equal("1.1.0");
+    expect(echo.manifest.version).to.equal(
+      readFileSync("agent/workers/echo/VERSION", "utf8").trim(),
+    );
 
     // Каталог возможностей: маршруты, события, запросы к серверу — со схемами.
     const route = echo.manifest.routes.find((r: any) => r.path === "/echo");
@@ -956,23 +959,19 @@ describe("агенты (настоящий агент и воркер echo)", fu
     const command = expectStatus(
       await call(admin, "POST", "/api/v1/agent-releases/install-command", {
         token: "tok.secret",
-        name: "node-01",
-        workers: ["netprobe"],
       }),
       200,
     ).data.command;
 
-    expect(command).to.include("/api/v1/agent-link/install.sh");
-    expect(command).to.include("--instance 'rest'");
-    expect(command).to.include("--worker 'netprobe'");
+    expect(command).to.equal(
+      `curl -fsSL '${BASE_URL}/api/v1/agent-bundle/install.sh' | sudo sh -s -- --token 'tok.secret'`,
+    );
     expectStatus(
-      await call(admin, "POST", "/api/v1/agent-releases/install-command", {
-        name: "x",
-      }),
+      await call(admin, "POST", "/api/v1/agent-releases/install-command", {}),
       400,
     );
 
-    const script = await fetch(`${BASE_URL}/api/v1/agent-link/install.sh`);
+    const script = await fetch(`${BASE_URL}/api/v1/agent-bundle/install.sh`);
 
     expect(script.status).to.equal(200);
     expect(await script.text()).to.include(BASE_URL);

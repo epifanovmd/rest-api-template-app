@@ -38,7 +38,7 @@ export interface IAgentReleaseRemoteDto {
 
 /**
  * Сборки, которые раздаёт бэкенд: агент и netprobe — из источника сборок
- * агента, воркеры проекта — из `AGENT_RELEASES_DIR`.
+ * агента, воркеры проекта — из `release/` каталога архивов `AGENT_BUNDLE_DIR`.
  */
 export interface IAgentReleaseManifestDto {
   version: string;
@@ -90,7 +90,7 @@ export interface IAgentReleaseDto {
   workerCandidates: IAgentWorkerUpdateCandidateDto[];
 }
 
-/** Параметры команды установки агента на узел (флаги `install.sh`). */
+/** Команда установки агента на узел: архив папки агента с этого сервера и токен. */
 export interface ICreateAgentInstallCommandBody {
   /** Токен регистрации; ровно одно из `token` и `tokenFile`. */
   token?: string;
@@ -98,27 +98,9 @@ export interface ICreateAgentInstallCommandBody {
   tokenFile?: string;
   /** Адрес сервера; без него — `AGENT_PUBLIC_URL` или `APP_PUBLIC_URL`. */
   baseUrl?: string;
-  name?: string;
-  /** Пользователь службы агента. */
-  user?: string;
-  /** Путь к `agent.yaml` на узле. */
-  config?: string;
-  privileged?: boolean;
-  /** `process` | `mixed`. */
-  killMode?: "process" | "mixed";
-  packages?: string[];
-  sysctl?: Record<string, string>;
-  rwPaths?: string[];
-  caFile?: string;
-  /** Воркеры с сервера. */
-  workers?: string[];
-  /** Например `30s`. */
-  stopTimeout?: string;
-  /** Другой источник сборок воркеров (`--releases`). */
-  releases?: string;
 }
 
 export interface IAgentInstallCommandDto {
-  /** `curl … | sudo sh -s -- …`. */
+  /** `curl …/api/v1/agent-bundle/install.sh | sudo sh -s -- --token …`. */
   command: string;
 }

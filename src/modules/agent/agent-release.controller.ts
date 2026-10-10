@@ -34,7 +34,7 @@ export class AgentReleaseController extends Controller {
   /**
    * Сборки, которые раздаёт бэкенд: агент и netprobe — из источника сборок
    * агента (по умолчанию GitHub, `remote` — версия и когда проверен),
-   * воркеры проекта — из `AGENT_RELEASES_DIR`; у каждой сборки — источник.
+   * воркеры проекта — из `release/` каталога архивов `AGENT_BUNDLE_DIR`; у каждой сборки — источник.
    * И кого из доступных агентов можно обновить: агентов и воркеры с сервера.
    * @summary Сборки агента
    */
@@ -46,8 +46,9 @@ export class AgentReleaseController extends Controller {
 
   /**
    * Команда установки агента на новый узел одной строкой:
-   * `curl …/api/v1/agent-link/install.sh | sudo sh -s -- --token … [флаги]`
-   * (воркеры с сервера — `workers`, флаг `--worker`).
+   * `curl …/api/v1/agent-bundle/install.sh | sudo sh -s -- --token …` — скрипт
+   * ставит архив папки агента (`agent pack`): настройки, экземпляр, воркеры и
+   * пакеты — из неё.
    * @summary Команда установки агента
    */
   @Security("jwt", ["permission:agent:enroll"])

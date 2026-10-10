@@ -40,7 +40,7 @@ const isInsecureUrl = (url: string): boolean => {
 
 /**
  * Установка агента на узел по SSH: рабочий каталог, токен регистрации
- * файлом, установщик с этого сервера (`/api/v1/agent-link/install.sh`) с
+ * файлом, установщик с этого сервера (`/api/v1/agent-bundle/install.sh`) с
  * `--token-file`. Вывод — в журнал задачи построчно. Узел получает агента,
  * когда тот зарегистрируется токеном с меткой узла. Провал — токен
  * отзывается, узел в `error`.
@@ -92,7 +92,7 @@ export class NodeInstallAgentJob implements IJobHandler<INodeInstallJobData> {
       await runSshPlan(
         ctx,
         session,
-        buildInstallPlan(workDir, data.backendUrl, data.workers, data.instance),
+        buildInstallPlan(workDir, data.backendUrl),
         access.privilege,
         { from: 0.1, to: 0.95 },
       );

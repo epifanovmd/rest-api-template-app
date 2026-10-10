@@ -76,7 +76,6 @@ const sshData = {
   sudo: true,
   passwordEnc: "enc:pw",
   backendUrl: "https://api.example.com",
-  instance: "rest",
 };
 
 describe("NodeInstallAgentJob", () => {
@@ -84,7 +83,6 @@ describe("NodeInstallAgentJob", () => {
     ...sshData,
     tokenId: "t1",
     tokenEnc: "enc:pref.secret",
-    workers: ["netprobe"],
   };
   let nodeAgents: Record<string, sinon.SinonStub>;
 
@@ -115,12 +113,10 @@ describe("NodeInstallAgentJob", () => {
     const commands = execs.map(exec => exec.command);
 
     expect(commands[1]).to.include(
-      "'https://api.example.com/api/v1/agent-link/install.sh'",
+      "'https://api.example.com/api/v1/agent-bundle/install.sh'",
     );
     expect(commands[2]).to.match(/^sudo -S -p '' sh -c '/);
-    expect(commands[2]).to.include(`install.sh --instance '\\''rest'\\''`);
-    expect(commands[2]).to.include(`--token-file ${WORK_DIR}/token`);
-    expect(commands[2]).to.include("--worker");
+    expect(commands[2]).to.include(`install.sh --token-file ${WORK_DIR}/token`);
     expect(commands[2]).to.not.include("pref.secret");
     expect(execs[2].options?.stdin).to.equal("pw\n");
     expect(commands.at(-1)).to.equal(`rm -rf ${WORK_DIR}`);
@@ -186,7 +182,7 @@ describe("NodeUninstallAgentJob", () => {
     purge: true,
   };
 
-  it("--instance экземпляра проекта, --uninstall --purge от root, затем агент отзывается и удаляется", async () => {
+  it("--uninstall --purge от root (экземпляр — из архива), затем агент отзывается и удаляется", async () => {
     const { session, execs } = fakeSession();
     const nodeAgents = { detach: sinon.stub().resolves() };
     const job = new NodeUninstallAgentJob(
@@ -198,7 +194,7 @@ describe("NodeUninstallAgentJob", () => {
     await job.handle(context(data).ctx);
 
     expect(execs[2].command).to.equal(
-      `sh ${WORK_DIR}/install.sh --instance 'rest' --uninstall --purge; code=$?; rm -rf ${WORK_DIR}; exit $code`,
+      `sh ${WORK_DIR}/install.sh --uninstall --purge; code=$?; rm -rf ${WORK_DIR}; exit $code`,
     );
     expect(nodeAgents.detach.calledOnceWith("n1", "u1")).to.be.true;
   });

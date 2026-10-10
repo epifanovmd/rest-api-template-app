@@ -73,17 +73,6 @@ export const AssignNodeSchema = z.object({
   userId: z.uuid("Ожидается id пользователя"),
 });
 
-const workers = z
-  .array(
-    z
-      .string()
-      .regex(
-        /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/,
-        "Имя воркера: латиница, цифры, «.», «_», «-»",
-      ),
-  )
-  .max(50);
-
 export const CreateNodeInstallCommandSchema = z.object({
   baseUrl: serverUrl.optional(),
   expiresInMinutes: z
@@ -92,7 +81,6 @@ export const CreateNodeInstallCommandSchema = z.object({
     .min(5)
     .max(30 * 24 * 60)
     .optional(),
-  workers: workers.optional(),
 });
 
 const ssh = {
@@ -116,7 +104,7 @@ const requireSecret = {
 };
 
 export const InstallNodeAgentSchema = z
-  .object({ ...ssh, workers: workers.optional() })
+  .object(ssh)
   .refine(body => Boolean(body.password || body.privateKey), requireSecret);
 
 export const UninstallNodeAgentSchema = z

@@ -60,7 +60,7 @@ export const nodeRoom = (nodeId: string): string =>
  */
 export const NODE_JOB_SCOPE = NODE_ROOM_TYPE;
 
-/** Воркер проверки сети из сборок агента: ставится вместе с агентом. */
+/** Воркер проверки сети (from: agent в папке агента): ставится вместе с агентом. */
 export const NETPROBE_WORKER = "netprobe";
 
 /** Очередь установки агента по SSH. */
@@ -124,16 +124,12 @@ export interface INodeSshJobData {
   passphraseEnc?: string;
   /** Адрес сервера: установщик и связь агента. */
   backendUrl: string;
-  /** Экземпляр агента проекта на узле (`--instance`); нет — по умолчанию. */
-  instance?: string;
 }
 
 /** Данные задачи установки: одноразовый токен регистрации зашифрован. */
 export interface INodeInstallJobData extends INodeSshJobData {
   tokenId: string;
   tokenEnc: string;
-  /** Воркеры с сервера (`--worker`). */
-  workers: string[];
 }
 
 /** Данные задачи удаления. */

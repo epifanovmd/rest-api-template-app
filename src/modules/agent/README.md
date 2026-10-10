@@ -86,9 +86,13 @@ cron `agents.prune` (раз в час). Итоги действий и «кто 
 
 ## Связь и регистрация
 
-- `/api/v1/agent-link/*` (регистрация, сборки агента, `install.sh`) — `RAW_HTTP_HANDLER`: до
-  разбора тела, CORS и лимита запросов; в Swagger не входят. WebSocket того же пути —
+- `/api/v1/agent-link/*` (регистрация, сборки агента) — `RAW_HTTP_HANDLER`: до разбора тела,
+  CORS и лимита запросов; в Swagger не входят. WebSocket того же пути —
   `agents.attach(HttpServer)` на ролях `api` и `all`.
+- `/api/v1/agent-bundle/*` — установка узлов (`AgentBundleHandler`, тоже `RAW_HTTP_HANDLER`, без
+  входа: в архиве нет секретов): `install.sh` (архив под машину узла → `agent install --server
+<API> "$@"`; `--uninstall [--purge]` — удалить) и `<os>-<arch>.tar.gz` — архив папки агента
+  (`agent pack`) из `AGENT_BUNDLE_DIR`.
 - Регистрация: общий токен окружения `AGENT_BOOTSTRAP_TOKEN` или созданный токен
   (`<prefix>.<secret>`, в БД — префикс и хеш; срок, отзыв, лимит использований). Метки
   токена сильнее меток агента. Новый агент — событие `AgentEnrolledEvent` с источником
@@ -384,9 +388,10 @@ message }`, `job.done { result }`, `job.failed { error }`, `job.cancelled` (в `
    Постановка — как у любой задачи: `jobQueue.enqueue("report.render", { reportId },
 { manager, ownerId, title })`; ждать итог из запроса — `jobQueue.request(...)`.
 
-2. **Воркер** — каталог `agent/workers/<имя>` (HTTP-сервис на unix-сокете
-   `AGENT_WORKER_SOCKET` на любом языке, без SDK; запуск — исполняемый `run`, версия —
-   файл `VERSION`), как его упаковать и доставить на узлы — [agent/README.md](../../../agent/README.md):
+2. **Воркер** — каталог `agent/workers/<имя>`: заготовка — `yarn agent worker new <имя>` (база
+   `agent_worker.py` берёт на себя всё ниже, код воркера — класс-наследник); без неё — HTTP-сервис
+   на unix-сокете `AGENT_WORKER_SOCKET` на любом языке (запуск — исполняемый `run`, версия —
+   файл `VERSION`). Как он попадает на узлы — [agent/README.md](../../../agent/README.md):
 
    - обязательно `GET /health` → `{ ok, busy?, message?, info? }` (`busy: true`, пока идёт
      долгая задача: агент не заменяет воркер до её окончания) и `GET /manifest` → `{
@@ -405,15 +410,16 @@ result }` или `202 { id }` (повтор с тем же `jobId` — та же
      уборка при удалении агента — `POST /cleanup`;
    - ход долгой задачи — на диск: перезапущенный воркер продолжает её.
 
-   Образец — `agent/workers/echo` (Python, только стандартная библиотека).
+   Образец — `agent/workers/echo` (класс `Echo` на базе `agent_worker.py`).
 
-3. **Агенту — воркер в настройках** (`agent.yaml`, раздел `workers`): на узле его
-   прописывает `agent install --worker <имя>` (воркер со сборкой с сервера, `release: true`); локально —
-   `agent/local/agent.yaml`, в образе — `agent/docker/agent.yaml`.
+3. **Агенту — воркер в настройках**: `- path: workers/<имя>` в `agent/agent.yaml` (`worker new`
+   добавляет сам). Локально агент запускает воркер из папки, в архиве для узлов (`yarn agent:pack`)
+   он едет подписанной сборкой, на узле `agent install` ставит его воркером со сборкой
+   (`release: true`) — бэкенд потом обновляет его `worker.update`.
 
 ## Демо-воркер `echo`
 
-`agent/workers/echo` (Python ≥ 3.10, без зависимостей): задачи `echo.quick` (итог сразу;
+`agent/workers/echo` (Python ≥ 3.8, на базе `agent_worker.py`): задачи `echo.quick` (итог сразу;
 `lookup: true` — префикс по запросу воркера `echo.lookup`, обработчик `DemoEchoLookupHandler`
 модуля задач: метка узла `echoPrefix` или `[<имя агента>] `, текст длиннее 200 — отказ
 `ECHO_TEXT_TOO_LONG`) и
@@ -424,15 +430,15 @@ long?, steps?, delayMs?, fail?, withOutput? }` → итог `{ text, prefix?, ou
 `settings` — префикс и регистр); `POST /echo { text, repeat?, case?, reverse? }` (схема тела в
 манифесте, после ответа — событие `echo.echoed`), `GET /stream`, `GET /bytes`, `POST /hang`,
 `POST /emit { type, data? }` (событие как есть — проверка схем событий), метрики,
-`POST /cleanup`. Ход долгих задач — в `ECHO_JOBS_DIR`.
+`POST /cleanup`. Ход долгих задач — в `WORKER_STATE_DIR` (перезапущенный воркер продолжает их).
 
 ```bash
 yarn dev               # API (AGENT_BOOTSTRAP_TOKEN в .env.development)
-yarn agent:release     # собрать воркеры проекта в agent/release (AGENT_RELEASES_DIR=agent/release)
-yarn agent             # агент версии agent-sdk с воркерами echo и netprobe (agent/local/agent.yaml)
+yarn agent             # агент версии agent-sdk с воркерами echo и netprobe (agent/agent.yaml)
+yarn agent:pack        # архивы для узлов и сборки воркеров → agent/bundle (AGENT_BUNDLE_DIR)
 ```
 
-Подробно про локальный запуск, сборки и установку на узлы — [agent/README.md](../../../agent/README.md).
+Подробно про локальный запуск, архивы и установку на узлы — [agent/README.md](../../../agent/README.md).
 
 ## Откуда берутся сборки агента
 
@@ -447,12 +453,12 @@ SDK): репозиторий `AGENT_RELEASES_GITHUB` (`epifanovmd/agent`; пус
 кандидаты на обновление в `GET /agent-releases` уже другие. Ради новой версии агента бэкенд не
 пересобирают.
 
-Воркеры проекта — каталог `AGENT_RELEASES_DIR` (`manifest.json` от `agent-release`, архивы;
-`agent/release.sh`). Итоговый манифест сборок (`GET /agent-releases`, `manifest`): агент и `netprobe` —
-`source: remote`, воркеры проекта — `source: local`; `remote` — версия в источнике, откуда и
-когда проверена. Ключи проверки в `install.sh`: открытые ключи проекта
-`AGENT_UPDATE_PUBLIC_KEY` (через запятую; ими подписаны воркеры проекта) и ключ автора агента
-`AGENT_RELEASES_PUBLIC_KEY` (им подписаны агент и `netprobe`).
+Воркеры проекта — `release/` каталога архивов `AGENT_BUNDLE_DIR` (`agent pack --release-out`:
+`manifest.json` и подписанные ключом проекта архивы). Итоговый манифест сборок
+(`GET /agent-releases`, `manifest`): агент и `netprobe` — `source: remote`, воркеры проекта —
+`source: local`; `remote` — версия в источнике, откуда и когда проверена. Ключ проекта узел
+получает из архива при `agent install` (его кладёт `agent pack`), ключ автора агента вшит в
+программу агента.
 
 ## Конфигурация
 
@@ -461,8 +467,8 @@ SDK): репозиторий `AGENT_RELEASES_GITHUB` (`epifanovmd/agent`; пус
 `AGENT_EVENTS_RETENTION_DAYS` (14), `AGENT_OFFLINE_GRACE_MS` (3000), `AGENT_RELAY_SECRET`
 (пересылка между копиями), `AGENT_RELAY_PORT` (8182) и `AGENT_RELAY_HOST` (`127.0.0.1`) —
 внутренний сервер пересылки, `INSTANCE_URL` (адрес сервера пересылки копии),
-[сборки агента](#откуда-берутся-сборки-агента) — `AGENT_RELEASES_*` и `AGENT_UPDATE_PUBLIC_KEY`, `AGENT_INSTANCE` (`rest` —
-экземпляр агента проекта на узле, `--instance`; пусто — по умолчанию), `AGENT_PUBLIC_URL`,
+[сборки агента](#откуда-берутся-сборки-агента) — `AGENT_RELEASES_*`, `AGENT_BUNDLE_DIR` (архивы
+папки агента для узлов), `AGENT_PUBLIC_URL` (адрес API в скрипте и команде установки),
 `AGENT_VALIDATE_EVENTS` (`log`; `off | log | reject` —
 [выше](#строгость-манифеста)); `TRUST_PROXY` — адрес агента за прокси.
 
@@ -473,7 +479,8 @@ SDK): репозиторий `AGENT_RELEASES_GITHUB` (`epifanovmd/agent`; пус
 история на Postgres —
 `TEST_DATABASE_URL=postgres://…/<тестовая база> yarn test:file src/modules/agent/store/agent.store.integration.test.ts`.
 E2E — `test/e2e/agent-releases.e2e.ts`: агент и `netprobe` с локального сервера сборок (не
-GitHub), `install.sh` с ключами, ссылка 302 на сборку, новая версия в источнике — событие
+GitHub), скрипт установки и архив папки агента (ключ проекта — в нём), ссылка 302 на сборку,
+новая версия в источнике — событие
 `agent:release` и кандидат на обновление, обновление воркера проекта с сервера с подписью
 ключом проекта. `test/e2e/agents.e2e.ts` — с настоящим агентом версии `agent-sdk` и воркером
 echo (хелпер `test/e2e/agent.ts`; программа агента — `agent/dist`, `yarn agent:fetch`): задачи

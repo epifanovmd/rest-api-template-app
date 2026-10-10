@@ -1266,18 +1266,6 @@ const models: TsoaRoute.Models = {
             "token": {"dataType":"string"},
             "tokenFile": {"dataType":"string"},
             "baseUrl": {"dataType":"string"},
-            "name": {"dataType":"string"},
-            "user": {"dataType":"string"},
-            "config": {"dataType":"string"},
-            "privileged": {"dataType":"boolean"},
-            "killMode": {"dataType":"union","subSchemas":[{"dataType":"enum","enums":["process"]},{"dataType":"enum","enums":["mixed"]}]},
-            "packages": {"dataType":"array","array":{"dataType":"string"}},
-            "sysctl": {"ref":"Record_string.string_"},
-            "rwPaths": {"dataType":"array","array":{"dataType":"string"}},
-            "caFile": {"dataType":"string"},
-            "workers": {"dataType":"array","array":{"dataType":"string"}},
-            "stopTimeout": {"dataType":"string"},
-            "releases": {"dataType":"string"},
         },
         "additionalProperties": false,
     },
@@ -1653,7 +1641,6 @@ const models: TsoaRoute.Models = {
         "properties": {
             "baseUrl": {"dataType":"string"},
             "expiresInMinutes": {"dataType":"double"},
-            "workers": {"dataType":"array","array":{"dataType":"string"}},
         },
         "additionalProperties": false,
     },
@@ -1666,7 +1653,7 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "IInstallNodeAgentBody": {
+    "INodeSshAccessBody": {
         "dataType": "refObject",
         "properties": {
             "host": {"dataType":"string"},
@@ -1677,9 +1664,13 @@ const models: TsoaRoute.Models = {
             "passphrase": {"dataType":"string"},
             "sudo": {"dataType":"boolean"},
             "backendUrl": {"dataType":"string"},
-            "workers": {"dataType":"array","array":{"dataType":"string"}},
         },
         "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "IInstallNodeAgentBody": {
+        "dataType": "refAlias",
+        "type": {"ref":"INodeSshAccessBody","validators":{}},
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "IUninstallNodeAgentBody": {

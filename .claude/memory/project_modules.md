@@ -62,7 +62,7 @@ Bootstrappers: `AdminBootstrap`, `SeedBootstrap` (user; dev-пользовате
 
 Всего 103 (09.10.2026): Agent 22, User 16, Node 12, Authorization 10, Profile 9, Files 6, Passkeys 6, Jobs 4,
 Biometric 5, Role 4, Session 3, ApiKey 3, Audit 2, Permission 1. Вне спецификации ещё агентские `/api/v1/agent-link/*` (WS, enroll,
-releases, install.sh). Вне спецификации: `/files/*` (storage), системные пробы, `/metrics`,
+releases, agent-bundle). Вне спецификации: `/files/*` (storage), системные пробы, `/metrics`,
 `/api-docs`.
 
 ## Очереди задач (`JOB_HANDLER`)
@@ -140,31 +140,33 @@ session, file, api-key, audit, jobs). Комнаты: `user_<id>` (всегда,
   `signedFileOf`, `signedUrlOf`, `NO_SIGNED_FILES`).
 - **Аудит**: `audit_events`, `GET /api/v1/audit/my`, `GET /api/v1/audit` (`audit:view`), cron-очистка 180 дней.
 
-## Агенты (модуль `agent`, agent-sdk 1.1.0)
+## Агенты (модуль `agent`, agent-sdk 1.2.0)
 
 Агент и SDK — github.com/epifanovmd/agent (внешняя зависимость). Сервер — `Agents` из
 `agent-sdk/server` (зависимость — архив GitHub Release
-`https://github.com/epifanovmd/agent/releases/download/v1.1.0/agent-sdk-1.1.0.tgz`, `vendor/` нет; ESM, грузится из CJS через require(esm)). Воркеры — HTTP-сервисы
-на unix-сокете **без SDK** (обязательны `GET /health`, `GET /manifest`); воркеры проекта — `agent/workers/<имя>`
-(main + исполняемый `run` + `VERSION`), демо — `agent/workers/echo` (Python, stdlib, задачи `/jobs`).
+`https://github.com/epifanovmd/agent/releases/download/v1.2.0/agent-sdk-1.2.0.tgz`, `vendor/` нет; ESM, грузится из CJS через require(esm)).
+**Папка агента `agent/`** (агент 1.2.0: extends/envFiles, pack, install из архива, worker new):
+`agent.yaml` (dev: `${SERVER_PORT}`, `${AGENT_BOOTSTRAP_TOKEN}`, `dataDir ../.agent/data`, update disabled; значения с
+`${}` — в кавычках, иначе пустое значение ломает YAML при pack), `agent.prod.yaml` (extends, instance `rest`, install
+`packages: [python3]`, `${AGENT_SERVER_URL}`/`${AGENT_ENROLL_TOKEN}` — их даёт установка), `agent.docker.yaml` (поверх prod,
+dataDir /var/lib/agent, update external), `workers/echo` (база `agent_worker.py` + `worker.py` класс `Echo`, `log_requests`,
+`WORKER_STATE_DIR` — ход задач; база — копия из агента, обновлять `yarn agent worker sync`), `dev.mjs` (yarn agent*: скачивает
+`agent/agent` версии agent-sdk, env из .env.development, AGENT_NAME=dev-$USER, AGENT_DATA_DIR=.agent/data; fetch → ещё
+`agent/dist/v<v>` для e2e; pack → `agent/bundle` + `release/`), `docker/Dockerfile` (`run --env docker`), `.gitignore`
+(agent, bundle/, .env.prod). Удалены: dev.sh, release.sh, fetch.mjs, local/, docker/agent.yaml, release/, tools/.
 Агент и netprobe — **из релизов GitHub** (`agentReleases` SDK, `toAgentReleasesOptions` в agent.config.ts):
 `AGENT_RELEASES_GITHUB` (epifanovmd/agent; пусто — выкл), `AGENT_RELEASES_RANGE` (^1), `AGENT_RELEASES_URL` (важнее
 github), `AGENT_RELEASES_TOKEN`, `AGENT_RELEASES_PROXY`, `AGENT_RELEASES_CHECK_INTERVAL_MS` (1 ч),
 `AGENT_RELEASES_PUBLIC_KEY` (ключ автора, по умолчанию 9yYb…uo=). Событие SDK `release` → журнал +
 `AgentReleaseChangedEvent` → сокет `agent:release` в `agents`. Бэкенд не пересобирают ради новой версии агента.
-Сборки воркеров проекта — `agent/release` (gitignored, `yarn agent:release` = `agent/release.sh`: архивы
-`<имя>-<версия>-<os>-<arch>.tar.gz` под `AGENT_PLATFORMS`, manifest с `artifacts: []` (версия — package.json)
-утилитой `agent-release` версии agent-sdk: `AGENT_RELEASE_TOOL` | `agent/tools/agent-release-<v>-<os>-<arch>` |
-`go run …@v<v>` | без Go — сборка в agent/tools в контейнере `golang:1.26-alpine`, том `agent-release-go`;
-каталог — `AGENT_RELEASE_OUT`). Подпись — `AGENT_SIGNING_KEY` (ключ проекта), API — `AGENT_UPDATE_PUBLIC_KEY`
-(csv → `updatePublicKeys`). Образ API собирает воркеры проекта сам (стадия agent-release на golang, секрет
-`agent_signing_key` + build-arg `AGENT_UPDATE_PUBLIC_KEY` для ключа кеша; compose — `AGENT_SIGNING_KEY_FILE`).
-Сборки агента локально — `agent/dist/v<v>` (`yarn agent:fetch` = `agent/fetch.mjs`): для `agent/dev.sh` и e2e.
-Экземпляр на узле — `AGENT_INSTANCE` (по умолчанию `rest`, пусто — default): `AgentService.instance()`
-→ `installCommand({instance})`, SSH-задачи — `instance` в данных задачи → `install.sh --instance … [--uninstall]`.
-Локальный агент пользователя может работать из `agent/release/agent-darwin-arm64` или `agent/dist/…` — не
-перезаписывать при проверках (свои сборки — во временный каталог, `AGENT_RELEASE_OUT`). Раскладка `agent/`: README,
-dev.sh, release.sh, fetch.mjs, local/agent.yaml, docker/{Dockerfile,agent.yaml}, workers/, release/, dist/, tools/.
+**Установка узлов — архивами `agent pack`:** `AGENT_BUNDLE_DIR` (dev `agent/bundle`, образ — стадия `agent-bundle`
+Dockerfile: python-скрипт качает агента версии agent-sdk, `agent pack --env prod --platform linux/amd64,linux/arm64
+--release-out`, секрет `agent_signing_key`) → `AgentBundleHandler` (RAW_HTTP_HANDLER, `agent-bundle.ts`):
+`GET /api/v1/agent-bundle/install.sh` (скрипт: архив `<os>-<arch>.tar.gz` → `agent install --server <API> "$@"`,
+`--uninstall [--purge]`) и `/api/v1/agent-bundle/<os>-<arch>.tar.gz` (linux|darwin; новейший по mtime). `releasesDir` SDK =
+`bundleReleasesDir()` (`<bundle>/release`, если есть manifest.json). `AgentService.installCommand` — свой (`installCommand`
+из agent-bundle.ts), тело — только `token|tokenFile`, `baseUrl`. Ключ проекта — в bundle.json (pack), узел добавляет его
+сам; `AGENT_UPDATE_PUBLIC_KEY`, `AGENT_INSTANCE`, `AGENT_RELEASES_DIR`, `workers` в телах установки — удалены.
 Таблицы (миграция `AgentWorkers1791511700000` удалила agent_jobs/commands/states/state_history/state_versions/
 job_inputs и старые agents/events/metrics): Store SDK — `agents` (id varchar(64) = 32 hex, rev, record jsonb),
 `agent_configs` (PK agent+worker+key, version-счётчик переживает удаление: data NULL); история проекта —
@@ -196,7 +198,7 @@ REST: `/agents` (+ `/alerts`, `/events`, `/{id}`, revoke, delete, rotate-key, up
 - `nodes` (миграция `1791475124953-Nodes`, agentId → varchar(64) в `AgentWorkers`): name, description, host, ownerId/createdById (FK users SET NULL), agentId (unique, без FK). Статус вычисляется (`node-status.ts`): provisioning (активная задача `node.install-agent`/`node.uninstall-agent`, scope `node/<id>`) → created/error (нет агента) → offline → error (воркер invalid/backoff/stopped, health.ok=false, config ok=false, configStatus failed) → online; сводка `config` — по `agents.configStatus`. Последняя задача — `JobRunRepository.findLatestByScopes` (экспорт из jobs index вместе с `JobRun`).
 - Права `node:*` (scoped, кроме create). Доступ к маршрутам агентов: `AgentAccessService` (agent) + политика `NodeAgentAccessPolicy` через `AGENT_ACCESS_POLICY`; маршруты агентов с `*` — `@Security("jwt")`.
 - Привязка: `AgentEnrollmentService.withContext` (AsyncLocalStorage) в `AgentRuntime.handle` → `AgentEnrolledEvent(agent, source{tokenId, createdBy, labels})` → метка `nodeId`; без метки — узел без агента, однозначно по `agentName` → `name` → `host` (`findUnbound` + условный `bindFree`), иначе авто-узел. `agentName` хранится и после отвязки.
-- SSH: ssh2 (`SSH_SESSION_FACTORY` для тестов), `NodeSecretBox` (`NODE_SECRETS_KEY`, иначе от JWT), `--token-file`, `--worker netprobe`, sudo -n / -S.
-- netprobe (release-воркер, `--worker netprobe`): цели — настройка `netprobe/targets` `{targets:[{id: id узла, host, method:"icmp"}], intervalSec, count, timeoutMs}` через `AgentWorkerService.putConfig` (только агентам с воркером netprobe, только при другом содержимом); матрицу считает бэкенд по последней точке `agent.metrics.workers.netprobe` `{at, results[]}` (stale > 2 мин или offline). Очередь `node.netprobe-sync` (cron */10 + после изменений + при появлении агента с netprobe). Dev: блок netprobe в `agent/local/agent.yaml` между метками, `agent/dev.sh` ставит сборку в `<dataDir>/workers/netprobe/current` + `version` или убирает блок.
+- SSH: ssh2 (`SSH_SESSION_FACTORY` для тестов), `NodeSecretBox` (`NODE_SECRETS_KEY`, иначе от JWT), скрипт `/api/v1/agent-bundle/install.sh` + `--token-file` (удаление — `--uninstall [--purge]`, экземпляр — из архива), sudo -n / -S.
+- netprobe (`from: agent` в agent/agent.yaml; на узел — в архиве): цели — настройка `netprobe/targets` `{targets:[{id: id узла, host, method:"icmp"}], intervalSec, count, timeoutMs}` через `AgentWorkerService.putConfig` (только агентам с воркером netprobe, только при другом содержимом); матрицу считает бэкенд по последней точке `agent.metrics.workers.netprobe` `{at, results[]}` (stale > 2 мин или offline). Очередь `node.netprobe-sync` (cron */10 + после изменений + при появлении агента с netprobe). Dev: агент сам скачивает netprobe из релиза своей версии в `<dataDir>/workers/netprobe`.
 - Отзыв и удаление агента — только `agent:manage` (политика узла не открывает); `node:agent` — update, rotate-key, restart/update воркеров, configs, fetch.
 - Gotcha: `mine` в query-схеме — строка `"true"|"false"` (ValidateQuery подменяет query; boolean ломает tsoa). e2e: `auth сброс пароля` падает и без модуля (письмо приходит позже 15 с).

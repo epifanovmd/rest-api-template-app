@@ -149,18 +149,6 @@ export const CreateAgentInstallCommandSchema = z
     token: shellValue.optional(),
     tokenFile: shellValue.optional(),
     baseUrl: z.url("Адрес — URL").max(500).optional(),
-    name: z.string().min(1).max(128).optional(),
-    user: shellValue.optional(),
-    config: shellValue.optional(),
-    privileged: z.boolean().optional(),
-    killMode: z.enum(["process", "mixed"]).optional(),
-    packages: z.array(shellValue).max(50).optional(),
-    sysctl: z.record(shellValue, shellValue).optional(),
-    rwPaths: z.array(shellValue).max(20).optional(),
-    caFile: shellValue.optional(),
-    workers: z.array(workerName).max(20).optional(),
-    stopTimeout: shellValue.optional(),
-    releases: z.url("Адрес — URL").max(500).optional(),
   })
   .refine(value => !!value.token !== !!value.tokenFile, {
     message: "Нужно ровно одно из token и tokenFile",

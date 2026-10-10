@@ -24,13 +24,11 @@ export interface ICreateNodeInstallCommandBody {
   baseUrl?: string;
   /** Срок одноразового токена, минут (по умолчанию сутки). */
   expiresInMinutes?: number;
-  /** Воркеры из сборок агента (по умолчанию — проверка сети `netprobe`). */
-  workers?: string[];
 }
 
 /** Команда установки и одноразовый токен регистрации узла. */
 export interface INodeInstallCommandDto {
-  /** `curl … | sudo sh -s -- --token … --server …`. */
+  /** `curl …/api/v1/agent-bundle/install.sh | sudo sh -s -- --token …`. */
   command: string;
   /** Токен регистрации (одноразовый, с меткой узла) — только в этом ответе. */
   token: string;
@@ -64,11 +62,8 @@ export interface INodeSshAccessBody {
   backendUrl?: string;
 }
 
-/** Установка агента по SSH. */
-export interface IInstallNodeAgentBody extends INodeSshAccessBody {
-  /** Воркеры из сборок агента (по умолчанию — проверка сети `netprobe`). */
-  workers?: string[];
-}
+/** Установка агента по SSH: архив папки агента с этого сервера. */
+export type IInstallNodeAgentBody = INodeSshAccessBody;
 
 /** Удаление агента по SSH. */
 export interface IUninstallNodeAgentBody extends INodeSshAccessBody {

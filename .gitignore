@@ -24,8 +24,6 @@ firebaseAccount.json
 # Агент для разработки: программа, данные, окружение воркера, pid и журнал (yarn agent)
 .agent/
 
-# Сборки воркеров проекта (yarn agent:release), утилита agent-release и скачанные сборки
-# агента (yarn agent:fetch) — собираются и скачиваются, не хранятся
-agent/release/
-agent/tools/
+# Скачанные сборки агента (yarn agent:fetch: e2e) — не хранятся; программа агента и
+# архивы для узлов — в agent/.gitignore
 agent/dist/

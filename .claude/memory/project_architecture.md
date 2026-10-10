@@ -273,14 +273,12 @@ E2E: `yarn test:e2e` (`.mocharc.e2e.yml`: `test/e2e/**/*.e2e.ts`, `setup.ts` —
 - `Dockerfile`: стадии deps → builder → prod-deps → `api` (tini, без yarn, `USER node`, `templates/`,
   `VOLUME /app/files`, HEALTHCHECK `/ping`) → `worker` (= api + `ffmpeg`, последняя стадия — дефолт).
   `APP_VERSION` build-arg; deps/prod-deps ставят agent-sdk архивом с GitHub Release (ссылка в package.json); стадия
-  `agent-release` (golang:1.26-alpine, `agent/release.sh` → сборки воркеров проекта, секрет `agent_signing_key`)
-  → `/app/agent-release` (`AGENT_RELEASES_DIR`); агента в образе нет — из релизов GitHub.
-  `agent/docker/Dockerfile` — агент `AGENT_VERSION` (1.1.0, GitHub Release, sha256 по
-  manifest) + python 3.12-slim (без SDK) + `agent/workers` (echo) + netprobe (из тех же сборок) →
-  `/usr/local/bin/netprobe`, конфиг
-  `agent/docker/agent.yaml`, том `/var/lib/agent`. На машине: `agent/dev.sh` —
-  `yarn agent|agent:start|stop|status|logs` (`AGENT_DIR`, по умолчанию `.agent/`; агент — `agent/dist`),
-  `yarn agent:release` — `agent/release.sh`, `yarn agent:fetch` — `agent/fetch.mjs`.
+  `agent-bundle` (python:3.12-slim: агент версии agent-sdk с GitHub, `agent pack --env prod --platform linux/amd64,linux/arm64
+--release-out`, секрет `agent_signing_key`) → `/app/agent-bundle` (`AGENT_BUNDLE_DIR`).
+  `agent/docker/Dockerfile` — агент версии agent-sdk (GitHub Release, sha256 по manifest) + python 3.12-slim + папка агента
+  (`agent.yaml`, `agent.prod.yaml`, `agent.docker.yaml`, `workers/`) → `./agent run --env docker`; netprobe агент качает сам;
+  том `/var/lib/agent`. На машине: `agent/dev.mjs` — `yarn agent [команда]|agent:start|stop|status|logs|fetch|pack`
+  (`AGENT_DIR`, по умолчанию `.agent/`; программа — `agent/agent`).
 - `docker-compose.yml` (prod, только образы): `migrate` (одноразовый `typeorm migration:run -d build/data-source.js`),
   `api` (`:TAG-api`, `APP_ROLE=api`, масштабируется, `API_PORTS`), `worker` (`:TAG`, `APP_ROLE=worker`), профиль
   `agent` (agent/docker/Dockerfile, том `agent-data`, `AGENT_ENROLL_TOKEN` ← `AGENT_BOOTSTRAP_TOKEN`), `postgres:16`, `redis:7` (без persistence, allkeys-lru), `s3` (SeaweedFS `:8333`) + `s3-init`
@@ -292,7 +290,7 @@ E2E: `yarn test:e2e` (`.mocharc.e2e.yml`: `test/e2e/**/*.e2e.ts`, `setup.ts` —
   (ключ сервисного аккаунта) игнорируется — чтобы локальный ключ не попал в коммит.
 - CI `.github/workflows/ci.yml` (push и pull_request в `main`; ветки-примеры CI не запускают): verify (generate + `git diff --exit-code src/routing`, lint, typecheck, test,
   build), migrations (чистый Postgres + дрейф через `migration:generate CiDrift`), e2e (матрица `storage: [s3, local]`,
-  SeaweedFS запускается `docker run`; перед ним setup-go + `yarn agent:fetch` (linux-amd64); стенд сам собирает воркеры проекта (release.sh, свой ключ) и раздаёт сборки агента с локального сервера — в GitHub не ходит), audit (`continue-on-error`), agent-worker (py_compile `agent/workers/echo/main.py`), docker (api/worker/agent + Trivy CRITICAL/HIGH, ignore-unfixed). `release.yml`: тег `v*` →
+  SeaweedFS запускается `docker run`; перед ним `yarn agent:fetch` (linux-amd64); стенд сам собирает архив папки агента (`agent pack`, свой ключ проекта, `AGENT_UPDATE_RELEASES` — локальный сервер сборок) и раздаёт сборки агента с локального сервера — в GitHub не ходит), audit (`continue-on-error`), agent-worker (py_compile `agent/workers/echo/worker.py agent_worker.py`), docker (api/worker/agent + Trivy CRITICAL/HIGH, ignore-unfixed). `release.yml`: тег `v*` →
   GHCR, amd64+arm64, worker без суффикса, api `-api`, agent `-agent`.
   `deploy.yml`: после Release или вручную — scp `docker-compose.yml`, `pull` → `run --rm migrate` → `up -d`.
   `Makefile`: `deploy` (compose/pull/migrate/up), `env`, `logs`, `backup`, `build`.

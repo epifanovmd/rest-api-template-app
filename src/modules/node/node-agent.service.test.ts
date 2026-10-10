@@ -96,9 +96,10 @@ describe("NodeAgentService", () => {
       tokenId: "t1",
       command: "curl … --token pref.secret",
     });
-    expect(agents.installCommand.firstCall.args[0].workers).to.deep.equal([
-      "netprobe",
-    ]);
+    expect(agents.installCommand.firstCall.args[0]).to.deep.equal({
+      token: "pref.secret",
+      baseUrl: undefined,
+    });
   });
 
   it("регистрация токеном узла — агент привязывается, прежний отзывается", async () => {

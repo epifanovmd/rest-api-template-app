@@ -1,9 +1,10 @@
 import type { AgentReleasesOptions } from "agent-sdk/server";
+import { existsSync } from "fs";
+import { join } from "path";
 import { z } from "zod";
 
 import {
   bool,
-  csv,
   defineModuleConfig,
   nonNegativeInt,
   optionalString,
@@ -11,9 +12,6 @@ import {
   positiveInt,
 } from "../../config";
 import { resolveFromRoot } from "../../core";
-
-/** Экземпляр агента проекта на узле, если `AGENT_INSTANCE` не задан. */
-const AGENT_INSTANCE_DEFAULT = "rest";
 
 /** Откуда по умолчанию берутся агент и netprobe: релизы GitHub. */
 export const AGENT_RELEASES_DEFAULTS = {
@@ -127,41 +125,23 @@ export const agentConfig = defineModuleConfig(
      */
     instanceUrl: optionalString,
     /**
-     * Каталог сборок воркеров проекта (`manifest.json` от `agent-release`,
-     * архивы воркеров; `yarn agent:release`). Относительный путь — от корня
-     * проекта.
+     * Архивы папки агента для узлов (`yarn agent:pack` = `agent pack --env prod`):
+     * `agent-prod-<версия>-linux-<arch>.tar.gz` — их ставит `agent install`, и
+     * `release/` — сборки воркеров проекта для их обновления (`worker.update`).
+     * Относительный путь — от корня проекта; пусто — узлы не ставятся с API.
      */
-    releasesDir: optionalString.transform(dir =>
+    bundleDir: optionalString.transform(dir =>
       dir ? resolveFromRoot(dir) : undefined,
     ),
     /** Откуда брать агента и netprobe: релизы GitHub или ссылка. */
     agentReleases: agentReleasesSchema,
-    /**
-     * Открытые ключи проекта (base64, через запятую) — пара к ключу, которым
-     * подписаны воркеры проекта (`AGENT_SIGNING_KEY` при сборке воркеров);
-     * `install.sh` передаёт их узлу.
-     */
-    updatePublicKeys: csv,
     /**
      * Ключ шифрования значений настроек воркеров в БД (AES-256-GCM, 32 байта
      * hex или base64): в настройках бывают ключи и пароли. Без него значения
      * хранятся как есть.
      */
     configsKey: optionalString,
-    /**
-     * Экземпляр агента проекта на узле (`agent install --instance`): свои
-     * служба `agent-<имя>`, настройки `/etc/agent-<имя>` и данные
-     * `/var/lib/agent-<имя>` — агенты других бэкендов на том же узле не
-     * мешают. Пустое значение — экземпляр по умолчанию (`agent`).
-     */
-    instance: z
-      .string()
-      .regex(
-        /^([a-z][a-z0-9-]{0,31})?$/,
-        "AGENT_INSTANCE — строчная латиница, цифры и «-», первая — буква, до 32 символов",
-      )
-      .transform(name => name || undefined),
-    /** Адрес сервера для агентов (`install.sh`, ссылки); без него — из запроса. */
+    /** Адрес сервера для агентов (установка, ссылки); без него — из запроса. */
     publicUrl: optionalString,
     /**
      * Проверка `data` событий воркеров по `events[].schema` манифеста:
@@ -186,7 +166,7 @@ export const agentConfig = defineModuleConfig(
     relayPort: process.env.AGENT_RELAY_PORT || undefined,
     relayHost: process.env.AGENT_RELAY_HOST || undefined,
     instanceUrl: process.env.INSTANCE_URL,
-    releasesDir: process.env.AGENT_RELEASES_DIR,
+    bundleDir: process.env.AGENT_BUNDLE_DIR,
     agentReleases: {
       github: process.env.AGENT_RELEASES_GITHUB,
       range: process.env.AGENT_RELEASES_RANGE || undefined,
@@ -197,10 +177,18 @@ export const agentConfig = defineModuleConfig(
         process.env.AGENT_RELEASES_CHECK_INTERVAL_MS || undefined,
       publicKey: process.env.AGENT_RELEASES_PUBLIC_KEY || undefined,
     },
-    updatePublicKeys: process.env.AGENT_UPDATE_PUBLIC_KEY ?? "",
     configsKey: process.env.AGENT_CONFIGS_KEY,
-    instance: process.env.AGENT_INSTANCE ?? AGENT_INSTANCE_DEFAULT,
     publicUrl: process.env.AGENT_PUBLIC_URL,
     validateEvents: process.env.AGENT_VALIDATE_EVENTS || undefined,
   },
 );
+
+/**
+ * Сборки воркеров проекта для `worker.update` — `release/` каталога архивов
+ * (`agent pack --release-out`); нет — воркеры проекта с API не обновляются.
+ */
+export const bundleReleasesDir = (): string | undefined => {
+  const dir = agentConfig.bundleDir && join(agentConfig.bundleDir, "release");
+
+  return dir && existsSync(join(dir, "manifest.json")) ? dir : undefined;
+};

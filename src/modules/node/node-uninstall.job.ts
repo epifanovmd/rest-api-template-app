@@ -65,7 +65,7 @@ export class NodeUninstallAgentJob implements IJobHandler<INodeUninstallJobData>
       await runSshPlan(
         ctx,
         session,
-        buildUninstallPlan(workDir, data.backendUrl, data.purge, data.instance),
+        buildUninstallPlan(workDir, data.backendUrl, data.purge),
         access.privilege,
         { from: 0.1, to: 0.9 },
       );

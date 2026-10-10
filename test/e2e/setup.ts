@@ -3,8 +3,8 @@ import { startServer, stopServer } from "./harness";
 /** Корневые хуки mocha: один сервер на весь прогон. */
 export const mochaHooks = {
   beforeAll: async function (this: Mocha.Context) {
-    // Первый запуск собирает утилиту agent-release (сборки воркеров проекта).
-    this.timeout(300_000);
+    // Архив папки агента стенда — agent pack (сборки агента — yarn agent:fetch).
+    this.timeout(120_000);
     await startServer();
   },
   afterAll: async function (this: Mocha.Context) {

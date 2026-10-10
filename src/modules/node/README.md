@@ -4,7 +4,7 @@
 описание, публичный адрес (`host`), владельца и создателя и id своего агента;
 статус вычисляется по агенту (его воркерам и настройкам) и последней задаче
 установки. Модуль привязывает агента к узлу при регистрации, ставит и удаляет агента
-по SSH (`agent install` / `agent uninstall` через `install.sh`, задачи модуля `jobs`),
+по SSH (архив папки агента с API → `agent install` / `agent uninstall`, задачи модуля `jobs`),
 задаёт воркеру `netprobe` цели проверки сети и собирает матрицу связности из его
 метрик, открывает маршруты агентов владельцу узла.
 
@@ -108,16 +108,17 @@ src/modules/node/
 
 **Команда установки.** `install-command` создаёт одноразовый токен регистрации
 (`maxUses: 1`, срок `expiresInMinutes`, по умолчанию сутки) с меткой
-`nodeId=<id узла>` и строку `curl …/api/v1/agent-link/install.sh | sudo sh -s --
---instance 'rest' --token … --worker 'netprobe'` (`agents.installCommand`; воркеры с
-сервера — `workers`, по умолчанию воркер проверки сети `netprobe`). Токен — только в ответе.
+`nodeId=<id узла>` и строку `curl …/api/v1/agent-bundle/install.sh | sudo sh -s -- --token …`
+(`AgentService.installCommand`). Скрипт скачивает с API архив папки агента под машину узла
+(`agent pack`, `AGENT_BUNDLE_DIR`) и запускает из него `agent install`: воркеры (`echo`,
+`netprobe`), пакеты и экземпляр — из настроек папки (`agent/agent.prod.yaml`). Токен — только
+в ответе.
 
-**Экземпляр агента.** Агент проекта ставится на узел отдельным экземпляром
-`AGENT_INSTANCE` (по умолчанию `rest`; пусто — экземпляр по умолчанию): служба
-`agent-rest`, настройки `/etc/agent-rest`, данные и воркеры `/var/lib/agent-rest`,
-программа `/opt/agent-rest/bin/agent`. Агенты других бэкендов на том же узле не мешают,
-удаление затрагивает только свой экземпляр. На узле: `sudo agent-rest status`,
-`sudo systemctl reload agent-rest`, `sudo agent uninstall --instance rest [--purge]`.
+**Экземпляр агента.** Агент проекта ставится на узел отдельным экземпляром — `instance: rest`
+в `agent/agent.prod.yaml`: служба `agent-rest`, настройки `/etc/agent-rest`, данные и воркеры
+`/var/lib/agent-rest`, программа `/opt/agent-rest/bin/agent`. Агенты других бэкендов на том же
+узле не мешают, удаление затрагивает только свой экземпляр. На узле: `sudo agent-rest status`,
+`sudo systemctl reload agent-rest`, `sudo agent-rest uninstall [--purge]`.
 
 **Привязка.** Модуль `agent` выполняет запрос регистрации в своём контексте: хук
 `enroll` запоминает источник (id токена, автор, метки токена — только выданные
@@ -146,7 +147,7 @@ src/modules/node/
 ## SSH: установка и удаление
 
 `POST …/agent/install` / `…/agent/uninstall` с `{host?, port?, username?,
-password?, privateKey?, passphrase?, sudo?, backendUrl?}` (+ `workers` / `purge`):
+password?, privateKey?, passphrase?, sudo?, backendUrl?}` (+ `purge` у удаления):
 нужен пароль или ключ; `host` — по умолчанию адрес узла; `sudo` — по умолчанию,
 если пользователь не root; `backendUrl` — адрес сервера, доступный с узла (по
 умолчанию `AGENT_PUBLIC_URL`, иначе `APP_PUBLIC_URL`). Ответ — `202 {jobId}`.
@@ -159,9 +160,9 @@ password?, privateKey?, passphrase?, sudo?, backendUrl?}` (+ `workers` / `purge`
 
 Задача (воркер, `tracked`, без повторов): подключение ssh2 → рабочий каталог
 `mktemp -d /tmp/agent-node.XXXXXXXX` → токен файлом (umask 077) → установщик с
-этого сервера (`/api/v1/agent-link/install.sh`, curl или wget) → `sh install.sh
---instance … --server … --token-file … --worker …` (удаление — `--instance …
---uninstall [--purge]`; экземпляр — `AGENT_INSTANCE` на момент постановки) с
+этого сервера (`/api/v1/agent-bundle/install.sh`, curl или wget) → `sh install.sh
+--token-file …` (архив папки агента под машину узла → `agent install`; удаление —
+`--uninstall [--purge]`, экземпляр — из настроек архива) с
 `sudo -n` (вход по ключу) или `sudo -S` (пароль в stdin). Вывод команд — в журнал
 задачи построчно, прогресс — по шагам; каталог удаляется и при сбое. Провал
 установки отзывает токен; узел получает агента, когда тот зарегистрируется.
@@ -173,8 +174,8 @@ password?, privateKey?, passphrase?, sudo?, backendUrl?}` (+ `workers` / `purge`
 
 ## Связность
 
-Воркер `netprobe` из сборок агента (ставится на узел `agent install --worker
-netprobe`, в dev — `agent/dev.sh`) проверяет связность до целей своей
+Воркер `netprobe` из релиза агента (`from: agent` в `agent/agent.yaml`: агент берёт его сам,
+на узел он едет в архиве папки агента) проверяет связность до целей своей
 настройки `targets` и отдаёт итог последнего круга в `GET /metrics`: агент кладёт его в
 `metrics.workers.netprobe` — `{at, results: [{id, host, method, via?, sent, received,
 lossPct, rttMinMs?, rttAvgMs?, rttMaxMs?, error?}]}`.

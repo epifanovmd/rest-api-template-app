@@ -113,7 +113,7 @@ const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 const echoEnv = (dataDir: string): string[] => [
   "    env:",
   '      PYTHONUNBUFFERED: "1"',
-  `      ECHO_JOBS_DIR: ${JSON.stringify(join(dataDir, "echo-jobs"))}`,
+  `      WORKER_STATE_DIR: ${JSON.stringify(join(dataDir, "echo-state"))}`,
   "    lifecycle:",
   "      { onAgentStop: stop, onAgentRestart: restart, stopTimeout: 5s, health: { interval: 1s, timeout: 1s, failures: 5 } }",
 ];

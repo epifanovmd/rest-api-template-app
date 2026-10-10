@@ -2776,7 +2776,7 @@
 				"additionalProperties": false
 			},
 			"IAgentReleaseManifestDto": {
-				"description": "Сборки, которые раздаёт бэкенд: агент и netprobe — из источника сборок\nагента, воркеры проекта — из `AGENT_RELEASES_DIR`.",
+				"description": "Сборки, которые раздаёт бэкенд: агент и netprobe — из источника сборок\nагента, воркеры проекта — из `release/` каталога архивов `AGENT_BUNDLE_DIR`.",
 				"properties": {
 					"version": {
 						"type": "string"
@@ -2924,7 +2924,7 @@
 				"properties": {
 					"command": {
 						"type": "string",
-						"description": "`curl … | sudo sh -s -- …`."
+						"description": "`curl …/api/v1/agent-bundle/install.sh | sudo sh -s -- --token …`."
 					}
 				},
 				"required": [
@@ -2934,7 +2934,7 @@
 				"additionalProperties": false
 			},
 			"ICreateAgentInstallCommandBody": {
-				"description": "Параметры команды установки агента на узел (флаги `install.sh`).",
+				"description": "Команда установки агента на узел: архив папки агента с этого сервера и токен.",
 				"properties": {
 					"token": {
 						"type": "string",
@@ -2947,61 +2947,6 @@
 					"baseUrl": {
 						"type": "string",
 						"description": "Адрес сервера; без него — `AGENT_PUBLIC_URL` или `APP_PUBLIC_URL`."
-					},
-					"name": {
-						"type": "string"
-					},
-					"user": {
-						"type": "string",
-						"description": "Пользователь службы агента."
-					},
-					"config": {
-						"type": "string",
-						"description": "Путь к `agent.yaml` на узле."
-					},
-					"privileged": {
-						"type": "boolean"
-					},
-					"killMode": {
-						"type": "string",
-						"enum": [
-							"process",
-							"mixed"
-						],
-						"description": "`process` | `mixed`."
-					},
-					"packages": {
-						"items": {
-							"type": "string"
-						},
-						"type": "array"
-					},
-					"sysctl": {
-						"$ref": "#/components/schemas/Record_string.string_"
-					},
-					"rwPaths": {
-						"items": {
-							"type": "string"
-						},
-						"type": "array"
-					},
-					"caFile": {
-						"type": "string"
-					},
-					"workers": {
-						"items": {
-							"type": "string"
-						},
-						"type": "array",
-						"description": "Воркеры с сервера."
-					},
-					"stopTimeout": {
-						"type": "string",
-						"description": "Например `30s`."
-					},
-					"releases": {
-						"type": "string",
-						"description": "Другой источник сборок воркеров (`--releases`)."
 					}
 				},
 				"type": "object",
@@ -4066,7 +4011,7 @@
 				"properties": {
 					"command": {
 						"type": "string",
-						"description": "`curl … | sudo sh -s -- --token … --server …`."
+						"description": "`curl …/api/v1/agent-bundle/install.sh | sudo sh -s -- --token …`."
 					},
 					"token": {
 						"type": "string",
@@ -4100,13 +4045,6 @@
 						"type": "number",
 						"format": "double",
 						"description": "Срок одноразового токена, минут (по умолчанию сутки)."
-					},
-					"workers": {
-						"items": {
-							"type": "string"
-						},
-						"type": "array",
-						"description": "Воркеры из сборок агента (по умолчанию — проверка сети `netprobe`)."
 					}
 				},
 				"type": "object",
@@ -4126,8 +4064,8 @@
 				"type": "object",
 				"additionalProperties": false
 			},
-			"IInstallNodeAgentBody": {
-				"description": "Установка агента по SSH.",
+			"INodeSshAccessBody": {
+				"description": "Доступ к узлу по SSH (данные шифруются и живут только в задаче) и адрес\nсервера.",
 				"properties": {
 					"host": {
 						"type": "string",
@@ -4161,17 +4099,14 @@
 					"backendUrl": {
 						"type": "string",
 						"description": "Адрес сервера, доступный с узла: установщик и связь агента; без него —\n`AGENT_PUBLIC_URL` / `APP_PUBLIC_URL`."
-					},
-					"workers": {
-						"items": {
-							"type": "string"
-						},
-						"type": "array",
-						"description": "Воркеры из сборок агента (по умолчанию — проверка сети `netprobe`)."
 					}
 				},
 				"type": "object",
 				"additionalProperties": false
+			},
+			"IInstallNodeAgentBody": {
+				"$ref": "#/components/schemas/INodeSshAccessBody",
+				"description": "Установка агента по SSH: архив папки агента с этого сервера."
 			},
 			"IUninstallNodeAgentBody": {
 				"description": "Удаление агента по SSH.",
@@ -7957,7 +7892,7 @@
 						}
 					}
 				},
-				"description": "Сборки, которые раздаёт бэкенд: агент и netprobe — из источника сборок\nагента (по умолчанию GitHub, `remote` — версия и когда проверен),\nворкеры проекта — из `AGENT_RELEASES_DIR`; у каждой сборки — источник.\nИ кого из доступных агентов можно обновить: агентов и воркеры с сервера.",
+				"description": "Сборки, которые раздаёт бэкенд: агент и netprobe — из источника сборок\nагента (по умолчанию GitHub, `remote` — версия и когда проверен),\nворкеры проекта — из `release/` каталога архивов `AGENT_BUNDLE_DIR`; у каждой сборки — источник.\nИ кого из доступных агентов можно обновить: агентов и воркеры с сервера.",
 				"summary": "Сборки агента",
 				"tags": [
 					"Agent"
@@ -7995,7 +7930,7 @@
 						}
 					}
 				},
-				"description": "Команда установки агента на новый узел одной строкой:\n`curl …/api/v1/agent-link/install.sh | sudo sh -s -- --token … [флаги]`\n(воркеры с сервера — `workers`, флаг `--worker`).",
+				"description": "Команда установки агента на новый узел одной строкой:\n`curl …/api/v1/agent-bundle/install.sh | sudo sh -s -- --token …` — скрипт\nставит архив папки агента (`agent pack`): настройки, экземпляр, воркеры и\nпакеты — из неё.",
 				"summary": "Команда установки агента",
 				"tags": [
 					"Agent"

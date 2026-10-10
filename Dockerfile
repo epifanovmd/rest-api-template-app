@@ -20,29 +20,37 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN yarn build
 
-# ── Сборки воркеров проекта (раздаёт API: AGENT_RELEASES_DIR) ─────────────────
-# agent/release.sh: архивы agent/workers и manifest.json утилитой agent-release
-# (`go run` модуля github.com/epifanovmd/agent той же версии, что agent-sdk) — Go
-# нужен только ей. Агента и netprobe в образе нет: API берёт их из релизов GitHub
-# (AGENT_RELEASES_*). Подпись воркеров ключом проекта — секрет сборки
-# agent_signing_key (необязательно; без него воркеры без подписи) вместе с
-# открытым ключом пары в AGENT_UPDATE_PUBLIC_KEY (build-arg): секрет не входит в
-# ключ кеша сборки, а ключ пары входит — с другим ключом сборки собираются заново.
-FROM golang:1.26-alpine AS agent-release
-ARG AGENT_UPDATE_PUBLIC_KEY=
-RUN apk add --no-cache bash tar
-WORKDIR /src
-COPY package.json ./
-COPY agent/release.sh agent/
-COPY agent/workers/ agent/workers/
-RUN --mount=type=cache,target=/go/pkg/mod \
-    --mount=type=cache,target=/root/.cache/go-build \
-    --mount=type=secret,id=agent_signing_key,required=false \
-    echo "Ключ проекта: ${AGENT_UPDATE_PUBLIC_KEY:-нет}" && \
+# ── Архивы папки агента для узлов (раздаёт API: AGENT_BUNDLE_DIR) ─────────────
+# agent pack --env prod: по архиву на linux/amd64 и linux/arm64 (программа агента,
+# agent.yaml + agent.prod.yaml, воркеры проекта и их сборки) и release/ — сборки
+# воркеров для обновления узлов. Программа агента — с GitHub Release версии agent-sdk;
+# агента под другие платформы и netprobe pack берёт оттуда же. Подпись воркеров ключом
+# проекта — секрет сборки agent_signing_key (необязательно: без него воркеры ставятся,
+# но с API не обновляются); открытый ключ pack кладёт в архив сам.
+FROM python:3.12-slim AS agent-bundle
+WORKDIR /src/agent
+COPY package.json /src/package.json
+RUN python - <<'PY'
+import hashlib, json, os, platform, re, urllib.request
+
+version = re.search(r"agent-sdk-([^/]+)\.tgz", json.load(open("/src/package.json"))["dependencies"]["agent-sdk"]).group(1)
+arch = "arm64" if platform.machine() in ("aarch64", "arm64") else "amd64"
+base = f"https://github.com/epifanovmd/agent/releases/download/v{version}"
+build = next(a for a in json.load(urllib.request.urlopen(f"{base}/manifest.json"))["artifacts"]
+             if a["os"] == "linux" and a["arch"] == arch)
+urllib.request.urlretrieve(f"{base}/{build['file']}", "/usr/local/bin/agent")
+if hashlib.sha256(open("/usr/local/bin/agent", "rb").read()).hexdigest() != build["sha256"].lower():
+    raise SystemExit(f"{build['file']}: sha256 не совпадает с manifest.json")
+os.chmod("/usr/local/bin/agent", 0o755)
+PY
+COPY agent/agent.yaml agent/agent.prod.yaml ./
+COPY agent/workers ./workers
+RUN --mount=type=secret,id=agent_signing_key,required=false \
     if [ -s /run/secrets/agent_signing_key ]; then \
       AGENT_SIGNING_KEY="$(cat /run/secrets/agent_signing_key)"; export AGENT_SIGNING_KEY; \
     fi && \
-    CGO_ENABLED=0 AGENT_RELEASE_OUT=/agent-release bash agent/release.sh
+    AGENT_NO_UPDATE_CHECK=1 agent pack --env prod --platform linux/amd64,linux/arm64 \
+      --out /agent-bundle --release-out /agent-bundle/release
 
 # ── Только production-зависимости, без install-скриптов ──────────────────────
 # Кэш yarn — в cache-mount BuildKit, в слой не попадает: чистить не нужно.
@@ -60,7 +68,7 @@ ARG APP_VERSION=dev
 ENV NODE_ENV=production \
     NODE_OPTIONS=--enable-source-maps \
     APP_VERSION=${APP_VERSION} \
-    AGENT_RELEASES_DIR=agent-release
+    AGENT_BUNDLE_DIR=agent-bundle
 
 # tini — корректный PID 1: сигналы доходят до node, дочерние процессы убираются.
 # Менеджеры пакетов в рантайме не нужны (старт и миграции — через node): меньше
@@ -77,7 +85,7 @@ COPY --from=prod-deps --chown=node:node /app/node_modules ./node_modules
 COPY --from=builder --chown=node:node /app/build ./build
 # Ассеты рантайма (шаблоны писем) лежат вне build/ и читаются по пути от корня.
 COPY --chown=node:node templates ./templates
-COPY --from=agent-release --chown=node:node /agent-release ./agent-release
+COPY --from=agent-bundle --chown=node:node /agent-bundle ./agent-bundle
 
 USER node
 EXPOSE 8181

@@ -1,4 +1,5 @@
 import { expect } from "chai";
+import { execFileSync } from "child_process";
 import { createHash } from "crypto";
 import { readFileSync } from "fs";
 import { join } from "path";
@@ -96,17 +97,36 @@ describe("сборки агента из источника и воркеры п
     expect(sources).to.deep.equal({ netprobe: "remote", echo: "local" });
   });
 
-  it("install.sh — с адресом сервера и ключами проекта и автора агента; сборка агента — ссылкой на источник", async () => {
+  it("установка с сервера: скрипт и архив папки агента (ключ проекта — в нём); сборка агента — ссылкой на источник", async () => {
     const script = await (
-      await fetch(`${BASE_URL}/api/v1/agent-link/install.sh`)
+      await fetch(`${BASE_URL}/api/v1/agent-bundle/install.sh`)
     ).text();
-    const keys = /^DEFAULT_UPDATE_KEYS="(.*)"$/m.exec(script)?.[1].split(" ");
 
-    expect(script).to.match(new RegExp(`^DEFAULT_SERVER="${BASE_URL}"$`, "m"));
-    expect(keys).to.include.members([
-      PROJECT_KEYS.public,
-      distManifest().publicKey,
-    ]);
+    expect(script).to.include(`SERVER='${BASE_URL}'`);
+    expect(script).to.include('install --server "$SERVER" "$@"');
+
+    const archive = await fetch(
+      `${BASE_URL}/api/v1/agent-bundle/${platform()}.tar.gz`,
+    );
+
+    expect(archive.status).to.equal(200);
+    const info = JSON.parse(
+      execFileSync("tar", ["-xzOf", "-", "agent/bundle.json"], {
+        input: Buffer.from(await archive.arrayBuffer()),
+      }).toString("utf8"),
+    );
+
+    expect(info).to.include({
+      version: AGENT_VERSION,
+      config: "agent.prod.yaml",
+      env: "prod",
+    });
+    expect(info.publicKeys).to.deep.equal([PROJECT_KEYS.public]);
+    expect(info.workers).to.include.members(["echo", "netprobe"]);
+    expect(
+      (await fetch(`${BASE_URL}/api/v1/agent-bundle/linux-sparc.tar.gz`))
+        .status,
+    ).to.equal(404);
 
     const file = `agent-${platform()}`;
     const redirect = await fetch(

@@ -46,7 +46,7 @@ message } }`). В main **нет ни одного вызова** (описани
 - Задачи: служебная очередь с повторами — `mailer/mail-send.job.ts`; `JobError(code, msg, retryable)` —
   `file/file-process.job.ts`, `mailer.service.ts`; cron — `*-cleanup.job.ts` (audit, otp, session, passkeys, file);
   outbox — `file.service.ts::_enqueueProcessing(manager, …)`, `mailer.service.ts` (`{ manager }`); внешняя очередь —
-  `jobs/demo-echo.handler.ts` (`asExternalJobHandler`, `job` + `jobType` + `io` + `onComplete`), воркер — `agent/workers/echo`;
+  `jobs/demo-echo.handler.ts` (`asExternalJobHandler`, `job` + `jobType` + `io` + `onComplete`), воркер — `agent/workers/echo` (класс на базе `agent_worker.py`);
   ответ на запрос воркера к серверу — `jobs/demo-echo-lookup.handler.ts` (`asWorkerRequestHandler`, `type` + `workers` +
   `handle`, отказ — `WorkerRequestError`);
   health-индикатор — `jobs/jobs.health.ts` (`asHealthIndicator(JobsHealthIndicator)`). Политик доступа к задачам
@@ -55,7 +55,7 @@ message } }`). В main **нет ни одного вызова** (описани
   `file/file-process.job.ts`, прямая загрузка — `file.service.ts` (`signedPutUrl` + complete с условным `UPDATE`).
 - Права модуля — `audit/audit.permissions.ts` (`definePermissions("audit", { VIEW: "audit:view" })`).
 - E2E-сценарий — `test/e2e/platform.e2e.ts` (файлы S3/local, задачи, биометрия/passkeys), агенты —
-  `test/e2e/agents.e2e.ts` (хелпер `test/e2e/agent.ts`: настоящий агент из `agent/dist` с воркерами echo/echo-release/netprobe; сборки агента — `test/e2e/agent-releases.e2e.ts`),
+  `test/e2e/agents.e2e.ts` (хелпер `test/e2e/agent.ts`: настоящий агент из `agent/dist` с воркерами echo/echo-release/netprobe; сборки агента, скрипт и архив установки — `test/e2e/agent-releases.e2e.ts`; harness собирает архив папки агента `agent pack` → `AGENT_BUNDLE_DIR`),
   клиент `test/e2e/client.ts`, письма — Mailpit API.
 - Bootstrapper — `src/modules/socket/socket.bootstrap.ts`, `src/modules/user/*bootstrap*` (AdminBootstrap, Seed).
 - Guards на маршруте — поиск `@UseGuards(` в `src/modules/auth/`.

@@ -12,11 +12,12 @@
 хранилище (SeaweedFS в compose) или диск, Zod, pino, prom-client + Sentry, Mocha +
 Chai + Sinon, сборка `tsc`. Агенты — github.com/epifanovmd/agent: серверный
 `agent-sdk` (архив с GitHub Release агента, ссылка в `package.json`); всё про агента
-на узлах — в `agent/` (README простыми словами): воркеры проекта без SDK
-(`agent/workers/<имя>`), сборки воркеров проекта (`agent/release`, собираются
-`agent/release.sh`), локальный запуск (`agent/dev.sh`, `agent/local`; сборки агента —
-`agent/dist`, `yarn agent:fetch`), образ (`agent/docker`). Агента и `netprobe` бэкенд берёт
-из релизов GitHub сам (`AGENT_RELEASES_*`) и замечает новые версии.
+на узлах — папка агента `agent/` (README простыми словами): настройки `agent.yaml`
+(машина разработчика) и `agent.prod.yaml` / `agent.docker.yaml` поверх него, воркеры проекта
+(`agent/workers/<имя>`: база `agent_worker.py` + класс-наследник, `yarn agent worker new`),
+`yarn agent*` (`agent/dev.mjs`), архивы для узлов (`yarn agent:pack` → `agent/bundle`; их раздаёт
+API из `AGENT_BUNDLE_DIR`, ставит `agent install`), образ (`agent/docker`). Агента и `netprobe`
+бэкенд берёт из релизов GitHub сам (`AGENT_RELEASES_*`) и замечает новые версии.
 Node >= 22.13 (Docker — 24 LTS). Роль процесса — `APP_ROLE=api|worker|all`.
 
 ## Команды
@@ -32,10 +33,11 @@ yarn typecheck            # проверка типов (yarn dev:types — watc
 yarn test                 # юнит, src/**/*.test.ts (один файл: yarn test:file <path>)
 yarn test:e2e             # интеграционный набор test/e2e/*.e2e.ts (нужен dev-compose)
 yarn gen:module <name>    # каркас модуля по конвенциям (--dry-run — список файлов)
-yarn agent                # агент с воркерами echo и netprobe (agent/local/agent.yaml; AGENT_BOOTSTRAP_TOKEN)
+yarn agent [команда]      # агент с воркерами echo и netprobe (agent/agent.yaml; AGENT_BOOTSTRAP_TOKEN);
+                          # команды агента: config check, worker new|list|sync, upgrade …
 yarn agent:start | agent:stop [--force] | agent:status | agent:logs   # тот же агент в фоне
-yarn agent:release        # собрать воркеры проекта в agent/release (AGENT_RELEASES_DIR)
-yarn agent:fetch          # скачать сборки агента с GitHub в agent/dist (yarn agent, e2e)
+yarn agent:pack           # архивы для узлов и сборки воркеров → agent/bundle (AGENT_BUNDLE_DIR)
+yarn agent:fetch          # программа агента и сборки агента с GitHub в agent/dist (e2e)
 yarn migration:generate src/migrations/<Name> | migration:run | migration:revert
 yarn migration:run:prod   # миграции из build/ (в контейнере)
 ```

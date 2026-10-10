@@ -1,77 +1,59 @@
 # syntax=docker/dockerfile:1.7
-# Агент в контейнере: агент (github.com/epifanovmd/agent, PID 1 — связь, очередь
-# важных сообщений, запуск воркеров), Python для воркеров без SDK и воркеры: echo
-# (воркер проекта, agent/workers/echo) и netprobe (проверка сети, из сборок агента);
-# настройки — agent/docker/agent.yaml. Свой воркер — каталогом в
-# agent/workers и строкой в agent/docker/agent.yaml (или образом `FROM` этого).
+# Агент в контейнере — та же папка агента, что у разработчика и на узлах: программа агента,
+# agent.yaml + agent.prod.yaml + agent.docker.yaml (поверх друг друга) и воркеры из agent/workers.
+# netprobe (from: agent) агент скачивает из своего релиза сам при первом запуске — в том данных.
 #
 #   docker build -f agent/docker/Dockerfile -t agent .
 #   docker run --rm -e AGENT_SERVER_URL=http://api:8181 \
 #     -e AGENT_ENROLL_TOKEN=<токен регистрации> -v agent-data:/var/lib/agent agent
 #
-# Программа агента и netprobe — с GitHub Release агента версии AGENT_VERSION
-# (`--build-arg AGENT_VERSION=…`); контрольные суммы сверяются с manifest.json сборок. Обновление — новым образом (update.mode=external); ключ
-# агента — в томе /var/lib/agent (без тома агент регистрируется заново при каждом
-# старте).
+# Программа агента — с GitHub Release агента версии AGENT_VERSION (`--build-arg AGENT_VERSION=…`,
+# по умолчанию — как agent-sdk в package.json); контрольная сумма сверяется с manifest.json.
+# Обновление — новым образом (update.mode: external); ключ агента — в томе /var/lib/agent.
 ARG PYTHON_VERSION=3.12-slim
-ARG AGENT_VERSION=1.1.0
 
 # ── Программа агента под платформу образа ────────────────────────────────────
 FROM python:${PYTHON_VERSION} AS agent-bin
 ARG AGENT_VERSION
 ARG TARGETARCH
+COPY package.json /tmp/package.json
 RUN python - <<'PY'
-import hashlib, json, os, urllib.request
+import hashlib, json, os, re, urllib.request
 
-version, arch = os.environ["AGENT_VERSION"], os.environ["TARGETARCH"]
+version = os.environ.get("AGENT_VERSION") or re.search(
+    r"agent-sdk-([^/]+)\.tgz", json.load(open("/tmp/package.json"))["dependencies"]["agent-sdk"]).group(1)
+arch = os.environ["TARGETARCH"]
 base = f"https://github.com/epifanovmd/agent/releases/download/v{version}"
+manifest = json.load(urllib.request.urlopen(f"{base}/manifest.json"))
+build = next(a for a in manifest["artifacts"] if a["os"] == "linux" and a["arch"] == arch)
 os.makedirs("/out", exist_ok=True)
-
-def fetch(build: dict, target: str) -> None:
-    urllib.request.urlretrieve(f"{base}/{build['file']}", target)
-    digest = hashlib.sha256(open(target, "rb").read()).hexdigest()
-    if digest != build["sha256"]:
-        raise SystemExit(f"{build['file']}: sha256 {digest} не совпадает с manifest.json")
-    os.chmod(target, 0o755)
-
-urllib.request.urlretrieve(f"{base}/manifest.json", "/out/manifest.json")
-manifest = json.load(open("/out/manifest.json"))
-if manifest["version"] != version:
-    raise SystemExit(f"версия {manifest['version']}, ожидалась {version}")
-mine = lambda b: b["os"] == "linux" and b["arch"] == arch
-fetch(next(a for a in manifest["artifacts"] if mine(a)), "/out/agent")
-fetch(next(w for w in manifest["workers"] if w["name"] == "netprobe" and mine(w)), "/out/netprobe")
+urllib.request.urlretrieve(f"{base}/{build['file']}", "/out/agent")
+if hashlib.sha256(open("/out/agent", "rb").read()).hexdigest() != build["sha256"].lower():
+    raise SystemExit(f"{build['file']}: sha256 не совпадает с manifest.json")
+os.chmod("/out/agent", 0o755)
 PY
 
-# ── Runtime: Python (воркеры на стандартной библиотеке) + агент ─────────────
+# ── Runtime: Python (воркеры на стандартной библиотеке) + папка агента ───────
 FROM python:${PYTHON_VERSION}
 
 ENV PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1 \
-    AGENT_CONFIG=/etc/agent/agent.yaml \
-    AGENT_DATA_DIR=/var/lib/agent \
-    AGENT_UPDATE_MODE=external
+    PYTHONDONTWRITEBYTECODE=1
 
-WORKDIR /app
-
+WORKDIR /app/agent
+COPY agent/agent.yaml agent/agent.prod.yaml agent/agent.docker.yaml ./
 COPY agent/workers ./workers
-COPY agent/docker/agent.yaml /etc/agent/agent.yaml
-COPY --from=agent-bin /out/ /tmp/agent-bin/
-RUN install -m 0755 /tmp/agent-bin/agent /usr/local/bin/agent && \
-    install -m 0755 /tmp/agent-bin/netprobe /usr/local/bin/netprobe && \
-    rm -rf /tmp/agent-bin
+COPY --from=agent-bin /out/agent ./agent
 
 RUN useradd --system --uid 10001 --home-dir /app agent && \
     mkdir -p /var/lib/agent && chown agent /var/lib/agent
 USER agent
 VOLUME ["/var/lib/agent"]
 
-# Жив ли агент с этим dataDir (отмечается раз в 15 с).
+# Жив ли агент с этим dataDir (отмечается раз в 5 с).
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
-  CMD ["agent", "status"]
+  CMD ["./agent", "status", "--env", "docker"]
 
-# SIGTERM: агент останавливает воркеры (в контейнере — всегда вместе с собой):
-# SIGTERM, через stopTimeout — SIGKILL; stop_grace_period оркестратора — не меньше.
+# SIGTERM: агент останавливает воркеры (в контейнере — всегда вместе с собой).
 STOPSIGNAL SIGTERM
-ENTRYPOINT ["agent"]
-CMD ["run"]
+ENTRYPOINT ["./agent"]
+CMD ["run", "--env", "docker"]

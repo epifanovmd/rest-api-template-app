@@ -24,7 +24,6 @@ import { NodePermissions } from "./node.permissions";
 import { NodeRepository, TNodeAgentMatch } from "./node.repository";
 import { NodeService } from "./node.service";
 import {
-  NETPROBE_WORKER,
   NODE_AGENT_NAME_MAX,
   NODE_HOST_MAX,
   NODE_ID_LABEL,
@@ -97,7 +96,6 @@ export class NodeAgentService {
     const { command } = this._agents.installCommand({
       token: issued.token,
       baseUrl: body.baseUrl,
-      workers: body.workers ?? [NETPROBE_WORKER],
     });
 
     return { command, ...issued };

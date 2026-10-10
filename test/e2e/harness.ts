@@ -160,8 +160,8 @@ const projectKeys = (): { signing: string; public: string } => {
 /** Ключи проекта стенда: ими подписаны сборки воркеров проекта. */
 export const PROJECT_KEYS = projectKeys();
 
-/** Сборки воркеров проекта стенда (agent/release.sh во временный каталог). */
-let releasesDir = "";
+/** Архивы папки агента стенда (agent pack во временный каталог): AGENT_BUNDLE_DIR. */
+let bundleDir = "";
 
 export interface IRemoteRelease {
   /** Адрес каталога сборок для `AGENT_RELEASES_URL`. */
@@ -222,20 +222,51 @@ export let REMOTE_RELEASE: IRemoteRelease;
 /** Как часто сервер стенда проверяет, не вышла ли новая версия агента, мс. */
 export const RELEASE_CHECK_INTERVAL_MS = 500;
 
-/** Сборки воркеров проекта, подписанные ключом проекта стенда. */
-const buildProjectRelease = async (): Promise<string> => {
-  const dir = mkdtempSync(join(tmpdir(), "e2e-agent-release-"));
-  const out = join(dir, "release");
+/** Платформа этой машины в именах сборок агента: darwin-arm64, linux-amd64. */
+const hostPlatform = (): { os: string; arch: string } => ({
+  os: process.platform === "darwin" ? "darwin" : "linux",
+  arch: process.arch === "arm64" ? "arm64" : "amd64",
+});
 
-  await promisify(execFile)("bash", ["agent/release.sh"], {
-    env: {
-      ...env,
-      AGENT_RELEASE_OUT: out,
-      AGENT_SIGNING_KEY: PROJECT_KEYS.signing,
+/**
+ * Архив папки агента под эту машину и сборки воркеров проекта (`release/`),
+ * подписанные ключом проекта стенда — как `yarn agent:pack`; агент и
+ * netprobe — с локального сервера сборок.
+ */
+const buildProjectBundle = async (): Promise<string> => {
+  const dir = mkdtempSync(join(tmpdir(), "e2e-agent-bundle-"));
+  const { os, arch } = hostPlatform();
+  const agentBin =
+    env.E2E_AGENT_BIN ?? join(AGENT_DIST_DIR, `agent-${os}-${arch}`);
+
+  await promisify(execFile)(
+    agentBin,
+    [
+      "pack",
+      "--env",
+      "prod",
+      "--platform",
+      `${os}/${arch}`,
+      "--out",
+      dir,
+      "--release-out",
+      join(dir, "release"),
+    ],
+    {
+      cwd: resolve("agent"),
+      env: {
+        ...env,
+        AGENT_SIGNING_KEY: PROJECT_KEYS.signing,
+        AGENT_UPDATE_RELEASES: REMOTE_RELEASE.url.replace(
+          /\/download\/v[^/]+$/,
+          "",
+        ),
+        AGENT_NO_UPDATE_CHECK: "1",
+      },
     },
-  });
+  );
 
-  return out;
+  return dir;
 };
 
 let server: ChildProcess | undefined;
@@ -281,13 +312,11 @@ const serverEnv = (port: number, relayPort: number): NodeJS.ProcessEnv => ({
   ADMIN_EMAIL: E2E.admin.email,
   ADMIN_PASSWORD: E2E.admin.password,
   AGENT_BOOTSTRAP_TOKEN,
-  AGENT_RELEASES_DIR: releasesDir,
+  AGENT_BUNDLE_DIR: bundleDir,
   // Агент и netprobe — с локального сервера сборок, не из GitHub.
   AGENT_RELEASES_GITHUB: "",
   AGENT_RELEASES_URL: REMOTE_RELEASE.url,
   AGENT_RELEASES_CHECK_INTERVAL_MS: String(RELEASE_CHECK_INTERVAL_MS),
-  AGENT_UPDATE_PUBLIC_KEY: PROJECT_KEYS.public,
-  AGENT_INSTANCE: "rest",
   AGENT_RELAY_SECRET,
   AGENT_RELAY_HOST: "127.0.0.1",
   AGENT_RELAY_PORT: String(relayPort),
@@ -330,8 +359,8 @@ const spawnServer = async (
 export const startServer = async (): Promise<void> => {
   await resetDatabase();
   await resetRedis();
-  releasesDir = await buildProjectRelease();
   REMOTE_RELEASE = await serveRemoteRelease(AGENT_DIST_DIR);
+  bundleDir = await buildProjectBundle();
 
   const [port, relayPort] = await freePorts(2);
 
@@ -366,6 +395,5 @@ export const stopServer = async (): Promise<void> => {
     await once(server, "exit");
   }
   await REMOTE_RELEASE?.close();
-  if (releasesDir)
-    rmSync(resolve(releasesDir, ".."), { recursive: true, force: true });
+  if (bundleDir) rmSync(bundleDir, { recursive: true, force: true });
 };

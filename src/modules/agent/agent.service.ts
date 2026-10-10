@@ -17,6 +17,7 @@ import {
   IAgentActor,
   inScope,
 } from "./agent-access.service";
+import { installCommand } from "./agent-bundle";
 import {
   AgentHistoryService,
   IAgentEventFeedQuery,
@@ -204,8 +205,8 @@ export class AgentService {
   }
 
   /**
-   * Сборки (агент — из источника, воркеры проекта — из
-   * `AGENT_RELEASES_DIR`) и кого можно обновить.
+   * Сборки (агент — из источника, воркеры проекта — из `release/` каталога
+   * архивов `AGENT_BUNDLE_DIR`) и кого можно обновить.
    */
   async release(actor: IAgentActor): Promise<IAgentReleaseDto> {
     const scope = await this._access.scope(actor, "view");
@@ -224,27 +225,15 @@ export class AgentService {
   }
 
   /**
-   * Команда установки агента одной строкой (`curl … | sudo sh -s -- …`):
-   * экземпляр проекта (`--instance`) — из `AGENT_INSTANCE`.
+   * Команда установки агента одной строкой: скрипт с этого сервера ставит архив
+   * папки агента (`agent pack`) под машину узла — `agent install --token …`.
    */
   installCommand(
     body: ICreateAgentInstallCommandBody,
   ): IAgentInstallCommandDto {
-    const { baseUrl, ...rest } = body;
-    const command = this.callSync(() =>
-      this._runtime.agents.installCommand({
-        ...rest,
-        instance: this.instance(),
-        baseUrl: baseUrl ?? this.publicUrl(),
-      }),
-    );
-
-    return { command };
-  }
-
-  /** Экземпляр агента проекта на узле (`AGENT_INSTANCE`); нет — по умолчанию. */
-  instance(): string | undefined {
-    return agentConfig.instance;
+    return {
+      command: installCommand(body.baseUrl ?? this.publicUrl(), body),
+    };
   }
 
   /** Адрес сервера для агентов: `AGENT_PUBLIC_URL` или `APP_PUBLIC_URL`. */
@@ -314,13 +303,5 @@ export class AgentService {
     if (!agent) throw AgentError.NOT_FOUND();
 
     return agent;
-  }
-
-  private callSync<T>(fn: () => T): T {
-    try {
-      return fn();
-    } catch (err) {
-      throw toAgentError(err);
-    }
   }
 }

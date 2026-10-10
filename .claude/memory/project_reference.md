@@ -14,24 +14,24 @@ type: project
 
 ## Стек
 
-| Компонент     | Технология                                                                                                                                                                  |
-| ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Runtime       | Node.js >= 22.13 (Docker 24-alpine), TypeScript ~6, сборка `tsc`                                                                                                            |
-| HTTP          | Koa 3 + tsoa 6.6.0 (закреплён), `@koa/router` 14, `@koa/multer`, koa2-swagger-ui                                                                                            |
-| DI            | inversify 8                                                                                                                                                                 |
-| БД            | PostgreSQL 16 + TypeORM 1.x                                                                                                                                                 |
-| Очередь задач | pg-boss 12 (схема `pgboss` в той же БД)                                                                                                                                     |
-| Межпроцессное | Redis (ioredis 6), `@socket.io/redis-adapter`                                                                                                                               |
-| Real-time     | Socket.IO 4 (только websocket)                                                                                                                                              |
-| Хранилище     | `@aws-sdk/client-s3` + presigner (S3/SeaweedFS) или локальный диск                                                                                                          |
-| Auth          | jsonwebtoken (HS256), scrypt (bcrypt — только проверка старых хешей), @simplewebauthn/server 14                                                                             |
-| Почта         | nodemailer 10 + EJS, шаблоны `templates/mail/<locale>/`                                                                                                                     |
-| Медиа         | sharp, blurhash, ffmpeg/ffprobe (только образ worker), file-type                                                                                                            |
-| Валидация     | Zod 4                                                                                                                                                                       |
-| Наблюдаемость | pino, prom-client, Sentry                                                                                                                                                   |
-| Безопасность  | helmet (koa-helmet), CORS, koa-ratelimit                                                                                                                                    |
-| Тесты         | Mocha 12 + Chai 6 + Sinon 22; e2e — `test/e2e` против настоящего сервера                                                                                                    |
-| Агенты        | `agent-sdk` 1.1.0 (GitHub Release, github.com/epifanovmd/agent), агент — из релизов GitHub, всё про узлы — `agent/` (воркеры, сборки воркеров `agent/release`, dev, Docker) |
+| Компонент     | Технология                                                                                                                                                                 |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Runtime       | Node.js >= 22.13 (Docker 24-alpine), TypeScript ~6, сборка `tsc`                                                                                                           |
+| HTTP          | Koa 3 + tsoa 6.6.0 (закреплён), `@koa/router` 14, `@koa/multer`, koa2-swagger-ui                                                                                           |
+| DI            | inversify 8                                                                                                                                                                |
+| БД            | PostgreSQL 16 + TypeORM 1.x                                                                                                                                                |
+| Очередь задач | pg-boss 12 (схема `pgboss` в той же БД)                                                                                                                                    |
+| Межпроцессное | Redis (ioredis 6), `@socket.io/redis-adapter`                                                                                                                              |
+| Real-time     | Socket.IO 4 (только websocket)                                                                                                                                             |
+| Хранилище     | `@aws-sdk/client-s3` + presigner (S3/SeaweedFS) или локальный диск                                                                                                         |
+| Auth          | jsonwebtoken (HS256), scrypt (bcrypt — только проверка старых хешей), @simplewebauthn/server 14                                                                            |
+| Почта         | nodemailer 10 + EJS, шаблоны `templates/mail/<locale>/`                                                                                                                    |
+| Медиа         | sharp, blurhash, ffmpeg/ffprobe (только образ worker), file-type                                                                                                           |
+| Валидация     | Zod 4                                                                                                                                                                      |
+| Наблюдаемость | pino, prom-client, Sentry                                                                                                                                                  |
+| Безопасность  | helmet (koa-helmet), CORS, koa-ratelimit                                                                                                                                   |
+| Тесты         | Mocha 12 + Chai 6 + Sinon 22; e2e — `test/e2e` против настоящего сервера                                                                                                   |
+| Агенты        | `agent-sdk` 1.2.0 (GitHub Release, github.com/epifanovmd/agent), агент — из релизов GitHub, папка агента `agent/` (настройки, воркеры, архивы `agent/bundle`, dev, Docker) |
 
 ## Документация модулей (`src/modules/*/README.md`)
 
@@ -128,8 +128,8 @@ APP_ROLE:          api | worker | all
 - Compose: `ENV_FILE`, `IMAGE`, `TAG`, `API_PORTS`, `S3_ROOT_ACCESS_KEY`/`S3_ROOT_SECRET_KEY`, `S3_PORTS`;
   агенты (сервер) — `AGENT_BOOTSTRAP_TOKEN`, `AGENT_STATUS_INTERVAL_MS`, `AGENT_METRICS_INTERVAL_MS`,
   `AGENT_METRICS_STORE_INTERVAL_MS`, `AGENT_METRICS_RETENTION_HOURS`, `AGENT_EVENTS_RETENTION_DAYS`,
-  `AGENT_OFFLINE_GRACE_MS` (3000), `AGENT_RELAY_SECRET`, `AGENT_RELAY_PORT` (8182), `AGENT_RELAY_HOST` (127.0.0.1; compose api — 0.0.0.0), `INSTANCE_URL` (адрес сервера пересылки), `AGENT_RELEASES_DIR`, `AGENT_RELEASES_GITHUB|RANGE|URL|TOKEN|PROXY|CHECK_INTERVAL_MS|PUBLIC_KEY`, `AGENT_UPDATE_PUBLIC_KEY` (csv), `AGENT_INSTANCE` (rest),
-  `AGENT_PUBLIC_URL`, `AGENT_VALIDATE_EVENTS` (off|log|reject, по умолчанию log); сборки воркеров — `AGENT_SIGNING_KEY`, `AGENT_SIGNING_KEY_FILE` (compose), `AGENT_RELEASE_OUT`, `AGENT_RELEASE_TOOL`, `AGENT_RELEASE_VERSION`, `AGENT_PLATFORMS`, `AGENT_GO_IMAGE`; `yarn agent:fetch` — `AGENT_VERSION`, `AGENT_PLATFORMS`; агент — `AGENT_SERVER_URL`,
+  `AGENT_OFFLINE_GRACE_MS` (3000), `AGENT_RELAY_SECRET`, `AGENT_RELAY_PORT` (8182), `AGENT_RELAY_HOST` (127.0.0.1; compose api — 0.0.0.0), `INSTANCE_URL` (адрес сервера пересылки), `AGENT_BUNDLE_DIR` (архивы agent pack), `AGENT_RELEASES_GITHUB|RANGE|URL|TOKEN|PROXY|CHECK_INTERVAL_MS|PUBLIC_KEY`,
+  `AGENT_PUBLIC_URL`, `AGENT_VALIDATE_EVENTS` (off|log|reject, по умолчанию log); подпись воркеров (agent pack) — `AGENT_SIGNING_KEY`, `AGENT_SIGNING_KEY_FILE` (compose); `yarn agent:fetch` — `AGENT_PLATFORMS`, `AGENT_RELEASES_URL`; yarn agent — `ENV_FILE`, `AGENT_DIR`, `AGENT_NAME`; агент — `AGENT_SERVER_URL`,
   `AGENT_ENROLL_TOKEN`, `AGENT_DATA_DIR`, `AGENT_NAME`, `AGENT_LABELS`, `AGENT_UPDATE_MODE`, `AGENT_CONFIG`.
 - E2E: `E2E_POSTGRES_*`, `E2E_REDIS_URL`, `E2E_SMTP_*`, `E2E_MAILPIT_URL`, `E2E_S3_*`, `E2E_STORAGE_DRIVER`,
   `E2E_LOG_LEVEL`, `E2E_AGENT_DIST_DIR`, `E2E_AGENT_BIN`; интеграционные юнит-тесты — `TEST_DATABASE_URL`,

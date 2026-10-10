@@ -17,7 +17,6 @@ import {
   INodeInstallJobData,
   INodeSshJobData,
   INodeUninstallJobData,
-  NETPROBE_WORKER,
   NODE_INSTALL_QUEUE,
   NODE_JOB_SCOPE,
   NODE_SSH_TOKEN_TTL_MINUTES,
@@ -66,7 +65,6 @@ export class NodeProvisionService {
       ...ssh,
       tokenId: token.tokenId,
       tokenEnc: this._secrets.seal(token.token),
-      workers: body.workers ?? [NETPROBE_WORKER],
     };
     const jobId = await this._jobs.enqueue(NODE_INSTALL_QUEUE, data, {
       title: `Установка агента: ${node.name}`,
@@ -133,7 +131,6 @@ export class NodeProvisionService {
       privateKeyEnc: seal(body.privateKey),
       passphraseEnc: seal(body.passphrase),
       backendUrl: body.backendUrl ?? this._agents.publicUrl(),
-      instance: this._agents.instance(),
     };
   }
 }
