@@ -22,6 +22,7 @@ import {
   AgentHistoryService,
   IAgentEventFeedQuery,
 } from "./agent-history.service";
+import { mergeUpdateCandidates } from "./agent-update";
 import {
   AgentAlertDto,
   AgentConfigStatusDto,
@@ -183,9 +184,17 @@ export class AgentService {
   /** Обновить агента до доступной версии; итог — после запуска новой версии. */
   async update(actor: IAgentActor, id: string): Promise<IAgentUpdateResultDto> {
     await this._access.require(actor, id, "manage");
+    const agents = this._runtime.agents;
+    const [candidate] = mergeUpdateCandidates(
+      (await agents.updateCandidates()).filter(c => c.agentId === id),
+      [await agents.getAgent(id)].filter(a => !!a),
+    );
 
+    // Версию, которую нашёл сам агент, он берёт из своего каталога сборок.
     return callAgents(() =>
-      this._runtime.agents.by(actor.userId).updateAgent(id),
+      candidate?.source === "agent"
+        ? agents.by(actor.userId).updateAgent(id, { version: candidate.target })
+        : agents.by(actor.userId).updateAgent(id),
     );
   }
 
@@ -211,15 +220,18 @@ export class AgentService {
   async release(actor: IAgentActor): Promise<IAgentReleaseDto> {
     const scope = await this._access.scope(actor, "view");
     const agents = this._runtime.agents;
-    const [manifest, candidates, workerCandidates] = await Promise.all([
+    const [manifest, candidates, workerCandidates, all] = await Promise.all([
       agents.release(),
       agents.updateCandidates(),
       agents.workerUpdateCandidates(),
+      agents.listAgents(),
     ]);
 
     return {
       manifest,
-      candidates: candidates.filter(c => inScope(scope, c.agentId)),
+      candidates: mergeUpdateCandidates(candidates, all).filter(c =>
+        inScope(scope, c.agentId),
+      ),
       workerCandidates: workerCandidates.filter(c => inScope(scope, c.agentId)),
     };
   }
@@ -262,9 +274,13 @@ export class AgentService {
 
   /** Агенты, которых можно обновить до новой версии. */
   async updateCandidateIds(): Promise<Set<string>> {
-    const candidates = await this._runtime.agents.updateCandidates();
+    const agents = this._runtime.agents;
+    const [candidates, all] = await Promise.all([
+      agents.updateCandidates(),
+      agents.listAgents(),
+    ]);
 
-    return new Set(candidates.map(c => c.agentId));
+    return new Set(mergeUpdateCandidates(candidates, all).map(c => c.agentId));
   }
 
   /** Отозвать от имени пользователя (`actorId`) или системы (пусто). */

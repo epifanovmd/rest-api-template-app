@@ -2,6 +2,8 @@ import { expect } from "chai";
 import { execFileSync } from "child_process";
 import { createHash } from "crypto";
 import { readFileSync } from "fs";
+import { createServer } from "http";
+import { AddressInfo } from "net";
 import { join } from "path";
 
 import { ECHO_PREVIOUS_VERSION, platform, RealAgent } from "./agent";
@@ -168,6 +170,7 @@ describe("сборки агента из источника и воркеры п
     expect(candidates.find((c: any) => c.agentId === agentId)).to.include({
       current: AGENT_VERSION,
       target: NEXT_VERSION,
+      source: "server",
     });
 
     const back = socket.next(
@@ -181,6 +184,56 @@ describe("сборки агента из источника и воркеры п
     expect(
       (await release()).candidates.some((c: any) => c.agentId === agentId),
     ).to.equal(false);
+  });
+
+  it("новую версию нашёл сам агент: update агента, кандидат source=agent, agent:updated в сокете", async () => {
+    // Свой каталог сборок агента: новее только для него — сервер её не видит.
+    const catalog = createServer((req, res) => {
+      if (!req.url?.endsWith("/latest/download/manifest.json")) {
+        res.writeHead(404).end();
+
+        return;
+      }
+      res
+        .writeHead(200, { "content-type": "application/json" })
+        .end(JSON.stringify({ version: NEXT_VERSION, artifacts: [] }));
+    });
+
+    await new Promise<void>(r => catalog.listen(0, "127.0.0.1", r));
+    const url = `http://127.0.0.1:${(catalog.address() as AddressInfo).port}`;
+    const reported = socket.next(
+      "agent:updated",
+      (a: any) =>
+        a.name === "e2e-self-check" && a.update?.latest === NEXT_VERSION,
+      20_000,
+    );
+    const self = await RealAgent.start({
+      token: AGENT_BOOTSTRAP_TOKEN,
+      name: "e2e-self-check",
+      updateReleases: url,
+    });
+
+    try {
+      expect((await reported).version).to.equal(AGENT_VERSION);
+      expect(
+        expectStatus(
+          await call(admin, "GET", `/api/v1/agents/${self.agentId}`),
+          200,
+        ).data.update,
+      ).to.include({ latest: NEXT_VERSION });
+      expect(
+        (await release()).candidates.find(
+          (c: any) => c.agentId === self.agentId,
+        ),
+      ).to.include({
+        current: AGENT_VERSION,
+        target: NEXT_VERSION,
+        source: "agent",
+      });
+    } finally {
+      await self.stop();
+      catalog.close();
+    }
   });
 
   it("воркер проекта обновляется с сервера: подпись ключом проекта", async () => {

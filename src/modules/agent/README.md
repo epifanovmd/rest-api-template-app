@@ -453,6 +453,12 @@ SDK): репозиторий `AGENT_RELEASES_GITHUB` (`epifanovmd/agent`; пус
 кандидаты на обновление в `GET /agent-releases` уже другие. Ради новой версии агента бэкенд не
 пересобирают.
 
+Агент и сам проверяет новую версию в своём каталоге сборок (`update.releases`, раз в
+`update.checkInterval`) и сообщает её в `hello`/`status` — `update { latest, checkedAt }` в
+`AgentDto`, до веба доходит с `agent:updated`. Такой агент — тоже кандидат (`source: agent`, у
+версии с сервера — `source: server`; из двух целей — новейшая, `agent-update.ts`), даже если
+бэкенд её ещё не видел; `POST /agents/{id}/update` обновляет его до этой версии из его каталога.
+
 Воркеры проекта — `release/` каталога архивов `AGENT_BUNDLE_DIR` (`agent pack --release-out`:
 `manifest.json` и подписанные ключом проекта архивы). Итоговый манифест сборок
 (`GET /agent-releases`, `manifest`): агент и `netprobe` — `source: remote`, воркеры проекта —

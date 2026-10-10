@@ -106,6 +106,11 @@ export interface IStartAgentOptions {
    * обновляет воркеры с сервера, но не себя.
    */
   updateMode?: "disabled" | "external";
+  /**
+   * Каталог сборок агента (как релизы на GitHub) для его собственной проверки новой версии —
+   * сразу после запуска. Нет — агент не проверяет: в GitHub стенд не ходит.
+   */
+  updateReleases?: string;
 }
 
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
@@ -203,6 +208,12 @@ export class RealAgent {
         "update:",
         `  mode: ${options.updateMode ?? "disabled"}`,
         `  publicKeys: [${JSON.stringify(PROJECT_KEYS.public)}]`,
+        ...(options.updateReleases
+          ? [
+              `  releases: ${JSON.stringify(options.updateReleases)}`,
+              "  checkInterval: 1m",
+            ]
+          : ["  checkInterval: 0s"]),
         "log:",
         "  forward: info",
         "workers:",

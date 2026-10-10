@@ -59,6 +59,12 @@ export interface IAgentReleaseChangeDto {
   from: string;
 }
 
+/**
+ * Откуда новая версия агента: `server` — сборки сервера (источник сборок агента), `agent` —
+ * агент нашёл её в своём каталоге сборок сам.
+ */
+export type TAgentUpdateSource = "server" | "agent";
+
 /** Агент, которого можно обновить до новой версии. */
 export interface IAgentUpdateCandidateDto {
   agentId: string;
@@ -68,6 +74,7 @@ export interface IAgentUpdateCandidateDto {
   target: string;
   os: string;
   arch: string;
+  source: TAgentUpdateSource;
 }
 
 /** Воркер со сборкой с сервера, которого можно обновить. */
