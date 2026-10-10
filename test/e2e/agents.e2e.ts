@@ -74,6 +74,19 @@ describe("агенты (настоящий агент и воркер echo)", fu
 
     expect(token).to.match(/^[\w-]{8}\.[\w-]+$/);
 
+    // Срок — ISO-строка с миллисекундами, как шлёт веб (Date.toISOString()).
+    const expiresAt = new Date(Date.now() + 86_400_000).toISOString();
+    const dated = expectStatus(
+      await call(admin, "POST", "/api/v1/agent-enrollment-tokens", {
+        name: "e2e-dated",
+        maxUses: 1,
+        expiresAt,
+      }),
+      201,
+    ).data.enrollmentToken;
+
+    expect(new Date(dated.expiresAt).toISOString()).to.equal(expiresAt);
+
     const list = expectStatus(
       await call(admin, "GET", "/api/v1/agent-enrollment-tokens?limit=10"),
       200,

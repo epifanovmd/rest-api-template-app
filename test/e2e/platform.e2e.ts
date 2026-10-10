@@ -206,6 +206,17 @@ describe("платформа", () => {
 
       expect(key).to.match(/^[\w-]{8}\.[\w-]+$/);
 
+      const expiresAt = new Date(Date.now() + 86_400_000).toISOString();
+
+      expectStatus(
+        await call(admin, "POST", "/api/v1/api-keys", {
+          name: "integration-dated",
+          scopes: ["integration:read"],
+          expiresAt,
+        }),
+        201,
+      );
+
       const list = expectStatus(
         await call(admin, "GET", "/api/v1/api-keys"),
         200,
