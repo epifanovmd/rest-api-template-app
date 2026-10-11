@@ -157,6 +157,14 @@ const configSchema = z.object({
      * адаптер Socket.IO. Без него всё это живёт в памяти одной реплики.
      */
     url: optionalString,
+    /**
+     * Префикс всех ключей и каналов pub/sub (`rest_api:`): изоляция проектов в
+     * общем Redis, где пользователю ACL доступны только ключи `<префикс>*`.
+     */
+    keyPrefix: z
+      .string()
+      .regex(/^([A-Za-z0-9_.-]+:)?$/, "REDIS_KEY_PREFIX — вида `project:`")
+      .default(""),
   }),
 
   rateLimit: z.object({
@@ -331,7 +339,7 @@ export const config: Config = productionSchema.parse({
     },
   },
   logging: { level: env.LOG_LEVEL, pretty: env.LOG_PRETTY },
-  redis: { url: env.REDIS_URL },
+  redis: { url: env.REDIS_URL, keyPrefix: env.REDIS_KEY_PREFIX },
   rateLimit: {
     limit: env.RATE_LIMIT,
     intervalMs: env.RATE_LIMIT_INTERVAL,

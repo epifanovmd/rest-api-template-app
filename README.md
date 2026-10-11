@@ -332,13 +332,17 @@ yarn migration:revert                           # откатить послед�
 любой роли и миграций). Многостадийная сборка, только production-зависимости,
 непривилегированный пользователь, `tini` как PID 1, read-only файловая система.
 
-`docker-compose.yml` — production-стек: `api`, `worker`, одноразовый `migrate` и Redis.
-Postgres и S3 (SeaweedFS) — отдельными файлами `docker-compose.postgres.yml` и
-`docker-compose.s3.yml`; состав задаёт `COMPOSE_FILE`. Образы — из registry (`pull`)
-или сборкой на хосте (`build`):
+`docker-compose.yml` — production-стек: `api`, `worker` и одноразовый `migrate`.
+Redis, Postgres и S3 (SeaweedFS) — отдельными файлами `docker-compose.redis.yml`,
+`docker-compose.postgres.yml` и `docker-compose.s3.yml`; состав задаёт `COMPOSE_FILE`.
+Общая инфраструктура хоста (репозиторий infra) вместо них — `docker-compose.infra.yml`:
+сервисы подключаются к её сети (`INFRA_NETWORK`, по умолчанию `infra_data`), учётки
+проекта — `POSTGRES_*`, `REDIS_URL`, `REDIS_KEY_PREFIX`, `S3_*` в `.env.production`.
+Образы — из registry (`pull`) или сборкой на хосте (`build`):
 
 ```sh
-export COMPOSE_FILE=docker-compose.yml:docker-compose.postgres.yml:docker-compose.s3.yml
+export COMPOSE_FILE=docker-compose.yml:docker-compose.redis.yml:docker-compose.postgres.yml:docker-compose.s3.yml
+# или с общей инфраструктурой: COMPOSE_FILE=docker-compose.yml:docker-compose.infra.yml
 TAG=v1.2.3 docker compose pull                      # или: docker compose build api worker
 docker compose run --rm migrate                     # одноразовый шаг миграций
 docker compose up -d                                # api + worker + Postgres + Redis + S3
@@ -347,7 +351,7 @@ docker compose --profile agent up -d                # + агент с ворке
 ENV_FILE=.env.staging docker compose up -d          # другой env-файл
 ```
 
-`api` и `worker` ждут успешного `migrate`, Redis и (с S3-файлом) `s3-init` —
+`api` и `worker` ждут успешного `migrate`, Redis (с его файлом) и (с S3-файлом) `s3-init` —
 идемпотентное создание bucket. Внешний Postgres — без `docker-compose.postgres.yml`,
 `POSTGRES_HOST` в `.env.production` (общий контейнер на этом же хосте —
 `host.docker.internal`); без S3-файла — `STORAGE_DRIVER=local` (том `files`) или

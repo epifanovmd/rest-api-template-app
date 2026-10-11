@@ -1,6 +1,7 @@
-# Production-стек: api (масштабируемый) + worker + одноразовый migrate, Redis.
-# Postgres и S3 (SeaweedFS) — отдельными файлами, подключаются при необходимости:
-#   COMPOSE_FILE=docker-compose.yml:docker-compose.postgres.yml:docker-compose.s3.yml
+# Production-стек: api (масштабируемый) + worker + одноразовый migrate.
+# Redis, Postgres и S3 (SeaweedFS) — отдельными файлами, подключаются при необходимости:
+#   COMPOSE_FILE=docker-compose.yml:docker-compose.redis.yml:docker-compose.postgres.yml:docker-compose.s3.yml
+# Вместо них — общая инфраструктура хоста (репозиторий infra): docker-compose.infra.yml.
 # Образы — из registry или сборкой из исходников на хосте (`make release` /
 # `make deploy`, см. Makefile).
 #
@@ -78,8 +79,6 @@ x-ready-check: &ready-check
 x-after-migrate: &after-migrate
   migrate:
     condition: service_completed_successfully
-  redis:
-    condition: service_healthy
 
 services:
   # Одноразовый: применяет миграции и выходит. api и worker ждут его успеха.
@@ -181,28 +180,6 @@ services:
       - ALL
     security_opt:
       - no-new-privileges:true
-    restart: unless-stopped
-    logging: *logging
-
-  redis:
-    image: redis:7-alpine
-    command:
-      [
-        "redis-server",
-        "--save",
-        "",
-        "--appendonly",
-        "no",
-        "--maxmemory",
-        "256mb",
-        "--maxmemory-policy",
-        "allkeys-lru",
-      ]
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 12
     restart: unless-stopped
     logging: *logging
 
