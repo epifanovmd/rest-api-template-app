@@ -214,7 +214,7 @@ describe("узлы", function () {
       201,
     ).data;
 
-    expect(command.command).to.include("/api/v1/agent-bundle/install.sh");
+    expect(command.command).to.include("/api/v1/agent-link/bundle/install.sh");
     expect(command.command).to.include(command.token);
     expectStatus(
       await call(bob, "POST", `/api/v1/nodes/${nodeA.id}/install-command`, {}),

@@ -1,7 +1,8 @@
+import { bundleInstallUrl } from "agent-sdk/server";
 import type { ConnectConfig } from "ssh2";
 
 import { JobContext, JobError } from "../../core";
-import { bundleInstallUrl } from "../agent";
+import type { TNodeSshInstallMode } from "./dto";
 import type { ISshSession } from "./ssh-runner";
 
 /** Значение в одинарных кавычках POSIX sh. */
@@ -77,12 +78,14 @@ const downloadStep = (workDir: string, backendUrl: string): ISshStep => {
  * Установка: установщик сервера скачивает архив папки агента под машину узла
  * и запускает из него `agent install` — пакеты, экземпляр, воркеры и
  * настройки берутся из архива; агент регистрируется токеном и встаёт
- * службой. Токен — файлом (`--token-file`): в аргументах его видел бы любой
- * пользователь узла.
+ * службой. Агент без root (`rootless`) ставится от
+ * пользователя SSH без повышения прав — в его домашний каталог. Токен — файлом
+ * (`--token-file`): в аргументах его видел бы любой пользователь узла.
  */
 export const buildInstallPlan = (
   workDir: string,
   backendUrl: string,
+  mode?: TNodeSshInstallMode,
 ): ISshStep[] => {
   const files = workFiles(workDir);
 
@@ -91,9 +94,9 @@ export const buildInstallPlan = (
     {
       title: "Установка агента",
       command:
-        `sh ${files.script} --token-file ${files.token}; ` +
+        `sh ${files.script}${mode === "rootless" ? " --rootless" : ""} --token-file ${files.token}; ` +
         `code=$?; rm -rf ${workDir}; exit $code`,
-      privileged: true,
+      privileged: mode !== "rootless",
       timeoutMs: 900_000,
     },
   ];
@@ -101,14 +104,16 @@ export const buildInstallPlan = (
 
 /**
  * Удаление тем же архивом (экземпляр — из его настроек): воркеры убирают за
- * собой, служба и программа агента удаляются; `purge` — ещё конфигурация,
- * данные, пакеты и пользователь службы. Агенты других экземпляров не
- * затрагиваются.
+ * собой, служба (или контейнер) и программа агента удаляются; `purge` — ещё
+ * конфигурация, данные, пакеты и пользователь службы. Агенты других
+ * экземпляров не затрагиваются. Агент без root (`rootless`) удаляется без
+ * повышения прав — от того пользователя, которому принадлежит.
  */
 export const buildUninstallPlan = (
   workDir: string,
   backendUrl: string,
   purge: boolean,
+  mode?: TNodeSshInstallMode,
 ): ISshStep[] => [
   downloadStep(workDir, backendUrl),
   {
@@ -116,7 +121,7 @@ export const buildUninstallPlan = (
     command:
       `sh ${workFiles(workDir).script} --uninstall${purge ? " --purge" : ""}; ` +
       `code=$?; rm -rf ${workDir}; exit $code`,
-    privileged: true,
+    privileged: mode !== "rootless",
     timeoutMs: 300_000,
   },
 ];

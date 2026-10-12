@@ -1,3 +1,5 @@
+import type { AgentInstallMode } from "../agent.types";
+
 /**
  * Откуда сборка: `remote` — откуда берутся сборки агента (GitHub или ссылка),
  * `local` — каталог сборок воркеров проекта.
@@ -105,9 +107,15 @@ export interface ICreateAgentInstallCommandBody {
   tokenFile?: string;
   /** Адрес сервера; без него — `AGENT_PUBLIC_URL` или `APP_PUBLIC_URL`. */
   baseUrl?: string;
+  /**
+   * Способ установки: `systemd` (по умолчанию) — служба от root, `rootless` —
+   * агент пользователя без root, `run` — без установки, агент на переднем плане
+   * (контейнер); `rootless` и `run` — команда без sudo.
+   */
+  mode?: AgentInstallMode;
 }
 
 export interface IAgentInstallCommandDto {
-  /** `curl …/api/v1/agent-bundle/install.sh | sudo sh -s -- --token …`. */
+  /** `curl …/api/v1/agent-link/bundle/install.sh | sudo sh -s -- --token …` (`rootless`, `run` — без sudo). */
   command: string;
 }

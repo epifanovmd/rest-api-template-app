@@ -100,3 +100,28 @@ export type TAgentActionName =
 
 /** Длина открытой части токена регистрации (`<prefix>.<secret>`), символов. */
 export const ENROLLMENT_TOKEN_PREFIX_LENGTH = 8;
+
+/**
+ * Способ установки агента на узел: `systemd` — служба от root (`agent install`),
+ * `rootless` — агент пользователя без root (`--rootless`, команда без sudo),
+ * `run` — без установки: агент на переднем плане (`--run`, контейнер, свой
+ * менеджер процессов; команда без sudo).
+ */
+export type AgentInstallMode = "systemd" | "rootless" | "run";
+export const AGENT_INSTALL_MODES = [
+  "systemd",
+  "rootless",
+  "run",
+] as const satisfies readonly AgentInstallMode[];
+
+/**
+ * Обновляет ли агент себя по `agent.update`: `hello.agent.updateMode` нет
+ * (агент старше 1.4) или `self`. Агент в контейнере (`external`) обновляют новым образом.
+ */
+export const isSelfUpdating = (agent: {
+  hello?: { agent: { updateMode?: string } };
+}): boolean => {
+  const mode = agent.hello?.agent.updateMode;
+
+  return !mode || mode === "self";
+};

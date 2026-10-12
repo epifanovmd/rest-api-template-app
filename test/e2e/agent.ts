@@ -103,9 +103,10 @@ export interface IStartAgentOptions {
   workers?: TWorkerName[];
   /**
    * `disabled` (по умолчанию) — агент ничего не обновляет; `external` —
-   * обновляет воркеры с сервера, но не себя.
+   * обновляет воркеры с сервера, но не себя; `self` — и себя (по agent.update;
+   * только он — кандидат на обновление).
    */
-  updateMode?: "disabled" | "external";
+  updateMode?: "disabled" | "external" | "self";
   /**
    * Каталог сборок агента (как релизы на GitHub) для его собственной проверки новой версии —
    * сразу после запуска. Нет — агент не проверяет: в GitHub стенд не ходит.

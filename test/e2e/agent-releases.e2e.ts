@@ -53,7 +53,9 @@ describe("сборки агента из источника и воркеры п
       token: AGENT_BOOTSTRAP_TOKEN,
       name: "e2e-release-agent",
       workers: ["echo-release"],
-      updateMode: "external",
+      // Кандидат на обновление — только агент, который обновляет себя сам (self);
+      // сам он ничего не ставит, пока сервер не пришлёт agent.update.
+      updateMode: "self",
     });
     agentId = agent.agentId;
   });
@@ -101,14 +103,14 @@ describe("сборки агента из источника и воркеры п
 
   it("установка с сервера: скрипт и архив папки агента (ключ проекта — в нём); сборка агента — ссылкой на источник", async () => {
     const script = await (
-      await fetch(`${BASE_URL}/api/v1/agent-bundle/install.sh`)
+      await fetch(`${BASE_URL}/api/v1/agent-link/bundle/install.sh`)
     ).text();
 
-    expect(script).to.include(`SERVER='${BASE_URL}'`);
+    expect(script).to.include(`SERVER="${BASE_URL}"`);
     expect(script).to.include('install --server "$SERVER" "$@"');
 
     const archive = await fetch(
-      `${BASE_URL}/api/v1/agent-bundle/${platform()}.tar.gz`,
+      `${BASE_URL}/api/v1/agent-link/bundle/${platform()}.tar.gz`,
     );
 
     expect(archive.status).to.equal(200);
@@ -126,7 +128,7 @@ describe("сборки агента из источника и воркеры п
     expect(info.publicKeys).to.deep.equal([PROJECT_KEYS.public]);
     expect(info.workers).to.include.members(["echo", "netprobe"]);
     expect(
-      (await fetch(`${BASE_URL}/api/v1/agent-bundle/linux-sparc.tar.gz`))
+      (await fetch(`${BASE_URL}/api/v1/agent-link/bundle/linux-sparc.tar.gz`))
         .status,
     ).to.equal(404);
 
@@ -211,16 +213,20 @@ describe("сборки агента из источника и воркеры п
       token: AGENT_BOOTSTRAP_TOKEN,
       name: "e2e-self-check",
       updateReleases: url,
+      updateMode: "self",
     });
 
     try {
       expect((await reported).version).to.equal(AGENT_VERSION);
-      expect(
-        expectStatus(
-          await call(admin, "GET", `/api/v1/agents/${self.agentId}`),
-          200,
-        ).data.update,
-      ).to.include({ latest: NEXT_VERSION });
+      const card = expectStatus(
+        await call(admin, "GET", `/api/v1/agents/${self.agentId}`),
+        200,
+      ).data;
+
+      expect(card.update).to.include({ latest: NEXT_VERSION });
+      // Режим обновления — из hello; агент запущен не agent install — способа установки нет.
+      expect(card.updateMode).to.equal("self");
+      expect(card.install).to.equal(undefined);
       expect(
         (await release()).candidates.find(
           (c: any) => c.agentId === self.agentId,

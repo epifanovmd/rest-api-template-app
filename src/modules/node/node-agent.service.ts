@@ -76,7 +76,8 @@ export class NodeAgentService {
 
   /**
    * Команда установки агента вручную: одноразовый токен с меткой узла (агент
-   * привяжется к нему при регистрации) и строка `curl … | sudo sh`.
+   * привяжется к нему при регистрации) и строка `curl … | sudo sh` (агент без
+   * root — без sudo).
    */
   async installCommand(
     actor: AuthContext,
@@ -96,6 +97,7 @@ export class NodeAgentService {
     const { command } = this._agents.installCommand({
       token: issued.token,
       baseUrl: body.baseUrl,
+      mode: body.mode,
     });
 
     return { command, ...issued };

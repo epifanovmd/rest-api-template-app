@@ -89,10 +89,10 @@ cron `agents.prune` (раз в час). Итоги действий и «кто 
 - `/api/v1/agent-link/*` (регистрация, сборки агента) — `RAW_HTTP_HANDLER`: до разбора тела,
   CORS и лимита запросов; в Swagger не входят. WebSocket того же пути —
   `agents.attach(HttpServer)` на ролях `api` и `all`.
-- `/api/v1/agent-bundle/*` — установка узлов (`AgentBundleHandler`, тоже `RAW_HTTP_HANDLER`, без
-  входа: в архиве нет секретов): `install.sh` (архив под машину узла → `agent install --server
-<API> "$@"`; `--uninstall [--purge]` — удалить) и `<os>-<arch>.tar.gz` — архив папки агента
-  (`agent pack`) из `AGENT_BUNDLE_DIR`.
+- `/api/v1/agent-link/bundle/*` — установка узлов из архива папки агента; раздаёт SDK (опция
+  `bundlesDir` = `AGENT_BUNDLE_DIR`, без входа: в архиве нет секретов): `install.sh` (архив под
+  машину → `agent install --server <API>`, `--rootless`, `--run` — без установки, `--uninstall
+[--purge]`) и `<os>-<arch>.tar.gz`. Команда — `bundleInstallCommand` SDK.
 - Регистрация: общий токен окружения `AGENT_BOOTSTRAP_TOKEN` или созданный токен
   (`<prefix>.<secret>`, в БД — префикс и хеш; срок, отзыв, лимит использований). Метки
   токена сильнее меток агента. Новый агент — событие `AgentEnrolledEvent` с источником

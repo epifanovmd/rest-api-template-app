@@ -4,6 +4,7 @@ import {
   AGENT_FETCH_BODY_MAX,
   AGENT_FETCH_TIMEOUT,
   AGENT_ID_PATTERN,
+  AGENT_INSTALL_MODES,
   EVENT_TYPE_PATTERN,
   WORKER_NAME_PATTERN,
 } from "../agent.types";
@@ -149,6 +150,7 @@ export const CreateAgentInstallCommandSchema = z
     token: shellValue.optional(),
     tokenFile: shellValue.optional(),
     baseUrl: z.url("Адрес — URL").max(500).optional(),
+    mode: z.enum(AGENT_INSTALL_MODES).optional(),
   })
   .refine(value => !!value.token !== !!value.tokenFile, {
     message: "Нужно ровно одно из token и tokenFile",

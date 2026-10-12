@@ -2332,6 +2332,14 @@
 						"$ref": "#/components/schemas/IAgentUpdateInfoDto",
 						"description": "Новая версия, которую агент нашёл в своём каталоге сборок сам; нет — новее нет или не проверял."
 					},
+					"updateMode": {
+						"type": "string",
+						"description": "Режим обновления агента: `self` — обновляется по команде сервера;\n`external` (в контейнере) и `disabled` — нет. Нет — агент старше 1.4."
+					},
+					"install": {
+						"type": "string",
+						"description": "Как агент поставлен на узел: `systemd`, `user` (без root, служба пользователя),\n`manual` (без root, без службы); нет — запущен иначе (в контейнере, `--run`)."
+					},
 					"alerts": {
 						"items": {
 							"$ref": "#/components/schemas/AgentAlertDto"
@@ -2959,7 +2967,7 @@
 				"properties": {
 					"command": {
 						"type": "string",
-						"description": "`curl …/api/v1/agent-bundle/install.sh | sudo sh -s -- --token …`."
+						"description": "`curl …/api/v1/agent-link/bundle/install.sh | sudo sh -s -- --token …` (`rootless`, `run` — без sudo)."
 					}
 				},
 				"required": [
@@ -2967,6 +2975,15 @@
 				],
 				"type": "object",
 				"additionalProperties": false
+			},
+			"AgentInstallMode": {
+				"type": "string",
+				"enum": [
+					"systemd",
+					"rootless",
+					"run"
+				],
+				"description": "Способ установки агента на узел: `systemd` — служба от root (`agent install`),\n`rootless` — агент пользователя без root (`--rootless`, команда без sudo),\n`run` — без установки: агент на переднем плане (`--run`, контейнер, свой\nменеджер процессов; команда без sudo)."
 			},
 			"ICreateAgentInstallCommandBody": {
 				"description": "Команда установки агента на узел: архив папки агента с этого сервера и токен.",
@@ -2982,6 +2999,10 @@
 					"baseUrl": {
 						"type": "string",
 						"description": "Адрес сервера; без него — `AGENT_PUBLIC_URL` или `APP_PUBLIC_URL`."
+					},
+					"mode": {
+						"$ref": "#/components/schemas/AgentInstallMode",
+						"description": "Способ установки: `systemd` (по умолчанию) — служба от root, `rootless` —\nагент пользователя без root, `run` — без установки, агент на переднем плане\n(контейнер); `rootless` и `run` — команда без sudo."
 					}
 				},
 				"type": "object",
@@ -4046,7 +4067,7 @@
 				"properties": {
 					"command": {
 						"type": "string",
-						"description": "`curl …/api/v1/agent-bundle/install.sh | sudo sh -s -- --token …`."
+						"description": "`curl …/api/v1/agent-link/bundle/install.sh | sudo sh -s -- --token …` (`rootless`, `run` — без sudo)."
 					},
 					"token": {
 						"type": "string",
@@ -4072,6 +4093,10 @@
 			"ICreateNodeInstallCommandBody": {
 				"description": "Команда установки агента на узел вручную.",
 				"properties": {
+					"mode": {
+						"$ref": "#/components/schemas/AgentInstallMode",
+						"description": "Способ установки: `systemd` (по умолчанию) — служба от root, `rootless` —\nагент пользователя без root, `run` — без установки, агент на переднем плане\n(контейнер); `rootless` и `run` — команда без sudo."
+					},
 					"baseUrl": {
 						"type": "string",
 						"description": "Адрес сервера для агента; без него — `AGENT_PUBLIC_URL` / `APP_PUBLIC_URL`."
@@ -4099,9 +4124,21 @@
 				"type": "object",
 				"additionalProperties": false
 			},
+			"TNodeSshInstallMode": {
+				"type": "string",
+				"enum": [
+					"systemd",
+					"rootless"
+				],
+				"description": "Способ установки по SSH: служба или агент без root (`run` занял бы сеанс SSH)."
+			},
 			"INodeSshAccessBody": {
 				"description": "Доступ к узлу по SSH (данные шифруются и живут только в задаче) и адрес\nсервера.",
 				"properties": {
+					"mode": {
+						"$ref": "#/components/schemas/TNodeSshInstallMode",
+						"description": "Способ установки по SSH: `systemd` (по умолчанию) — служба от root,\n`rootless` — агент пользователя SSH без root (без sudo). Удаление агента без\nroot — тоже `rootless`."
+					},
 					"host": {
 						"type": "string",
 						"description": "Хост SSH; без него — `host` узла."
@@ -4129,7 +4166,7 @@
 					},
 					"sudo": {
 						"type": "boolean",
-						"description": "Повышать права через sudo (по умолчанию — если пользователь не root)."
+						"description": "Повышать права через sudo (по умолчанию — если пользователь не root);\nагент без root (`mode: rootless`) ставится и удаляется без sudo."
 					},
 					"backendUrl": {
 						"type": "string",
@@ -4144,8 +4181,12 @@
 				"description": "Установка агента по SSH: архив папки агента с этого сервера."
 			},
 			"IUninstallNodeAgentBody": {
-				"description": "Удаление агента по SSH.",
+				"description": "Удаление агента по SSH; `mode: rootless` — агент без root удаляется без sudo.",
 				"properties": {
+					"mode": {
+						"$ref": "#/components/schemas/TNodeSshInstallMode",
+						"description": "Способ установки по SSH: `systemd` (по умолчанию) — служба от root,\n`rootless` — агент пользователя SSH без root (без sudo). Удаление агента без\nroot — тоже `rootless`."
+					},
 					"host": {
 						"type": "string",
 						"description": "Хост SSH; без него — `host` узла."
@@ -4173,7 +4214,7 @@
 					},
 					"sudo": {
 						"type": "boolean",
-						"description": "Повышать права через sudo (по умолчанию — если пользователь не root)."
+						"description": "Повышать права через sudo (по умолчанию — если пользователь не root);\nагент без root (`mode: rootless`) ставится и удаляется без sudo."
 					},
 					"backendUrl": {
 						"type": "string",

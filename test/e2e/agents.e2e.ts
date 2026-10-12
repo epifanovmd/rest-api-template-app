@@ -954,7 +954,7 @@ describe("агенты (настоящий агент и воркер echo)", fu
     expectStatus(
       await call(admin, "POST", `/api/v1/agents/${agentId}/update`),
       409,
-      "UPDATE_NOT_SUPPORTED",
+      "AGENT_UPDATE_NOT_SUPPORTED",
     );
   });
 
@@ -977,14 +977,46 @@ describe("агенты (настоящий агент и воркер echo)", fu
     ).data.command;
 
     expect(command).to.equal(
-      `curl -fsSL '${BASE_URL}/api/v1/agent-bundle/install.sh' | sudo sh -s -- --token 'tok.secret'`,
+      `curl -fsSL '${BASE_URL}/api/v1/agent-link/bundle/install.sh' | sudo sh -s -- --token 'tok.secret'`,
     );
     expectStatus(
       await call(admin, "POST", "/api/v1/agent-releases/install-command", {}),
       400,
     );
+    // Без root и без установки (контейнер) — без sudo; неизвестный способ — ошибка.
+    expect(
+      expectStatus(
+        await call(admin, "POST", "/api/v1/agent-releases/install-command", {
+          token: "tok.secret",
+          mode: "rootless",
+        }),
+        200,
+      ).data.command,
+    ).to.equal(
+      `curl -fsSL '${BASE_URL}/api/v1/agent-link/bundle/install.sh' | sh -s -- --rootless --token 'tok.secret'`,
+    );
+    expect(
+      expectStatus(
+        await call(admin, "POST", "/api/v1/agent-releases/install-command", {
+          token: "tok.secret",
+          mode: "run",
+        }),
+        200,
+      ).data.command,
+    ).to.equal(
+      `curl -fsSL '${BASE_URL}/api/v1/agent-link/bundle/install.sh' | sh -s -- --run --token 'tok.secret'`,
+    );
+    expectStatus(
+      await call(admin, "POST", "/api/v1/agent-releases/install-command", {
+        token: "tok.secret",
+        mode: "docker",
+      }),
+      400,
+    );
 
-    const script = await fetch(`${BASE_URL}/api/v1/agent-bundle/install.sh`);
+    const script = await fetch(
+      `${BASE_URL}/api/v1/agent-link/bundle/install.sh`,
+    );
 
     expect(script.status).to.equal(200);
     expect(await script.text()).to.include(BASE_URL);

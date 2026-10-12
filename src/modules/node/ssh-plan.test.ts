@@ -35,17 +35,31 @@ describe("ssh-plan", () => {
     );
 
     expect(installScriptUrl("https://api.example.com/")).to.equal(
-      "https://api.example.com/api/v1/agent-bundle/install.sh",
+      "https://api.example.com/api/v1/agent-link/bundle/install.sh",
     );
     expect(download.privileged).to.equal(false);
     expect(download.command).to.include(
-      "'https://api.example.com/api/v1/agent-bundle/install.sh'",
+      "'https://api.example.com/api/v1/agent-link/bundle/install.sh'",
     );
     expect(install.privileged).to.equal(true);
     expect(install.command).to.equal(
       `sh ${dir}/install.sh --token-file ${dir}/token; ` +
         `code=$?; rm -rf ${dir}; exit $code`,
     );
+  });
+
+  it("способ установки: rootless — без sudo, служба — через sudo", () => {
+    const dir = "/tmp/agent-node.abc123";
+    const rootless = buildInstallPlan(dir, "https://x", "rootless")[1];
+    const system = buildInstallPlan(dir, "https://x", "systemd")[1];
+
+    expect(rootless.privileged).to.equal(false);
+    expect(rootless.command).to.match(/install\.sh --rootless --token-file /);
+    expect(system.privileged).to.equal(true);
+    expect(system.command).to.match(/install\.sh --token-file /);
+    expect(
+      buildUninstallPlan(dir, "https://x", true, "rootless")[1].privileged,
+    ).to.equal(false);
   });
 
   it("удаление: --uninstall и --purge по запросу (экземпляр — из архива)", () => {

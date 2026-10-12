@@ -1,3 +1,5 @@
+import type { TNodeSshInstallMode } from "./dto";
+
 /** Максимальная длина названия — совпадает с колонкой `name`. */
 export const NODE_NAME_MAX = 120;
 /** Максимальная длина описания. */
@@ -124,6 +126,8 @@ export interface INodeSshJobData {
   passphraseEnc?: string;
   /** Адрес сервера: установщик и связь агента. */
   backendUrl: string;
+  /** Способ установки агента: нет — служба systemd. */
+  mode?: TNodeSshInstallMode;
 }
 
 /** Данные задачи установки: одноразовый токен регистрации зашифрован. */

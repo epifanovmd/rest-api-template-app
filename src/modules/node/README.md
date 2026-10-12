@@ -108,17 +108,19 @@ src/modules/node/
 
 **Команда установки.** `install-command` создаёт одноразовый токен регистрации
 (`maxUses: 1`, срок `expiresInMinutes`, по умолчанию сутки) с меткой
-`nodeId=<id узла>` и строку `curl …/api/v1/agent-bundle/install.sh | sudo sh -s -- --token …`
+`nodeId=<id узла>` и строку `curl …/api/v1/agent-link/bundle/install.sh | sudo sh -s -- --token …`
 (`AgentService.installCommand`). Скрипт скачивает с API архив папки агента под машину узла
 (`agent pack`, `AGENT_BUNDLE_DIR`) и запускает из него `agent install`: воркеры (`echo`,
 `netprobe`), пакеты и экземпляр — из настроек папки (`agent/agent.prod.yaml`). Токен — только
-в ответе.
+в ответе. `mode` — способ установки: `systemd` (по умолчанию), `rootless` (агент пользователя
+без root, `--rootless`, строка без `sudo`), `run` (без установки — контейнер, `--run`, строка без `sudo`).
 
 **Экземпляр агента.** Агент проекта ставится на узел отдельным экземпляром — `instance: rest`
 в `agent/agent.prod.yaml`: служба `agent-rest`, настройки `/etc/agent-rest`, данные и воркеры
 `/var/lib/agent-rest`, программа `/opt/agent-rest/bin/agent`. Агенты других бэкендов на том же
 узле не мешают, удаление затрагивает только свой экземпляр. На узле: `sudo agent-rest status`,
-`sudo systemctl reload agent-rest`, `sudo agent-rest uninstall [--purge]`.
+`sudo systemctl reload agent-rest`, `sudo agent-rest uninstall [--purge]`. Без root
+(`rootless`) — `~/.agent-rest`, служба `systemctl --user`, команды без `sudo`.
 
 **Привязка.** Модуль `agent` выполняет запрос регистрации в своём контексте: хук
 `enroll` запоминает источник (id токена, автор, метки токена — только выданные
@@ -147,7 +149,7 @@ src/modules/node/
 ## SSH: установка и удаление
 
 `POST …/agent/install` / `…/agent/uninstall` с `{host?, port?, username?,
-password?, privateKey?, passphrase?, sudo?, backendUrl?}` (+ `purge` у удаления):
+password?, privateKey?, passphrase?, sudo?, backendUrl?, mode?}` (+ `purge` у удаления):
 нужен пароль или ключ; `host` — по умолчанию адрес узла; `sudo` — по умолчанию,
 если пользователь не root; `backendUrl` — адрес сервера, доступный с узла (по
 умолчанию `AGENT_PUBLIC_URL`, иначе `APP_PUBLIC_URL`). Ответ — `202 {jobId}`.
@@ -160,10 +162,11 @@ password?, privateKey?, passphrase?, sudo?, backendUrl?}` (+ `purge` у удал
 
 Задача (воркер, `tracked`, без повторов): подключение ssh2 → рабочий каталог
 `mktemp -d /tmp/agent-node.XXXXXXXX` → токен файлом (umask 077) → установщик с
-этого сервера (`/api/v1/agent-bundle/install.sh`, curl или wget) → `sh install.sh
+этого сервера (`/api/v1/agent-link/bundle/install.sh`, curl или wget) → `sh install.sh
 --token-file …` (архив папки агента под машину узла → `agent install`; удаление —
 `--uninstall [--purge]`, экземпляр — из настроек архива) с
-`sudo -n` (вход по ключу) или `sudo -S` (пароль в stdin). Вывод команд — в журнал
+`sudo -n` (вход по ключу) или `sudo -S` (пароль в stdin). `mode: rootless` — от пользователя
+SSH (не root) без sudo, `--rootless`; удаление такого агента — тоже без sudo; `run` по SSH нельзя (занял бы сеанс). Вывод команд — в журнал
 задачи построчно, прогресс — по шагам; каталог удаляется и при сбое. Провал
 установки отзывает токен; узел получает агента, когда тот зарегистрируется.
 Успешное удаление отзывает и удаляет агента, узел — без агента.

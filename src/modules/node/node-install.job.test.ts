@@ -113,7 +113,7 @@ describe("NodeInstallAgentJob", () => {
     const commands = execs.map(exec => exec.command);
 
     expect(commands[1]).to.include(
-      "'https://api.example.com/api/v1/agent-bundle/install.sh'",
+      "'https://api.example.com/api/v1/agent-link/bundle/install.sh'",
     );
     expect(commands[2]).to.match(/^sudo -S -p '' sh -c '/);
     expect(commands[2]).to.include(`install.sh --token-file ${WORK_DIR}/token`);

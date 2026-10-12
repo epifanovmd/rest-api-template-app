@@ -107,15 +107,26 @@ yarn agent:pack                   # agent/bundle: agent-prod-<версия>-linu
 данных, пакеты из `install:` (`python3`), экземпляр `rest` — своя служба `agent-rest` рядом с
 агентами других бэкендов. Адрес API и токен регистрации передаёт установка.
 
-| Как                  | Что сделать                                                                                                                                                                     |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| вручную, архивом     | `scp agent/bundle/agent-prod-…-linux-amd64.tar.gz узел:` → `tar xzf … && cd agent && sudo ./agent install --server https://<api> --token <токен>`                               |
-| одной командой с API | `POST /api/v1/nodes/{id}/install-command` (или `/api/v1/agent-releases/install-command`) → `curl -fsSL https://<api>/api/v1/agent-bundle/install.sh \| sudo sh -s -- --token …` |
-| с API по SSH         | `POST /api/v1/nodes/{id}/agent/install` — то же самое на узле, токен — файлом                                                                                                   |
-| удалить              | `sudo agent-rest uninstall [--purge]`, тем же скриптом `… \| sudo sh -s -- --uninstall [--purge]` или `POST /api/v1/nodes/{id}/agent/uninstall`                                 |
+Способ установки (поле `mode` в запросах команды и установки по SSH, флаг `agent install`):
 
-API раздаёт архивы из `AGENT_BUNDLE_DIR` (`/api/v1/agent-bundle/install.sh` и
-`/api/v1/agent-bundle/linux-<arch>.tar.gz`); в образе API их собирает стадия `agent-bundle`
+| `mode`              | Что на узле                                                                                                                                                                                                                                                        |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `systemd` (обычный) | служба `agent-rest` от root, пакеты из `install:` ставятся                                                                                                                                                                                                         |
+| `rootless`          | агент пользователя без root (`--rootless`, команда без `sudo`): `~/.agent-rest`, служба `systemctl --user` (её нет — агент в фоне с автозапуском из `crontab`); `python3` должен уже стоять на узле                                                                |
+| `run`               | без установки (`--run`, команда без `sudo`): агент на переднем плане — в контейнере или под своим менеджером процессов; данные — `AGENT_DATA_DIR` (по умолчанию `/var/lib/agent`, держите на томе), себя не обновляет. В образе должно быть то, что нужно воркерам |
+
+С `rootless` пакеты из `install:` пропускаются с предупреждением. Агент с `run` себя не обновляет:
+с API «Обновить» ему недоступно, новая версия — при следующем запуске.
+
+| Как                  | Что сделать                                                                                                                                                                                    |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| вручную, архивом     | `scp agent/bundle/agent-prod-…-linux-amd64.tar.gz узел:` → `tar xzf … && cd agent && sudo ./agent install --server https://<api> --token <токен>` (без root — `./agent install --rootless …`)  |
+| одной командой с API | `POST /api/v1/nodes/{id}/install-command` (или `/api/v1/agent-releases/install-command`) → `curl -fsSL https://<api>/api/v1/agent-link/bundle/install.sh \| sudo sh -s -- --token …`           |
+| с API по SSH         | `POST /api/v1/nodes/{id}/agent/install` — то же самое на узле, токен — файлом                                                                                                                  |
+| удалить              | `sudo agent-rest uninstall [--purge]` (без root — `agent-rest uninstall` без `sudo`), тем же скриптом `… \| sudo sh -s -- --uninstall [--purge]` или `POST /api/v1/nodes/{id}/agent/uninstall` |
+
+API раздаёт архивы из `AGENT_BUNDLE_DIR` через SDK (опция `bundlesDir`; `/api/v1/agent-link/bundle/install.sh` и
+`/api/v1/agent-link/bundle/linux-<arch>.tar.gz`); в образе API их собирает стадия `agent-bundle`
 `Dockerfile`, для разработки — `yarn agent:pack` (`AGENT_BUNDLE_DIR=agent/bundle`).
 
 На узле (экземпляр `rest`):
@@ -128,13 +139,15 @@ API раздаёт архивы из `AGENT_BUNDLE_DIR` (`/api/v1/agent-bundle/i
 | служба            | `agent-rest` (`systemctl status agent-rest`)              |
 
 Команды на узле: `sudo agent-rest status`, `sudo agent-rest logs -f`, `sudo agent-rest upgrade`,
-`sudo systemctl reload agent-rest` (перечитать настройки).
+`sudo systemctl reload agent-rest` (перечитать настройки). Без root — то же без `sudo`, пути —
+`~/.agent-rest/…`, служба — `systemctl --user … agent-rest`.
 
 ## Обновления и подписи
 
 - **Агента и `netprobe`** бэкенд берёт из релизов GitHub `epifanovmd/agent` сам (`AGENT_RELEASES_*`)
   и замечает новые версии; агент на узле тоже сам проверяет новые версии и сообщает о них.
-  Обновить — `POST /api/v1/agents/{id}/update` или `sudo agent-rest upgrade` на узле. Пересобирать
+  Обновить — `POST /api/v1/agents/{id}/update` или `sudo agent-rest upgrade` на узле (агент с `run` —
+  новым запуском). Пересобирать
   бэкенд ради новой версии агента не нужно.
 - **Воркеры проекта** подписывает `agent pack` ключом проекта из `AGENT_SIGNING_KEY` (пара — `yarn
 agent keygen`). Открытый ключ попадает в архив, и `agent install` добавляет его к ключам узла.
@@ -155,7 +168,8 @@ docker compose --profile agent up -d    # агент рядом с API из dock
 ```
 
 Образ — та же папка агента: `agent run --env docker` (`agent.docker.yaml` поверх `agent.prod.yaml`),
-данные — том `/var/lib/agent`. В контейнере агент себя не обновляет — обновляют образ.
+данные — том `/var/lib/agent`. В контейнере агент себя не обновляет — обновляют образ. Это агент
+рядом с API; на узле в своём контейнере агента запускают командой с `mode: run` (`install.sh --run`).
 
 ## Несколько копий бэкенда
 

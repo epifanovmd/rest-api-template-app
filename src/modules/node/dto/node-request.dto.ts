@@ -1,3 +1,8 @@
+import type { AgentInstallMode } from "../../agent";
+
+/** Способ установки по SSH: служба или агент без root (`run` занял бы сеанс SSH). */
+export type TNodeSshInstallMode = "systemd" | "rootless";
+
 export interface ICreateNodeBody {
   name: string;
   description?: string | null;
@@ -20,6 +25,12 @@ export interface IAssignNodeBody {
 
 /** Команда установки агента на узел вручную. */
 export interface ICreateNodeInstallCommandBody {
+  /**
+   * Способ установки: `systemd` (по умолчанию) — служба от root, `rootless` —
+   * агент пользователя без root, `run` — без установки, агент на переднем плане
+   * (контейнер); `rootless` и `run` — команда без sudo.
+   */
+  mode?: AgentInstallMode;
   /** Адрес сервера для агента; без него — `AGENT_PUBLIC_URL` / `APP_PUBLIC_URL`. */
   baseUrl?: string;
   /** Срок одноразового токена, минут (по умолчанию сутки). */
@@ -28,7 +39,7 @@ export interface ICreateNodeInstallCommandBody {
 
 /** Команда установки и одноразовый токен регистрации узла. */
 export interface INodeInstallCommandDto {
-  /** `curl …/api/v1/agent-bundle/install.sh | sudo sh -s -- --token …`. */
+  /** `curl …/api/v1/agent-link/bundle/install.sh | sudo sh -s -- --token …` (`rootless`, `run` — без sudo). */
   command: string;
   /** Токен регистрации (одноразовый, с меткой узла) — только в этом ответе. */
   token: string;
@@ -41,6 +52,12 @@ export interface INodeInstallCommandDto {
  * сервера.
  */
 export interface INodeSshAccessBody {
+  /**
+   * Способ установки по SSH: `systemd` (по умолчанию) — служба от root,
+   * `rootless` — агент пользователя SSH без root (без sudo). Удаление агента без
+   * root — тоже `rootless`.
+   */
+  mode?: TNodeSshInstallMode;
   /** Хост SSH; без него — `host` узла. */
   host?: string;
   /** Порт SSH (по умолчанию 22). */
@@ -53,7 +70,10 @@ export interface INodeSshAccessBody {
   privateKey?: string;
   /** Пароль приватного ключа. */
   passphrase?: string;
-  /** Повышать права через sudo (по умолчанию — если пользователь не root). */
+  /**
+   * Повышать права через sudo (по умолчанию — если пользователь не root);
+   * агент без root (`mode: rootless`) ставится и удаляется без sudo.
+   */
   sudo?: boolean;
   /**
    * Адрес сервера, доступный с узла: установщик и связь агента; без него —
@@ -65,7 +85,7 @@ export interface INodeSshAccessBody {
 /** Установка агента по SSH: архив папки агента с этого сервера. */
 export type IInstallNodeAgentBody = INodeSshAccessBody;
 
-/** Удаление агента по SSH. */
+/** Удаление агента по SSH; `mode: rootless` — агент без root удаляется без sudo. */
 export interface IUninstallNodeAgentBody extends INodeSshAccessBody {
   /** Удалить и данные, конфигурацию, пакеты и пользователя службы. */
   purge?: boolean;

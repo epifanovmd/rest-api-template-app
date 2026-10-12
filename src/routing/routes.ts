@@ -1030,6 +1030,8 @@ const models: TsoaRoute.Models = {
             "outbox": {"dataType":"double"},
             "metrics": {"ref":"IAgentMetricsPointDto"},
             "update": {"ref":"IAgentUpdateInfoDto"},
+            "updateMode": {"dataType":"string"},
+            "install": {"dataType":"string"},
             "alerts": {"dataType":"array","array":{"dataType":"refObject","ref":"AgentAlertDto"},"required":true},
             "session": {"ref":"IAgentSessionDto"},
         },
@@ -1276,12 +1278,18 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "AgentInstallMode": {
+        "dataType": "refAlias",
+        "type": {"dataType":"union","subSchemas":[{"dataType":"enum","enums":["systemd"]},{"dataType":"enum","enums":["rootless"]},{"dataType":"enum","enums":["run"]}],"validators":{}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "ICreateAgentInstallCommandBody": {
         "dataType": "refObject",
         "properties": {
             "token": {"dataType":"string"},
             "tokenFile": {"dataType":"string"},
             "baseUrl": {"dataType":"string"},
+            "mode": {"ref":"AgentInstallMode"},
         },
         "additionalProperties": false,
     },
@@ -1655,6 +1663,7 @@ const models: TsoaRoute.Models = {
     "ICreateNodeInstallCommandBody": {
         "dataType": "refObject",
         "properties": {
+            "mode": {"ref":"AgentInstallMode"},
             "baseUrl": {"dataType":"string"},
             "expiresInMinutes": {"dataType":"double"},
         },
@@ -1669,9 +1678,15 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "TNodeSshInstallMode": {
+        "dataType": "refAlias",
+        "type": {"dataType":"union","subSchemas":[{"dataType":"enum","enums":["systemd"]},{"dataType":"enum","enums":["rootless"]}],"validators":{}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "INodeSshAccessBody": {
         "dataType": "refObject",
         "properties": {
+            "mode": {"ref":"TNodeSshInstallMode"},
             "host": {"dataType":"string"},
             "port": {"dataType":"double"},
             "username": {"dataType":"string"},
@@ -1692,6 +1707,7 @@ const models: TsoaRoute.Models = {
     "IUninstallNodeAgentBody": {
         "dataType": "refObject",
         "properties": {
+            "mode": {"ref":"TNodeSshInstallMode"},
             "host": {"dataType":"string"},
             "port": {"dataType":"double"},
             "username": {"dataType":"string"},

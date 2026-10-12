@@ -1,4 +1,9 @@
-import { type Agent, AgentsError, type LogEntry } from "agent-sdk/server";
+import {
+  type Agent,
+  AgentsError,
+  bundleInstallCommand,
+  type LogEntry,
+} from "agent-sdk/server";
 import { inject } from "inversify";
 
 import { config } from "../../config";
@@ -17,7 +22,6 @@ import {
   IAgentActor,
   inScope,
 } from "./agent-access.service";
-import { installCommand } from "./agent-bundle";
 import {
   AgentHistoryService,
   IAgentEventFeedQuery,
@@ -244,7 +248,15 @@ export class AgentService {
     body: ICreateAgentInstallCommandBody,
   ): IAgentInstallCommandDto {
     return {
-      command: installCommand(body.baseUrl ?? this.publicUrl(), body),
+      command: bundleInstallCommand(
+        {
+          token: body.token,
+          tokenFile: body.tokenFile,
+          rootless: body.mode === "rootless",
+          run: body.mode === "run",
+        },
+        body.baseUrl ?? this.publicUrl(),
+      ),
     };
   }
 

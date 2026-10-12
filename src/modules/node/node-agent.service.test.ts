@@ -99,6 +99,7 @@ describe("NodeAgentService", () => {
     expect(agents.installCommand.firstCall.args[0]).to.deep.equal({
       token: "pref.secret",
       baseUrl: undefined,
+      mode: undefined,
     });
   });
 

@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { AGENT_INSTALL_MODES } from "../../agent";
 import {
   NODE_DESCRIPTION_MAX,
   NODE_HOST_MAX,
@@ -81,6 +82,7 @@ export const CreateNodeInstallCommandSchema = z.object({
     .min(5)
     .max(30 * 24 * 60)
     .optional(),
+  mode: z.enum(AGENT_INSTALL_MODES).optional(),
 });
 
 const ssh = {
@@ -96,6 +98,8 @@ const ssh = {
   passphrase: z.string().min(1).max(256).optional(),
   sudo: z.boolean().optional(),
   backendUrl: serverUrl.optional(),
+  /** По SSH — служба или агент без root (run занял бы сеанс SSH). */
+  mode: z.enum(["systemd", "rootless"]).optional(),
 };
 
 const requireSecret = {
@@ -103,10 +107,21 @@ const requireSecret = {
   path: ["password"],
 };
 
+/** Агент без root ставится от пользователя SSH — не root. */
+const rootlessNotRoot = {
+  message: "Агент без root ставится от обычного пользователя SSH, не root",
+  path: ["username"],
+};
+
+const isRootlessAsRoot = (body: { mode?: string; username?: string }) =>
+  body.mode === "rootless" && (body.username ?? "root") === "root";
+
 export const InstallNodeAgentSchema = z
   .object(ssh)
-  .refine(body => Boolean(body.password || body.privateKey), requireSecret);
+  .refine(body => Boolean(body.password || body.privateKey), requireSecret)
+  .refine(body => !isRootlessAsRoot(body), rootlessNotRoot);
 
 export const UninstallNodeAgentSchema = z
   .object({ ...ssh, purge: z.boolean().optional() })
-  .refine(body => Boolean(body.password || body.privateKey), requireSecret);
+  .refine(body => Boolean(body.password || body.privateKey), requireSecret)
+  .refine(body => !isRootlessAsRoot(body), rootlessNotRoot);

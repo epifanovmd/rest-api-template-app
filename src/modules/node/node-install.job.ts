@@ -92,7 +92,7 @@ export class NodeInstallAgentJob implements IJobHandler<INodeInstallJobData> {
       await runSshPlan(
         ctx,
         session,
-        buildInstallPlan(workDir, data.backendUrl),
+        buildInstallPlan(workDir, data.backendUrl, data.mode),
         access.privilege,
         { from: 0.1, to: 0.95 },
       );

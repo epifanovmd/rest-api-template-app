@@ -126,7 +126,9 @@ export class NodeProvisionService {
       host,
       port: body.port ?? SSH_PORT,
       username,
-      sudo: body.sudo ?? username !== SSH_USER,
+      // Агент без root — от пользователя SSH, без sudo.
+      sudo: body.mode !== "rootless" && (body.sudo ?? username !== SSH_USER),
+      mode: body.mode,
       passwordEnc: seal(body.password),
       privateKeyEnc: seal(body.privateKey),
       passphraseEnc: seal(body.passphrase),
