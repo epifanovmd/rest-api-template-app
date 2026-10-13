@@ -131,8 +131,10 @@ export interface AgentDto {
   install?: string;
   host?: IAgentHostDto;
   remoteIp?: string;
-  enrolledAt: Date;
-  lastSeenAt?: Date;
+  /** Отметки времени, мс: регистрация, последняя связь, запуск программы агента. */
+  enrolledAt: number;
+  lastSeenAt?: number;
+  startedAt?: number;
   /** Новая версия агента в его каталоге сборок. */
   updateAvailable?: string;
   /** Номер желаемого и применённый агентом. */
@@ -158,7 +160,8 @@ export interface AgentConfigDto {
   data?: any;
   /** Ключ удалён (только в событии сокета `agent:config`). */
   deleted?: boolean;
-  updatedAt: Date;
+  /** Изменён, мс. */
+  updatedAt: number;
   actor?: string;
 }
 
@@ -179,8 +182,9 @@ export interface AgentCommandDto {
   progress?: number;
   progressText?: string;
   actor?: string;
-  createdAt: Date;
-  finishedAt?: Date;
+  /** Поставлена и завершена, мс. */
+  createdAt: number;
+  finishedAt?: number;
 }
 
 /** Событие воркера. */
@@ -281,7 +285,7 @@ export const toConfigDto = (
   state: s.state,
   error: s.error,
   data,
-  updatedAt: s.updatedAt,
+  updatedAt: s.updatedAt.getTime(),
   actor: optional(s.actor),
 });
 
@@ -299,8 +303,8 @@ export const toCommandDto = (c: AgentCommand): AgentCommandDto => ({
   progress: optional(c.progress),
   progressText: optional(c.progressText),
   actor: optional(c.actor),
-  createdAt: c.createdAt,
-  finishedAt: optional(c.finishedAt),
+  createdAt: c.createdAt.getTime(),
+  finishedAt: c.finishedAt ? c.finishedAt.getTime() : undefined,
 });
 
 export const toEventDto = (e: AgentEvent): IAgentEventDto => ({

@@ -896,12 +896,12 @@ describe("агенты (настоящий агент и воркер echo)", fu
     const install = (body: object) =>
       call(admin, "POST", "/api/v1/agent-enrollment/install-command", body);
     const bundle = `'${BASE_URL}/agent/v1/bundle/linux-{arch}.tar.gz'`;
-    const prefix = `curl -fsSL ${BASE_URL}/agent/v1/bundle/install.sh |`;
+    const prefix = `curl -fsSL '${BASE_URL}/agent/v1/bundle/install.sh' |`;
 
     expect(
       expectStatus(await install({ token: "tok.secret" }), 200).data.command,
     ).to.equal(
-      `${prefix} sudo sh -s -- --server ${BASE_URL} --bundle ${bundle} --token tok.secret`,
+      `${prefix} sudo sh -s -- --server '${BASE_URL}' --bundle ${bundle} --token 'tok.secret'`,
     );
     expectStatus(await install({}), 400);
     // Без root и без установки (контейнер) — без sudo; неизвестный способ — ошибка.
@@ -911,13 +911,13 @@ describe("агенты (настоящий агент и воркер echo)", fu
         200,
       ).data.command,
     ).to.equal(
-      `${prefix} sh -s -- --server ${BASE_URL} --bundle ${bundle} --token tok.secret --rootless`,
+      `${prefix} sh -s -- --server '${BASE_URL}' --bundle ${bundle} --token 'tok.secret' --rootless`,
     );
     expect(
       expectStatus(await install({ token: "tok.secret", mode: "run" }), 200)
         .data.command,
     ).to.equal(
-      `${prefix} sh -s -- --server ${BASE_URL} --bundle ${bundle} --token tok.secret --run`,
+      `${prefix} sh -s -- --server '${BASE_URL}' --bundle ${bundle} --token 'tok.secret' --run`,
     );
     expectStatus(await install({ token: "tok.secret", mode: "docker" }), 400);
 

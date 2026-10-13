@@ -70,8 +70,21 @@ export const CreateEnrollmentTokenSchema = z.object({
   expiresAt: z.coerce.date().optional(),
 });
 
-export const InstallCommandBodySchema = z.object({
-  token: z.string().min(1).max(256),
-  name: z.string().max(128).optional(),
-  mode: z.enum(["systemd", "rootless", "run"]).optional(),
-});
+const shellValue = z
+  .string()
+  .min(1)
+  .max(500)
+  .refine(value => !/[\r\n]/.test(value), "Без перевода строки");
+
+export const InstallCommandBodySchema = z
+  .object({
+    token: shellValue.optional(),
+    tokenFile: shellValue.optional(),
+    name: z.string().max(128).optional(),
+    baseUrl: z.url("Адрес — URL").max(500).optional(),
+    mode: z.enum(["systemd", "rootless", "run"]).optional(),
+  })
+  .refine(value => !!value.token !== !!value.tokenFile, {
+    message: "Нужно ровно одно из token и tokenFile",
+    path: ["token"],
+  });

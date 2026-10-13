@@ -41,9 +41,14 @@ export const bundleInstallFlags = (server: string): string[] => [
 /** Способ установки: служба (root), служба пользователя, без установки (контейнер). */
 export type TAgentInstallMode = "systemd" | "rootless" | "run";
 
+/** Значение для shell в одинарных кавычках. */
+const shellQuote = (value: string): string =>
+  `'${value.replace(/'/g, `'\\''`)}'`;
+
 /**
  * Команда установки агента на узел из архива этого сервера: `install.sh` скачивает архив под
- * платформу узла (настройки, воркеры — из архива) и ставит агента с токеном.
+ * платформу узла (настройки, воркеры — из архива) и ставит агента с токеном. Значения — в
+ * кавычках.
  */
 export const agentInstallCommand = (options: {
   token?: string;
@@ -55,19 +60,20 @@ export const agentInstallCommand = (options: {
   const server = (options.server ?? agentPublicUrl()).replace(/\/+$/, "");
   const flags = [
     "--server",
-    server,
+    shellQuote(server),
     "--bundle",
-    `'${server}${AGENT_BUNDLE_PATH}/linux-{arch}.tar.gz'`,
+    shellQuote(bundleArchiveUrl(server)),
   ];
 
-  if (options.token) flags.push("--token", options.token);
-  if (options.tokenFile) flags.push("--token-file", options.tokenFile);
-  if (options.name) flags.push("--name", `'${options.name.replace(/'/g, "")}'`);
+  if (options.token) flags.push("--token", shellQuote(options.token));
+  if (options.tokenFile)
+    flags.push("--token-file", shellQuote(options.tokenFile));
+  if (options.name) flags.push("--name", shellQuote(options.name));
   if (options.mode === "rootless") flags.push("--rootless");
   if (options.mode === "run") flags.push("--run");
   const sudo = options.mode === "systemd" || !options.mode ? "sudo " : "";
 
-  return `curl -fsSL ${server}${AGENT_BUNDLE_PATH}/install.sh | ${sudo}sh -s -- ${flags.join(" ")}`;
+  return `curl -fsSL ${shellQuote(bundleInstallUrl(server))} | ${sudo}sh -s -- ${flags.join(" ")}`;
 };
 
 const newestArchive = async (

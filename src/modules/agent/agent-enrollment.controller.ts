@@ -45,8 +45,12 @@ interface ICreateEnrollmentTokenBody {
 }
 
 interface IInstallCommandBody {
-  token: string;
+  /** Токен регистрации (или `tokenFile` — путь к файлу с ним на узле). */
+  token?: string;
+  tokenFile?: string;
   name?: string;
+  /** Адрес API для узла; без него — `AGENT_PUBLIC_URL`. */
+  baseUrl?: string;
   mode?: "systemd" | "rootless" | "run";
 }
 
@@ -113,7 +117,11 @@ export class AgentEnrollmentController extends Controller {
   createAgentInstallCommand(
     @Body() body: IInstallCommandBody,
   ): IAgentInstallCommandDto {
-    return { command: this._agents.installCommand(body) };
+    const { baseUrl, ...rest } = body;
+
+    return {
+      command: this._agents.installCommand({ ...rest, server: baseUrl }),
+    };
   }
 
   /**

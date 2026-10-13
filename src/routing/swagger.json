@@ -2148,12 +2148,17 @@
 						"type": "string"
 					},
 					"enrolledAt": {
-						"type": "string",
-						"format": "date-time"
+						"type": "number",
+						"format": "double",
+						"description": "Отметки времени, мс: регистрация, последняя связь, запуск программы агента."
 					},
 					"lastSeenAt": {
-						"type": "string",
-						"format": "date-time"
+						"type": "number",
+						"format": "double"
+					},
+					"startedAt": {
+						"type": "number",
+						"format": "double"
 					},
 					"updateAvailable": {
 						"type": "string",
@@ -2369,12 +2374,13 @@
 						"type": "string"
 					},
 					"createdAt": {
-						"type": "string",
-						"format": "date-time"
+						"type": "number",
+						"format": "double",
+						"description": "Поставлена и завершена, мс."
 					},
 					"finishedAt": {
-						"type": "string",
-						"format": "date-time"
+						"type": "number",
+						"format": "double"
 					}
 				},
 				"required": [
@@ -2482,8 +2488,9 @@
 						"description": "Ключ удалён (только в событии сокета `agent:config`)."
 					},
 					"updatedAt": {
-						"type": "string",
-						"format": "date-time"
+						"type": "number",
+						"format": "double",
+						"description": "Изменён, мс."
 					},
 					"actor": {
 						"type": "string"
@@ -2638,10 +2645,18 @@
 			"IInstallCommandBody": {
 				"properties": {
 					"token": {
+						"type": "string",
+						"description": "Токен регистрации (или `tokenFile` — путь к файлу с ним на узле)."
+					},
+					"tokenFile": {
 						"type": "string"
 					},
 					"name": {
 						"type": "string"
+					},
+					"baseUrl": {
+						"type": "string",
+						"description": "Адрес API для узла; без него — `AGENT_PUBLIC_URL`."
 					},
 					"mode": {
 						"type": "string",
@@ -2652,9 +2667,6 @@
 						]
 					}
 				},
-				"required": [
-					"token"
-				],
 				"type": "object",
 				"additionalProperties": false
 			},

@@ -90,7 +90,7 @@ export class AgentListener implements ISocketEventListener {
           version: e.version,
           state: "pending",
           deleted: true,
-          updatedAt: new Date(),
+          updatedAt: Date.now(),
         });
 
         return;

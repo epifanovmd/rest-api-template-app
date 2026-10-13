@@ -94,7 +94,7 @@ const agentSummary = (
     revoked: agent.revoked,
     version: agent.version ?? null,
     address: agent.remoteIp ?? null,
-    lastSeenAt: agent.lastSeenAt ? agent.lastSeenAt.getTime() : null,
+    lastSeenAt: agent.lastSeenAt ?? null,
     host: host
       ? { hostname: host.hostname, os: host.os, arch: host.arch }
       : null,

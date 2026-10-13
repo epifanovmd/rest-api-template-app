@@ -161,8 +161,9 @@ export class AgentService {
       install: agent.hello?.agent.install,
       host: agent.hello?.host ?? agent.host ?? undefined,
       remoteIp: agent.remoteIp ?? undefined,
-      enrolledAt: agent.enrolledAt,
-      lastSeenAt: agent.lastSeenAt ?? undefined,
+      enrolledAt: agent.enrolledAt.getTime(),
+      lastSeenAt: agent.lastSeenAt?.getTime(),
+      startedAt: agent.hello?.agent.startedAt,
       updateAvailable:
         latest && version && compareAgentVersions(latest, version) > 0
           ? latest

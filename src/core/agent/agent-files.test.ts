@@ -27,8 +27,8 @@ describe("agent-files", () => {
 
   it("команда установки: служба — с sudo, rootless и run — без; имя без кавычек внутри", () => {
     expect(agentInstallCommand({ server, token: "t.s" })).to.equal(
-      "curl -fsSL https://api.example.com/agent/v1/bundle/install.sh | sudo sh -s -- " +
-        "--server https://api.example.com --bundle 'https://api.example.com/agent/v1/bundle/linux-{arch}.tar.gz' --token t.s",
+      "curl -fsSL 'https://api.example.com/agent/v1/bundle/install.sh' | sudo sh -s -- " +
+        "--server 'https://api.example.com' --bundle 'https://api.example.com/agent/v1/bundle/linux-{arch}.tar.gz' --token 't.s'",
     );
     expect(
       agentInstallCommand({ server, token: "t.s", mode: "rootless" }),
@@ -40,6 +40,6 @@ describe("agent-files", () => {
         mode: "run",
         name: "a'b",
       }),
-    ).to.match(/\| sh -s -- .*--token-file \/tmp\/t --name 'ab' --run$/);
+    ).to.match(/\| sh -s -- .*--token-file '\/tmp\/t' --name 'a'\\''b' --run$/);
   });
 });
