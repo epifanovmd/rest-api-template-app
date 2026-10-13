@@ -917,9 +917,7 @@ describe("агенты (настоящий агент и воркер echo)", fu
     ).data;
 
     expect(release.manifest.version).to.equal(AGENT_VERSION);
-    expect(release.manifest.workers.map((w: any) => w.name)).to.include(
-      "netprobe",
-    );
+    expect(release.manifest.workers.map((w: any) => w.name)).to.include("echo");
 
     const command = expectStatus(
       await call(admin, "POST", "/api/v1/agent-releases/install-command", {

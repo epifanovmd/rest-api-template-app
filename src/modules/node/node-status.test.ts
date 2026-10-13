@@ -13,7 +13,7 @@ const agent = (patch: Record<string, unknown> = {}): any => ({
   enrolledAt: 1,
   workers: [
     { name: "sysmetrics", builtin: true, state: "running" },
-    { name: "netprobe", state: "running", health: { ok: true } },
+    { name: "echo", state: "running", health: { ok: true } },
   ],
   alerts: [],
   ...patch,
@@ -21,7 +21,7 @@ const agent = (patch: Record<string, unknown> = {}): any => ({
 
 const config = (key: string, state: string, patch: object = {}): any => ({
   agentId: "a1",
-  worker: "netprobe",
+  worker: "echo",
   key,
   version: 1,
   state,
@@ -109,13 +109,13 @@ describe("nodeStatus", () => {
   it("статус настроек failed (в том числе не доставленная) — error", () => {
     expect(
       nodeStatus(agent(), null, [
-        config("targets", "failed", {
+        config("settings", "failed", {
           error: { code: "WORKER_UNKNOWN", message: "нет воркера" },
         }),
       ]),
     ).to.deep.equal({
       status: ENodeStatus.Error,
-      message: "Настройка netprobe/targets: нет воркера",
+      message: "Настройка echo/settings: нет воркера",
     });
   });
 });
@@ -123,32 +123,32 @@ describe("nodeStatus", () => {
 describe("configSummary", () => {
   it("всё применено — synced; ждёт — applying, без связи — awaitingAgent", () => {
     expect(
-      configSummary(agent(), [config("targets", "applied")]).status,
+      configSummary(agent(), [config("settings", "applied")]).status,
     ).to.equal(ENodeConfigStatus.Synced);
     expect(
       configSummary(agent(), [
-        config("targets", "applied"),
+        config("settings", "applied"),
         config("limits", "applying"),
       ]),
     ).to.deep.equal({
       status: ENodeConfigStatus.Applying,
-      pending: ["netprobe/limits"],
+      pending: ["echo/limits"],
       failed: [],
     });
     expect(
-      configSummary(agent({ online: false }), [config("targets", "pending")])
+      configSummary(agent({ online: false }), [config("settings", "pending")])
         .status,
     ).to.equal(ENodeConfigStatus.AwaitingAgent);
   });
 
   it("отказ — error; агента нет — awaitingAgent", () => {
-    expect(configSummary(agent(), [config("targets", "failed")])).to.deep.equal(
-      {
-        status: ENodeConfigStatus.Error,
-        pending: [],
-        failed: ["netprobe/targets"],
-      },
-    );
+    expect(
+      configSummary(agent(), [config("settings", "failed")]),
+    ).to.deep.equal({
+      status: ENodeConfigStatus.Error,
+      pending: [],
+      failed: ["echo/settings"],
+    });
     expect(configSummary(null, []).status).to.equal(
       ENodeConfigStatus.AwaitingAgent,
     );

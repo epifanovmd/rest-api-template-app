@@ -151,8 +151,8 @@ Swagger UI — `/api-docs` (в production — по `API_DOCS_ENABLED`). Сист
 | `yarn migration:run:prod`                      | применить миграции из `build/` (в контейнере)     |
 
 **Агент на этой машине** — агент ([github.com/epifanovmd/agent](https://github.com/epifanovmd/agent))
-из папки агента `agent/`: настройки `agent/agent.yaml`, воркеры `echo` (воркер проекта из
-`agent/workers/echo` на базе `agent_worker.py`) и `netprobe` (проверка сети, `agent/workers/netprobe`).
+из папки агента `agent/`: настройки `agent/agent.yaml`, воркер `echo` (воркер проекта из
+`agent/workers/echo` на базе `agent_worker.py`).
 Регистрируется `AGENT_BOOTSTRAP_TOKEN` из `.env.development` (тот же токен у API), адрес
 API — `http://localhost:$SERVER_PORT`. Программа агента — `agent/agent` той же версии, что
 `agent-sdk` (нет — скачивается с GitHub; новые версии ставит `yarn agent upgrade`). Новую
@@ -343,7 +343,7 @@ TAG=v1.2.3 docker compose pull                      # или: docker compose bui
 docker compose run --rm migrate                     # одноразовый шаг миграций
 docker compose up -d                                # api + worker + Postgres + Redis + S3
 docker compose up -d --scale api=3                  # несколько реплик API
-docker compose --profile agent up -d                # + агент с воркерами echo и netprobe
+docker compose --profile agent up -d                # + агент с воркером echo
 ENV_FILE=.env.staging docker compose up -d          # другой env-файл
 ```
 

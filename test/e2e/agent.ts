@@ -16,9 +16,8 @@ import { AGENT_DIST_DIR, BASE_URL, PROJECT_KEYS } from "./harness";
 
 /**
  * Настоящий агент (github.com/epifanovmd/agent) для сценариев: программа —
- * из сборок агента (`AGENT_DIST_DIR`, `yarn agent:fetch`), воркеры echo и
- * netprobe — из исходников `agent/workers` (python3), echo ещё и как воркер со
- * сборкой с сервера (`echo-release`: прежняя версия уже стоит, обновление — из
+ * из сборок агента (`AGENT_DIST_DIR`, `yarn agent:fetch`), воркер echo — из
+ * исходников `agent/workers` (python3) и как воркер со сборкой с сервера (`echo-release`: прежняя версия уже стоит, обновление — из
  * сборок воркеров проекта). Агент проверяет подпись воркеров проекта ключом
  * проекта стенда. Работает в своём временном каталоге данных; остановка —
  * агент и его воркеры (они переживают агента — `agent stop-workers`).
@@ -68,7 +67,7 @@ export const enroll = async (
   return { status: res.status, agentId: data.agentId, secret: data.secret };
 };
 
-export type TWorkerName = "echo" | "echo-release" | "netprobe";
+export type TWorkerName = "echo" | "echo-release";
 
 export interface IStartAgentOptions {
   token: string;
@@ -109,13 +108,6 @@ const workerYaml = (name: TWorkerName, dataDir: string): string => {
       return ["  - name: echo", "    release: true", ...echoEnv(dataDir)].join(
         "\n",
       );
-    case "netprobe":
-      return [
-        `  - path: ${JSON.stringify(resolve("agent/workers/netprobe"))}`,
-        "    env:",
-        '      PYTHONUNBUFFERED: "1"',
-        "    lifecycle: { stopTimeout: 5s }",
-      ].join("\n");
   }
 };
 

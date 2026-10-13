@@ -445,7 +445,7 @@ long?, steps?, delayMs?, fail?, withOutput? }` → итог `{ text, prefix?, ou
 
 ```bash
 yarn dev               # API (AGENT_BOOTSTRAP_TOKEN в .env.development)
-yarn agent             # агент версии agent-sdk с воркерами echo и netprobe (agent/agent.yaml)
+yarn agent             # агент версии agent-sdk с воркером echo (agent/agent.yaml)
 yarn agent:pack        # архивы для узлов и сборки воркеров → agent/bundle (AGENT_BUNDLE_DIR)
 ```
 
@@ -462,7 +462,7 @@ yarn agent:pack        # архивы для узлов и сборки ворк
 версии (`updateAgent` SDK с `version`), сборку агент берёт из своего каталога сам. Ради новой
 версии агента бэкенд не пересобирают.
 
-Воркеры проекта (и `netprobe`) — `release/` каталога архивов `AGENT_BUNDLE_DIR` (`agent pack
+Воркеры проекта — `release/` каталога архивов `AGENT_BUNDLE_DIR` (`agent pack
 --release-out`: `manifest.json` и подписанные ключом проекта архивы). Манифест сборок
 (`GET /agent-releases`, `manifest`): у каждой сборки — `source: local` и путь `url`.
 Воркер со сборкой с сервера (`release: true`) — кандидат на обновление до новейшей сборки

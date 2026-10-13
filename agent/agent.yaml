@@ -23,8 +23,3 @@ workers:
     env:
       PYTHONUNBUFFERED: "1"
       WORKER_STATE_DIR: "${AGENT_DATA_DIR}/echo-state"
-  # Воркер проекта (workers/netprobe): проверка сети между узлами (настройка targets, итоги —
-  # в метриках).
-  - path: workers/netprobe
-    env:
-      PYTHONUNBUFFERED: "1"

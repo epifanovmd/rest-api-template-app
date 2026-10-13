@@ -32,8 +32,7 @@ jobs:
       - run: yarn test
       - run: yarn build
 
-  # Воркеры проекта echo и netprobe (Python, база agent_worker.py — стандартная библиотека):
-  # синтаксис и тесты netprobe.
+  # Воркеры проекта (Python, база agent_worker.py — стандартная библиотека): синтаксис.
   agent-worker:
     runs-on: ubuntu-latest
     steps:
@@ -41,9 +40,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: python -m py_compile agent/workers/echo/*.py agent/workers/netprobe/*.py
-      - run: python -B -m unittest -v test_netprobe.py
-        working-directory: agent/workers/netprobe
+      - run: python -m py_compile agent/workers/*/*.py
 
   migrations:
     runs-on: ubuntu-latest

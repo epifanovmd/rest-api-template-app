@@ -73,7 +73,7 @@ describe("сборки воркеров проекта и обновление �
       manifest.workers.map((w: any) => [w.name, w.source]),
     );
 
-    expect(sources).to.deep.equal({ echo: "local", netprobe: "local" });
+    expect(sources).to.deep.equal({ echo: "local" });
     for (const w of manifest.workers) {
       expect(w.url).to.equal(
         `/api/v1/agent-link/releases/${encodeURIComponent(w.file)}`,
@@ -109,14 +109,14 @@ describe("сборки воркеров проекта и обновление �
       env: "prod",
     });
     expect(info.publicKeys).to.deep.equal([PROJECT_KEYS.public]);
-    expect(info.workers).to.include.members(["echo", "netprobe"]);
+    expect(info.workers).to.include("echo");
     expect(
       (await fetch(`${BASE_URL}/api/v1/agent-link/bundle/linux-sparc.tar.gz`))
         .status,
     ).to.equal(404);
 
     const { manifest } = await release();
-    const build = manifest.workers.find((w: any) => w.name === "netprobe");
+    const build = manifest.workers.find((w: any) => w.name === "echo");
     const body = Buffer.from(
       await (await fetch(`${BASE_URL}${build.url}`)).arrayBuffer(),
     );

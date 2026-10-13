@@ -1,6 +1,6 @@
 import { inject } from "inversify";
 
-import { EventBus, Injectable, JobQueue, logger } from "../../core";
+import { EventBus, Injectable } from "../../core";
 import {
   AgentAlertChangedEvent,
   AgentConfigChangedEvent,
@@ -18,30 +18,18 @@ import {
   SocketEmitterService,
 } from "../socket";
 import type { INodeLoadDto } from "./dto";
-import {
-  NodeCreatedEvent,
-  NodeDeletedEvent,
-  NodeMeshUpdatedEvent,
-  NodeUpdatedEvent,
-} from "./events";
+import { NodeCreatedEvent, NodeDeletedEvent, NodeUpdatedEvent } from "./events";
 import { NodePermissions } from "./node.permissions";
 import { NodeRepository } from "./node.repository";
 import { NodeService } from "./node.service";
 import {
-  NETPROBE,
   NODE_JOB_KINDS,
   NODE_JOB_SCOPE,
   NODE_LOAD_EMIT_MS,
-  NODE_NETPROBE_SYNC_QUEUE,
   nodeRoom,
   NODES_ROOM,
 } from "./node.types";
 import { NodeAgentService } from "./node-agent.service";
-import {
-  hasNetprobe,
-  netprobeReport,
-  NodeMeshService,
-} from "./node-mesh.service";
 
 /** Что в агенте влияет на узел: связь, версия, адрес, воркеры. */
 const agentSignature = (agent: AgentDto): string =>
@@ -70,10 +58,8 @@ const agentSignature = (agent: AgentDto): string =>
  * `node:deleted`. Регистрация агента привязывает его к узлу (или создаёт
  * узел), отзыв и удаление — отвязывают. Изменения агента (связь, воркеры),
  * его проблем и статусов настроек, переходы задач установки — новый
- * `node:updated`; появился воркер `netprobe` — сверка целей проверки.
- * Итоги проверки сети (метрики `netprobe`) — матрица `node:mesh` (не чаще
- * раза в 5 с): в комнату списка вся, своим — по их узлам. Метрики агента —
- * нагрузка узла `node:load` (не чаще раза в 5 с на узел) в комнаты и своим.
+ * `node:updated`. Метрики агента — нагрузка узла `node:load` (не чаще
+ * раза в 5 с на узел) в комнаты и своим.
  */
 @Injectable()
 export class NodeListener implements ISocketEventListener {
@@ -81,15 +67,10 @@ export class NodeListener implements ISocketEventListener {
   private readonly _agentSignatures = new Map<string, string>();
   /** Последний статус задачи узла — прогресс без смены статуса не шлётся. */
   private readonly _jobStatuses = new Map<string, string>();
-  /** Агенты с воркером `netprobe`, о которых знает процесс. */
-  private readonly _probers = new Set<string>();
-  /** Время последнего измерения агента — повтор точки не пересчитывает матрицу. */
-  private readonly _probeTimes = new Map<string, number>();
   /** Когда нагрузка агента последний раз ушла в сокет, мс. */
   private readonly _loadSentAt = new Map<string, number>();
   /** Агенты, чей адрес уже переносился в узел (адрес узла — один раз за процесс). */
   private readonly _hostChecked = new Set<string>();
-  private _meshTimer: NodeJS.Timeout | null = null;
 
   constructor(
     @inject(EventBus) private readonly _eventBus: EventBus,
@@ -99,20 +80,15 @@ export class NodeListener implements ISocketEventListener {
     @inject(NodeService) private readonly _nodes: NodeService,
     @inject(NodeRepository) private readonly _repo: NodeRepository,
     @inject(NodeAgentService) private readonly _nodeAgents: NodeAgentService,
-    @inject(NodeMeshService) private readonly _mesh: NodeMeshService,
-    @inject(JobQueue) private readonly _jobs: JobQueue,
   ) {}
 
   register(): void {
     const on = this._eventBus.on.bind(this._eventBus);
 
     on(NodeCreatedEvent, async ({ nodeId }) => {
-      this._requestSync();
       await this._send(nodeId);
     });
     on(NodeUpdatedEvent, async ({ nodeId, previousOwnerId }) => {
-      this._requestSync();
-
       const node = await this._send(nodeId);
 
       if (previousOwnerId && previousOwnerId !== node?.createdById) {
@@ -124,7 +100,6 @@ export class NodeListener implements ISocketEventListener {
     on(NodeDeletedEvent, ({ nodeId, ownerId, createdById }) => {
       const payload = { id: nodeId };
 
-      this._requestSync();
       this._emitter.toRooms(
         [NODES_ROOM, nodeRoom(nodeId)],
         "node:deleted",
@@ -138,30 +113,11 @@ export class NodeListener implements ISocketEventListener {
         payload,
       );
     });
-    on(NodeMeshUpdatedEvent, async ({ mesh }) => {
-      this._emitter.toRoom(NODES_ROOM, "node:mesh", mesh);
-
-      const owned = await this._mesh.byOwner(mesh);
-
-      await Promise.all(
-        [...owned].map(([userId, own]) =>
-          this._owned.toOwners(
-            [userId],
-            NodePermissions.VIEW,
-            "node:mesh",
-            own,
-          ),
-        ),
-      );
-    });
-
     on(AgentEnrolledEvent, ({ agent, source }) =>
       this._nodeAgents.onEnrolled(agent, source),
     );
     on(AgentDeletedEvent, ({ agentId }) => {
       this._agentSignatures.delete(agentId);
-      this._probers.delete(agentId);
-      this._probeTimes.delete(agentId);
       this._hostChecked.delete(agentId);
       this._loadSentAt.delete(agentId);
 
@@ -172,11 +128,6 @@ export class NodeListener implements ISocketEventListener {
       if (agent.address && !this._hostChecked.has(agent.id)) {
         this._hostChecked.add(agent.id);
         await this._nodeAgents.fillHost(agent);
-      }
-
-      if (hasNetprobe(agent) && !this._probers.has(agent.id)) {
-        this._probers.add(agent.id);
-        this._requestSync();
       }
 
       const signature = agentSignature(agent);
@@ -190,15 +141,9 @@ export class NodeListener implements ISocketEventListener {
     on(AgentConfigChangedEvent, ({ status }) =>
       this._sendByAgent(status.agentId),
     );
-    on(AgentMetricsReceivedEvent, async ({ agentId, point }) => {
-      await this._sendLoad(agentId, point);
-
-      const at = netprobeReport(point.workers)?.at ?? null;
-
-      if (at === null || this._probeTimes.get(agentId) === at) return;
-      this._probeTimes.set(agentId, at);
-      this._scheduleMesh();
-    });
+    on(AgentMetricsReceivedEvent, ({ agentId, point }) =>
+      this._sendLoad(agentId, point),
+    );
     on(JobUpdatedEvent, async ({ job }) => {
       if (
         job.scopeType !== NODE_JOB_SCOPE ||
@@ -272,31 +217,5 @@ export class NodeListener implements ISocketEventListener {
       "node:load",
       load,
     );
-  }
-
-  /** Сверка целей проверки сети — задачей (одна на всех). */
-  private _requestSync(): void {
-    this._jobs
-      .enqueue(
-        NODE_NETPROBE_SYNC_QUEUE,
-        {},
-        { singletonKey: NODE_NETPROBE_SYNC_QUEUE, startAfter: 2 },
-      )
-      .catch(err =>
-        logger.warn({ err }, "[Node] Сверка проверки сети не поставлена"),
-      );
-  }
-
-  private _scheduleMesh(): void {
-    if (this._meshTimer) return;
-
-    this._meshTimer = setTimeout(() => {
-      this._meshTimer = null;
-      this._mesh
-        .matrix()
-        .then(mesh => this._eventBus.emit(new NodeMeshUpdatedEvent(mesh)))
-        .catch(err => logger.warn({ err }, "[Node] Матрица связности"));
-    }, NETPROBE.emitIntervalMs);
-    this._meshTimer.unref();
   }
 }

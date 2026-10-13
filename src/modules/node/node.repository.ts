@@ -1,4 +1,4 @@
-import { In, IsNull, Not, SelectQueryBuilder } from "typeorm";
+import { IsNull, Not, SelectQueryBuilder } from "typeorm";
 
 import type { Pagination } from "../../core";
 import { BaseRepository, InjectableRepository } from "../../core";
@@ -17,9 +17,6 @@ export interface INodeFilters {
 export type TNodeAgentMatch = Partial<
   Record<"agentName" | "name" | "host", string>
 >;
-
-/** Узел для проверки сети: id, имя, адрес, агент. */
-export type TNodeProbeRow = Pick<Node, "id" | "name" | "host" | "agentId">;
 
 @InjectableRepository(Node)
 export class NodeRepository extends BaseRepository<Node> {
@@ -62,27 +59,6 @@ export class NodeRepository extends BaseRepository<Node> {
       select: { id: true, name: true, host: true, agentId: true },
       where: ownedBy ? NodeAccess.ownedWhere(ownedBy) : {},
       order: { name: "ASC", id: "ASC" },
-    });
-  }
-
-  /** Все узлы (или из списка) для проверки сети, по времени создания. */
-  findForProbe(ids?: string[]): Promise<TNodeProbeRow[]> {
-    return this.find({
-      select: { id: true, name: true, host: true, agentId: true },
-      where: ids ? { id: In(ids) } : {},
-      order: { createdAt: "ASC", id: "ASC" },
-    });
-  }
-
-  /** Владельцы и создатели узлов из списка. */
-  findOwners(
-    ids: string[],
-  ): Promise<Pick<Node, "id" | "ownerId" | "createdById">[]> {
-    if (!ids.length) return Promise.resolve([]);
-
-    return this.find({
-      select: { id: true, ownerId: true, createdById: true },
-      where: { id: In(ids) },
     });
   }
 

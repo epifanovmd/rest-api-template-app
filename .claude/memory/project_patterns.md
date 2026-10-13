@@ -55,7 +55,7 @@ message } }`). В main **нет ни одного вызова** (описани
   `file/file-process.job.ts`, прямая загрузка — `file.service.ts` (`signedPutUrl` + complete с условным `UPDATE`).
 - Права модуля — `audit/audit.permissions.ts` (`definePermissions("audit", { VIEW: "audit:view" })`).
 - E2E-сценарий — `test/e2e/platform.e2e.ts` (файлы S3/local, задачи, биометрия/passkeys), агенты —
-  `test/e2e/agents.e2e.ts` (хелпер `test/e2e/agent.ts`: настоящий агент из `agent/dist` с воркерами echo/echo-release/netprobe; сборки агента, скрипт и архив установки — `test/e2e/agent-releases.e2e.ts`; harness собирает архив папки агента `agent pack` → `AGENT_BUNDLE_DIR`),
+  `test/e2e/agents.e2e.ts` (хелпер `test/e2e/agent.ts`: настоящий агент из `agent/dist` с воркерами echo/echo-release; сборки агента, скрипт и архив установки — `test/e2e/agent-releases.e2e.ts`; harness собирает архив папки агента `agent pack` → `AGENT_BUNDLE_DIR`),
   клиент `test/e2e/client.ts`, письма — Mailpit API.
 - Bootstrapper — `src/modules/socket/socket.bootstrap.ts`, `src/modules/user/*bootstrap*` (AdminBootstrap, Seed).
 - Guards на маршруте — поиск `@UseGuards(` в `src/modules/auth/`.
@@ -235,8 +235,7 @@ describe("FeatureService", () => {
   `STORAGE_SIGNED_URL_TTL_SECONDS`) подписывает `JobRunViews` при каждой выдаче
   (`JobsService`, `JobRunTracker.publish` — для записи с `outputs` событие уходит после подписи).
   `job_runs.job_type` (+ `worker` очереди) пишется `setTarget` до `executor.dispatch`.
-- `node:mesh` своим — `NodeMeshService.byOwner(mesh)` + `OwnedEntityEmitter.toOwners`; нагрузка
-  — `node:load {nodeId, agentId, point:{at, host}}` из `AgentMetricsReceivedEvent` (не чаще
+- Нагрузка узла своим — `OwnedEntityEmitter.toOwners`: `node:load {nodeId, agentId, point:{at, host}}` из `AgentMetricsReceivedEvent` (не чаще
   `NODE_LOAD_EMIT_MS` на агента; при watch метрики идут раз в секунду).
 - Пересылки между копиями нет: `instanceId` — адрес API копии; вызов агента в другой копии —
   503 AGENT_ELSEWHERE + `Retry-After` (заголовок — `req.ctx.set`: `this.setHeader` tsoa на ошибке не

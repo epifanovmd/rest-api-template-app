@@ -14,8 +14,6 @@ import {
 import { AGENT_BOOTSTRAP_TOKEN, AGENT_VERSION } from "./harness";
 import { connectSocket, TestSocket } from "./socket";
 
-const NETPROBE = "netprobe";
-
 /** Права «только свои» для владельца узлов. */
 const OWN_NODE_PERMISSIONS = [
   "node:view:own",
@@ -230,7 +228,7 @@ describe("узлы", function () {
     agentB = await RealAgent.start({
       token: command.token,
       name: "e2e-node-b",
-      workers: ["echo", "netprobe"],
+      workers: ["echo"],
     });
     agentBId = agentB.agentId;
     expect(
@@ -242,10 +240,7 @@ describe("узлы", function () {
 
     expect(card.agentId).to.equal(agentBId);
     expect(card.agent).to.include({ online: true, version: AGENT_VERSION });
-    expect(card.agent.workers.map((w: any) => w.name)).to.include.members([
-      "echo",
-      "netprobe",
-    ]);
+    expect(card.agent.workers.map((w: any) => w.name)).to.include("echo");
     expect(card.agent.host.hostname).to.be.a("string");
   });
 
@@ -365,82 +360,17 @@ describe("узлы", function () {
     expect((await bobSocket.join("node", nodeB.id)).ok).to.equal(true);
   });
 
-  it("связность: цели — настройка targets воркера netprobe, матрица — из его метрик; своим — лично", async () => {
-    // Права «свои»: матрица по своим узлам и нагрузка узла — лично, без комнаты.
-    const personalMesh = bobSocket.next(
-      "node:mesh",
-      (m: any) => m.nodes.some((n: any) => n.id === nodeB.id),
-      60_000,
-    );
+  it("нагрузка узла своим — лично, без метрик воркеров", async () => {
     const personalLoad = bobSocket.next(
       "node:load",
       (l: any) => l.nodeId === nodeB.id,
       20_000,
     );
-    const config = await eventually(
-      async () => {
-        const res = await call(
-          bob,
-          "GET",
-          `/api/v1/agents/${agentBId}/workers/${NETPROBE}/configs/targets`,
-        );
-
-        return (
-          res.status === 200 && res.data.status.state === "applied" && res.data
-        );
-      },
-      { what: "цели netprobe применены", timeoutMs: 30_000 },
-    );
-
-    expect(config.config.data.targets).to.deep.include({
-      id: nodeA.id,
-      host: "127.0.0.1",
-      method: "icmp",
-    });
-    expect(config.config.data.targets.map((t: any) => t.id)).to.not.include(
-      nodeB.id,
-    );
-
-    const mesh = await eventually(
-      async () => {
-        const matrix = expectStatus(
-          await call(admin, "GET", "/api/v1/nodes/mesh"),
-          200,
-        ).data;
-
-        return (
-          matrix.cells.some(
-            (c: any) => c.from === nodeB.id && c.to === nodeA.id,
-          ) && matrix
-        );
-      },
-      { what: "итог netprobe в матрице", timeoutMs: 45_000, intervalMs: 1_000 },
-    );
-    const cell = mesh.cells.find(
-      (c: any) => c.from === nodeB.id && c.to === nodeA.id,
-    );
-
-    expect(cell).to.include({ to: nodeA.id, stale: false });
-    expect(cell.sent).to.be.greaterThan(0);
-
-    const own = expectStatus(
-      await call(bob, "GET", "/api/v1/nodes/mesh"),
-      200,
-    ).data;
-
-    expect(own.nodes.map((n: any) => n.id)).to.deep.equal([nodeB.id]);
-    expect(own.cells, "узел A — не свой").to.deep.equal([]);
-
     const load = await personalLoad;
 
     expect(load.agentId).to.equal(agentBId);
     expect(load.point.host).to.be.an("object");
     expect(load.point.workers, "только нагрузка узла").to.equal(undefined);
-
-    const mine = await personalMesh;
-
-    expect(mine.nodes.map((n: any) => n.id)).to.deep.equal([nodeB.id]);
-    expect(mine.cells, "чужие узлы не уходят своим").to.deep.equal([]);
   });
 
   it("установка по SSH: задача узла, провал — статус error; задачи видит владелец", async () => {

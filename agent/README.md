@@ -12,7 +12,7 @@ agent/
 ├── agent.prod.yaml     боевые узлы: поверх agent.yaml (экземпляр rest, пакеты, адрес и токен — от установки)
 ├── agent.docker.yaml   контейнер: поверх agent.prod.yaml
 ├── .env.prod.example   образец .env.prod — если узел ставится не с API
-├── workers/            воркеры проекта: каждый — папка (echo — пример, netprobe — проверка сети)
+├── workers/            воркеры проекта: каждый — папка (echo — пример)
 ├── docker/Dockerfile   образ агента
 ├── dev.sh              yarn agent*: программа агента, порт и токен API из .env.development
 ├── bundle/             архивы для узлов (yarn agent:pack, не в git) — их раздаёт API
@@ -32,7 +32,7 @@ agent/
 
 ```bash
 yarn dev                          # API (в .env.development — AGENT_BOOTSTRAP_TOKEN)
-yarn agent                        # агент с воркерами echo и netprobe (agent.yaml); Ctrl+C — остановка
+yarn agent                        # агент с воркером echo (agent.yaml); Ctrl+C — остановка
 yarn agent status                 # работает ли агент (запущенный в другом терминале)
 yarn agent config check           # итоговые настройки
 yarn agent upgrade --check        # есть ли новая версия агента (yarn agent upgrade — поставить)
@@ -41,8 +41,8 @@ yarn agent upgrade --check        # есть ли новая версия аге
 `yarn agent` (это `agent/dev.sh`) скачивает программу агента той же версии, что `agent-sdk` в
 `package.json`, если её ещё нет, берёт `SERVER_PORT` и `AGENT_BOOTSTRAP_TOKEN` из
 `.env.development` (другой файл — `ENV_FILE=…`) и запускает `agent/agent run`; Ctrl+C останавливает агента вместе с
-воркерами. Каталог сборок вместо релиза на GitHub — `AGENT_RELEASES_URL`. Воркеры `echo` и
-`netprobe` идут прямо из `workers/` (правки видны после перезапуска воркера). Данные агента — `.agent/data` (удалить — агент зарегистрируется заново и привяжется к
+воркерами. Каталог сборок вместо релиза на GitHub — `AGENT_RELEASES_URL`. Воркеры проекта
+идут прямо из `workers/` (правки видны после перезапуска воркера). Данные агента — `.agent/data` (удалить — агент зарегистрируется заново и привяжется к
 своему узлу по имени). Второй агент — `AGENT_DIR=.agent-2 AGENT_NAME=dev-2 yarn agent`.
 
 ## Свой воркер
@@ -101,7 +101,7 @@ yarn agent:pack                   # agent/bundle: agent-prod-<версия>-linu
 ```
 
 `agent pack --env prod` кладёт в архив программу агента под платформу узла, `agent.yaml` +
-`agent.prod.yaml`, воркеры проекта (`echo`, `netprobe`) и их подписанные сборки (`release/`).
+`agent.prod.yaml`, воркеры проекта (`echo`) и их подписанные сборки (`release/`).
 `agent install` на узле ставит агента службой: один файл настроек, воркеры — в каталог
 данных, пакеты из `install:` (`python3`), экземпляр `rest` — своя служба `agent-rest` рядом с
 агентами других бэкендов. Адрес API и токен регистрации передаёт установка.
@@ -150,7 +150,7 @@ API раздаёт архивы и установщик агента из `AGENT
   кандидат на обновление (`GET /api/v1/agent-releases`). Обновить — `POST /api/v1/agents/{id}/update`
   или `sudo agent-rest upgrade` на узле (агент с `run` — новым запуском). Пересобирать бэкенд ради
   новой версии агента не нужно.
-- **Воркеры проекта** (и `netprobe`) подписывает `agent pack` ключом проекта из `AGENT_SIGNING_KEY`.
+- **Воркеры проекта** подписывает `agent pack` ключом проекта из `AGENT_SIGNING_KEY`.
   Открытый ключ попадает в архив, и `agent install` добавляет его к ключам узла. Без ключа воркеры
   ставятся, но с API не обновляются. Пара ключей — `openssl`:
 

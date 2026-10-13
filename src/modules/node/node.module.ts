@@ -19,8 +19,6 @@ import { NodeAgentService } from "./node-agent.service";
 import { NodeAgentAccessPolicy } from "./node-agent-access.policy";
 import { NodeInstallAgentJob } from "./node-install.job";
 import { NodeJobAccessPolicy } from "./node-job-access.policy";
-import { NodeMeshService } from "./node-mesh.service";
-import { NodeNetprobeSyncJob } from "./node-netprobe-sync.job";
 import { NodeProvisionService } from "./node-provision.service";
 import { NodeRoomPolicy } from "./node-room.policy";
 import { NodeSecretBox } from "./node-secret-box.service";
@@ -30,8 +28,7 @@ import { NodeViewService } from "./node-view.service";
 /**
  * Узлы — машины с агентами: CRUD с областью «все / свои», вычисленный
  * статус, привязка агента при регистрации, установка и удаление агента по
- * SSH (задачи), связность узлов (`netprobe`), доступ к агенту узла через
- * права узла.
+ * SSH (задачи), доступ к агенту узла через права узла.
  */
 @Module({
   entities: [Node],
@@ -42,12 +39,10 @@ import { NodeViewService } from "./node-view.service";
     NodeAgentService,
     NodeSecretBox,
     NodeProvisionService,
-    NodeMeshService,
     NodeController,
     NodeAgentController,
     asJobHandler(NodeInstallAgentJob),
     asJobHandler(NodeUninstallAgentJob),
-    asJobHandler(NodeNetprobeSyncJob),
     asJobAccessPolicy(NodeJobAccessPolicy),
     asAgentAccessPolicy(NodeAgentAccessPolicy),
     asSocketListener(NodeListener),

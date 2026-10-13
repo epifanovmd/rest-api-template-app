@@ -256,7 +256,7 @@ E2E: `yarn test:e2e` (`.mocharc.e2e.yml`: `test/e2e/**/*.e2e.ts`, `setup.ts` —
 `NODE_ENV=test`), перед этим `DROP/CREATE DATABASE` (имя обязано содержать `e2e|test`) и `FLUSHDB` Redis
 (база ≠ 0, по умолчанию `/15`). Env `E2E_*` (Postgres, Redis, SMTP, `E2E_MAILPIT_URL`, `E2E_S3_*`,
 `E2E_STORAGE_DRIVER`), умолчания — dev-compose. Файлы: `auth`, `user` (профиль, email, пароль и удаление,
-администрирование, сессии, аудит), `agents` (настоящий агент версии agent-sdk + воркер echo: регистрация, статус и манифест, настройки, fetch, demo.echo быстрая/долгая/файл/отмена, вторая копия без соединения — 503 AGENT_ELSEWHERE + Retry-After, отложенная замена, offline ≤ 5 с, метрики, журнал, перезапуск, сборки агента), `nodes` (привязка агента, netprobe и матрица), `platform` (файлы S3/local, задачи, api-keys,
+администрирование, сессии, аудит), `agents` (настоящий агент версии agent-sdk + воркер echo: регистрация, статус и манифест, настройки, fetch, demo.echo быстрая/долгая/файл/отмена, вторая копия без соединения — 503 AGENT_ELSEWHERE + Retry-After, отложенная замена, offline ≤ 5 с, метрики, журнал, перезапуск, сборки агента), `nodes` (привязка агента, доступ через узел, нагрузка), `platform` (файлы S3/local, задачи, api-keys,
 биометрия/passkeys); ветки-примеры добавляют свои. `client.ts`
 (HTTP-клиент, пишет `calledEndpoints`),
 `zz-coverage.e2e.ts` — последний: каждый path+method из `swagger.json` должен быть вызван.
@@ -276,7 +276,7 @@ E2E: `yarn test:e2e` (`.mocharc.e2e.yml`: `test/e2e/**/*.e2e.ts`, `setup.ts` —
   `agent-bundle` (python:3.12-slim: агент версии agent-sdk с GitHub, `agent pack --env prod --platform linux/amd64,linux/arm64
 --release-out`, секрет `agent_signing_key`) → `/app/agent-bundle` (`AGENT_BUNDLE_DIR`).
   `agent/docker/Dockerfile` — агент версии agent-sdk (GitHub Release, sha256 по manifest) + python 3.12-slim + папка агента
-  (`agent.yaml`, `agent.prod.yaml`, `agent.docker.yaml`, `workers/`) → `./agent run --env docker`; netprobe агент качает сам;
+  (`agent.yaml`, `agent.prod.yaml`, `agent.docker.yaml`, `workers/`) → `./agent run --env docker`;
   том `/var/lib/agent`. На машине: `agent/dev.sh` — `yarn agent [команда]|agent:fetch|agent:pack` (фонового режима нет)
   (`AGENT_DIR`, по умолчанию `.agent/`; программа — `agent/agent`).
 - `docker-compose.yml` (prod, только образы): `migrate` (одноразовый `typeorm migration:run -d build/data-source.js`),

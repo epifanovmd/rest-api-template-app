@@ -14,7 +14,7 @@
 # docker-compose.postgres.yml, POSTGRES_HOST в .env.production (с хоста —
 # host.docker.internal). Без docker-compose.s3.yml — STORAGE_DRIVER=local (том
 # files) или внешний S3 через S3_*.
-# Агент с воркерами echo и netprobe (agent/docker/Dockerfile): `docker compose --profile
+# Агент с воркером echo (agent/docker/Dockerfile): `docker compose --profile
 # agent up -d`; регистрация — AGENT_BOOTSTRAP_TOKEN (тот же у API). Один агент — один том
 # данных: ещё агенты — своими сервисами со своими томами. Несколько реплик api: вызов агента
 # выполняет реплика с его соединением, другая отвечает 503 AGENT_ELSEWHERE с Retry-After —
@@ -147,7 +147,7 @@ services:
     healthcheck: *ready-check
     restart: unless-stopped
 
-  # Агент и воркеры без SDK (echo — очередь demo.echo, netprobe — проверка сети), по профилю.
+  # Агент и воркеры без SDK (echo — очередь demo.echo), по профилю.
   agent:
     profiles: ["agent"]
     image: ${IMAGE:-ghcr.io/epifanovmd/rest-api-template-app}:${TAG:-latest}-agent

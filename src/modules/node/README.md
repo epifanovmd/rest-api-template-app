@@ -5,8 +5,7 @@
 статус вычисляется по агенту (его воркерам и настройкам) и последней задаче
 установки. Модуль привязывает агента к узлу при регистрации, ставит и удаляет агента
 по SSH (архив папки агента с API → `agent install` / `agent uninstall`, задачи модуля `jobs`),
-задаёт воркеру `netprobe` цели проверки сети и собирает матрицу связности из его
-метрик, открывает маршруты агентов владельцу узла.
+передаёт нагрузку узла из метрик агента, открывает маршруты агентов владельцу узла.
 
 ## Структура файлов
 
@@ -24,8 +23,6 @@ src/modules/node/
 ├── node-uninstall.job.ts       # node.uninstall-agent
 ├── ssh-runner.ts / ssh-plan.ts # ssh2: команды, загрузка файлов, план, sudo
 ├── node-secret-box.service.ts  # шифрование SSH-данных и токена в данных задачи
-├── node-mesh.service.ts        # цели netprobe (настройка targets) и матрица связности из метрик
-├── node-netprobe-sync.job.ts   # node.netprobe-sync (после изменений и cron */10)
 ├── node.listener.ts            # события узлов, агентов, задач → сокет и реакции
 ├── node-room.policy.ts         # комната node_<id>
 ├── node-job-access.policy.ts   # доступ к задачам scope node
@@ -88,7 +85,6 @@ src/modules/node/
 | ------ | -------------------------------- | -------------------------------- | -------------------- |
 | GET    | `/nodes?query&mine&offset&limit` | `GetNodes`                       | `node:view:own`      |
 | GET    | `/nodes/options?mine`            | `GetNodeOptions`                 | `node:view:own`      |
-| GET    | `/nodes/mesh`                    | `GetNodeMesh`                    | `node:view:own`      |
 | GET    | `/nodes/{id}`                    | `GetNodeById`                    | `node:view:own`      |
 | POST   | `/nodes`                         | `CreateNode` (201)               | `node:create`        |
 | PATCH  | `/nodes/{id}`                    | `UpdateNode`                     | `node:update:own`    |
@@ -110,8 +106,8 @@ src/modules/node/
 (`maxUses: 1`, срок `expiresInMinutes`, по умолчанию сутки) с меткой
 `nodeId=<id узла>` и строку `curl …/api/v1/agent-link/bundle/install.sh | sudo sh -s -- --token …`
 (`AgentService.installCommand`). Скрипт скачивает с API архив папки агента под машину узла
-(`agent pack`, `AGENT_BUNDLE_DIR`) и запускает из него `agent install`: воркеры (`echo`,
-`netprobe`), пакеты и экземпляр — из настроек папки (`agent/agent.prod.yaml`). Токен — только
+(`agent pack`, `AGENT_BUNDLE_DIR`) и запускает из него `agent install`: воркеры (`echo`),
+пакеты и экземпляр — из настроек папки (`agent/agent.prod.yaml`). Токен — только
 в ответе. `mode` — способ установки: `systemd` (по умолчанию), `rootless` (агент пользователя
 без root, `--rootless`, строка без `sudo`), `run` (без установки — контейнер, `--run`, строка без `sudo`).
 
@@ -175,28 +171,7 @@ SSH (не root) без sudo, `--rootless`; удаление такого аге�
 с `node:provision` (`:own` — только своих узлов). Переходы статуса задачи → новый
 `node:updated`; задача упала — статус `error`.
 
-## Связность
-
-Воркер проекта `netprobe` (`agent/workers/netprobe`, `- path: workers/netprobe` в
-`agent/agent.yaml`; на узел он едет в архиве папки агента) проверяет связность до целей своей
-настройки `targets` и отдаёт итог последнего круга в `GET /metrics`: агент кладёт его в
-`metrics.workers.netprobe` — `{at, results: [{id, host, method, via?, sent, received,
-lossPct, rttMinMs?, rttAvgMs?, rttMaxMs?, error?}]}`.
-
-`NodeMeshService.syncTargets` (очередь `node.netprobe-sync`: после изменений узлов, при
-появлении агента с воркером `netprobe`, `singletonKey`, и cron `*/10 * * * *`) задаёт
-агенту каждого узла с воркером `netprobe` настройку `netprobe/targets`: `{targets:
-[{id: <id узла>, host, method: "icmp"}], intervalSec: 30, count: 3, timeoutMs: 1000}` —
-остальные узлы с адресом; новая версия — только при другом содержимом. Значение
-проверяется по схеме из манифеста воркера.
-
-Матрицу собирает модуль по последней точке метрик агентов узлов: ячейка «узел агента →
-узел цели» — `{from, to, method, via?, sent, received, lossPct, rttAvgMs, rttMinMs,
-rttMaxMs, at, stale, error?}`; `stale` — итог старше 2 мин или агент не на связи.
-`GET /nodes/mesh` — в области просмотра (`:own` — между своими узлами). Новый итог в
-метриках агента (`AgentMetricsReceivedEvent`, новое `at` у `netprobe`) — пересчёт не
-чаще раза в 5 с: `node:mesh` целиком в комнату `nodes` и лично своим (владелец и
-создатель с областью `own`) — матрица только по их узлам.
+## Нагрузка
 
 Нагрузка узла — точка метрик его агента без метрик воркеров: `node:load { nodeId,
 agentId, point: { at, host } }` не чаще раза в 5 с на агента в комнаты `nodes`,
@@ -204,13 +179,13 @@ agentId, point: { at, host } }` не чаще раза в 5 с на агента
 
 ## Socket.IO
 
-| Комната     | Вход                                                   | События                                                                 |
-| ----------- | ------------------------------------------------------ | ----------------------------------------------------------------------- |
-| `nodes`     | `room:subscribe {type: "nodes"}`, `node:view` (на все) | `node:updated` (NodeDto), `node:deleted {id}`, `node:mesh`, `node:load` |
-| `node_<id>` | `room:subscribe {type: "node", id}`, `node:view(:own)` | `node:updated`, `node:deleted`, `node:load`, `job:updated` задач узла   |
+| Комната     | Вход                                                   | События                                                               |
+| ----------- | ------------------------------------------------------ | --------------------------------------------------------------------- |
+| `nodes`     | `room:subscribe {type: "nodes"}`, `node:view` (на все) | `node:updated` (NodeDto), `node:deleted {id}`, `node:load`            |
+| `node_<id>` | `room:subscribe {type: "node", id}`, `node:view(:own)` | `node:updated`, `node:deleted`, `node:load`, `job:updated` задач узла |
 
 Своим (владелец и создатель с областью `own`) `node:updated` / `node:deleted` /
-`node:load` и `node:mesh` по своим узлам — лично (`OwnedEntityEmitter`); прежний владелец при смене получает `node:deleted`,
+`node:load` по своим узлам — лично (`OwnedEntityEmitter`); прежний владелец при смене получает `node:deleted`,
 его комнаты пересматриваются. `node:updated` шлётся при изменении узла, привязке,
 изменении агента (связь, версия, адрес, воркеры — без повторов), его проблем и
 статусов настроек, переходе задачи установки.
@@ -223,9 +198,9 @@ agentId, point: { at, host } }` не чаще раза в 5 с на агента
 
 Юнит: статус и сводка, сервис (права «свои», 404/403, список), привязка агента (по
 метке и без неё — по имени агента, имени узла, адресу),
-SSH-план, раннер, задачи с моком SSH, цели и матрица, политика доступа к агентам, схемы.
+SSH-план, раннер, задачи с моком SSH, политика доступа к агентам, схемы.
 Postgres (миграции узлов и агентов откатываются и применяются, `agentName` из прежних
 привязок, выборки, узлы без агента для привязки, уникальность агента, последняя задача) — `TEST_DATABASE_URL=postgres://…/<база с test> yarn test:file
 src/modules/node/node.repository.integration.test.ts`. E2E — `test/e2e/nodes.e2e.ts`
-(настоящий агент с воркерами echo и netprobe: привязка по токену узла и по имени без
-метки, доступ через узел, отзыв и удаление — только `agent:manage`, цели и матрица).
+(настоящий агент с воркером echo: привязка по токену узла и по имени без
+метки, доступ через узел, отзыв и удаление — только `agent:manage`).

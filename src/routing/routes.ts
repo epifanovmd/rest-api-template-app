@@ -1568,46 +1568,6 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "INodeMeshNodeDto": {
-        "dataType": "refObject",
-        "properties": {
-            "id": {"dataType":"string","required":true},
-            "name": {"dataType":"string","required":true},
-            "host": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
-        },
-        "additionalProperties": false,
-    },
-    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "INodeMeshCellDto": {
-        "dataType": "refObject",
-        "properties": {
-            "from": {"dataType":"string","required":true},
-            "to": {"dataType":"string","required":true},
-            "method": {"dataType":"string","required":true},
-            "via": {"dataType":"string"},
-            "sent": {"dataType":"double","required":true},
-            "received": {"dataType":"double","required":true},
-            "lossPct": {"dataType":"double","required":true},
-            "rttAvgMs": {"dataType":"union","subSchemas":[{"dataType":"double"},{"dataType":"enum","enums":[null]}],"required":true},
-            "rttMinMs": {"dataType":"union","subSchemas":[{"dataType":"double"},{"dataType":"enum","enums":[null]}],"required":true},
-            "rttMaxMs": {"dataType":"union","subSchemas":[{"dataType":"double"},{"dataType":"enum","enums":[null]}],"required":true},
-            "at": {"dataType":"double","required":true},
-            "stale": {"dataType":"boolean","required":true},
-            "error": {"dataType":"string"},
-        },
-        "additionalProperties": false,
-    },
-    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "INodeMeshDto": {
-        "dataType": "refObject",
-        "properties": {
-            "nodes": {"dataType":"array","array":{"dataType":"refObject","ref":"INodeMeshNodeDto"},"required":true},
-            "cells": {"dataType":"array","array":{"dataType":"refObject","ref":"INodeMeshCellDto"},"required":true},
-            "generatedAt": {"dataType":"double","required":true},
-        },
-        "additionalProperties": false,
-    },
-    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "ICreateNodeBody": {
         "dataType": "refObject",
         "properties": {
@@ -4951,42 +4911,6 @@ export function RegisterRoutes(router: KoaRouter,opts?:{multer?:ReturnType<typeo
 
             return templateService.apiHandler({
               methodName: 'getNodeOptions',
-              controller,
-              context,
-              validatedArgs,
-              successStatus: undefined,
-            });
-        });
-        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-        const argsNodeController_getNodeMesh: Record<string, TsoaRoute.ParameterSchema> = {
-                req: {"in":"request","name":"req","required":true,"dataType":"object"},
-        };
-        router.get('/api/v1/nodes/mesh',
-            authenticateMiddleware([{"jwt":["permission:node:view:own"]}]),
-            ...(fetchMiddlewares<Middleware>(NodeController)),
-            ...(fetchMiddlewares<Middleware>(NodeController.prototype.getNodeMesh)),
-
-            async function NodeController_getNodeMesh(context: Context, next: Next) {
-
-            let validatedArgs: any[] = [];
-            try {
-              validatedArgs = templateService.getValidatedArgs({ args: argsNodeController_getNodeMesh, context, next });
-            } catch (err) {
-              const error = err as any;
-              error.message ||= JSON.stringify({ fields: error.fields });
-              context.status = error.status;
-              context.throw(context.status, error.message, error);
-            }
-
-            const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(context.request) : iocContainer;
-
-            const controller: any = await container.get<NodeController>(NodeController);
-            if (typeof controller['setStatus'] === 'function') {
-                controller.setStatus(undefined);
-            }
-
-            return templateService.apiHandler({
-              methodName: 'getNodeMesh',
               controller,
               context,
               validatedArgs,

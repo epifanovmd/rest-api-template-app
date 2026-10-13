@@ -29,13 +29,11 @@ import { KoaRequest } from "../../types/koa";
 import {
   IAssignNodeBody,
   ICreateNodeBody,
-  INodeMeshDto,
   IUpdateNodeBody,
   NodeDto,
   NodeOptionDto,
 } from "./dto";
 import { NodeService } from "./node.service";
-import { NodeMeshService } from "./node-mesh.service";
 import {
   AssignNodeSchema,
   CreateNodeSchema,
@@ -49,10 +47,7 @@ import {
 @Response<IErrorResponseDto>("default", "Ошибка")
 @Route("api/v1/nodes")
 export class NodeController extends Controller {
-  constructor(
-    @inject(NodeService) private readonly _nodes: NodeService,
-    @inject(NodeMeshService) private readonly _mesh: NodeMeshService,
-  ) {
+  constructor(@inject(NodeService) private readonly _nodes: NodeService) {
     super();
   }
 
@@ -94,18 +89,6 @@ export class NodeController extends Controller {
     @Query() mine?: boolean,
   ): Promise<NodeOptionDto[]> {
     return this._nodes.options(getContextUser(req), mine);
-  }
-
-  /**
-   * Матрица связности узлов «откуда → куда»: средние задержка и потери за 5
-   * минут по измерениям воркера проверки сети (`netprobe`) агентов узлов.
-   * С правом `node:view:own` — только между своими узлами.
-   * @summary Связность узлов
-   */
-  @Security("jwt", ["permission:node:view:own"])
-  @Get("mesh")
-  getNodeMesh(@Request() req: KoaRequest): Promise<INodeMeshDto> {
-    return this._mesh.matrixFor(getContextUser(req));
   }
 
   /**

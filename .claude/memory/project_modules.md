@@ -82,7 +82,6 @@ releases, agent-bundle). Вне спецификации: `/files/*` (storage), 
 | `jobs.external-sync`                          | jobs     | cron `* * * * *` (срок внешних задач)            |
 | `agents.prune`                                | agent    | cron `15 * * * *` (события, история метрик)      |
 | `node.install-agent` / `node.uninstall-agent` | node     | tracked, SSH                                     |
-| `node.netprobe-sync`                          | node     | cron `*/10 * * * *` + после изменений            |
 
 `tracked`-очередей среди модулей main нет (видимость включается `track: true` при постановке или в доменных
 модулях). `it.*` — очереди интеграционного теста jobs.
@@ -152,8 +151,7 @@ validate/invalidEvent/problems, capabilities/supports/waitEvent — всё эт�
 `${}` — в кавычках, иначе пустое значение ломает YAML при pack), `agent.prod.yaml` (extends, instance `rest`, install
 `packages: [python3]`, `${AGENT_SERVER_URL}`/`${AGENT_ENROLL_TOKEN}` — их даёт установка), `agent.docker.yaml` (поверх prod,
 dataDir /var/lib/agent, update external), `workers/echo` (база `agent_worker.py` + `worker.py` класс `Echo`, `log_requests`,
-`WORKER_STATE_DIR` — ход задач; база одинаковая во всех воркерах проекта), `workers/netprobe` (воркер проекта на Python,
-`- path: workers/netprobe`, тесты `python3 -B -m unittest -v test_netprobe.py`), `dev.sh` (yarn agent*: скачивает
+`WORKER_STATE_DIR` — ход задач; база одинаковая во всех воркерах проекта), `dev.sh` (yarn agent*: скачивает
 `agent/agent` версии agent-sdk, env из .env.development, AGENT_NAME=dev-$USER, AGENT_DATA_DIR=.agent/data; fetch → ещё
 `agent/dist/v<v>` для e2e; pack → `agent/bundle` + `release/`), `docker/Dockerfile` (`run --env docker`), `.gitignore`
 (agent, bundle/, .env.prod). Удалены: release.sh, fetch.mjs, local/, docker/agent.yaml, release/, tools/.
@@ -205,6 +203,5 @@ job-события нужны до подтверждения — обрабат
 - Права `node:*` (scoped, кроме create). Доступ к маршрутам агентов: `AgentAccessService` (agent) + политика `NodeAgentAccessPolicy` через `AGENT_ACCESS_POLICY`; маршруты агентов с `*` — `@Security("jwt")`.
 - Привязка: `AgentEnrollmentService.withContext` (AsyncLocalStorage) в `AgentRuntime.handle` → `AgentEnrolledEvent(agent, source{tokenId, createdBy, labels})` → метка `nodeId`; без метки — узел без агента, однозначно по `agentName` → `name` → `host` (`findUnbound` + условный `bindFree`), иначе авто-узел. `agentName` хранится и после отвязки.
 - SSH: ssh2 (`SSH_SESSION_FACTORY` для тестов), `NodeSecretBox` (`NODE_SECRETS_KEY`, иначе от JWT), скрипт `/api/v1/agent-bundle/install.sh` + `--token-file` (удаление — `--uninstall [--purge]`, экземпляр — из архива), sudo -n / -S.
-- netprobe (воркер проекта `agent/workers/netprobe`, `- path: workers/netprobe`; на узел — в архиве): цели — настройка `netprobe/targets` `{targets:[{id: id узла, host, method:"icmp"}], intervalSec, count, timeoutMs}` через `AgentWorkerService.putConfig` (только агентам с воркером netprobe, только при другом содержимом); матрицу считает бэкенд по последней точке `agent.metrics.workers.netprobe` `{at, results[]}` (stale > 2 мин или offline). Очередь `node.netprobe-sync` (cron */10 + после изменений + при появлении агента с netprobe). Dev: агент запускает netprobe из `agent/workers/netprobe` (python3).
 - Отзыв и удаление агента — только `agent:manage` (политика узла не открывает); `node:agent` — update, rotate-key, restart/update воркеров, configs, fetch.
 - Gotcha: `mine` в query-схеме — строка `"true"|"false"` (ValidateQuery подменяет query; boolean ломает tsoa). e2e: `auth сброс пароля` падает и без модуля (письмо приходит позже 15 с).

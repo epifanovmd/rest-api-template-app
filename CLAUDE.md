@@ -14,7 +14,7 @@ Chai + Sinon, сборка `tsc`. Агенты — github.com/epifanovmd/agent: 
 `agent-sdk` (архив с GitHub Release агента, ссылка в `package.json`); всё про агента
 на узлах — папка агента `agent/` (README простыми словами): настройки `agent.yaml`
 (машина разработчика) и `agent.prod.yaml` / `agent.docker.yaml` поверх него, воркеры проекта
-(`agent/workers/<имя>`: база `agent_worker.py` + класс-наследник; `echo`, `netprobe`),
+(`agent/workers/<имя>`: база `agent_worker.py` + класс-наследник; `echo`),
 `yarn agent*` (`agent/dev.sh`), архивы для узлов (`yarn agent:pack` → `agent/bundle`; их раздаёт
 API из `AGENT_BUNDLE_DIR`, ставит `agent install`), образ (`agent/docker`). Новые версии
 агента находит сам агент (его каталог сборок) и сообщает бэкенду.
@@ -33,7 +33,7 @@ yarn typecheck            # проверка типов (yarn dev:types — watc
 yarn test                 # юнит, src/**/*.test.ts (один файл: yarn test:file <path>)
 yarn test:e2e             # интеграционный набор test/e2e/*.e2e.ts (нужен dev-compose)
 yarn gen:module <name>    # каркас модуля по конвенциям (--dry-run — список файлов)
-yarn agent [команда]      # агент с воркерами echo и netprobe (agent/agent.yaml; AGENT_BOOTSTRAP_TOKEN);
+yarn agent [команда]      # агент с воркером echo (agent/agent.yaml; AGENT_BOOTSTRAP_TOKEN);
                           # команды агента: config check, status, upgrade …
 yarn agent:pack           # архивы для узлов и сборки воркеров → agent/bundle (AGENT_BUNDLE_DIR)
 yarn agent:fetch          # программа агента и сборки агента с GitHub в agent/dist (e2e)
