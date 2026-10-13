@@ -134,11 +134,11 @@ export class Agents {
   // ─── агенты ──────────────────────────────────────────────────────────
 
   find(id: string): Promise<Agent | null> {
-    return this._agents.findById(id);
+    return this._agents.findLive(id);
   }
 
   async get(id: string): Promise<Agent> {
-    const agent = await this._agents.findById(id);
+    const agent = await this._agents.findLive(id);
 
     if (!agent) throw AgentError.NOT_FOUND();
 
@@ -155,7 +155,7 @@ export class Agents {
 
   /** На связи: поток открыт (и жив) или недавно был запрос. */
   isOnline(agent: Agent, now = Date.now()): boolean {
-    if (agent.revokedAt) return false;
+    if (agent.revokedAt || agent.deletedAt) return false;
     const seen = agent.lastSeenAt?.getTime() ?? 0;
 
     return agent.streamInstance
@@ -206,7 +206,11 @@ export class Agents {
     return agent;
   }
 
-  /** Удалить агента и всё его: настройки, команды, историю. */
+  /**
+   * Удалить агента: настройки, команды и история удаляются, запись остаётся отозванной
+   * (`deletedAt`): агент на узле получает `403 AGENT_REVOKED` — останавливает воркеры с уборкой и
+   * больше не выходит на связь (не регистрируется заново и общим токеном).
+   */
   async delete(agentId: string): Promise<void> {
     await this.get(agentId);
     await this._agents.manager.transaction(async manager => {
@@ -215,13 +219,17 @@ export class Agents {
         "agent_commands",
         "agent_events",
         "agent_metrics",
-        "agents",
       ]) {
-        await manager.query(
-          `DELETE FROM ${table} WHERE ${table === "agents" ? "id" : "agent_id"} = $1`,
-          [agentId],
-        );
+        await manager.query(`DELETE FROM ${table} WHERE agent_id = $1`, [
+          agentId,
+        ]);
       }
+      await manager.query(
+        `UPDATE agents SET revoked_at = coalesce(revoked_at, now()), deleted_at = now(),
+           hello = NULL, state = NULL, metrics = NULL, watch = NULL
+         WHERE id = $1`,
+        [agentId],
+      );
     });
     await this.push(agentId);
     this._bus.emit(new AgentDeletedEvent(agentId));

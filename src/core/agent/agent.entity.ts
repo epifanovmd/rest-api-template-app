@@ -95,6 +95,13 @@ export class Agent {
   @Column({ name: "revoked_at", type: "timestamptz", nullable: true })
   revokedAt!: Date | null;
 
+  /**
+   * Агент удалён: отозван, его история удалена; запись остаётся, чтобы агент со старым ключом
+   * получал `403 AGENT_REVOKED`, а не регистрировался заново.
+   */
+  @Column({ name: "deleted_at", type: "timestamptz", nullable: true })
+  deletedAt!: Date | null;
+
   /** Токен, которым агент зарегистрирован (`NULL` — общий токен окружения). */
   @Column({ name: "enroll_token_id", type: "uuid", nullable: true })
   enrollTokenId!: string | null;

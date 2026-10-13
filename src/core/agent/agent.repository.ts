@@ -6,16 +6,26 @@ import { Agent } from "./agent.entity";
 
 @InjectableRepository(Agent)
 export class AgentRepository extends BaseRepository<Agent> {
+  /** Запись агента, в том числе удалённого (вход по ключу: удалённому — 403). */
   findById(id: string): Promise<Agent | null> {
     return this.findOneBy({ id });
   }
 
+  /** Агент, если не удалён. */
+  findLive(id: string): Promise<Agent | null> {
+    return this.findOneBy({ id, deletedAt: IsNull() });
+  }
+
   findAll(): Promise<Agent[]> {
-    return this.find({ order: { enrolledAt: "ASC" } });
+    return this.find({
+      where: { deletedAt: IsNull() },
+      order: { enrolledAt: "ASC" },
+    });
   }
 
   findPage(offset: number, limit: number): Promise<[Agent[], number]> {
     return this.findAndCount({
+      where: { deletedAt: IsNull() },
       order: { enrolledAt: "ASC" },
       skip: offset,
       take: limit,

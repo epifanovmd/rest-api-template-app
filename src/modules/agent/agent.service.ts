@@ -121,10 +121,12 @@ export class AgentService {
     this.audit(actorId || null, "agent.revoke", id);
   }
 
-  /** Отозвать и удалить (узел удалён). */
+  /**
+   * Удалить агента от имени `actorId` (узел удалён): запись отозвана, история удалена; агент на
+   * узле останавливает воркеры с уборкой и больше не выходит на связь.
+   */
   async revokeAndDelete(actorId: string | null, id: string): Promise<void> {
     if (!(await this._agents.find(id))) return;
-    await this._agents.revoke(id);
     await this._agents.delete(id);
     this.audit(actorId, "agent.delete", id);
   }

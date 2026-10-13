@@ -105,7 +105,12 @@ export interface IAgentHello {
   workers: IAgentHelloWorker[];
 }
 
+/** Состояние агента (§4): ждёт подтверждения, работает, отозван. */
+export type TAgentStatus = "pending" | "active" | "revoked";
+
 export interface IAgentHelloReply {
+  /** Состояние агента у бэкенда: `active` — работать; `pending` — ждать подтверждения. */
+  status: TAgentStatus;
   serverTime: number;
   stateMs?: number;
   metricsMs?: number;

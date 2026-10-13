@@ -1,5 +1,6 @@
 import { expect } from "chai";
 import { readFileSync } from "fs";
+import { join } from "path";
 
 import { enroll, RealAgent } from "./agent";
 import {
@@ -1034,6 +1035,77 @@ describe("агенты (настоящий агент и воркер echo)", fu
     } finally {
       await other.stop();
       await call(admin, "DELETE", `/api/v1/agents/${otherId}`);
+    }
+  });
+
+  it("удаление агента: запись удаляется, агент отозван — воркеры остановлены, ключ — 403", async () => {
+    const other = await RealAgent.start({
+      token: AGENT_BOOTSTRAP_TOKEN,
+      name: "e2e-delete",
+    });
+    const otherId = other.agentId;
+
+    try {
+      await eventually(
+        async () => {
+          const a = (await call(admin, "GET", `/api/v1/agents/${otherId}`))
+            .data;
+
+          return a?.online && worker(a, "echo")?.state === "running";
+        },
+        { what: "агент и воркер на связи", timeoutMs: 20_000 },
+      );
+      expect((await other.status())?.status).to.equal("active");
+
+      const deleted = socket.next(
+        "agent:deleted",
+        (a: any) => a.id === otherId,
+      );
+
+      expectStatus(
+        await call(admin, "DELETE", `/api/v1/agents/${otherId}`),
+        204,
+      );
+      await deleted;
+      expectStatus(await call(admin, "GET", `/api/v1/agents/${otherId}`), 404);
+      expect(
+        items(
+          expectStatus(await call(admin, "GET", "/api/v1/agents"), 200).data,
+        ).map((a: any) => a.id),
+      ).to.not.include(otherId);
+
+      // Агент получил 403: отозван, воркеры остановлены.
+      const revoked = await eventually(
+        async () => {
+          const st = await other.status();
+
+          return st?.status === "revoked" &&
+            !st.workers?.some(w => w.state === "running")
+            ? st
+            : null;
+        },
+        { what: "агент отозван, воркеры остановлены", timeoutMs: 20_000 },
+      );
+
+      expect(revoked.status).to.equal("revoked");
+
+      // Ключ удалённого агента не принимается: 403, а не регистрация заново.
+      const { secret } = JSON.parse(
+        readFileSync(join(other.dataDir, "credentials.json"), "utf8"),
+      ) as { secret: string };
+      const hello = await fetch(`${BASE_URL}/agent/v1/hello`, {
+        method: "POST",
+        headers: {
+          authorization: `Agent ${otherId}.${secret}`,
+          "content-type": "application/json",
+        },
+        body: "{}",
+      });
+
+      expect(hello.status).to.equal(403);
+      expect(((await hello.json()) as any).code).to.equal("AGENT_REVOKED");
+    } finally {
+      await other.stop();
     }
   });
 

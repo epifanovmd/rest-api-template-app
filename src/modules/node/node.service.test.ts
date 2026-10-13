@@ -128,7 +128,7 @@ describe("NodeService", () => {
     );
   });
 
-  it("удаление: агент узла отзывается и удаляется, событие с владельцами", async () => {
+  it("удаление: агент узла удаляется (отзыв), событие с владельцами", async () => {
     repo.findById.resolves(node({ agentId: "a1" }));
 
     await service.delete(OWN, "n1");

@@ -226,6 +226,7 @@ export class AgentProtocolService {
     this._bus.emit(new AgentUpdatedEvent(agent, "hello"));
 
     return {
+      status: "active",
       serverTime: Date.now(),
       stateMs: agentConfig.stateIntervalMs,
       metricsMs: agentConfig.metricsIntervalMs,

@@ -206,6 +206,20 @@ export class RealAgent {
     return this._logs.join("");
   }
 
+  /** `agent status --json`: состояние агента и его воркеров (агент работает). */
+  async status(): Promise<{
+    status: string;
+    workers?: { name: string; state: string }[];
+  } | null> {
+    const { stdout } = await promisify(execFile)(
+      agentBinary(),
+      ["status", "--json", "-config", this._config],
+      { env: { PATH: env.PATH ?? "", HOME: join(this.dataDir, "..") } },
+    ).catch(() => ({ stdout: "{}" }));
+
+    return (JSON.parse(stdout) as { status?: never }).status ?? null;
+  }
+
   /** Остановить агента и его воркеры (`agent stop-workers`). */
   async stop(): Promise<void> {
     if (this._process.exitCode === null) {

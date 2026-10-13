@@ -126,7 +126,11 @@ export class NodeService {
     return this._dtoOf(id);
   }
 
-  /** Удалить узел; его агент отзывается и удаляется. */
+  /**
+   * Удалить узел; его агент удаляется (отзыв): на узле он останавливает воркеры с уборкой и
+   * больше не выходит на связь. Программу с машины убирает `agent uninstall` (или удаление по
+   * SSH).
+   */
   async delete(actor: AuthContext, id: string): Promise<void> {
     const node = await this.findFor(actor, id, NodePermissions.DELETE);
 
