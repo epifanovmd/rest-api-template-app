@@ -3,12 +3,14 @@
 # Что получилось: yarn agent config check.
 server:
   url: "http://localhost:${SERVER_PORT}"
+  # API на этой машине — http://; на узлах — только https:// (или AGENT_SERVER_ALLOW_INSECURE).
+  allowInsecure: true
 enroll:
   token: "${AGENT_BOOTSTRAP_TOKEN}"
 dataDir: ../.agent/data
 labels:
   env: dev
-# Здесь агент не обновляет себя по команде сервера: новую версию ставит yarn agent upgrade.
+# Здесь агент не обновляет себя по команде сервера: версию задаёт AGENT_VERSION (yarn agent).
 update:
   mode: disabled
 log:
@@ -16,9 +18,9 @@ log:
   # Какие записи журнала уходят на сервер без наблюдения; пока клиент в комнате агента — подробнее.
   forward: warn
 workers:
-  # Воркер проекта (workers/echo): задачи echo.quick и echo.long очереди demo.echo, настройка
-  # settings, метрики, события. Ход долгих задач — в WORKER_STATE_DIR: перезапущенный воркер
-  # продолжает их с сохранённого шага.
+  # Воркер проекта (workers/echo): команды echo.say, echo.hang, echo.emit; задачи echo.quick и
+  # echo.long очереди demo.echo; настройка settings, метрики, события, запрос echo.lookup. Ход
+  # долгих задач — в WORKER_STATE_DIR: перезапущенный воркер продолжает их с сохранённого шага.
   - path: workers/echo
     env:
       PYTHONUNBUFFERED: "1"

@@ -1,16 +1,16 @@
 import { inject } from "inversify";
 
-import { EventBus, Injectable } from "../../core";
 import {
-  AgentAlertChangedEvent,
+  AgentConfigAppliedEvent,
   AgentConfigChangedEvent,
   AgentDeletedEvent,
-  AgentDto,
   AgentEnrolledEvent,
   AgentMetricsReceivedEvent,
   AgentUpdatedEvent,
-  type IAgentMetricsPointDto,
-} from "../agent";
+  EventBus,
+  Injectable,
+} from "../../core";
+import { AgentDto, AgentService, type IAgentMetricsPointDto } from "../agent";
 import { JobUpdatedEvent, SETTLED_JOB_RUN_STATUSES } from "../jobs";
 import {
   ISocketEventListener,
@@ -37,7 +37,7 @@ const agentSignature = (agent: AgentDto): string =>
     agent.online,
     agent.revoked,
     agent.version,
-    agent.address,
+    agent.remoteIp,
     agent.host,
     agent.workers.map(worker => [
       worker.name,
@@ -47,8 +47,8 @@ const agentSignature = (agent: AgentDto): string =>
       worker.health?.ok,
       worker.health?.busy,
       worker.health?.message,
-      worker.configs,
     ]),
+    agent.alerts,
   ]);
 
 /**
@@ -80,6 +80,7 @@ export class NodeListener implements ISocketEventListener {
     @inject(NodeService) private readonly _nodes: NodeService,
     @inject(NodeRepository) private readonly _repo: NodeRepository,
     @inject(NodeAgentService) private readonly _nodeAgents: NodeAgentService,
+    @inject(AgentService) private readonly _agentViews: AgentService,
   ) {}
 
   register(): void {
@@ -113,8 +114,8 @@ export class NodeListener implements ISocketEventListener {
         payload,
       );
     });
-    on(AgentEnrolledEvent, ({ agent, source }) =>
-      this._nodeAgents.onEnrolled(agent, source),
+    on(AgentEnrolledEvent, async ({ agent, source }) =>
+      this._nodeAgents.onEnrolled(await this._agentViews.toDto(agent), source),
     );
     on(AgentDeletedEvent, ({ agentId }) => {
       this._agentSignatures.delete(agentId);
@@ -123,9 +124,11 @@ export class NodeListener implements ISocketEventListener {
 
       return this._nodeAgents.onAgentGone(agentId);
     });
-    on(AgentUpdatedEvent, async ({ agent }) => {
+    on(AgentUpdatedEvent, async ({ agent: entity }) => {
+      const agent = await this._agentViews.toDto(entity);
+
       if (agent.revoked) return this._nodeAgents.onAgentGone(agent.id);
-      if (agent.address && !this._hostChecked.has(agent.id)) {
+      if (agent.remoteIp && !this._hostChecked.has(agent.id)) {
         this._hostChecked.add(agent.id);
         await this._nodeAgents.fillHost(agent);
       }
@@ -137,10 +140,8 @@ export class NodeListener implements ISocketEventListener {
 
       return this._sendByAgent(agent.id);
     });
-    on(AgentAlertChangedEvent, ({ alert }) => this._sendByAgent(alert.agentId));
-    on(AgentConfigChangedEvent, ({ status }) =>
-      this._sendByAgent(status.agentId),
-    );
+    on(AgentConfigChangedEvent, ({ agentId }) => this._sendByAgent(agentId));
+    on(AgentConfigAppliedEvent, ({ agentId }) => this._sendByAgent(agentId));
     on(AgentMetricsReceivedEvent, ({ agentId, point }) =>
       this._sendLoad(agentId, point),
     );

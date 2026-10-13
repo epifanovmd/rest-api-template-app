@@ -53,7 +53,7 @@ export const enroll = async (
   token: string,
   name: string,
 ): Promise<IEnrollResult> => {
-  const res = await fetch(`${BASE_URL}/api/v1/agent-link/enroll`, {
+  const res = await fetch(`${BASE_URL}/agent/v1/enroll`, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({
@@ -160,6 +160,7 @@ export class RealAgent {
       [
         "server:",
         `  url: ${BASE_URL}`,
+        "  allowInsecure: true",
         `dataDir: ${JSON.stringify(dataDir)}`,
         `name: ${JSON.stringify(options.name)}`,
         "enroll:",

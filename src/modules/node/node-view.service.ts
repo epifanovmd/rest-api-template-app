@@ -1,7 +1,7 @@
 import { inject } from "inversify";
 
 import { Injectable } from "../../core";
-import { AgentConfigStatusDto, AgentDto, AgentService } from "../agent";
+import { AgentConfigDto, AgentDto, AgentService } from "../agent";
 import { JobRunDto, JobRunRepository } from "../jobs";
 import { INodeView, NodeDto } from "./dto";
 import { Node } from "./node.entity";
@@ -12,7 +12,7 @@ import { configSummary, nodeStatus } from "./node-status";
 const AGENT_LIST_THRESHOLD = 3;
 
 /**
- * Сборка DTO узлов: агент (agent-sdk), статусы настроек его воркеров,
+ * Сборка DTO узлов: агент, статусы настроек его воркеров,
  * кандидаты на обновление и последняя задача установки — пачкой на список,
  * затем вычисление статуса и сводки настроек.
  */
@@ -81,7 +81,7 @@ export class NodeViewService {
   /** Статусы настроек агентов; не прочитались — пусто (узел без сводки). */
   private async _loadConfigs(
     ids: string[],
-  ): Promise<Map<string, AgentConfigStatusDto[]>> {
+  ): Promise<Map<string, AgentConfigDto[]>> {
     const entries = await Promise.all(
       ids.map(async id => {
         const configs = await this._agents.configStatus(id).catch(() => []);

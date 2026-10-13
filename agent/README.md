@@ -7,7 +7,7 @@
 
 ```
 agent/
-├── agent               программа агента (не в git: yarn agent скачивает её сам, yarn agent upgrade обновляет)
+├── agent               программа агента версии AGENT_VERSION (не в git: yarn agent скачивает её сам)
 ├── agent.yaml          машина разработчика — yarn agent
 ├── agent.prod.yaml     боевые узлы: поверх agent.yaml (экземпляр rest, пакеты, адрес и токен — от установки)
 ├── agent.docker.yaml   контейнер: поверх agent.prod.yaml
@@ -35,11 +35,10 @@ yarn dev                          # API (в .env.development — AGENT_BOOTSTRAP
 yarn agent                        # агент с воркером echo (agent.yaml); Ctrl+C — остановка
 yarn agent status                 # работает ли агент (запущенный в другом терминале)
 yarn agent config check           # итоговые настройки
-yarn agent upgrade --check        # есть ли новая версия агента (yarn agent upgrade — поставить)
 ```
 
-`yarn agent` (это `agent/dev.sh`) скачивает программу агента той же версии, что `agent-sdk` в
-`package.json`, если её ещё нет, берёт `SERVER_PORT` и `AGENT_BOOTSTRAP_TOKEN` из
+`yarn agent` (это `agent/dev.sh`) скачивает программу агента версии `AGENT_VERSION` (окружение или
+`.env*`, образец — `.env.example`), если её нет или версия другая, берёт `SERVER_PORT` и `AGENT_BOOTSTRAP_TOKEN` из
 `.env.development` (другой файл — `ENV_FILE=…`) и запускает `agent/agent run`; Ctrl+C останавливает агента вместе с
 воркерами. Каталог сборок вместо релиза на GitHub — `AGENT_RELEASES_URL`. Воркеры проекта
 идут прямо из `workers/` (правки видны после перезапуска воркера). Данные агента — `.agent/data` (удалить — агент зарегистрируется заново и привяжется к
@@ -53,44 +52,49 @@ yarn agent upgrade --check        # есть ли новая версия аге
 
 ```python
 # agent/workers/report/worker.py — только код воркера
-from agent_worker import Config, Worker, job, route
+from agent_worker import Config, Worker, command
 
 class Report(Worker):
     description = "Отчёты"
     settings = Config("settings", schema={"type": "object"}, default={"limit": 10})
     events = {"report.sent": {"type": "object"}}
 
-    @route("POST", "/reports/{id}/send")
-    def send(self, req):
-        self.emit("report.sent", {"id": req.params["id"]})
+    @command("report.send", schema={"type": "object", "required": ["id"]})
+    def send(self, call):
+        self.emit("report.sent", {"id": call.data["id"]})
         return {"ok": True}
 
-    @job("report.build", schema={"type": "object"})
-    def build(self, job):
-        job.progress(0.5, "половина")
+    @command("report.build", resumable=True, busy=True)
+    def build(self, call):
+        call.progress(0.5, "половина")
         return {"rows": self.settings.value["limit"]}
 
 if __name__ == "__main__":
     Report().run()
 ```
 
-Всё, что нужно агенту, база делает сама: сокет, `GET /health` (с `busy`, пока идут задачи),
-`GET /manifest` из объявлений и `VERSION`, настройки, задачи (ход, отмена, повтор `jobId`,
-продолжение после перезапуска — `resumable=True` и `WORKER_STATE_DIR`), события, запросы к бэкенду
-(`self.ask`), метрики, уборку. Базу не правят по месту: изменение базы — во всех воркерах сразу.
-Полный пример — `workers/echo/worker.py`.
+Всё, что нужно агенту, база делает сама: регистрацию с манифестом из объявлений и `VERSION`, поток
+`GET /stream` (желаемое, команды, отмена), итоги команд (доставка с повтором), ход, пульс раз в 10 с
+(с `busy`, пока идёт команда с `busy=True`, и метриками из `metrics()`), события, запросы к бэкенду
+(`self.ask`), продолжение команд после перезапуска (`resumable=True` и `WORKER_STATE_DIR`), уборку
+(`python3 worker.py cleanup` — файл `cleanup` воркера). Базу не правят по месту: изменение базы — во
+всех воркерах сразу. Полный пример — `workers/echo/worker.py`.
 
-- **Манифест — всё, что воркер умеет.** Агент пропускает только объявленное: маршруты (`@route`),
-  задачи (`@job`), события (`events`), запросы к бэкенду (`requests`), ключи настроек (`Config`);
-  по схемам бэкенд проверяет тела и `data`.
-- **Работа для воркера** — задача его типа: бэкенд ставит её очередью (`definition.job.type`) — см.
-  README модуля [agent](../src/modules/agent/README.md#своя-очередь-задач-и-воркер).
+- **Манифест — всё, что воркер умеет.** Агент пропускает только объявленное: команды (`@command`),
+  события (`events`), запросы к бэкенду (`requests`), ключи настроек (`Config`). По схемам бэкенд
+  проверяет аргументы команд (400 `AGENT_COMMAND_INVALID`), значения настроек
+  (400 `AGENT_CONFIG_INVALID`), `data` запросов воркера (`REQUEST_INVALID`) и событий (не подошло —
+  событие сохраняется с замечаниями `problems`).
+- **Команда** — `POST /api/v1/agents/{id}/workers/<имя>/commands` `{type, args, waitSeconds}`: итог —
+  в ответе, `GET /api/v1/agents/{id}/commands/{commandId}` и событие сокета `agent:command`.
+- **Работа очередью** — внешняя задача: тип задачи — команда воркера, аргументы — `{jobId, data,
+files}` (`call.data`, `call.files`), ход и итог — ход и итог команды; см. README модуля
+  [jobs](../src/modules/jobs/README.md).
 - **Запрос к бэкенду** (`self.ask(type, data)`) — ответ даёт обработчик в модуле-владельце:
-  `asWorkerRequestHandler(Класс)` — см. README модуля
-  [agent](../src/modules/agent/README.md#запросы-воркеров-к-серверу).
+  `asWorkerRequestHandler(Класс)` (пример — `src/modules/jobs/demo-echo-lookup.handler.ts`).
 - **Версия** — файл `VERSION` воркера. Новая версия — поднять `VERSION`, `yarn agent:pack` (или новый
-  образ API) и `POST /api/v1/agents/{id}/workers/<имя>/update`: если воркер занят долгой задачей,
-  замена ждёт её окончания (`deferred: true`, итог — событие `agent:action` в сокете).
+  образ API) и `POST /api/v1/agents/{id}/workers/<имя>/update`: занятый воркер агент заменит после
+  окончания работы (`force: true` — сразу); итог — итог команды `worker.update`.
 
 ## Как агент попадает на узел
 
@@ -120,15 +124,16 @@ yarn agent:pack                   # agent/bundle: agent-prod-<версия>-linu
 | Как                  | Что сделать                                                                                                                                                                                    |
 | -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | вручную, архивом     | `scp agent/bundle/agent-prod-…-linux-amd64.tar.gz узел:` → `tar xzf … && cd agent && sudo ./agent install --server https://<api> --token <токен>` (без root — `./agent install --rootless …`)  |
-| одной командой с API | `POST /api/v1/nodes/{id}/install-command` (или `/api/v1/agent-releases/install-command`) → `curl -fsSL https://<api>/api/v1/agent-link/bundle/install.sh \| sudo sh -s -- --token …`           |
+| одной командой с API | `POST /api/v1/nodes/{id}/install-command` (или `/api/v1/agent-enrollment/install-command`) → `curl -fsSL https://<api>/agent/v1/bundle/install.sh \| sudo sh -s -- --token …`                  |
 | с API по SSH         | `POST /api/v1/nodes/{id}/agent/install` — то же самое на узле, токен — файлом                                                                                                                  |
 | удалить              | `sudo agent-rest uninstall [--purge]` (без root — `agent-rest uninstall` без `sudo`), тем же скриптом `… \| sudo sh -s -- --uninstall [--purge]` или `POST /api/v1/nodes/{id}/agent/uninstall` |
 
-API раздаёт архивы и установщик агента из `AGENT_BUNDLE_DIR` (`/api/v1/agent-link/bundle/install.sh` —
-`install.sh` из релиза агента той же версии, `/api/v1/agent-link/bundle/linux-<arch>.tar.gz` — новейший архив);
+API раздаёт архивы и установщик агента из `AGENT_BUNDLE_DIR` (`/agent/v1/bundle/install.sh` —
+`install.sh` из релиза агента той же версии, `/agent/v1/bundle/linux-<arch>.tar.gz` — новейший архив,
+`/agent/v1/releases/*` — каталог сборок воркеров `release/`);
 в образе API их собирает стадия `agent-bundle` `Dockerfile`, для разработки — `yarn agent:pack`
 (`AGENT_BUNDLE_DIR=agent/bundle`). Установщику передаются `--server <API>` и
-`--bundle <API>/api/v1/agent-link/bundle/linux-{arch}.tar.gz`.
+`--bundle <API>/agent/v1/bundle/linux-{arch}.tar.gz`.
 
 На узле (экземпляр `rest`):
 
@@ -146,8 +151,8 @@ API раздаёт архивы и установщик агента из `AGENT
 ## Обновления и подписи
 
 - **Агент** на узле сам проверяет новые версии в своём каталоге сборок (`update.releases`; по
-  умолчанию — релизы GitHub `epifanovmd/agent`) и сообщает о них бэкенду: агент с новой версией —
-  кандидат на обновление (`GET /api/v1/agent-releases`). Обновить — `POST /api/v1/agents/{id}/update`
+  умолчанию — релизы GitHub `epifanovmd/agent`) и сообщает о них бэкенду (`updateAvailable` в
+  карточке агента). Обновить — `POST /api/v1/agents/{id}/update`
   или `sudo agent-rest upgrade` на узле (агент с `run` — новым запуском). Пересобирать бэкенд ради
   новой версии агента не нужно.
 - **Воркеры проекта** подписывает `agent pack` ключом проекта из `AGENT_SIGNING_KEY`.
@@ -180,7 +185,7 @@ docker compose --profile agent up -d    # агент рядом с API из dock
 
 ## Несколько копий бэкенда
 
-Агент подключён к одной копии API, и вызовы агента (запрос к воркеру, задача, действие,
-наблюдение) выполняет она. Копия без соединения агента отвечает `503` с кодом
-`AGENT_ELSEWHERE` и заголовком `Retry-After`: клиент повторяет запрос, а балансировщик перед
-копиями должен быть липким, чтобы повтор пришёл в копию с соединением.
+Поток агента (`GET /agent/v1/stream`) держит одна копия API; это записано в агенте
+(`stream_instance`). Любая копия пишет желаемое и команды в БД и будит копию с потоком через
+Postgres `NOTIFY agent_push`, итоги будят ждущих через `agent_result`. Поэтому команды, настройки и
+задачи работают через любую копию, липкий балансировщик не нужен.

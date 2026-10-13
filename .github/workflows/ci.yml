@@ -138,7 +138,7 @@ jobs:
             amazon/aws-cli:latest --endpoint-url http://localhost:8333 s3 mb s3://e2e
       - run: yarn install --frozen-lockfile --ignore-scripts
       - run: yarn generate
-      # Настоящий агент для сценариев агентов и узлов — сборки агента версии agent-sdk с
+      # Настоящий агент для сценариев агентов и узлов — сборки агента версии AGENT_VERSION с
       # GitHub Release в agent/dist (yarn agent:fetch, только эта платформа). Агент стенда
       # проверяет новые версии на локальном сервере сборок, не в GitHub; архив папки агента
       # стенд собирает сам (agent pack, свой ключ проекта).

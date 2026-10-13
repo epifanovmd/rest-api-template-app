@@ -93,21 +93,19 @@ const agentSummary = (
     online: agent.online,
     revoked: agent.revoked,
     version: agent.version ?? null,
-    address: agent.address ?? null,
-    lastSeenAt: agent.lastSeenAt ?? null,
+    address: agent.remoteIp ?? null,
+    lastSeenAt: agent.lastSeenAt ? agent.lastSeenAt.getTime() : null,
     host: host
       ? { hostname: host.hostname, os: host.os, arch: host.arch }
       : null,
     updateAvailable,
-    workers: agent.workers
-      .filter(worker => !worker.builtin)
-      .map(worker => ({
-        name: worker.name,
-        state: worker.state ?? null,
-        version: worker.version ?? null,
-        healthy: worker.health ? worker.health.ok : null,
-        busy: worker.health?.busy === true,
-      })),
+    workers: agent.workers.map(worker => ({
+      name: worker.name,
+      state: worker.state ?? null,
+      version: worker.version ?? null,
+      healthy: worker.health ? worker.health.ok : null,
+      busy: worker.health?.busy === true,
+    })),
   };
 };
 

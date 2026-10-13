@@ -32,8 +32,9 @@ describe("сборки воркеров проекта и обновление �
   let agent: RealAgent;
   let agentId: string;
 
-  const release = async () =>
-    expectStatus(await call(admin, "GET", "/api/v1/agent-releases"), 200).data;
+  const getAgent = async (id = agentId) =>
+    expectStatus(await call(admin, "GET", `/api/v1/agents/${id}`), 200).data;
+  const echoOf = (a: any) => a?.workers?.find((w: any) => w.name === "echo");
 
   before(async () => {
     admin = await signInAdmin();
@@ -43,9 +44,7 @@ describe("сборки воркеров проекта и обновление �
       token: AGENT_BOOTSTRAP_TOKEN,
       name: "e2e-release-agent",
       workers: ["echo-release"],
-      // Кандидат на обновление — только агент, который обновляет себя сам (self);
-      // сам он ничего не ставит, пока сервер не пришлёт agent.update.
-      updateMode: "self",
+      updateMode: "external",
     });
     agentId = agent.agentId;
   });
@@ -55,45 +54,67 @@ describe("сборки воркеров проекта и обновление �
     await agent?.stop();
   });
 
-  it("агент на связи; манифест сборок — воркеры проекта из release/ каталога архивов", async () => {
+  it("каталог сборок воркеров: API и публичный manifest.json; у агента — новая сборка воркера", async () => {
     const card = await eventually(
       async () => {
-        const a = (await call(admin, "GET", `/api/v1/agents/${agentId}`)).data;
-        const echo = a?.workers?.find((w: any) => w.name === "echo");
+        const a = await getAgent();
 
-        return a?.online && echo?.state === "running" && a;
+        return a.online && echoOf(a)?.state === "running" && a;
       },
       { what: "агент и воркер echo на связи", timeoutMs: 30_000 },
     );
 
     expect(card.version).to.equal(AGENT_VERSION);
+    expect(echoOf(card)).to.include({
+      release: true,
+      version: ECHO_PREVIOUS_VERSION,
+      updateAvailable: ECHO_VERSION,
+    });
 
-    const { manifest } = await release();
-    const sources = Object.fromEntries(
-      manifest.workers.map((w: any) => [w.name, w.source]),
+    const release = expectStatus(
+      await call(admin, "GET", "/api/v1/agent-enrollment/release"),
+      200,
+    ).data;
+    const [os, arch] = platform().split("-");
+
+    expect(release.bundle).to.equal(true);
+    expect(release.workers).to.deep.include({
+      name: "echo",
+      version: ECHO_VERSION,
+      os,
+      arch,
+    });
+
+    const manifest: any = await (
+      await fetch(`${BASE_URL}/agent/v1/releases/manifest.json`)
+    ).json();
+    const build = manifest.workers.find((w: any) => w.name === "echo");
+    const body = Buffer.from(
+      await (
+        await fetch(`${BASE_URL}/agent/v1/releases/${build.file}`)
+      ).arrayBuffer(),
     );
 
-    expect(sources).to.deep.equal({ echo: "local" });
-    for (const w of manifest.workers) {
-      expect(w.url).to.equal(
-        `/api/v1/agent-link/releases/${encodeURIComponent(w.file)}`,
-      );
-    }
+    expect(createHash("sha256").update(body).digest("hex")).to.equal(
+      build.sha256.toLowerCase(),
+    );
+    expect(
+      (await fetch(`${BASE_URL}/agent/v1/releases/..%2Fmanifest.json`)).status,
+    ).to.equal(404);
   });
 
-  it("установка с сервера: скрипт и архив папки агента (ключ проекта — в нём); сборка воркера — с сервера", async () => {
+  it("установка с сервера: скрипт и архив папки агента (ключ проекта — в нём)", async () => {
     const script = await (
-      await fetch(`${BASE_URL}/api/v1/agent-link/bundle/install.sh`)
+      await fetch(`${BASE_URL}/agent/v1/bundle/install.sh`)
     ).text();
 
-    // Установщик агента из его релиза (раздаёт бэкенд из каталога архивов).
     expect(script).to.include("--bundle URL");
     expect(script).to.include(
       '"$AGENT" install ${SERVER:+--server "$SERVER"} "$@"',
     );
 
     const archive = await fetch(
-      `${BASE_URL}/api/v1/agent-link/bundle/${platform()}.tar.gz`,
+      `${BASE_URL}/agent/v1/bundle/${platform()}.tar.gz`,
     );
 
     expect(archive.status).to.equal(200);
@@ -111,22 +132,67 @@ describe("сборки воркеров проекта и обновление �
     expect(info.publicKeys).to.deep.equal([PROJECT_KEYS.public]);
     expect(info.workers).to.include("echo");
     expect(
-      (await fetch(`${BASE_URL}/api/v1/agent-link/bundle/linux-sparc.tar.gz`))
-        .status,
+      (await fetch(`${BASE_URL}/agent/v1/bundle/linux-sparc.tar.gz`)).status,
     ).to.equal(404);
+  });
 
-    const { manifest } = await release();
-    const build = manifest.workers.find((w: any) => w.name === "echo");
-    const body = Buffer.from(
-      await (await fetch(`${BASE_URL}${build.url}`)).arrayBuffer(),
+  it("воркер проекта обновляется с сервера: подпись ключом проекта, итог — команда", async () => {
+    const queued = expectStatus(
+      await call(
+        admin,
+        "POST",
+        `/api/v1/agents/${agentId}/workers/echo/update`,
+        { force: true },
+      ),
+      200,
+    ).data;
+
+    expect(queued).to.include({
+      type: "worker.update",
+      worker: "echo",
+      status: "pending",
+    });
+    expect(queued.args).to.include({ worker: "echo", version: ECHO_VERSION });
+
+    const done = expectStatus(
+      await call(
+        admin,
+        "GET",
+        `/api/v1/agents/${agentId}/commands/${queued.id}?waitSeconds=60`,
+      ),
+      200,
+    ).data;
+
+    expect(done.ok, JSON.stringify(done.error)).to.equal(true);
+    expect(done.result).to.deep.equal({
+      version: ECHO_VERSION,
+      previous: ECHO_PREVIOUS_VERSION,
+    });
+    await eventually(
+      async () => {
+        const echo = echoOf(await getAgent());
+
+        return (
+          echo?.state === "running" &&
+          echo.version === ECHO_VERSION &&
+          !echo.updateAvailable
+        );
+      },
+      { what: "echo новой версии работает", timeoutMs: 30_000 },
     );
-
-    expect(createHash("sha256").update(body).digest("hex")).to.equal(
-      build.sha256.toLowerCase(),
+    expectStatus(
+      await call(
+        admin,
+        "POST",
+        `/api/v1/agents/${agentId}/workers/echo/update`,
+        { version: "9.9.9" },
+      ),
+      404,
+      "AGENT_RELEASE_NOT_FOUND",
     );
   });
 
-  it("новую версию нашёл сам агент: update агента, кандидат source=agent, agent:updated в сокете", async () => {
+  it("новую версию нашёл сам агент: updateAvailable в карточке и сокете; агент в контейнере себя не обновляет", async () => {
     // Свой каталог сборок агента: новее только для него — сервер её не видит.
     const catalog = createServer((req, res) => {
       if (!req.url?.endsWith("/latest/download/manifest.json")) {
@@ -144,80 +210,47 @@ describe("сборки воркеров проекта и обновление �
     const reported = socket.next(
       "agent:updated",
       (a: any) =>
-        a.name === "e2e-self-check" && a.update?.latest === NEXT_VERSION,
-      20_000,
+        a.name === "e2e-self-check" && a.updateAvailable === NEXT_VERSION,
+      30_000,
     );
     const self = await RealAgent.start({
       token: AGENT_BOOTSTRAP_TOKEN,
       name: "e2e-self-check",
       updateReleases: url,
-      updateMode: "self",
+      updateMode: "external",
+      workers: [],
     });
 
     try {
       expect((await reported).version).to.equal(AGENT_VERSION);
-      const card = expectStatus(
-        await call(admin, "GET", `/api/v1/agents/${self.agentId}`),
+      const card = await getAgent(self.agentId);
+
+      expect(card).to.include({
+        updateMode: "external",
+        updateAvailable: NEXT_VERSION,
+      });
+
+      const queued = expectStatus(
+        await call(admin, "POST", `/api/v1/agents/${self.agentId}/update`, {}),
         200,
       ).data;
 
-      expect(card.update).to.include({ latest: NEXT_VERSION });
-      // Режим обновления — из hello; агент запущен не agent install — способа установки нет.
-      expect(card.updateMode).to.equal("self");
-      expect(card.install).to.equal(undefined);
-      expect(
-        (await release()).candidates.find(
-          (c: any) => c.agentId === self.agentId,
+      expect(queued.args).to.deep.equal({ version: NEXT_VERSION });
+      const done = expectStatus(
+        await call(
+          admin,
+          "GET",
+          `/api/v1/agents/${self.agentId}/commands/${queued.id}?waitSeconds=20`,
         ),
-      ).to.include({
-        current: AGENT_VERSION,
-        target: NEXT_VERSION,
-        source: "agent",
-      });
+        200,
+      ).data;
+
+      expect(done).to.include({ status: "done", ok: false });
+      expect(done.error.code).to.equal("UPDATE_NOT_SUPPORTED");
     } finally {
       await self.stop();
       catalog.close();
+      await call(admin, "DELETE", `/api/v1/agents/${self.agentId}`);
     }
-  });
-
-  it("воркер проекта обновляется с сервера: подпись ключом проекта", async () => {
-    const { workerCandidates } = await release();
-
-    expect(
-      workerCandidates.find(
-        (c: any) => c.agentId === agentId && c.worker === "echo",
-      ),
-    ).to.include({ current: ECHO_PREVIOUS_VERSION, target: ECHO_VERSION });
-
-    const updated = expectStatus(
-      await call(
-        admin,
-        "POST",
-        `/api/v1/agents/${agentId}/workers/echo/update`,
-        {
-          force: true,
-        },
-      ),
-      200,
-    ).data;
-
-    expect(updated).to.include({
-      deferred: false,
-      version: ECHO_VERSION,
-      previous: ECHO_PREVIOUS_VERSION,
-    });
-    await eventually(
-      async () => {
-        const a = (await call(admin, "GET", `/api/v1/agents/${agentId}`)).data;
-        const echo = a?.workers?.find((w: any) => w.name === "echo");
-
-        return (
-          echo?.state === "running" &&
-          echo.version === ECHO_VERSION &&
-          echo.manifest?.version === ECHO_VERSION
-        );
-      },
-      { what: "echo новой версии работает", timeoutMs: 30_000 },
-    );
   });
 });

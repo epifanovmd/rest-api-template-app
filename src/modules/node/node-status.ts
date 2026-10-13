@@ -1,4 +1,4 @@
-import type { AgentConfigStatusDto, AgentDto } from "../agent";
+import type { AgentConfigDto, AgentDto } from "../agent";
 import { EJobRunStatus } from "../jobs";
 import { ENodeConfigStatus, ENodeJobKind, ENodeStatus } from "./node.types";
 
@@ -28,30 +28,19 @@ const isFailed = (job: INodeJobState): boolean =>
   job.status === EJobRunStatus.FAILED || job.status === EJobRunStatus.CANCELLED;
 
 /**
- * Первая беда воркеров агента: не зарегистрирован (`invalid`), упал
- * (`backoff`, `stopped`), не в порядке (`health.ok: false`), отказал в
- * настройке. Встроенный `sysmetrics` тоже считается.
+ * Первая беда воркеров агента: не зарегистрирован (`invalid`), упал (`backoff`, `stopped`),
+ * нездоров (пульс `ok: false`).
  */
 export const workerFailure = (agent: AgentDto): string | null => {
   for (const worker of agent.workers) {
     if (worker.state === "invalid") {
-      return `Воркер ${worker.name} не зарегистрирован: ${worker.message ?? "нет ответа на /health или /manifest"}`;
+      return `Воркер ${worker.name} не зарегистрирован: ${worker.message ?? "нет регистрации"}`;
     }
     if (worker.state === "backoff" || worker.state === "stopped") {
       return `Воркер ${worker.name} не работает`;
     }
     if (worker.health && !worker.health.ok) {
       return `Воркер ${worker.name}: ${worker.health.message ?? "не в порядке"}`;
-    }
-
-    const failed = Object.entries(worker.configs ?? {}).find(
-      ([, report]) => report.ok === false,
-    );
-
-    if (failed) {
-      const [key, report] = failed;
-
-      return `Воркер ${worker.name}, настройка ${key}: ${report.error?.message ?? "не применилась"}`;
     }
   }
 
@@ -67,7 +56,7 @@ export const workerFailure = (agent: AgentDto): string | null => {
 export const nodeStatus = (
   agent: AgentDto | null,
   job: INodeJobState | null,
-  configs: AgentConfigStatusDto[] = [],
+  configs: AgentConfigDto[] = [],
 ): INodeStatusResult => {
   if (job && isActive(job)) {
     return {
@@ -125,10 +114,9 @@ export interface INodeConfigSummary {
  */
 export const configSummary = (
   agent: AgentDto | null,
-  configs: AgentConfigStatusDto[],
+  configs: AgentConfigDto[],
 ): INodeConfigSummary => {
-  const name = (config: AgentConfigStatusDto) =>
-    `${config.worker}/${config.key}`;
+  const name = (config: AgentConfigDto) => `${config.worker}/${config.key}`;
   const failed = configs.filter(c => c.state === "failed").map(name);
   const pending = configs
     .filter(c => c.state !== "failed" && c.state !== "applied")

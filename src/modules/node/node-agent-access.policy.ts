@@ -13,7 +13,7 @@ const NODE_PERMISSION: Record<TAgentAction, string> = {
   logs: NodePermissions.LOGS,
   manage: NodePermissions.AGENT,
   config: NodePermissions.AGENT,
-  fetch: NodePermissions.AGENT,
+  command: NodePermissions.AGENT,
 };
 
 /**

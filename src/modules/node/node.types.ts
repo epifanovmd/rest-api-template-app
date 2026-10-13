@@ -6,7 +6,7 @@ export const NODE_NAME_MAX = 120;
 export const NODE_DESCRIPTION_MAX = 2000;
 /** Максимальная длина публичного адреса (имя хоста или IP). */
 export const NODE_HOST_MAX = 255;
-/** Длина имени агента узла (как у agent-sdk). */
+/** Длина имени агента узла (как у агента). */
 export const NODE_AGENT_NAME_MAX = 128;
 
 /**

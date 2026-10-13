@@ -12,7 +12,7 @@ import {
 
 /** Флаги установщика для архива этого сервера (https://api.example.com). */
 const BUNDLE =
-  "'--server' 'https://api.example.com' '--bundle' 'https://api.example.com/api/v1/agent-link/bundle/linux-{arch}.tar.gz'";
+  "'--server' 'https://api.example.com' '--bundle' 'https://api.example.com/agent/v1/bundle/linux-{arch}.tar.gz'";
 
 describe("ssh-plan", () => {
   it("shQuote: одинарные кавычки POSIX", () => {
@@ -39,11 +39,11 @@ describe("ssh-plan", () => {
     );
 
     expect(installScriptUrl("https://api.example.com/")).to.equal(
-      "https://api.example.com/api/v1/agent-link/bundle/install.sh",
+      "https://api.example.com/agent/v1/bundle/install.sh",
     );
     expect(download.privileged).to.equal(false);
     expect(download.command).to.include(
-      "'https://api.example.com/api/v1/agent-link/bundle/install.sh'",
+      "'https://api.example.com/agent/v1/bundle/install.sh'",
     );
     expect(install.privileged).to.equal(true);
     expect(install.command).to.equal(

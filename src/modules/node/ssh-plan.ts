@@ -1,11 +1,12 @@
 import type { ConnectConfig } from "ssh2";
 
-import { JobContext, JobError } from "../../core";
 import {
   bundleArchiveUrl,
   bundleInstallFlags,
   bundleInstallUrl,
-} from "../agent";
+  JobContext,
+  JobError,
+} from "../../core";
 import type { TNodeSshInstallMode } from "./dto";
 import type { ISshSession } from "./ssh-runner";
 

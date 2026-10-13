@@ -4,6 +4,7 @@ import { generateKeyPairSync } from "crypto";
 import { once } from "events";
 import {
   copyFileSync,
+  createWriteStream,
   existsSync,
   mkdtempSync,
   readFileSync,
@@ -132,20 +133,20 @@ export const readStored = async (key: string): Promise<string> => {
   }
 };
 
-/** Версия agent-sdk из `node_modules`. */
-const sdkVersion = (): string =>
-  (
-    JSON.parse(
-      readFileSync(resolve("node_modules/agent-sdk/package.json"), "utf8"),
-    ) as { version: string }
-  ).version;
+/** Версия агента: `AGENT_VERSION` окружения, иначе из `.env.example`. */
+export const agentVersion = (): string =>
+  process.env.AGENT_VERSION ||
+  (/^AGENT_VERSION=(\S+)/m.exec(
+    readFileSync(resolve(".env.example"), "utf8"),
+  )?.[1] ??
+    "");
 
 /**
  * Сборки агента с GitHub (`yarn agent:fetch`): программа агента под каждую
- * платформу, `manifest.json`, `install.sh`. По умолчанию — версии agent-sdk.
+ * платформу, `manifest.json`, `install.sh`. По умолчанию — версии `AGENT_VERSION`.
  */
 export const AGENT_DIST_DIR = resolve(
-  env.E2E_AGENT_DIST_DIR ?? `agent/dist/v${sdkVersion()}`,
+  env.E2E_AGENT_DIST_DIR ?? `agent/dist/v${agentVersion()}`,
 );
 
 /** Версия сборок агента стенда — из их `manifest.json`. */
@@ -155,7 +156,7 @@ export const AGENT_VERSION = existsSync(join(AGENT_DIST_DIR, "manifest.json"))
         readFileSync(join(AGENT_DIST_DIR, "manifest.json"), "utf8"),
       ) as { version: string }
     ).version
-  : sdkVersion();
+  : agentVersion();
 
 /** Агенты стенда: общий токен регистрации. */
 export const AGENT_BOOTSTRAP_TOKEN = "e2e-bootstrap-token-0123456789abcdef0123";
@@ -304,7 +305,7 @@ const serverEnv = (port: number): NodeJS.ProcessEnv => ({
   ADMIN_PASSWORD: E2E.admin.password,
   AGENT_BOOTSTRAP_TOKEN,
   AGENT_BUNDLE_DIR: bundleDir,
-  AGENT_STATUS_INTERVAL_MS: "1000",
+  AGENT_STATE_INTERVAL_MS: "1000",
   AGENT_METRICS_INTERVAL_MS: "1000",
   AGENT_METRICS_STORE_INTERVAL_MS: "0",
 });
@@ -320,6 +321,15 @@ const spawnServer = async (port: number): Promise<ChildProcess> => {
 
   child.stdout?.on("data", chunk => logs.push(String(chunk)));
   child.stderr?.on("data", chunk => logs.push(String(chunk)));
+  // Журнал копии API в файл — разбирать падения сценариев.
+  if (env.E2E_SERVER_LOG) {
+    const file = createWriteStream(`${env.E2E_SERVER_LOG}.${port}`, {
+      flags: "a",
+    });
+
+    child.stdout?.pipe(file);
+    child.stderr?.pipe(file);
+  }
 
   for (let i = 0; i < 120; i += 1) {
     if (child.exitCode !== null) break;

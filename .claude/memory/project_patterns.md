@@ -192,9 +192,9 @@ describe("FeatureService", () => {
   видимая задача + ожидание итога (`JobResultWaiter`: сигнал `job_settled` из транзакции завершения,
   опрос 5 с / 1 с без LISTEN). Ошибка → 502 `JOB_REQUEST_FAILED` (`details.code`), таймаут → 504
   `JOB_REQUEST_TIMEOUT` и задача снимается. `manager` передать нельзя (ждать чужого коммита некому).
-- Внешние задачи (с 09.10.2026 — стандарт `/jobs` SDK): core-токен `EXTERNAL_JOB_EXECUTOR`
+- Внешние задачи (команды воркерам, протокол агента 1.0.0): core-токен `EXTERNAL_JOB_EXECUTOR`
   (`IExternalJobExecutor`: canDispatch/dispatch → `ExternalJobUpdate`/poll/cancel/onUpdate/onReconnect), реализация —
-  `AgentJobExecutor` (agent). Jobs не импортирует agent. `definition.job: { type, worker? }` (обязателен, иначе
+  `AgentJobExecutor` (core/agent). Jobs не импортирует agent. `definition.job: { type, worker? }` (обязателен, иначе
   ошибка регистрации), хуки `jobType?(info)`, `io?(info)` (ключи FileStorage → подписанные GET/PUT, ttl ≥
   expireInSeconds), `onComplete(ctx{outputs})`, `onFail`. Штатной остановки нет (`JobQueue.stop`, `POST /jobs/{id}/stop`,
   `stopRequested` удалены миграцией `NodeAgentName1791600000000`).
@@ -203,10 +203,10 @@ describe("FeatureService", () => {
   Захват записи — `claimDispatch` (status queued, external_id NULL, started_at NULL или старше 90 с → ставит
   started_at; статус остаётся queued), неудача — `releaseDispatch` (started_at NULL, error). pg-boss `dispatch`
   — тот же захват; захвачено другим → `JOB_DISPATCHING` (retry). Reconnect агента → `reconcile` + `startQueued`.
-- `AgentJobExecutor.dispatch`: агенты online, воркер running с типом в `workerManifest().jobs`, только local
-  (агент другой копии — AGENT_ELSEWHERE retry); data по схеме типа (JOB_INVALID final); `startAgentJob` (agent-jobs.ts,
-  `fetch POST /jobs`) — 200 → `done` (workId = run.id), 202 → `progress` (workId = id воркера). JOB_REJECTED: 408/409/429/5xx — retry, иначе final; JOB_INVALID — final.
-  События `job.*` (JOB_EVENTS) → `ExternalJobService.apply`. Логгер редактирует ключ `code` — писать `errorCode`.
+- `AgentJobExecutor.dispatch`: агенты online, воркер running с командой типа в `manifest.commands`, свободные
+  (health.busy false) первыми; команда `worker.command` id `<jobId>.<attempt>`, args `{jobId,data,files}`; data не по
+  схеме → JobError(AGENT_COMMAND_INVALID, final). Ход — `AgentCommandProgressEvent`, итог — `AgentCommandFinishedEvent`
+  → `ExternalJobService.apply`; CANCELLED → cancelled. Логгер редактирует ключ `code` — писать `errorCode`.
 - S3 (SeaweedFS) presigned PUT: `content-type` должен быть подписан и совпадать (без ContentType — 403) →
   выходам задавать `contentType`, воркер шлёт ровно его (echo — `text/plain`).
 
@@ -237,7 +237,7 @@ describe("FeatureService", () => {
   `job_runs.job_type` (+ `worker` очереди) пишется `setTarget` до `executor.dispatch`.
 - Нагрузка узла своим — `OwnedEntityEmitter.toOwners`: `node:load {nodeId, agentId, point:{at, host}}` из `AgentMetricsReceivedEvent` (не чаще
   `NODE_LOAD_EMIT_MS` на агента; при watch метрики идут раз в секунду).
-- Пересылки между копиями нет: `instanceId` — адрес API копии; вызов агента в другой копии —
-  503 AGENT_ELSEWHERE + `Retry-After` (заголовок — `req.ctx.set`: `this.setHeader` tsoa на ошибке не
-  доходит). e2e: вторая копия (`startPeerServer`) — 503. Миграционный тест `node.repository.integration` откатывает
+- Несколько копий: поток агента держит одна (`agents.stream_instance`), остальные пишут в БД и будят её
+  `NOTIFY agent_push`; ждущие итога — `agent_result`. e2e: вторая копия (`startPeerServer`) — команды проходят.
+  Миграционный тест `node.repository.integration` (TEST_DATABASE_URL) откатывает
   последние миграции по порядку — новая миграция добавляет туда шаг.

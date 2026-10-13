@@ -4,11 +4,11 @@
 # (echo).
 #
 #   docker build -f agent/docker/Dockerfile -t agent .
-#   docker run --rm -e AGENT_SERVER_URL=http://api:8181 \
+#   docker run --rm -e AGENT_SERVER_URL=http://api:8181 -e AGENT_SERVER_ALLOW_INSECURE=true \
 #     -e AGENT_ENROLL_TOKEN=<токен регистрации> -v agent-data:/var/lib/agent agent
 #
 # Программа агента — с GitHub Release агента версии AGENT_VERSION (`--build-arg AGENT_VERSION=…`,
-# по умолчанию — как agent-sdk в package.json); контрольная сумма сверяется с manifest.json.
+# по умолчанию — AGENT_VERSION из .env.example); контрольная сумма сверяется с manifest.json.
 # Обновление — новым образом (update.mode: external); ключ агента — в томе /var/lib/agent.
 ARG PYTHON_VERSION=3.12-slim
 
@@ -16,12 +16,11 @@ ARG PYTHON_VERSION=3.12-slim
 FROM python:${PYTHON_VERSION} AS agent-bin
 ARG AGENT_VERSION
 ARG TARGETARCH
-COPY package.json /tmp/package.json
+COPY .env.example /tmp/.env.example
 RUN python - <<'PY'
 import hashlib, json, os, re, urllib.request
 
-version = os.environ.get("AGENT_VERSION") or re.search(
-    r"agent-sdk-([^/]+)\.tgz", json.load(open("/tmp/package.json"))["dependencies"]["agent-sdk"]).group(1)
+version = os.environ.get("AGENT_VERSION") or re.search(r"^AGENT_VERSION=(\S+)", open("/tmp/.env.example").read(), re.M).group(1)
 arch = os.environ["TARGETARCH"]
 base = f"https://github.com/epifanovmd/agent/releases/download/v{version}"
 manifest = json.load(urllib.request.urlopen(f"{base}/manifest.json"))

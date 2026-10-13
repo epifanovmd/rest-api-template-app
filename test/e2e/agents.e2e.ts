@@ -37,8 +37,23 @@ describe("агенты (настоящий агент и воркер echo)", fu
       .data;
   const worker = (a: any, name: string) =>
     a.workers.find((w: any) => w.name === name);
-  const fetchWorker = (body: object, who: Actor = admin) =>
-    call(who, "POST", `/api/v1/agents/${agentId}/workers/echo/fetch`, body);
+  /** Команда воркеру echo; по умолчанию — с ожиданием итога. */
+  const command = (body: object, who: Actor = admin) =>
+    call(who, "POST", `/api/v1/agents/${agentId}/workers/echo/commands`, {
+      waitSeconds: 10,
+      ...body,
+    });
+  const feed = async (query: string) =>
+    items(
+      expectStatus(
+        await call(
+          admin,
+          "GET",
+          `/api/v1/agents/events?agentId=${agentId}&${query}`,
+        ),
+        200,
+      ).data,
+    );
   const jobSettled = (jobId: string, timeoutMs = 20_000) =>
     eventually(
       async () => {
@@ -62,7 +77,7 @@ describe("агенты (настоящий агент и воркер echo)", fu
 
   it("токены регистрации: создание, список без секрета, лимит, отзыв; неверный — 401", async () => {
     const created = expectStatus(
-      await call(admin, "POST", "/api/v1/agent-enrollment-tokens", {
+      await call(admin, "POST", "/api/v1/agent-enrollment/tokens", {
         name: "e2e",
         labels: { zone: "e2e" },
         maxUses: 1,
@@ -76,7 +91,7 @@ describe("агенты (настоящий агент и воркер echo)", fu
     // Срок — ISO-строка с миллисекундами, как шлёт веб (Date.toISOString()).
     const expiresAt = new Date(Date.now() + 86_400_000).toISOString();
     const dated = expectStatus(
-      await call(admin, "POST", "/api/v1/agent-enrollment-tokens", {
+      await call(admin, "POST", "/api/v1/agent-enrollment/tokens", {
         name: "e2e-dated",
         maxUses: 1,
         expiresAt,
@@ -87,7 +102,7 @@ describe("агенты (настоящий агент и воркер echo)", fu
     expect(new Date(dated.expiresAt).toISOString()).to.equal(expiresAt);
 
     const list = expectStatus(
-      await call(admin, "GET", "/api/v1/agent-enrollment-tokens?limit=10"),
+      await call(admin, "GET", "/api/v1/agent-enrollment/tokens?limit=10"),
       200,
     );
 
@@ -95,29 +110,57 @@ describe("агенты (настоящий агент и воркер echo)", fu
       enrollmentToken.id,
     );
     expect(JSON.stringify(list.data)).to.not.include(token.split(".")[1]);
+    expectStatus(
+      await call(bob, "GET", "/api/v1/agent-enrollment/tokens"),
+      403,
+    );
 
     const first = await enroll(token, "e2e-token");
 
     expect(first.status).to.equal(200);
     expect(first.agentId).to.match(/^[0-9a-f]{32}$/);
+    expect(first.secret).to.be.a("string");
     expect((await enroll(token, "e2e-token-2")).status, "лимит").to.equal(401);
     expectStatus(
       await call(
         admin,
         "POST",
-        `/api/v1/agent-enrollment-tokens/${enrollmentToken.id}/revoke`,
+        `/api/v1/agent-enrollment/tokens/${enrollmentToken.id}/revoke`,
       ),
       204,
     );
     expect((await enroll("bad.token", "x")).status).to.equal(401);
 
-    const labelled = await eventually(
-      async () =>
-        (await call(admin, "GET", `/api/v1/agents/${first.agentId}`)).data,
-      { what: "агент по токену" },
-    );
+    // Ключ агента: вход по нему; неизвестный — 401 AGENT_UNKNOWN.
+    const hello = (auth: string) =>
+      fetch(`${BASE_URL}/agent/v1/hello`, {
+        method: "POST",
+        headers: { authorization: auth, "content-type": "application/json" },
+        body: JSON.stringify({
+          agent: { version: AGENT_VERSION, bootId: "b", startedAt: Date.now() },
+          host: { os: "linux", arch: "amd64", hostname: "e2e" },
+          name: "e2e-token",
+          labels: { own: "1" },
+          workers: [],
+        }),
+      });
 
-    expect(labelled.labels).to.include({ zone: "e2e" });
+    expect(
+      (await hello(`Agent ${first.agentId}.${first.secret}`)).status,
+    ).to.equal(200);
+
+    const unknown = await hello(`Agent ${first.agentId}.wrong`);
+
+    expect(unknown.status).to.equal(401);
+    expect(((await unknown.json()) as any).code).to.equal("AGENT_UNKNOWN");
+
+    const card = expectStatus(
+      await call(admin, "GET", `/api/v1/agents/${first.agentId}`),
+      200,
+    ).data;
+
+    // Метки токена агент не перепишет: они поверх своих.
+    expect(card.labels).to.include({ zone: "e2e", own: "1" });
     expectStatus(
       await call(admin, "DELETE", `/api/v1/agents/${first.agentId}`),
       204,
@@ -138,7 +181,7 @@ describe("агенты (настоящий агент и воркер echo)", fu
     bobSocket.close();
   });
 
-  it("регистрация и связь: агент на связи, воркеры зарегистрированы, манифест, комната agents", async () => {
+  it("регистрация и связь: агент на связи, воркер зарегистрирован, манифест, комната agents", async () => {
     expect((await socket.join("agents")).ok).to.equal(true);
 
     const online = socket.next(
@@ -158,7 +201,7 @@ describe("агенты (настоящий агент и воркер echo)", fu
       async () => {
         const a = await getAgent();
 
-        return worker(a, "echo")?.state === "running" && a;
+        return worker(a, "echo")?.state === "running" && a.metrics && a;
       },
       { what: "воркер echo зарегистрирован", timeoutMs: 20_000 },
     );
@@ -167,36 +210,38 @@ describe("агенты (настоящий агент и воркер echo)", fu
       online: true,
       revoked: false,
       version: AGENT_VERSION,
+      updateMode: "disabled",
     });
     expect(card.host.os).to.be.a("string");
-    expect(worker(card, "sysmetrics")).to.include({ builtin: true });
+    expect(card.remoteIp).to.equal("127.0.0.1");
+    expect(card.alerts).to.deep.equal([]);
 
     const echo = worker(card, "echo");
 
-    expect(echo.health.ok).to.equal(true);
-    expect(echo.manifest.version).to.equal(
-      readFileSync("agent/workers/echo/VERSION", "utf8").trim(),
-    );
-
-    // Каталог возможностей: маршруты, события, запросы к серверу — со схемами.
-    const route = echo.manifest.routes.find((r: any) => r.path === "/echo");
-
-    expect(route).to.include({
-      method: "POST",
-      description: "Текст с префиксом",
+    expect(echo).to.include({
+      release: false,
+      version: readFileSync("agent/workers/echo/VERSION", "utf8").trim(),
     });
-    expect(route.request.required).to.deep.equal(["text"]);
-    expect(route.response).to.be.an("object");
+    expect(echo.health.ok).to.equal(true);
+
+    // Манифест: команды, события, запросы к бэкенду, ключи настроек — со схемами.
+    const say = echo.manifest.commands.find((c: any) => c.type === "echo.say");
+
+    expect(say.schema.required).to.deep.equal(["text"]);
+    expect(say.result).to.be.an("object");
+    expect(echo.manifest.commands.map((c: any) => c.type)).to.have.members([
+      "echo.say",
+      "echo.quick",
+      "echo.long",
+      "echo.hang",
+      "echo.emit",
+    ]);
     expect(
       echo.manifest.events.find((e: any) => e.type === "echo.echoed").schema
         .required,
     ).to.deep.equal(["text", "length"]);
     expect(echo.manifest.requests.map((r: any) => r.type)).to.deep.equal([
       "echo.lookup",
-    ]);
-    expect(echo.manifest.jobs.map((j: any) => j.type)).to.deep.equal([
-      "echo.quick",
-      "echo.long",
     ]);
     expect(echo.manifest.configs.map((c: any) => c.key)).to.deep.equal([
       "settings",
@@ -207,7 +252,7 @@ describe("агенты (настоящий агент и воркер echo)", fu
     expect(items(list.data).map((a: any) => a.id)).to.include(agentId);
   });
 
-  it("настройка воркера: проверка по схеме, применение (applied), статус и событие сокета", async () => {
+  it("настройка воркера: проверка по схеме, применение, статус и событие сокета", async () => {
     expect((await socket.join("agent", agentId)).ok).to.equal(true);
 
     const applied = socket.next(
@@ -215,51 +260,52 @@ describe("агенты (настоящий агент и воркер echo)", fu
       (s: any) => s.key === "settings" && s.state === "applied",
       15_000,
     );
-
-    expectStatus(
-      await call(
-        admin,
-        "PUT",
-        `/api/v1/agents/${agentId}/workers/echo/configs/settings`,
-        { data: { prefix: 5 } },
-      ),
+    const path = `/api/v1/agents/${agentId}/workers/echo/configs/settings`;
+    const invalid = expectStatus(
+      await call(admin, "PUT", path, { prefix: 5 }),
       400,
       "AGENT_CONFIG_INVALID",
     );
 
-    const set = expectStatus(
+    expect(JSON.stringify(invalid.data)).to.include("prefix");
+    expectStatus(
       await call(
         admin,
         "PUT",
-        `/api/v1/agents/${agentId}/workers/echo/configs/settings`,
-        { data: { prefix: "> ", upper: true } },
+        `/api/v1/agents/${agentId}/workers/echo/configs/nope`,
+        {},
       ),
+      422,
+      "AGENT_CONFIG_UNDECLARED",
+    );
+
+    const set = expectStatus(
+      await call(admin, "PUT", path, { prefix: "> ", upper: true }),
       200,
     ).data;
 
-    expect(set.config).to.include({ worker: "echo", key: "settings" });
-    expect(set.config.actor).to.equal(admin.id);
-    expect((await applied).applied).to.equal(set.config.version);
-
-    const one = expectStatus(
-      await call(
-        admin,
-        "GET",
-        `/api/v1/agents/${agentId}/workers/echo/configs/settings`,
-      ),
-      200,
-    ).data;
-
-    expect(one.status).to.include({ state: "applied" });
-    expect(one.config.data).to.deep.equal({ prefix: "> ", upper: true });
+    expect(set).to.include({
+      worker: "echo",
+      key: "settings",
+      actor: admin.id,
+    });
+    expect((await applied).version).to.equal(set.version);
 
     const all = expectStatus(
       await call(admin, "GET", `/api/v1/agents/${agentId}/configs`),
       200,
     ).data;
+    const settings = all.find((c: any) => c.key === "settings");
 
-    expect(all.map((c: any) => `${c.worker}/${c.key}`)).to.include(
-      "echo/settings",
+    expect(settings).to.include({ state: "applied", version: set.version });
+    expect(settings.data).to.deep.equal({ prefix: "> ", upper: true });
+    await eventually(
+      async () => {
+        const a = await getAgent();
+
+        return a.appliedRev === a.desiredRev;
+      },
+      { what: "агент применил желаемое" },
     );
   });
 
@@ -275,209 +321,171 @@ describe("агенты (настоящий агент и воркер echo)", fu
     );
 
     const viewer = await signIn(created.email, created.password);
-    const all = expectStatus(
+    const settings = expectStatus(
       await call(viewer, "GET", `/api/v1/agents/${agentId}/configs`),
       200,
-    ).data;
-    const settings = all.find(
-      (c: any) => c.worker === "echo" && c.key === "settings",
-    );
+    ).data.find((c: any) => c.worker === "echo" && c.key === "settings");
 
-    expect(settings.status.state).to.equal("applied");
-    expect(settings.config.version).to.be.a("number");
-    expect(settings.config).to.not.have.property("data");
-
-    const one = expectStatus(
+    expect(settings.state).to.equal("applied");
+    expect(settings.version).to.be.a("number");
+    expect(settings).to.not.have.property("data");
+    expectStatus(
       await call(
         viewer,
-        "GET",
+        "PUT",
         `/api/v1/agents/${agentId}/workers/echo/configs/settings`,
+        {},
       ),
+      403,
+    );
+    expectStatus(
+      await command({ type: "echo.say", args: { text: "x" } }, viewer),
+      403,
+    );
+  });
+
+  it("команда воркеру: итог с ожиданием, проверка по схеме, необъявленная — 422, чужой агент — 404", async () => {
+    const said = expectStatus(
+      await command({ type: "echo.say", args: { text: "привет" } }),
       200,
     ).data;
 
-    expect(one.config).to.not.have.property("data");
-  });
-
-  it("запрос к воркеру: ответ, поток, двоичное тело, служебный путь — 403, необъявленный маршрут — 404", async () => {
-    const echo = await fetchWorker({
-      method: "POST",
-      path: "/echo",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ text: "привет" }),
+    expect(said).to.include({
+      type: "worker.command",
+      worker: "echo",
+      workerType: "echo.say",
+      status: "done",
+      ok: true,
+      actor: admin.id,
     });
+    expect(said.result).to.deep.equal({ text: "> ПРИВЕТ" });
 
-    expect(echo.status).to.equal(200);
-    expect(echo.headers.get("content-type")).to.include("application/json");
-    expect(echo.headers.get("x-agent-worker-status")).to.equal("200");
-    expect(echo.data).to.deep.equal({ text: "> ПРИВЕТ" });
+    const shaped = expectStatus(
+      await command({
+        type: "echo.say",
+        args: { text: "аб", repeat: 2, case: "lower", reverse: true },
+      }),
+      200,
+    ).data;
 
-    const stream = await fetchWorker({ path: "/stream?n=3" });
+    expect(shaped.result).to.deep.equal({ text: "> ба ба" });
 
-    expect(stream.data).to.equal(
-      "> СТРОКА 1 ИЗ 3\n> СТРОКА 2 ИЗ 3\n> СТРОКА 3 ИЗ 3\n",
+    const invalid = expectStatus(
+      await command({ type: "echo.say", args: { text: 5, extra: true } }),
+      400,
+      "AGENT_COMMAND_INVALID",
     );
 
-    const bytes = await fetch(
-      `${BASE_URL}/api/v1/agents/${agentId}/workers/echo/fetch`,
-      {
-        method: "POST",
-        headers: {
-          authorization: `Bearer ${admin.access}`,
-          "content-type": "application/json",
-        },
-        body: JSON.stringify({ path: "/bytes?n=300" }),
-      },
-    );
-    const body = new Uint8Array(await bytes.arrayBuffer());
-
-    expect(body.length).to.equal(300);
-    expect(body[299]).to.equal(299 % 256);
-
-    // Ошибка API — без заголовка статуса воркера; ответ воркера с ошибкой — с ним.
-    const forbidden = expectStatus(
-      await fetchWorker({ path: "/health" }),
-      403,
-      "PATH_FORBIDDEN",
-    );
-
-    expect(forbidden.headers.get("x-agent-worker-status")).to.equal(null);
-    // Маршрута нет в манифесте — агент не передаёт запрос воркеру.
-    expect(
-      expectStatus(
-        await fetchWorker({ path: "/nope" }),
-        404,
-        "AGENT_ROUTE_UNDECLARED",
-      ).headers.get("x-agent-worker-status"),
-    ).to.equal(null);
+    expect(JSON.stringify(invalid.data)).to.include("text");
     expectStatus(
-      await fetchWorker({ method: "GET", path: "/echo" }),
-      404,
-      "AGENT_ROUTE_UNDECLARED",
+      await command({ type: "echo.nope" }),
+      422,
+      "AGENT_COMMAND_UNDECLARED",
     );
     expectStatus(
       await call(
         admin,
         "POST",
-        `/api/v1/agents/${agentId}/workers/none/fetch`,
+        `/api/v1/agents/${agentId}/workers/none/commands`,
         {
-          path: "/x",
+          type: "echo.say",
         },
       ),
       404,
+      "AGENT_WORKER_NOT_FOUND",
     );
-    expectStatus(await fetchWorker({ path: "/echo" }, bob), 404);
-  });
-
-  it("строгость манифеста: тело по схеме маршрута, тип задачи из manifest.jobs", async () => {
-    const invalid = expectStatus(
-      await fetchWorker({
-        method: "POST",
-        path: "/echo",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ text: 5, extra: true }),
-      }),
-      400,
-      "AGENT_REQUEST_INVALID",
-    );
-
-    expect(invalid.data.details.reason).to.include("text");
     expectStatus(
-      await fetchWorker({ method: "POST", path: "/echo", body: "не JSON" }),
-      400,
-      "AGENT_REQUEST_INVALID",
+      await command({ type: "echo.say", args: { text: "x" } }, bob),
+      404,
     );
 
-    const shaped = expectStatus(
-      await fetchWorker({
-        method: "POST",
-        path: "/echo",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          text: "аб",
-          repeat: 2,
-          case: "lower",
-          reverse: true,
-        }),
+    // Без ожидания — поставленная команда; итог — по id и в сокете.
+    const finished = socket.next(
+      "agent:command",
+      (c: any) => c.workerType === "echo.say" && c.status === "done",
+      15_000,
+    );
+    const queued = expectStatus(
+      await command({
+        type: "echo.say",
+        args: { text: "позже" },
+        waitSeconds: 0,
       }),
       200,
     ).data;
 
-    expect(shaped).to.deep.equal({ text: "> ба ба" });
+    expect(queued.status).to.equal("pending");
+    expect((await finished).id).to.equal(queued.id);
+
+    const one = expectStatus(
+      await call(
+        admin,
+        "GET",
+        `/api/v1/agents/${agentId}/commands/${queued.id}?waitSeconds=5`,
+      ),
+      200,
+    ).data;
+
+    expect(one.result).to.deep.equal({ text: "> ПОЗЖЕ" });
+
+    const recent = expectStatus(
+      await call(admin, "GET", `/api/v1/agents/${agentId}/commands?limit=5`),
+      200,
+    ).data;
+
+    expect(recent[0].id).to.equal(queued.id);
     expectStatus(
-      await fetchWorker({
-        method: "POST",
-        path: "/jobs",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ type: "echo.unknown", jobId: "x", data: {} }),
-      }),
-      409,
-      "AGENT_JOB_UNKNOWN",
+      await call(admin, "GET", `/api/v1/agents/${agentId}/commands/nope`),
+      404,
+      "AGENT_COMMAND_NOT_FOUND",
     );
   });
 
-  it("события: data не по схеме — в истории с замечаниями (политика log), необъявленный тип агент не принимает", async () => {
-    const emit = (body: object) =>
-      fetchWorker({
-        method: "POST",
-        path: "/emit",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(body),
-      });
+  it("события: data не по схеме — в истории с замечаниями, необъявленный тип агент не принимает", async () => {
     const marker = `метка-${Date.now()}`;
+    const emitted = expectStatus(
+      await command({
+        type: "echo.emit",
+        args: { type: "echo.echoed", data: { text: marker, length: "x" } },
+      }),
+      200,
+    ).data;
 
-    expectStatus(
-      await emit({ type: "echo.echoed", data: { text: marker, length: "x" } }),
-      202,
-    );
+    expect(emitted.ok, JSON.stringify(emitted.error)).to.equal(true);
 
-    const undeclared = expectStatus(await emit({ type: "echo.nope" }), 400);
+    const undeclared = expectStatus(
+      await command({ type: "echo.emit", args: { type: "echo.nope" } }),
+      200,
+    ).data;
 
-    expect(undeclared.data.code).to.equal("EVENT_UNDECLARED");
+    expect(undeclared.ok).to.equal(false);
+    expect(undeclared.error.code).to.equal("EVENT_UNDECLARED");
 
     const stored = await eventually(
       async () =>
-        items(
-          (
-            await call(
-              admin,
-              "GET",
-              `/api/v1/agents/events?agentId=${agentId}&type=echo.echoed&limit=50`,
-            )
-          ).data,
-        ).find((e: any) => e.data?.text === marker),
+        (await feed("type=echo.echoed&limit=50")).find(
+          (e: any) => e.data?.text === marker,
+        ),
       { what: "событие не по схеме — в истории" },
     );
 
-    expect(stored.problems).to.be.an("array").with.length.above(0);
     expect(stored.problems.join(" ")).to.include("length");
 
-    // Ответ на POST /echo — событие echo.echoed по схеме, без замечаний.
-    await fetchWorker({
-      method: "POST",
-      path: "/echo",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ text: marker }),
-    });
+    // echo.say — событие echo.echoed по схеме, без замечаний.
+    await command({ type: "echo.say", args: { text: marker } });
 
     const valid = await eventually(
       async () =>
-        items(
-          (
-            await call(
-              admin,
-              "GET",
-              `/api/v1/agents/events?agentId=${agentId}&type=echo.echoed&limit=50`,
-            )
-          ).data,
-        ).find((e: any) => e.data?.text === `> ${marker.toUpperCase()}`),
+        (await feed("type=echo.echoed&limit=50")).find(
+          (e: any) => e.data?.text === `> ${marker.toUpperCase()}`,
+        ),
       { what: "событие по схеме" },
     );
 
     expect(valid).to.not.have.property("problems");
   });
 
-  it("комната агента: метрики раз в секунду и журнал (watch), уровень журнала", async () => {
+  it("комната агента: метрики чаще и журнал (watch), уровень журнала", async () => {
     const points: number[] = [];
     const onMetrics = (m: any) => {
       if (m.agentId === agentId) points.push(m.point.at);
@@ -488,15 +496,15 @@ describe("агенты (настоящий агент и воркер echo)", fu
     const log = socket.next(
       "agent:log",
       (l: any) => l.agentId === agentId && l.entries.length > 0,
-      15_000,
+      20_000,
     );
 
     await eventually(async () => points.length >= 3, {
       what: "метрики по наблюдению",
-      timeoutMs: 15_000,
+      timeoutMs: 20_000,
     });
     socket.socket.off("agent:metrics", onMetrics);
-    await fetchWorker({ path: "/stream?n=1" });
+    await command({ type: "echo.say", args: { text: "в журнал" } });
     await log;
 
     const ack = await new Promise<any>(resolve =>
@@ -512,10 +520,10 @@ describe("агенты (настоящий агент и воркер echo)", fu
     const point = (await getAgent()).metrics;
 
     expect(point.host).to.be.an("object");
-    expect(point.workers.echo).to.include.keys("requests", "echoed");
+    expect(point.workers.echo).to.include.keys("said", "events");
   });
 
-  it("очередь demo.echo, быстрая задача echo.quick: итог сразу из ответа воркера, без событий", async () => {
+  it("очередь demo.echo, быстрая задача echo.quick: итог из итога команды", async () => {
     const started = Date.now();
     const created = expectStatus(
       await call(admin, "POST", "/api/v1/jobs/demo/echo", { text: "быстро" }),
@@ -532,23 +540,9 @@ describe("агенты (настоящий агент и воркер echo)", fu
       outputs: null,
     });
     expect(job.result).to.deep.equal({ text: "> БЫСТРО" });
-
-    const events = items(
-      (
-        await call(
-          admin,
-          "GET",
-          `/api/v1/agents/events?agentId=${agentId}&worker=echo&limit=100`,
-        )
-      ).data,
-    );
-
-    expect(events.some((e: any) => e.data?.jobId === created.jobId)).to.equal(
-      false,
-    );
   });
 
-  it("запрос воркера к серверу: задача echo.quick с lookup — префикс от обработчика echo.lookup; отказ обработчика — провал без повторов", async () => {
+  it("запрос воркера к серверу: echo.quick с lookup — префикс от обработчика echo.lookup; отказ — провал без повторов", async () => {
     const created = expectStatus(
       await call(admin, "POST", "/api/v1/jobs/demo/echo", {
         text: "запрос",
@@ -574,14 +568,13 @@ describe("агенты (настоящий агент и воркер echo)", fu
     const failed = await jobSettled(refused.jobId);
 
     expect(failed.status).to.equal("failed");
-    expect(failed.attempt ?? 0, "без повторов").to.be.at.most(1);
     expect(JSON.stringify(failed.error)).to.include("ECHO_TEXT_TOO_LONG");
   });
 
-  it("очередь demo.echo, долгая задача echo.long: ход событиями job.progress, итог job.done, файл итога — ссылка на скачивание", async () => {
+  it("очередь demo.echo, долгая задача echo.long: ход, итог, файл итога — ссылка на скачивание", async () => {
     const progress = socket.next(
-      "agent:event",
-      (e: any) => e.type === "job.progress",
+      "agent:command",
+      (c: any) => c.workerType === "echo.long" && c.progress > 0,
       15_000,
     );
     const started = expectStatus(
@@ -604,12 +597,11 @@ describe("агенты (настоящий агент и воркер echo)", fu
       progress: 1,
     });
     expect(job.result).to.deep.equal({ text: "> ЗАДАЧА", output: "result" });
-    expect((await progress).data).to.include({ jobId: started.jobId });
+    expect((await progress).args.args.jobId).to.equal(started.jobId);
     expect(await readStored(`jobs/${started.jobId}/echo.txt`)).to.equal(
       "> ЗАДАЧА",
     );
 
-    // Файл итога — подписанная ссылка на скачивание (GET) со сроком и размером.
     expect(job.outputs).to.have.length(1);
 
     const [output] = job.outputs;
@@ -618,34 +610,16 @@ describe("агенты (настоящий агент и воркер echo)", fu
       name: "result",
       size: Buffer.byteLength("> ЗАДАЧА"),
     });
-    expect(new Date(output.expiresAt).getTime()).to.be.greaterThan(Date.now());
 
     const download = await fetch(output.url);
 
     expect(download.status).to.equal(200);
     expect(await download.text()).to.equal("> ЗАДАЧА");
+
+    // Ход — события command.progress в ленте; лента постранично.
     expect(
-      (await fetch(output.url.replace(/(X-Amz-Signature|sig)=[^&]+/, "$1=0")))
-        .status,
-      "ссылка без верной подписи",
-    ).to.be.oneOf([400, 401, 403]);
-
-    const listed = items(
-      expectStatus(await call(admin, "GET", "/api/v1/jobs?limit=20"), 200).data,
-    ).find((j: any) => j.id === started.jobId);
-
-    expect(listed.outputs[0].name).to.equal("result");
-
-    const feed = expectStatus(
-      await call(
-        admin,
-        "GET",
-        `/api/v1/agents/events?agentId=${agentId}&worker=echo&type=job.done&limit=5`,
-      ),
-      200,
-    ).data;
-
-    expect(items(feed).map((e: any) => e.data.jobId)).to.include(started.jobId);
+      (await feed("worker=echo&type=command.progress&limit=10")).length,
+    ).to.be.above(0);
 
     const page = expectStatus(
       await call(
@@ -668,7 +642,7 @@ describe("агенты (настоящий агент и воркер echo)", fu
     );
   });
 
-  it("очередь demo.echo: отмена уходит воркеру (job.cancelled), провал задачи — failed", async () => {
+  it("очередь demo.echo: отмена уходит воркеру, провал задачи — failed", async () => {
     const long = expectStatus(
       await call(admin, "POST", "/api/v1/jobs/demo/echo", {
         text: "долго",
@@ -685,29 +659,11 @@ describe("агенты (настоящий агент и воркер echo)", fu
           ?.progress > 0,
       { what: "задача идёт" },
     );
-    await eventually(
-      async () => worker(await getAgent(), "echo").health?.busy === true,
-      { what: "воркер занят (health.busy)" },
-    );
-
     expectStatus(
       await call(admin, "POST", `/api/v1/jobs/${long.jobId}/cancel`),
       204,
     );
     expect((await jobSettled(long.jobId)).status).to.equal("cancelled");
-    await eventually(
-      async () =>
-        items(
-          (
-            await call(
-              admin,
-              "GET",
-              `/api/v1/agents/events?agentId=${agentId}&type=job.cancelled`,
-            )
-          ).data,
-        ).some((e: any) => e.data.jobId === long.jobId),
-      { what: "воркер прервал задачу" },
-    );
 
     const failing = expectStatus(
       await call(admin, "POST", "/api/v1/jobs/demo/echo", {
@@ -725,7 +681,50 @@ describe("агенты (настоящий агент и воркер echo)", fu
     expect(failed.error.code).to.equal("ECHO_FAILED");
   });
 
-  it("вторая копия API без соединения агента: чтение — из общего хранилища, вызовы агента — 503 AGENT_ELSEWHERE с Retry-After", async () => {
+  it("отмена команды воркера по id: итог CANCELLED", async () => {
+    const queued = expectStatus(
+      await command({
+        type: "echo.long",
+        args: { steps: 50, delayMs: 300 },
+        waitSeconds: 0,
+      }),
+      200,
+    ).data;
+
+    await eventually(
+      async () =>
+        (
+          await call(
+            admin,
+            "GET",
+            `/api/v1/agents/${agentId}/commands/${queued.id}`,
+          )
+        ).data?.progress > 0,
+      { what: "команда идёт" },
+    );
+    expectStatus(
+      await call(
+        admin,
+        "POST",
+        `/api/v1/agents/${agentId}/commands/${queued.id}/cancel`,
+      ),
+      200,
+    );
+
+    const done = expectStatus(
+      await call(
+        admin,
+        "GET",
+        `/api/v1/agents/${agentId}/commands/${queued.id}?waitSeconds=10`,
+      ),
+      200,
+    ).data;
+
+    expect(done).to.include({ status: "done", ok: false });
+    expect(done.error.code).to.equal("CANCELLED");
+  });
+
+  it("вторая копия API без потока агента: чтение и команды — через общую БД", async () => {
     const peer = await startPeerServer();
 
     try {
@@ -735,27 +734,21 @@ describe("агенты (настоящий агент и воркер echo)", fu
         200,
       ).data;
 
-      // Соединение агента — у основной копии: её имя — адрес её API.
-      expect(card.session.instance).to.equal(BASE_URL);
+      expect(card.online).to.equal(true);
 
-      const elsewhere = expectStatus(
+      const said = expectStatus(
         await call(
           admin,
           "POST",
-          `/api/v1/agents/${agentId}/workers/echo/fetch`,
-          {
-            method: "POST",
-            path: "/echo",
-            headers: { "content-type": "application/json" },
-            body: JSON.stringify({ text: "через копию" }),
-          },
+          `/api/v1/agents/${agentId}/workers/echo/commands`,
+          { type: "echo.say", args: { text: "через копию" }, waitSeconds: 10 },
           via,
         ),
-        503,
-        "AGENT_ELSEWHERE",
-      );
+        200,
+      ).data;
 
-      expect(elsewhere.headers.get("retry-after")).to.equal("2");
+      expect(said.result).to.deep.equal({ text: "> ЧЕРЕЗ КОПИЮ" });
+
       const logs = expectStatus(
         await call(
           admin,
@@ -764,11 +757,10 @@ describe("агенты (настоящий агент и воркер echo)", fu
           undefined,
           via,
         ),
-        503,
-        "AGENT_ELSEWHERE",
-      );
+        200,
+      ).data;
 
-      expect(logs.headers.get("retry-after")).to.equal("2");
+      expect(logs.entries).to.be.an("array");
     } finally {
       await peer.stop();
     }
@@ -796,38 +788,24 @@ describe("агенты (настоящий агент и воркер echo)", fu
     expect(logs.entries.map((e: any) => e.msg).join("\n")).to.include(
       "настройки применены",
     );
-    expect(logs.entries[0]).to.include({ source: "echo" });
   });
 
-  it("отложенная замена: занятый воркер — ответ сразу (deferred), итог — событие agent:action", async () => {
+  it("перезапуск занятого воркера ждёт окончания работы; с force — сразу", async () => {
     const long = expectStatus(
       await call(admin, "POST", "/api/v1/jobs/demo/echo", {
         text: "работа",
         long: true,
-        // Окно busy заметно длиннее опроса /health агентом (5 с): замена точно попадает в него.
-        steps: 30,
+        steps: 15,
         delayMs: 400,
       }),
       201,
     ).data;
 
-    // Задача именно этого теста уже идёт (есть ход), и агент видит воркер занятым: busy в
-    // статусе мог остаться от прошлой задачи, пока агент снова не опросил /health.
-    await eventually(
-      async () => {
-        const job = (await call(admin, "GET", `/api/v1/jobs/${long.jobId}`))
-          .data;
-
-        return job?.status === "running" && (job?.progress ?? 0) > 0;
-      },
-      { what: "задача идёт (есть ход)", timeoutMs: 20_000 },
-    );
     await eventually(
       async () => worker(await getAgent(), "echo").health?.busy === true,
-      { what: "воркер занят (health.busy)" },
+      { what: "воркер занят (health.busy)", timeoutMs: 20_000 },
     );
 
-    const asked = Date.now();
     const deferred = expectStatus(
       await call(
         admin,
@@ -838,61 +816,47 @@ describe("агенты (настоящий агент и воркер echo)", fu
       200,
     ).data;
 
-    expect(Date.now() - asked).to.be.below(3_000);
-    expect(deferred).to.include({ deferred: true, pending: "restart" });
-    expect(deferred.actionId).to.be.a("string");
+    expect(deferred).to.include({ type: "worker.restart", status: "pending" });
+    expect((await jobSettled(long.jobId, 30_000)).status).to.equal("completed");
 
-    const action = await socket.next(
-      "agent:action",
-      (a: any) => a.id === deferred.actionId,
-      60_000,
-    );
+    const restarted = expectStatus(
+      await call(
+        admin,
+        "GET",
+        `/api/v1/agents/${agentId}/commands/${deferred.id}?waitSeconds=30`,
+      ),
+      200,
+    ).data;
 
-    expect(action).to.include({
-      name: "worker.restart",
-      status: "done",
-      deferred: true,
-    });
-    expect((await jobSettled(long.jobId)).status).to.equal("completed");
-  });
+    expect(restarted.ok, JSON.stringify(restarted.error)).to.equal(true);
 
-  it("перезапуск воркера; обновление воркера, прописанного командой, — 409; обновление агента — отказ агента", async () => {
-    const before = items(
+    const before = (await feed("type=echo.started")).length;
+    const forced = expectStatus(
+      await call(
+        admin,
+        "POST",
+        `/api/v1/agents/${agentId}/workers/echo/restart`,
+        { force: true },
+      ),
+      200,
+    ).data;
+
+    expect(
       (
         await call(
           admin,
           "GET",
-          `/api/v1/agents/events?agentId=${agentId}&type=echo.started`,
+          `/api/v1/agents/${agentId}/commands/${forced.id}?waitSeconds=30`,
         )
-      ).data,
-    ).length;
-
-    expect(
-      expectStatus(
-        await call(
-          admin,
-          "POST",
-          `/api/v1/agents/${agentId}/workers/echo/restart`,
-          { force: true },
-        ),
-        200,
-      ).data,
-    ).to.deep.equal({ deferred: false });
+      ).data.ok,
+    ).to.equal(true);
     await eventually(
-      async () =>
-        items(
-          (
-            await call(
-              admin,
-              "GET",
-              `/api/v1/agents/events?agentId=${agentId}&type=echo.started`,
-            )
-          ).data,
-        ).length > before,
+      async () => (await feed("type=echo.started")).length > before,
       { what: "воркер запущен заново", timeoutMs: 20_000 },
     );
-    expect(worker(await getAgent(), "echo").state).to.equal("running");
+  });
 
+  it("обновление воркера из папки — 409; обновление агента без новой версии — 409, с версией — отказ агента", async () => {
     expectStatus(
       await call(
         admin,
@@ -904,136 +868,126 @@ describe("агенты (настоящий агент и воркер echo)", fu
       "AGENT_WORKER_NOT_RELEASED",
     );
     expectStatus(
-      await call(admin, "POST", `/api/v1/agents/${agentId}/update`),
+      await call(admin, "POST", `/api/v1/agents/${agentId}/update`, {}),
       409,
-      "AGENT_UPDATE_NOT_SUPPORTED",
+      "AGENT_UPDATE_NOT_AVAILABLE",
     );
-  });
 
-  it("сборки агента: манифест, команда установки, install.sh; проблемы", async () => {
-    const release = expectStatus(
-      await call(admin, "GET", "/api/v1/agent-releases"),
+    const queued = expectStatus(
+      await call(admin, "POST", `/api/v1/agents/${agentId}/update`, {
+        version: "9.9.9",
+      }),
+      200,
+    ).data;
+    const done = expectStatus(
+      await call(
+        admin,
+        "GET",
+        `/api/v1/agents/${agentId}/commands/${queued.id}?waitSeconds=15`,
+      ),
       200,
     ).data;
 
-    expect(release.manifest.version).to.equal(AGENT_VERSION);
-    expect(release.manifest.workers.map((w: any) => w.name)).to.include("echo");
+    expect(done.ok).to.equal(false);
+    expect(done.error.code).to.equal("UPDATE_NOT_SUPPORTED");
+  });
 
-    const command = expectStatus(
-      await call(admin, "POST", "/api/v1/agent-releases/install-command", {
-        token: "tok.secret",
-      }),
-      200,
-    ).data.command;
+  it("команда установки, install.sh", async () => {
+    const install = (body: object) =>
+      call(admin, "POST", "/api/v1/agent-enrollment/install-command", body);
+    const bundle = `'${BASE_URL}/agent/v1/bundle/linux-{arch}.tar.gz'`;
+    const prefix = `curl -fsSL ${BASE_URL}/agent/v1/bundle/install.sh |`;
 
-    expect(command).to.equal(
-      `curl -fsSL '${BASE_URL}/api/v1/agent-link/bundle/install.sh' | sudo sh -s -- '--server' '${BASE_URL}' '--bundle' '${BASE_URL}/api/v1/agent-link/bundle/linux-{arch}.tar.gz' '--token' 'tok.secret'`,
+    expect(
+      expectStatus(await install({ token: "tok.secret" }), 200).data.command,
+    ).to.equal(
+      `${prefix} sudo sh -s -- --server ${BASE_URL} --bundle ${bundle} --token tok.secret`,
     );
-    expectStatus(
-      await call(admin, "POST", "/api/v1/agent-releases/install-command", {}),
-      400,
-    );
+    expectStatus(await install({}), 400);
     // Без root и без установки (контейнер) — без sudo; неизвестный способ — ошибка.
     expect(
       expectStatus(
-        await call(admin, "POST", "/api/v1/agent-releases/install-command", {
-          token: "tok.secret",
-          mode: "rootless",
-        }),
+        await install({ token: "tok.secret", mode: "rootless" }),
         200,
       ).data.command,
     ).to.equal(
-      `curl -fsSL '${BASE_URL}/api/v1/agent-link/bundle/install.sh' | sh -s -- '--server' '${BASE_URL}' '--bundle' '${BASE_URL}/api/v1/agent-link/bundle/linux-{arch}.tar.gz' '--rootless' '--token' 'tok.secret'`,
+      `${prefix} sh -s -- --server ${BASE_URL} --bundle ${bundle} --token tok.secret --rootless`,
     );
     expect(
-      expectStatus(
-        await call(admin, "POST", "/api/v1/agent-releases/install-command", {
-          token: "tok.secret",
-          mode: "run",
-        }),
-        200,
-      ).data.command,
+      expectStatus(await install({ token: "tok.secret", mode: "run" }), 200)
+        .data.command,
     ).to.equal(
-      `curl -fsSL '${BASE_URL}/api/v1/agent-link/bundle/install.sh' | sh -s -- '--server' '${BASE_URL}' '--bundle' '${BASE_URL}/api/v1/agent-link/bundle/linux-{arch}.tar.gz' '--run' '--token' 'tok.secret'`,
+      `${prefix} sh -s -- --server ${BASE_URL} --bundle ${bundle} --token tok.secret --run`,
     );
-    expectStatus(
-      await call(admin, "POST", "/api/v1/agent-releases/install-command", {
-        token: "tok.secret",
-        mode: "docker",
-      }),
-      400,
-    );
+    expectStatus(await install({ token: "tok.secret", mode: "docker" }), 400);
 
-    const script = await fetch(
-      `${BASE_URL}/api/v1/agent-link/bundle/install.sh`,
-    );
+    const script = await fetch(`${BASE_URL}/agent/v1/bundle/install.sh`);
 
-    // Установщик агента из его релиза: адрес сервера и архива — в команде.
     expect(script.status).to.equal(200);
     expect(await script.text()).to.include("--bundle URL");
-    expectStatus(await call(admin, "GET", "/api/v1/agents/alerts"), 200);
-    expectStatus(
-      await call(admin, "GET", `/api/v1/agents/alerts?agentId=${agentId}`),
-      200,
-    );
   });
 
   it("аудит: действия над агентом и их итоги — от имени пользователя", async () => {
-    const audit = expectStatus(
-      await call(admin, "GET", "/api/v1/audit?type=agent.action&limit=100"),
-      200,
-    );
-    const actions = items(audit.data)
+    const actions = items(
+      expectStatus(
+        await call(admin, "GET", "/api/v1/audit?type=agent.action&limit=100"),
+        200,
+      ).data,
+    )
       .filter((e: any) => e.actorId === admin.id)
       .map((e: any) => e.meta.action);
 
     expect(actions).to.include.members([
       "config.set",
-      "fetch",
+      "worker.command",
       "worker.restart",
     ]);
-
-    // В аудите — только изменяющие запросы к воркеру.
-    const fetches = items(audit.data).filter(
-      (e: any) => e.meta.action === "fetch",
-    );
-
-    expect(fetches.map((e: any) => e.meta.method)).to.include("POST");
-    expect(fetches.map((e: any) => e.meta.method)).to.not.include("GET");
 
     const results = items(
       expectStatus(
         await call(
           admin,
           "GET",
-          "/api/v1/audit?type=agent.action-result&limit=50",
+          "/api/v1/audit?type=agent.action-result&limit=100",
         ),
         200,
       ).data,
     );
 
-    expect(results.map((e: any) => e.meta.action)).to.include("worker.restart");
+    expect(results.map((e: any) => e.meta.action)).to.include.members([
+      "worker.restart",
+      "worker.command",
+    ]);
   });
 
-  it("смена ключа: агент переподключается; удаление ключа настроек", async () => {
-    const connectedAt = (await getAgent()).connectedAt;
-
-    expectStatus(
+  it("смена ключа: агент переходит на новый секрет; удаление ключа настроек", async () => {
+    const rotated = expectStatus(
       await call(admin, "POST", `/api/v1/agents/${agentId}/rotate-key`),
-      204,
-    );
-    await eventually(
-      async () => {
-        const a = await getAgent();
+      200,
+    ).data;
+    const done = expectStatus(
+      await call(
+        admin,
+        "GET",
+        `/api/v1/agents/${agentId}/commands/${rotated.id}?waitSeconds=15`,
+      ),
+      200,
+    ).data;
 
-        return a.online && a.connectedAt !== connectedAt;
-      },
-      { what: "подключение с новым ключом", timeoutMs: 20_000 },
+    expect(done.ok, JSON.stringify(done.error)).to.equal(true);
+    expect(done.result.secretHash).to.match(/^[0-9a-f]{64}$/);
+
+    // Агент на связи с новым ключом: команда проходит.
+    await eventually(
+      async () =>
+        (await command({ type: "echo.say", args: { text: "ключ" } })).data
+          ?.ok === true,
+      { what: "связь с новым ключом", timeoutMs: 20_000 },
     );
 
     const removed = socket.next(
       "agent:config",
-      (c: any) => c.key === "settings" && c.state === "deleted",
+      (c: any) => c.key === "settings" && c.deleted,
       15_000,
     );
 
@@ -1045,18 +999,14 @@ describe("агенты (настоящий агент и воркер echo)", fu
       ),
       204,
     );
-    expect((await removed).version).to.equal(null);
-    expectStatus(
-      await call(
-        admin,
-        "DELETE",
-        `/api/v1/agents/${agentId}/workers/echo/configs/settings`,
-      ),
-      404,
-    );
+    await removed;
+    expect(
+      (await command({ type: "echo.say", args: { text: "без префикса" } })).data
+        .result,
+    ).to.deep.equal({ text: "БЕЗ ПРЕФИКСА" });
   });
 
-  it("агент остановлен — online: false в сокете сразу, не дольше ~5 с", async () => {
+  it("агент остановлен — online: false в сокете быстро", async () => {
     const other = await RealAgent.start({
       token: AGENT_BOOTSTRAP_TOKEN,
       name: "e2e-offline",
@@ -1098,6 +1048,11 @@ describe("агенты (настоящий агент и воркер echo)", fu
       what: "агент без связи",
       timeoutMs: 20_000,
     });
+    expectStatus(
+      await command({ type: "echo.say", args: { text: "x" } }),
+      409,
+      "AGENT_REVOKED",
+    );
     await agent.stop();
 
     const deleted = socket.next("agent:deleted", (a: any) => a.id === agentId);

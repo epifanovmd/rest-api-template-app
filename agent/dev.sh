@@ -1,5 +1,5 @@
 #!/bin/sh
-# Агент на машине разработчика: программа agent/agent той же версии, что agent-sdk в package.json
+# Агент на машине разработчика: программа agent/agent версии AGENT_VERSION (.env*)
 # (нет — скачивается из релиза агента со сверкой sha256), порт API и токен регистрации — из
 # .env.development (тот же AGENT_BOOTSTRAP_TOKEN, что у API), настройки — agent/agent.yaml.
 #
@@ -24,9 +24,19 @@ die() {
   exit 1
 }
 
-# Версия агента — как у agent-sdk в package.json (…/agent-sdk-<версия>.tgz).
-VERSION=$(sed -n 's/.*"agent-sdk": *"[^"]*agent-sdk-\([^"/]*\)\.tgz".*/\1/p' "$ROOT/package.json")
-[ -n "$VERSION" ] || die "не понять версию agent-sdk в package.json"
+# env_value ИМЯ — значение переменной: окружение, затем .env.development, .env, .env.example.
+env_value() {
+  eval "v=\${$1:-}"
+  for f in .env.development .env .env.example; do
+    [ -n "$v" ] && break
+    [ -f "$ROOT/$f" ] && v=$(sed -n "s/^$1=//p" "$ROOT/$f" | tail -n 1)
+  done
+  printf '%s' "$v"
+}
+
+# Версия агента — AGENT_VERSION (окружение или файлы .env*).
+VERSION=$(env_value AGENT_VERSION)
+[ -n "$VERSION" ] || die "не задана AGENT_VERSION (.env.example)"
 BASE=${AGENT_RELEASES_URL:-https://github.com/epifanovmd/agent/releases/download/v$VERSION}
 
 sha256() {
@@ -55,9 +65,9 @@ platform() {
   echo "$os-$arch"
 }
 
-# Программа агента: есть — как есть (новые версии ставит yarn agent upgrade); нет — из релиза.
+# Программа агента версии AGENT_VERSION: нет или другая версия — из релиза.
 ensure_agent() {
-  [ -x "$AGENT" ] && return
+  [ -x "$AGENT" ] && [ "$("$AGENT" version 2>/dev/null | head -n 1)" = "$VERSION" ] && return
   tmp=$(mktemp)
   curl -fsSL "$BASE/manifest.json" -o "$tmp" || die "нет $BASE/manifest.json"
   p=$(platform)

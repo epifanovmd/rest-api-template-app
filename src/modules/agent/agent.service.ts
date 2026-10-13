@@ -1,107 +1,196 @@
-import {
-  type Agent,
-  AgentsError,
-  type LogEntry,
-  type ReleaseView,
-} from "agent-sdk/server";
 import { inject } from "inversify";
 
-import { config } from "../../config";
 import {
+  Agent,
+  agentConfig,
+  AgentEnrollmentService,
+  AgentError,
+  agentInstallCommand,
+  agentPublicUrl,
+  Agents,
+  compareAgentVersions,
+  EventBus,
   ICursorPageDto,
   Injectable,
   IPaginatedDto,
   normalizePagination,
+  TAgentInstallMode,
   toPage,
 } from "../../core";
-import { agentConfig } from "./agent.config";
-import { AgentError, callAgents, toAgentError } from "./agent.errors";
-import { AgentRuntime } from "./agent.runtime";
+import { AgentPermissions } from "./agent.permissions";
+import { AGENT_COMMAND_WAIT } from "./agent.types";
 import {
   AgentAccessService,
   IAgentActor,
   inScope,
 } from "./agent-access.service";
-import { bundleInstallFlags, bundleInstallUrl } from "./agent-bundle";
 import {
-  AgentHistoryService,
-  IAgentEventFeedQuery,
-} from "./agent-history.service";
-import { updateCandidates } from "./agent-update";
-import {
-  AgentAlertDto,
-  AgentConfigStatusDto,
+  agentAlerts,
+  AgentCommandDto,
+  AgentConfigDto,
   AgentDto,
+  AgentEnrollmentTokenDto,
   IAgentEventDto,
-  IAgentInstallCommandDto,
   IAgentLogsDto,
   IAgentMetricsPointDto,
   IAgentReleaseDto,
-  IAgentReleaseManifestDto,
-  IAgentUpdateResultDto,
-  ICreateAgentInstallCommandBody,
+  ICreatedAgentEnrollmentTokenDto,
+  toCommandDto,
+  toConfigDto,
+  toEventDto,
+  toLogEntryDto,
+  toMetricDto,
+  toTokenDto,
+  toWorkerDto,
 } from "./dto";
+import { AgentActionAuditedEvent } from "./events";
 
-/** Сколько точек метрик по умолчанию. */
-const METRICS_DEFAULT_LIMIT = 500;
-/** Сколько событий на странице по умолчанию. */
-const EVENTS_DEFAULT_LIMIT = 50;
-
-/** Фильтр ленты событий. */
 export interface IAgentEventsQuery {
   agentId?: string;
   worker?: string;
   type?: string;
+  /** `<receivedAt>.<id>` последнего на прошлой странице. */
   cursor?: string;
   limit?: number;
 }
 
-/** Окно истории метрик. */
-export interface IAgentMetricsRangeQuery {
-  since?: number;
-  until?: number;
-  limit?: number;
-}
+const parseCursor = (
+  cursor?: string,
+): { receivedAt: number; id: string } | undefined => {
+  if (!cursor) return undefined;
+  const dot = cursor.indexOf(".");
+  const receivedAt = Number(cursor.slice(0, dot));
 
-/** Параметры журнала. */
-export interface IAgentLogsQuery {
-  worker?: string;
-  lines?: number;
-}
-
-/** Заданные поля объекта (аргументы действия в аудите). */
-const definedOf = (value: object): Record<string, unknown> =>
-  Object.fromEntries(Object.entries(value).filter(([, v]) => v !== undefined));
-
-/** Значение в одинарных кавычках POSIX sh. */
-const shQuote = (value: string): string => `'${value.replace(/'/g, `'\\''`)}'`;
-
-/** Сборки каталога воркеров проекта для API: у каждой — источник `local`. */
-const toManifestDto = (release: ReleaseView): IAgentReleaseManifestDto => ({
-  version: release.version,
-  ...(release.publicKey && { publicKey: release.publicKey }),
-  artifacts: release.artifacts.map(a => ({ ...a, source: "local" })),
-  ...(release.workers && {
-    workers: release.workers.map(w => ({ ...w, source: "local" })),
-  }),
-});
+  return dot > 0 && Number.isFinite(receivedAt)
+    ? { receivedAt, id: cursor.slice(dot + 1) }
+    : undefined;
+};
 
 /**
- * Агенты: список и карточка (`hello`, `status` с воркерами, последняя точка
- * метрик, проблемы), отзыв, удаление, смена ключа, обновление, журнал,
- * сборки воркеров проекта и команда установки. Доступ — право модуля или
- * политика (`AgentAccessService`); изменяющие вызовы — в аудит от имени
- * пользователя (`AgentRuntime.audit`, `AgentRuntime.action`).
+ * Агенты для веба: доступ (права модуля или политики), DTO, действия пользователя с аудитом.
+ * Сама работа с агентами — `Agents` ядра.
  */
 @Injectable()
 export class AgentService {
   constructor(
-    @inject(AgentRuntime) private readonly _runtime: AgentRuntime,
+    @inject(Agents) private readonly _agents: Agents,
     @inject(AgentAccessService) private readonly _access: AgentAccessService,
-    @inject(AgentHistoryService) private readonly _history: AgentHistoryService,
+    @inject(AgentEnrollmentService)
+    private readonly _enrollment: AgentEnrollmentService,
+    @inject(EventBus) private readonly _bus: EventBus,
   ) {}
 
-  /** Агенты в порядке регистрации: все или доступные через политики. */
+  // ─── для других модулей (без проверки прав) ──────────────────────────
+
+  async find(id: string): Promise<AgentDto | null> {
+    const agent = await this._agents.find(id);
+
+    return agent ? this.toDto(agent) : null;
+  }
+
+  async all(): Promise<AgentDto[]> {
+    return Promise.all((await this._agents.all()).map(a => this.toDto(a)));
+  }
+
+  /** Итоги настроек агента (без значений); агента нет — пусто. */
+  async configStatus(id: string): Promise<AgentConfigDto[]> {
+    const agent = await this._agents.find(id);
+
+    return agent
+      ? (await this._agents.configStatus(agent)).map(s => toConfigDto(id, s))
+      : [];
+  }
+
+  /** Агенты, для которых есть новая версия агента или воркера. */
+  async updateCandidateIds(): Promise<Set<string>> {
+    const dtos = await this.all();
+
+    return new Set(
+      dtos
+        .filter(
+          a => a.updateAvailable || a.workers.some(w => w.updateAvailable),
+        )
+        .map(a => a.id),
+    );
+  }
+
+  /** Отозвать от имени `actorId` (агент узла заменён другим). */
+  async revokeAs(actorId: string | null, id: string): Promise<void> {
+    if (!(await this._agents.find(id))) return;
+    await this._agents.revoke(id);
+    this.audit(actorId || null, "agent.revoke", id);
+  }
+
+  /** Отозвать и удалить (узел удалён). */
+  async revokeAndDelete(actorId: string | null, id: string): Promise<void> {
+    if (!(await this._agents.find(id))) return;
+    await this._agents.revoke(id);
+    await this._agents.delete(id);
+    this.audit(actorId, "agent.delete", id);
+  }
+
+  publicUrl(): string {
+    return agentPublicUrl();
+  }
+
+  installCommand(options: {
+    token?: string;
+    tokenFile?: string;
+    name?: string;
+    mode?: TAgentInstallMode;
+    server?: string;
+  }): string {
+    return agentInstallCommand(options);
+  }
+
+  async toDto(agent: Agent): Promise<AgentDto> {
+    const online = this._agents.isOnline(agent);
+    const workers = this._agents.workers(agent);
+    const configs = await this._agents.configStatus(agent);
+    const latest = agent.state?.update?.latest;
+    const version = agent.hello?.agent.version;
+
+    return {
+      id: agent.id,
+      name: agent.name,
+      labels: agent.labels,
+      online,
+      revoked: !!agent.revokedAt,
+      version,
+      updateMode: agent.hello?.agent.updateMode,
+      install: agent.hello?.agent.install,
+      host: agent.hello?.host ?? agent.host ?? undefined,
+      remoteIp: agent.remoteIp ?? undefined,
+      enrolledAt: agent.enrolledAt,
+      lastSeenAt: agent.lastSeenAt ?? undefined,
+      updateAvailable:
+        latest && version && compareAgentVersions(latest, version) > 0
+          ? latest
+          : undefined,
+      desiredRev: agent.desiredRev,
+      appliedRev: agent.state?.desiredRev,
+      outbox: agent.state?.outbox,
+      workers: workers.map(w => {
+        const build = w.release
+          ? this._agents.workerBuild(agent, w.name)
+          : undefined;
+
+        return toWorkerDto(
+          w,
+          build &&
+            w.version &&
+            compareAgentVersions(build.version, w.version) > 0
+            ? build.version
+            : undefined,
+        );
+      }),
+      metrics: agent.metrics ?? undefined,
+      alerts: agent.revokedAt ? [] : agentAlerts(online, workers, configs),
+    };
+  }
+
+  // ─── REST ────────────────────────────────────────────────────────────
+
   async list(
     actor: IAgentActor,
     offset?: number,
@@ -109,275 +198,388 @@ export class AgentService {
   ): Promise<IPaginatedDto<AgentDto>> {
     const scope = await this._access.scope(actor, "view");
     const page = normalizePagination(offset, limit);
-    const agents = (await this._runtime.agents.listAgents()).filter(agent =>
-      inScope(scope, agent.id),
+    const all = (await this._agents.all()).filter(a => inScope(scope, a.id));
+    const items = await Promise.all(
+      all.slice(page.offset, page.offset + page.limit).map(a => this.toDto(a)),
     );
 
-    return toPage(
-      await this.toDtos(agents.slice(page.offset, page.offset + page.limit)),
-      agents.length,
-      page,
-    );
+    return toPage(items, all.length, page);
   }
 
   async get(actor: IAgentActor, id: string): Promise<AgentDto> {
     await this._access.require(actor, id, "view");
 
-    return this._runtime.toDto(await this.require(id));
+    return this.toDto(await this._agents.get(id));
   }
 
-  /** Текущие проблемы: одного агента или всех в области просмотра. */
-  async alerts(actor: IAgentActor, agentId?: string): Promise<AgentAlertDto[]> {
-    if (agentId) await this._access.require(actor, agentId, "view");
-
-    const scope = agentId ? "all" : await this._access.scope(actor, "view");
-    const agents = agentId
-      ? [await this.require(agentId)]
-      : (await this._runtime.agents.listAgents()).filter(agent =>
-          inScope(scope, agent.id),
-        );
-    const alerts = await Promise.all(
-      agents.map(agent => this._runtime.alertsOf(agent)),
-    );
-
-    return alerts.flat().map(AgentAlertDto.fromModel);
-  }
-
-  /** Лента событий воркеров, новые первыми: одного агента или всех в области. */
   async events(
     actor: IAgentActor,
     query: IAgentEventsQuery,
   ): Promise<ICursorPageDto<IAgentEventDto>> {
-    if (query.agentId) await this._access.require(actor, query.agentId, "view");
+    const limit = Math.min(Math.max(query.limit ?? 50, 1), 200);
+    let agentIds: string[] | undefined;
 
-    const scope = query.agentId
-      ? new Set([query.agentId])
-      : await this._access.scope(actor, "view");
-    const feed: IAgentEventFeedQuery = {
-      agentIds: scope === "all" ? undefined : [...scope],
+    if (query.agentId) await this._access.require(actor, query.agentId, "view");
+    else {
+      const scope = await this._access.scope(actor, "view");
+
+      if (scope !== "all") agentIds = [...scope];
+    }
+    const rows = await this._agents.eventFeed({
+      agentId: query.agentId,
+      agentIds,
       worker: query.worker,
       type: query.type,
-      cursor: query.cursor,
-      limit: query.limit ?? EVENTS_DEFAULT_LIMIT,
-    };
+      before: parseCursor(query.cursor),
+      limit: limit + 1,
+    });
+    const items = rows.slice(0, limit).map(toEventDto);
+    const last = items[items.length - 1];
 
-    return this._history.eventFeed(feed);
+    return {
+      items,
+      nextCursor:
+        rows.length > limit && last ? `${last.receivedAt}.${last.id}` : null,
+    } as ICursorPageDto<IAgentEventDto>;
   }
 
-  /** История метрик агента по возрастанию времени: последние `limit` точек окна. */
   async metrics(
     actor: IAgentActor,
     id: string,
-    query: IAgentMetricsRangeQuery,
+    query: { since?: number; until?: number; limit?: number },
   ): Promise<IAgentMetricsPointDto[]> {
     await this._access.require(actor, id, "view");
+    const until = query.until ?? Date.now();
+    const since = query.since ?? until - 3_600_000;
 
-    return this._history.metrics({
-      agentId: id,
-      since: query.since,
-      until: query.until,
-      limit: query.limit ?? METRICS_DEFAULT_LIMIT,
-    });
+    return (
+      await this._agents.metrics(
+        id,
+        since,
+        until,
+        Math.min(query.limit ?? 1000, 5000),
+      )
+    ).map(toMetricDto);
   }
 
-  /**
-   * Отозвать: ключ больше не принимается, соединение закрывается. Только с
-   * правом модуля `agent:manage`: доступ через политику (свой узел) отзыв не
-   * открывает — агента узла убирает удаление агента с узла.
-   */
   async revoke(actor: IAgentActor, id: string): Promise<AgentDto> {
-    await this.requireModuleManage(actor, id);
+    await this._access.require(actor, id, "view");
+    this._access.requireAll(actor, "manage");
+    const agent = await this._agents.revoke(id);
 
-    const agent = await callAgents(() => this._runtime.agents.revoke(id));
+    this.audit(actor.userId, "agent.revoke", id);
 
-    this._runtime.audit(actor.userId, "agent.revoke", id);
-
-    return this._runtime.toDto(agent);
+    return this.toDto(agent);
   }
 
-  /** Удалить запись агента, его настройки и историю (только `agent:manage`). */
   async delete(actor: IAgentActor, id: string): Promise<void> {
-    await this.requireModuleManage(actor, id);
-    await callAgents(() => this._runtime.agents.deleteAgent(id));
-    this._runtime.audit(actor.userId, "agent.delete", id);
+    await this._access.require(actor, id, "view");
+    this._access.requireAll(actor, "manage");
+    await this._agents.delete(id);
+    this.audit(actor.userId, "agent.delete", id);
   }
 
-  /** Сменить ключ: агент переподключится с новым секретом. */
-  async rotateKey(actor: IAgentActor, id: string): Promise<void> {
+  async rotateKey(actor: IAgentActor, id: string): Promise<AgentCommandDto> {
     await this._access.require(actor, id, "manage");
-    await callAgents(() =>
-      this._runtime.action(actor.userId, id, "agent.rotateKey", undefined, () =>
-        this._runtime.agents.rotateKey(id),
-      ),
-    );
+    const command = await this._agents.rotateKey(id, actor.userId);
+
+    this.audit(actor.userId, "agent.rotateKey", id);
+
+    return toCommandDto(command);
   }
 
-  /**
-   * Обновить агента до новой версии, которую он нашёл в своём каталоге сборок
-   * (`update.latest`); итог — после запуска новой версии. Новой версии нет —
-   * `UPDATE_NOT_AVAILABLE`, агент себя не обновляет — `UPDATE_NOT_SUPPORTED`.
-   */
-  async update(actor: IAgentActor, id: string): Promise<IAgentUpdateResultDto> {
+  async update(
+    actor: IAgentActor,
+    id: string,
+    version?: string,
+  ): Promise<AgentCommandDto> {
     await this._access.require(actor, id, "manage");
-    const agent = await this.require(id);
-    const candidate = updateCandidates([agent], null).agents[0];
+    const command = await this._agents.updateAgent(id, version, actor.userId);
 
-    if (!candidate) {
-      throw (agent.hello?.agent.updateMode ?? "self") === "self"
-        ? AgentError.UPDATE_NOT_AVAILABLE()
-        : AgentError.UPDATE_NOT_SUPPORTED();
-    }
+    this.audit(actor.userId, "agent.update", id, {
+      version: (command.args as { version?: string })?.version,
+    });
 
-    const args = { version: candidate.target };
-
-    return callAgents(() =>
-      this._runtime.action(actor.userId, id, "agent.update", args, () =>
-        this._runtime.agents.updateAgent(id, args),
-      ),
-    );
+    return toCommandDto(command);
   }
 
-  /** Последние строки журнала агента или воркера (с узла). */
   async logs(
     actor: IAgentActor,
     id: string,
-    query: IAgentLogsQuery,
+    worker?: string,
+    lines?: number,
   ): Promise<IAgentLogsDto> {
     await this._access.require(actor, id, "logs");
+    const command = await this._agents.logs(id, worker, lines);
 
-    const entries: LogEntry[] = await callAgents(() =>
-      this._runtime.action(
-        actor.userId,
-        id,
-        "agent.logs",
-        definedOf(query),
-        () => this._runtime.agents.logs(id, query),
-      ),
-    );
-
-    return { entries };
-  }
-
-  /**
-   * Сборки воркеров проекта (`release/` каталога архивов `AGENT_BUNDLE_DIR`)
-   * и кого можно обновить: агентов — до версии, которую они нашли сами,
-   * воркеры — до сборки с сервера.
-   */
-  async release(actor: IAgentActor): Promise<IAgentReleaseDto> {
-    const scope = await this._access.scope(actor, "view");
-    const agents = this._runtime.agents;
-    const [manifest, list] = await Promise.all([
-      agents.release(),
-      agents.listAgents(),
-    ]);
-    const candidates = updateCandidates(list, manifest);
+    if (!command.ok) {
+      throw AgentError.WORKER_NOT_FOUND(
+        undefined,
+        command.error?.message ?? "Журнал не получен",
+      );
+    }
+    const entries =
+      (command.result as { entries?: unknown[] } | null)?.entries ?? [];
 
     return {
-      manifest: manifest && toManifestDto(manifest),
-      candidates: candidates.agents.filter(c => inScope(scope, c.agentId)),
-      workerCandidates: candidates.workers.filter(c =>
-        inScope(scope, c.agentId),
+      entries: (entries as Parameters<typeof toLogEntryDto>[0][]).map(
+        toLogEntryDto,
       ),
     };
   }
 
-  /**
-   * Команда установки агента одной строкой: установщик агента с этого сервера
-   * ставит архив папки агента (`agent pack`) под машину узла —
-   * `install.sh --bundle … --token …`.
-   */
-  installCommand(
-    body: ICreateAgentInstallCommandBody,
-  ): IAgentInstallCommandDto {
-    const server = body.baseUrl ?? this.publicUrl();
-    const sudo = body.mode === "rootless" || body.mode === "run" ? "" : "sudo ";
-    const flags = [
-      ...bundleInstallFlags(server),
-      ...(body.mode === "rootless" ? ["--rootless"] : []),
-      ...(body.mode === "run" ? ["--run"] : []),
-      ...(body.tokenFile
-        ? ["--token-file", body.tokenFile]
-        : ["--token", body.token ?? ""]),
-    ];
+  // ─── воркеры ─────────────────────────────────────────────────────────
+
+  async restartWorker(
+    actor: IAgentActor,
+    id: string,
+    worker: string,
+    force = false,
+  ): Promise<AgentCommandDto> {
+    await this._access.require(actor, id, "manage");
+    const command = await this._agents.restartWorker(
+      id,
+      worker,
+      force,
+      actor.userId,
+    );
+
+    this.audit(actor.userId, "worker.restart", id, { worker, force });
+
+    return toCommandDto(command);
+  }
+
+  async updateWorker(
+    actor: IAgentActor,
+    id: string,
+    worker: string,
+    version?: string,
+    force = false,
+  ): Promise<AgentCommandDto> {
+    await this._access.require(actor, id, "manage");
+    const command = await this._agents.updateWorker(id, worker, {
+      version,
+      force,
+      actor: actor.userId,
+    });
+
+    this.audit(actor.userId, "worker.update", id, {
+      worker,
+      version: (command.args as { version?: string }).version,
+    });
+
+    return toCommandDto(command);
+  }
+
+  /** Команда воркеру; `waitSeconds` — подождать итог (0 — сразу вернуть поставленную). */
+  async workerCommand(
+    actor: IAgentActor,
+    id: string,
+    worker: string,
+    body: {
+      type: string;
+      args?: unknown;
+      timeoutMs?: number;
+      waitSeconds?: number;
+    },
+  ): Promise<AgentCommandDto> {
+    await this._access.require(actor, id, "command");
+    const command = await this._agents.workerCommand(
+      id,
+      worker,
+      body.type,
+      body.args,
+      {
+        timeoutMs: body.timeoutMs,
+        actor: actor.userId,
+      },
+    );
+
+    this.audit(actor.userId, "worker.command", id, { worker, type: body.type });
+    const wait = Math.min(
+      body.waitSeconds ?? AGENT_COMMAND_WAIT.default,
+      AGENT_COMMAND_WAIT.max,
+    );
+    const done =
+      wait > 0 ? await this._agents.wait(command.id, wait * 1000) : null;
+
+    return toCommandDto(done ?? command);
+  }
+
+  async cancelCommand(
+    actor: IAgentActor,
+    id: string,
+    commandId: string,
+  ): Promise<AgentCommandDto> {
+    await this._access.require(actor, id, "command");
+    const command = await this._agents.findCommand(commandId);
+
+    if (!command || command.agentId !== id || !command.worker)
+      throw AgentError.COMMAND_NOT_FOUND();
+
+    return toCommandDto(
+      await this._agents.cancelWorkerCommand(id, command.worker, commandId),
+    );
+  }
+
+  async commands(
+    actor: IAgentActor,
+    id: string,
+    limit?: number,
+  ): Promise<AgentCommandDto[]> {
+    await this._access.require(actor, id, "view");
+
+    return (
+      await this._agents.recentCommands(id, Math.min(limit ?? 50, 200))
+    ).map(toCommandDto);
+  }
+
+  async command(
+    actor: IAgentActor,
+    id: string,
+    commandId: string,
+    waitSeconds = 0,
+  ): Promise<AgentCommandDto> {
+    await this._access.require(actor, id, "view");
+    let command = await this._agents.findCommand(commandId);
+
+    if (!command || command.agentId !== id)
+      throw AgentError.COMMAND_NOT_FOUND();
+    if (command.status === "pending" && waitSeconds > 0) {
+      command =
+        (await this._agents.wait(
+          commandId,
+          Math.min(waitSeconds, AGENT_COMMAND_WAIT.max) * 1000,
+        )) ?? command;
+    }
+
+    return toCommandDto(command);
+  }
+
+  // ─── настройки ───────────────────────────────────────────────────────
+
+  async configs(actor: IAgentActor, id: string): Promise<AgentConfigDto[]> {
+    await this._access.require(actor, id, "view");
+    const agent = await this._agents.get(id);
+    const withData = await this._access.can(actor, id, "config");
+    const statuses = await this._agents.configStatus(agent);
+
+    return Promise.all(
+      statuses.map(async s =>
+        toConfigDto(
+          id,
+          s,
+          withData
+            ? await this._agents.getConfig(id, s.worker, s.key)
+            : undefined,
+        ),
+      ),
+    );
+  }
+
+  async setConfig(
+    actor: IAgentActor,
+    id: string,
+    worker: string,
+    key: string,
+    data: unknown,
+  ): Promise<AgentConfigDto> {
+    await this._access.require(actor, id, "config");
+    await this._agents.setConfig(id, worker, key, data, {
+      actor: actor.userId,
+    });
+    this.audit(actor.userId, "config.set", id, { worker, key });
+    const status = (
+      await this._agents.configStatus(await this._agents.get(id))
+    ).find(s => s.worker === worker && s.key === key);
+
+    if (!status) throw AgentError.NOT_FOUND();
+
+    return toConfigDto(id, status, data);
+  }
+
+  async deleteConfig(
+    actor: IAgentActor,
+    id: string,
+    worker: string,
+    key: string,
+  ): Promise<void> {
+    await this._access.require(actor, id, "config");
+    await this._agents.deleteConfig(id, worker, key, actor.userId);
+    this.audit(actor.userId, "config.delete", id, { worker, key });
+  }
+
+  // ─── регистрация и сборки ────────────────────────────────────────────
+
+  release(actor: IAgentActor): IAgentReleaseDto {
+    this._access.requireAll(actor, "view");
+    const manifest = this._agents.releaseManifest();
 
     return {
-      command: `curl -fsSL ${shQuote(bundleInstallUrl(server))} | ${sudo}sh -s -- ${flags.map(shQuote).join(" ")}`,
+      bundle: !!agentConfig.bundleDir,
+      workers: (manifest?.workers ?? []).map(w => ({
+        name: w.name,
+        version: w.version,
+        os: w.os,
+        arch: w.arch,
+      })),
     };
   }
 
-  /** Адрес сервера для агентов: `AGENT_PUBLIC_URL` или `APP_PUBLIC_URL`. */
-  publicUrl(): string {
-    return (agentConfig.publicUrl ?? config.app.publicUrl).replace(/\/+$/, "");
-  }
-
-  // ─── для других модулей (без проверки прав) ──────────────────────────
-
-  async find(id: string): Promise<AgentDto | null> {
-    const agent = await this._runtime.agents.getAgent(id);
-
-    return agent ? this._runtime.toDto(agent) : null;
-  }
-
-  async all(): Promise<AgentDto[]> {
-    return this.toDtos(await this._runtime.agents.listAgents());
-  }
-
-  /** Статус настроек агента (желаемая, доставленная, применённая версии). */
-  async configStatus(id: string): Promise<AgentConfigStatusDto[]> {
-    return (await this._runtime.agents.configStatus(id)).map(
-      AgentConfigStatusDto.fromModel,
-    );
-  }
-
-  /** Агенты, которых можно обновить до новой версии. */
-  async updateCandidateIds(): Promise<Set<string>> {
-    const { agents } = updateCandidates(
-      await this._runtime.agents.listAgents(),
-      null,
+  async createToken(
+    actor: IAgentActor,
+    body: {
+      name: string;
+      labels?: Record<string, string>;
+      maxUses?: number;
+      expiresAt?: Date;
+    },
+  ): Promise<ICreatedAgentEnrollmentTokenDto> {
+    this.requireEnroll(actor);
+    const { token, enrollmentToken } = await this._enrollment.createToken(
+      actor.userId,
+      body,
     );
 
-    return new Set(agents.map(c => c.agentId));
+    return { token, enrollmentToken: toTokenDto(enrollmentToken) };
   }
 
-  /** Отозвать от имени пользователя (`actorId`) или системы (пусто). */
-  async revokeAs(actorId: string, id: string): Promise<void> {
-    await callAgents(() => this._runtime.agents.revoke(id));
-    this._runtime.audit(actorId, "agent.revoke", id);
+  async listTokens(
+    actor: IAgentActor,
+    offset?: number,
+    limit?: number,
+  ): Promise<IPaginatedDto<AgentEnrollmentTokenDto>> {
+    this.requireEnroll(actor);
+    const page = await this._enrollment.listTokens(offset, limit);
+
+    return {
+      ...page,
+      items: page.items.map(toTokenDto),
+    } as IPaginatedDto<AgentEnrollmentTokenDto>;
   }
 
-  /** Отозвать и удалить запись (агент удалён с машины). */
-  async revokeAndDelete(actorId: string, id: string): Promise<void> {
-    const agents = this._runtime.agents;
+  async revokeToken(actor: IAgentActor, id: string): Promise<void> {
+    this.requireEnroll(actor);
+    await this._enrollment.revokeToken(id);
+  }
 
-    try {
-      await agents.revoke(id);
-      this._runtime.audit(actorId, "agent.revoke", id);
-      await agents.deleteAgent(id);
-      this._runtime.audit(actorId, "agent.delete", id);
-    } catch (err) {
-      if (err instanceof AgentsError && err.code === "AGENT_NOT_FOUND") return;
-      throw toAgentError(err);
+  private requireEnroll(actor: IAgentActor): void {
+    if (
+      !actor.permissions.includes(AgentPermissions.ENROLL) &&
+      !actor.permissions.includes("*")
+    ) {
+      this._access.requireAll(actor, "manage");
     }
   }
 
-  /** Видимый агент без права модуля на управление — 403, невидимый — 404. */
-  private async requireModuleManage(
-    actor: IAgentActor,
-    id: string,
-  ): Promise<void> {
-    await this._access.require(actor, id, "view");
-    if (!this._access.hasAll(actor, "manage")) throw AgentError.FORBIDDEN();
-  }
-
-  private toDtos(agents: Agent[]): Promise<AgentDto[]> {
-    return Promise.all(agents.map(agent => this._runtime.toDto(agent)));
-  }
-
-  private async require(id: string): Promise<Agent> {
-    const agent = await this._runtime.agents.getAgent(id);
-
-    if (!agent) throw AgentError.NOT_FOUND();
-
-    return agent;
+  private audit(
+    actorId: string | null,
+    action: string,
+    agentId: string,
+    details?: Record<string, unknown>,
+  ): void {
+    this._bus.emit(
+      new AgentActionAuditedEvent(action, actorId, agentId, agentId, details),
+    );
   }
 }

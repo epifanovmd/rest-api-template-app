@@ -1,19 +1,16 @@
 import { inject } from "inversify";
 
 import {
+  AgentEnrollmentService,
   EventBus,
+  IAgentEnrollmentSource,
   Injectable,
   logger,
   PG_ERROR,
   pgErrorCode,
 } from "../../core";
 import type { AuthContext } from "../../types/koa";
-import {
-  AgentDto,
-  AgentEnrollmentService,
-  AgentService,
-  IAgentEnrollmentSource,
-} from "../agent";
+import { AgentDto, AgentService } from "../agent";
 import type {
   ICreateNodeInstallCommandBody,
   INodeInstallCommandDto,
@@ -53,7 +50,7 @@ const MATCHES: {
   {
     by: "host",
     where: agent =>
-      agent.address ? { host: agent.address.slice(0, NODE_HOST_MAX) } : null,
+      agent.remoteIp ? { host: agent.remoteIp.slice(0, NODE_HOST_MAX) } : null,
   },
 ];
 
@@ -94,9 +91,9 @@ export class NodeAgentService {
       node,
       body.expiresInMinutes ?? NODE_INSTALL_TOKEN_TTL_MINUTES,
     );
-    const { command } = this._agents.installCommand({
+    const command = this._agents.installCommand({
       token: issued.token,
-      baseUrl: body.baseUrl,
+      server: body.baseUrl,
       mode: body.mode,
     });
 
@@ -159,7 +156,7 @@ export class NodeAgentService {
 
   /** Агент сообщил адрес, а у его узла адреса нет — адрес агента. */
   async fillHost(agent: AgentDto): Promise<void> {
-    const host = agent.address?.slice(0, NODE_HOST_MAX);
+    const host = agent.remoteIp?.slice(0, NODE_HOST_MAX);
 
     if (!host) return;
 
@@ -266,7 +263,7 @@ export class NodeAgentService {
       this._repo.createAndSave({
         name: agent.name.slice(0, NODE_NAME_MAX),
         description: null,
-        host: agent.address?.slice(0, NODE_HOST_MAX) ?? null,
+        host: agent.remoteIp?.slice(0, NODE_HOST_MAX) ?? null,
         ownerId: userId,
         createdById: userId,
         agentId: agent.id,

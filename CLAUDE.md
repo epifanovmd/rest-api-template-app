@@ -10,8 +10,9 @@
 (маршруты и OpenAPI из декораторов), Inversify (DI), TypeORM + PostgreSQL, pg-boss
 (очередь задач на Postgres), Redis (между процессами), Socket.IO, S3-совместимое
 хранилище (SeaweedFS в compose) или диск, Zod, pino, prom-client + Sentry, Mocha +
-Chai + Sinon, сборка `tsc`. Агенты — github.com/epifanovmd/agent: серверный
-`agent-sdk` (архив с GitHub Release агента, ссылка в `package.json`); всё про агента
+Chai + Sinon, сборка `tsc`. Агенты — github.com/epifanovmd/agent (версия — `AGENT_VERSION` в
+`.env.example`): сторона сервера протокола — ядро `src/core/agent` (без зависимостей от
+модулей, переносится как есть), REST/права/сокет — модуль `agent`; всё про агента
 на узлах — папка агента `agent/` (README простыми словами): настройки `agent.yaml`
 (машина разработчика) и `agent.prod.yaml` / `agent.docker.yaml` поверх него, воркеры проекта
 (`agent/workers/<имя>`: база `agent_worker.py` + класс-наследник; `echo`),

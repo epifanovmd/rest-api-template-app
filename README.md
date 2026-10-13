@@ -26,7 +26,7 @@ API-ключи, реальное время. Предметные примеры
 - Nodemailer + EJS (письма по локалям), sharp + ffmpeg (обработка медиа)
 - Mocha + Chai + Sinon (юнит- и e2e-тесты)
 - tsc (сборка), lefthook (git-хуки), ESLint 10 flat config + Prettier 3
-- Агенты: агент и серверный SDK [github.com/epifanovmd/agent](https://github.com/epifanovmd/agent) — `agent-sdk` (Node); воркеры — HTTP-сервисы без SDK
+- Агенты: агент [github.com/epifanovmd/agent](https://github.com/epifanovmd/agent) (протокол 1.0: вниз SSE, вверх HTTPS POST); сторона сервера — ядро `src/core/agent`; воркеры — HTTP-клиенты сокета агента на любом языке
 
 ### Architecture
 
@@ -154,17 +154,17 @@ Swagger UI — `/api-docs` (в production — по `API_DOCS_ENABLED`). Сист
 из папки агента `agent/`: настройки `agent/agent.yaml`, воркер `echo` (воркер проекта из
 `agent/workers/echo` на базе `agent_worker.py`).
 Регистрируется `AGENT_BOOTSTRAP_TOKEN` из `.env.development` (тот же токен у API), адрес
-API — `http://localhost:$SERVER_PORT`. Программа агента — `agent/agent` той же версии, что
-`agent-sdk` (нет — скачивается с GitHub; новые версии ставит `yarn agent upgrade`). Новую
+API — `http://localhost:$SERVER_PORT`. Программа агента — `agent/agent` версии `AGENT_VERSION`
+(`.env*`; нет или другая версия — скачивается с GitHub со сверкой sha256). Новую
 версию агента замечает сам агент (его каталог сборок — по умолчанию релизы GitHub) и сообщает
 бэкенду — ради новой версии агента бэкенд не пересобирают. Как агент и воркеры попадают на узлы —
 [agent/README.md](agent/README.md).
 
-| Команда                | Что делает                                                                                                     |
-| ---------------------- | -------------------------------------------------------------------------------------------------------------- |
-| `yarn agent [команда]` | агент на переднем плане (Ctrl+C — остановка); с командой — команда агента: `config check`, `status`, `upgrade` |
-| `yarn agent:pack`      | архивы для узлов и сборки воркеров проекта → `agent/bundle` (`AGENT_BUNDLE_DIR`)                               |
-| `yarn agent:fetch`     | программа агента и сборки агента с GitHub в `agent/dist/` (e2e)                                                |
+| Команда                | Что делает                                                                                          |
+| ---------------------- | --------------------------------------------------------------------------------------------------- |
+| `yarn agent [команда]` | агент на переднем плане (Ctrl+C — остановка); с командой — команда агента: `config check`, `status` |
+| `yarn agent:pack`      | архивы для узлов и сборки воркеров проекта → `agent/bundle` (`AGENT_BUNDLE_DIR`)                    |
+| `yarn agent:fetch`     | программа агента и сборки агента с GitHub в `agent/dist/` (e2e)                                     |
 
 **Makefile — сервер по SSH** (настройки — `.env.deploy`, образец `.env.deploy.example`;
 любое значение переопределяется в команде: `make deploy SSH_HOST=…`)
@@ -218,18 +218,20 @@ API масштабируется репликами за балансировщ�
 Видимые задачи имеют прогресс, лог и отмену, их изменения приходят клиенту по сокету.
 
 Очереди, объявленные `external`, выполняют **воркеры агентов**. Агент — программа на узле
-([github.com/epifanovmd/agent](https://github.com/epifanovmd/agent)): соединение открывает
-он сам (WebSocket), важные сообщения хранит на диске до подтверждения, работает без
-связи, запускает воркеры — обычные HTTP-сервисы на unix-сокете на любом языке, без SDK.
-Сторону сервера ведёт `agent-sdk` (модуль `agent`): хранилище агентов и настроек в
-Postgres, регистрация по токенам, запросы к воркерам, настройки, метрики, события,
-наблюдение, раздача сборок воркеров проекта и обновление; задача очереди передаётся воркеру сразу после
-постановки как задача его типа (`POST /jobs`): быстрая — итог в ответе, долгая — ход и
-итог событиями. Несколько реплик API: вызов агента выполняет реплика с его соединением,
-другая отвечает 503 `AGENT_ELSEWHERE` с `Retry-After` (балансировщик — липкий). Образ агента с воркером проекта — `agent/docker/Dockerfile`. Как
-агент и воркеры попадают на узлы — [agent/README.md](agent/README.md); как устроено и
-как добавить свою очередь — [src/modules/agent/README.md](src/modules/agent/README.md);
-формат сообщений — [sdk/spec/README.md](https://github.com/epifanovmd/agent/blob/main/sdk/spec/README.md).
+([github.com/epifanovmd/agent](https://github.com/epifanovmd/agent)): связь открывает он сам
+(вниз — поток SSE с желаемым состоянием и командами, вверх — HTTPS POST), итоги и события
+хранит на диске до подтверждения, работает без связи, запускает воркеры — программы на любом
+языке, которые говорят с агентом через его unix-сокет. Сторону сервера ведёт ядро
+`src/core/agent` (переносится в другой проект как есть): агенты, ключи и токены регистрации,
+желаемое состояние (настройки воркеров с версиями), команды и их итоги, события, метрики,
+журнал, раздача архивов и сборок воркеров, проверка по схемам из манифестов; модуль `agent` —
+REST, права, сокет и аудит. Задача очереди передаётся воркеру командой его типа (`{jobId, data,
+files}`): ход и итог — ход и итог команды. Несколько реплик API: поток агента держит одна,
+остальные пишут команды и настройки в БД и будят её через Postgres `NOTIFY` — липкий
+балансировщик не нужен. Образ агента с воркером проекта — `agent/docker/Dockerfile`. Как агент и
+воркеры попадают на узлы — [agent/README.md](agent/README.md); как устроено и как добавить свою
+очередь — [src/modules/agent/README.md](src/modules/agent/README.md); формат сообщений —
+[docs/PROTOCOL.md](https://github.com/epifanovmd/agent/blob/main/docs/PROTOCOL.md).
 
 ### Build
 
@@ -269,7 +271,7 @@ pre-commit (lefthook): prettier и eslint по staged-файлам, typecheck, �
 
 ```sh
 docker compose -f docker-compose.dev.yml up -d
-yarn agent:fetch     # программа и сборки агента с GitHub в agent/dist (один раз на версию agent-sdk)
+yarn agent:fetch     # программа и сборки агента с GitHub в agent/dist (один раз на AGENT_VERSION)
 yarn test:e2e
 ```
 
@@ -282,6 +284,7 @@ Postgres, Redis, Mailpit и S3 и прогоняет сценарии всех �
 `E2E_STORAGE_DRIVER=s3|local`. В GitHub стенд не ходит: программа агента — из `agent/dist`
 (`yarn agent:fetch`), новые версии агент стенда ищет на локальном сервере сборок, архив
 папки агента стенд собирает сам (`agent pack`) и подписывает воркеры проекта своим ключом.
+Журнал копий API стенда — в файл: `E2E_SERVER_LOG=/tmp/e2e-api.log` (`.<порт>` на копию).
 
 ### Codegen
 

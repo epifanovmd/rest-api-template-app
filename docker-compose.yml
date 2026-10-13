@@ -16,9 +16,8 @@
 # files) или внешний S3 через S3_*.
 # Агент с воркером echo (agent/docker/Dockerfile): `docker compose --profile
 # agent up -d`; регистрация — AGENT_BOOTSTRAP_TOKEN (тот же у API). Один агент — один том
-# данных: ещё агенты — своими сервисами со своими томами. Несколько реплик api: вызов агента
-# выполняет реплика с его соединением, другая отвечает 503 AGENT_ELSEWHERE с Retry-After —
-# балансировщик перед репликами должен быть липким.
+# данных: ещё агенты — своими сервисами со своими томами. Несколько реплик api: поток агента
+# держит одна, остальные будят её через Postgres NOTIFY — балансировщик может быть любым.
 
 x-logging: &logging
   driver: json-file
@@ -102,6 +101,7 @@ services:
       target: api
       args:
         APP_VERSION: ${TAG:-latest}
+        AGENT_VERSION: ${AGENT_VERSION:-}
       secrets: [agent_signing_key]
     environment:
       <<: *app-env
@@ -131,6 +131,7 @@ services:
       target: worker
       args:
         APP_VERSION: ${TAG:-latest}
+        AGENT_VERSION: ${AGENT_VERSION:-}
       secrets: [agent_signing_key]
     environment:
       <<: *app-env
@@ -154,10 +155,14 @@ services:
     build:
       context: .
       dockerfile: agent/docker/Dockerfile
+      args:
+        AGENT_VERSION: ${AGENT_VERSION:-}
     environment:
       AGENT_SERVER_URL: ${AGENT_SERVER_URL:-http://api:8181}
+      # http:// — внутри сети compose; снаружи — https:// и false.
+      AGENT_SERVER_ALLOW_INSECURE: ${AGENT_SERVER_ALLOW_INSECURE:-true}
       # Токен регистрации: bootstrap-токен API или выпущенный
-      # (POST /api/v1/agent-enrollment-tokens).
+      # (POST /api/v1/agent-enrollment/tokens).
       AGENT_ENROLL_TOKEN: ${AGENT_ENROLL_TOKEN:-${AGENT_BOOTSTRAP_TOKEN:-}}
       AGENT_LOG_LEVEL: ${AGENT_LOG_LEVEL:-info}
     volumes:

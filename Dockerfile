@@ -8,7 +8,6 @@ ARG NODE_VERSION=24-alpine
 # ── Все зависимости для сборки ───────────────────────────────────────────────
 FROM node:${NODE_VERSION} AS deps
 WORKDIR /app
-# SDK агентов (agent-sdk) — архив с GitHub Release агента (ссылка в package.json).
 COPY package.json yarn.lock ./
 RUN --mount=type=cache,target=/usr/local/share/.cache/yarn,sharing=locked \
     yarn install --frozen-lockfile --ignore-scripts --network-timeout 600000
@@ -24,17 +23,18 @@ RUN yarn build
 # agent pack --env prod: по архиву на linux/amd64 и linux/arm64 (программа агента,
 # agent.yaml + agent.prod.yaml, воркеры проекта и их сборки), release/ — сборки
 # воркеров для обновления узлов, install.sh — установщик агента (API раздаёт его
-# вместе с архивами). Программа агента и install.sh — с GitHub Release версии agent-sdk;
+# вместе с архивами). Программа агента и install.sh — с GitHub Release версии AGENT_VERSION (build-arg, по умолчанию — из .env.example);
 # агента под другие платформы pack берёт оттуда же. Подпись воркеров ключом
 # проекта — секрет сборки agent_signing_key (необязательно: без него воркеры ставятся,
 # но с API не обновляются); открытый ключ pack кладёт в архив сам.
 FROM python:3.12-slim AS agent-bundle
 WORKDIR /src/agent
-COPY package.json /src/package.json
+ARG AGENT_VERSION
+COPY .env.example /src/.env.example
 RUN python - <<'PY'
 import hashlib, json, os, platform, re, urllib.request
 
-version = re.search(r"agent-sdk-([^/]+)\.tgz", json.load(open("/src/package.json"))["dependencies"]["agent-sdk"]).group(1)
+version = os.environ.get("AGENT_VERSION") or re.search(r"^AGENT_VERSION=(\S+)", open("/src/.env.example").read(), re.M).group(1)
 arch = "arm64" if platform.machine() in ("aarch64", "arm64") else "amd64"
 base = f"https://github.com/epifanovmd/agent/releases/download/v{version}"
 build = next(a for a in json.load(urllib.request.urlopen(f"{base}/manifest.json"))["artifacts"]

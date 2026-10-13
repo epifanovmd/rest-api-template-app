@@ -1,6 +1,6 @@
 # Модуль Node
 
-Узлы — машины с агентами (agent-sdk, модуль `agent`). Узел хранит название,
+Узлы — машины с агентами (модуль `agent`). Узел хранит название,
 описание, публичный адрес (`host`), владельца и создателя и id своего агента;
 статус вычисляется по агенту (его воркерам и настройкам) и последней задаче
 установки. Модуль привязывает агента к узлу при регистрации, ставит и удаляет агента
@@ -42,7 +42,7 @@ src/modules/node/
 | `host`                    | `varchar(255)`, nullable            | публичный адрес: SSH и проверка сети    |
 | `ownerId`                 | `uuid`, nullable, FK users          | назначенный владелец (`SET NULL`)       |
 | `createdById`             | `uuid`, nullable, FK users          | создатель или автор токена (`SET NULL`) |
-| `agentId`                 | `varchar(64)`, nullable, уникальный | агент узла (id agent-sdk, без FK)       |
+| `agentId`                 | `varchar(64)`, nullable, уникальный | агент узла (id агента, без FK)          |
 | `agentName`               | `varchar(128)`, nullable            | имя агента узла (остаётся без агента)   |
 | `createdAt` / `updatedAt` | `timestamptz`                       |                                         |
 
@@ -104,7 +104,7 @@ src/modules/node/
 
 **Команда установки.** `install-command` создаёт одноразовый токен регистрации
 (`maxUses: 1`, срок `expiresInMinutes`, по умолчанию сутки) с меткой
-`nodeId=<id узла>` и строку `curl …/api/v1/agent-link/bundle/install.sh | sudo sh -s -- --token …`
+`nodeId=<id узла>` и строку `curl …/agent/v1/bundle/install.sh | sudo sh -s -- --token …`
 (`AgentService.installCommand`). Скрипт скачивает с API архив папки агента под машину узла
 (`agent pack`, `AGENT_BUNDLE_DIR`) и запускает из него `agent install`: воркеры (`echo`),
 пакеты и экземпляр — из настроек папки (`agent/agent.prod.yaml`). Токен — только
@@ -158,7 +158,7 @@ password?, privateKey?, passphrase?, sudo?, backendUrl?, mode?}` (+ `purge` у �
 
 Задача (воркер, `tracked`, без повторов): подключение ssh2 → рабочий каталог
 `mktemp -d /tmp/agent-node.XXXXXXXX` → токен файлом (umask 077) → установщик с
-этого сервера (`/api/v1/agent-link/bundle/install.sh`, curl или wget) → `sh install.sh
+этого сервера (`/agent/v1/bundle/install.sh`, curl или wget) → `sh install.sh
 --token-file …` (архив папки агента под машину узла → `agent install`; удаление —
 `--uninstall [--purge]`, экземпляр — из настроек архива) с
 `sudo -n` (вход по ключу) или `sudo -S` (пароль в stdin). `mode: rootless` — от пользователя

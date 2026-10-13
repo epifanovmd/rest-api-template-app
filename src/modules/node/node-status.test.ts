@@ -75,7 +75,7 @@ describe("nodeStatus", () => {
     expect(nodeStatus(agent(), null).status).to.equal(ENodeStatus.Online);
   });
 
-  it("воркер invalid, упал, не в порядке или отказал в настройке — error", () => {
+  it("воркер invalid, упал или не в порядке — error", () => {
     const withWorker = (worker: object) =>
       nodeStatus(agent({ workers: [{ name: "echo", ...worker }] }), null);
 
@@ -92,18 +92,6 @@ describe("nodeStatus", () => {
       status: ENodeStatus.Error,
       message: "Воркер echo: диск",
     });
-    expect(
-      withWorker({
-        state: "running",
-        configs: {
-          settings: {
-            version: 2,
-            ok: false,
-            error: { code: "CONFIG_REJECTED", message: "prefix: строка" },
-          },
-        },
-      }).message,
-    ).to.equal("Воркер echo, настройка settings: prefix: строка");
   });
 
   it("статус настроек failed (в том числе не доставленная) — error", () => {

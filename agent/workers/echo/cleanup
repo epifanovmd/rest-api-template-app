@@ -1,0 +1,3 @@
+#!/bin/sh
+# Уборка на узле перед удалением агента (agent uninstall).
+exec python3 "$(dirname "$0")/worker.py" cleanup

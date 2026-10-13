@@ -18,7 +18,7 @@ import {
 
 /**
  * Узел — машина с агентом. Статус не хранится: его вычисляют по агенту
- * (agent-sdk) и последней задаче установки или удаления.
+ * и последней задаче установки или удаления.
  */
 @Entity("nodes")
 @Index("IDX_NODES_OWNER", ["ownerId"])
@@ -55,7 +55,7 @@ export class Node {
   @JoinColumn({ name: "created_by_id" })
   createdBy!: User | null;
 
-  /** Агент узла (id агента agent-sdk); `null` — агента нет. */
+  /** Агент узла (id агента); `null` — агента нет. */
   @Column({ name: "agent_id", type: "varchar", length: 64, nullable: true })
   agentId!: string | null;
 

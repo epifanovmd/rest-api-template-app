@@ -52,9 +52,9 @@ describe("NodeAgentService", () => {
     agents = {
       revokeAs: sinon.stub().resolves(),
       revokeAndDelete: sinon.stub().resolves(),
-      installCommand: sinon.stub().callsFake((body: any) => ({
-        command: `curl … --token ${body.token}`,
-      })),
+      installCommand: sinon
+        .stub()
+        .callsFake((body: any) => `curl … --token ${body.token}`),
     };
     enrollment = {
       createToken: sinon.stub().resolves({
@@ -98,7 +98,7 @@ describe("NodeAgentService", () => {
     });
     expect(agents.installCommand.firstCall.args[0]).to.deep.equal({
       token: "pref.secret",
-      baseUrl: undefined,
+      server: undefined,
       mode: undefined,
     });
   });
@@ -175,7 +175,7 @@ describe("NodeAgentService", () => {
       .withArgs({ host: "203.0.113.7" })
       .resolves([{ id: "n-host" }]);
     await service.onEnrolled(
-      { ...agent("a3"), address: "203.0.113.7" },
+      { ...agent("a3"), remoteIp: "203.0.113.7" },
       source,
     );
     expect(repo.bindFree.lastCall.args[0]).to.equal("n-host");
@@ -220,17 +220,17 @@ describe("NodeAgentService", () => {
   });
 
   it("адрес агента — в узел без адреса; без адреса агента — ничего", async () => {
-    await service.fillHost({ ...agent(), address: "203.0.113.7" } as any);
+    await service.fillHost({ ...agent(), remoteIp: "203.0.113.7" } as any);
 
     expect(repo.fillHost.calledOnceWith("a-new", "203.0.113.7")).to.be.true;
     expect(eventBus.emit.firstCall.args[0]).to.include({ nodeId: "n1" });
 
     repo.fillHost.resolves(null);
-    await service.fillHost({ ...agent(), address: "203.0.113.8" } as any);
+    await service.fillHost({ ...agent(), remoteIp: "203.0.113.8" } as any);
     expect(eventBus.emit.calledOnce, "адрес у узла уже был — без события").to.be
       .true;
 
-    await service.fillHost({ ...agent(), address: undefined } as any);
+    await service.fillHost({ ...agent(), remoteIp: undefined } as any);
     expect(repo.fillHost.calledTwice).to.be.true;
   });
 

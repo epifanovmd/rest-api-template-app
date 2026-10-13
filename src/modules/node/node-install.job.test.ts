@@ -113,7 +113,7 @@ describe("NodeInstallAgentJob", () => {
     const commands = execs.map(exec => exec.command);
 
     expect(commands[1]).to.include(
-      "'https://api.example.com/api/v1/agent-link/bundle/install.sh'",
+      "'https://api.example.com/agent/v1/bundle/install.sh'",
     );
     expect(commands[2]).to.match(/^sudo -S -p '' sh -c '/);
     expect(commands[2]).to.include(
@@ -196,7 +196,7 @@ describe("NodeUninstallAgentJob", () => {
     await job.handle(context(data).ctx);
 
     expect(execs[2].command).to.equal(
-      `sh ${WORK_DIR}/install.sh --bundle 'https://api.example.com/api/v1/agent-link/bundle/linux-{arch}.tar.gz' --uninstall --purge; code=$?; rm -rf ${WORK_DIR}; exit $code`,
+      `sh ${WORK_DIR}/install.sh --bundle 'https://api.example.com/agent/v1/bundle/linux-{arch}.tar.gz' --uninstall --purge; code=$?; rm -rf ${WORK_DIR}; exit $code`,
     );
     expect(nodeAgents.detach.calledOnceWith("n1", "u1")).to.be.true;
   });

@@ -212,7 +212,7 @@ describe("узлы", function () {
       201,
     ).data;
 
-    expect(command.command).to.include("/api/v1/agent-link/bundle/install.sh");
+    expect(command.command).to.include("/agent/v1/bundle/install.sh");
     expect(command.command).to.include(command.token);
     expectStatus(
       await call(bob, "POST", `/api/v1/nodes/${nodeA.id}/install-command`, {}),
@@ -330,22 +330,22 @@ describe("узлы", function () {
         bob,
         "PUT",
         `/api/v1/agents/${agentBId}/workers/echo/configs/settings`,
-        { data: { prefix: "b:" } },
+        { prefix: "b:" },
       ),
       200,
     );
 
     const echo = expectStatus(
-      await call(bob, "POST", `/api/v1/agents/${agentBId}/workers/echo/fetch`, {
-        method: "POST",
-        path: "/echo",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ text: "узел" }),
-      }),
+      await call(
+        bob,
+        "POST",
+        `/api/v1/agents/${agentBId}/workers/echo/commands`,
+        { type: "echo.say", args: { text: "узел" }, waitSeconds: 10 },
+      ),
       200,
     ).data;
 
-    expect(echo.text).to.match(/УЗЕЛ$/);
+    expect(echo.result.text).to.match(/УЗЕЛ$/);
     expectStatus(
       await call(bob, "POST", `/api/v1/agents/${agentBId}/revoke`),
       403,
