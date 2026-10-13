@@ -22,8 +22,9 @@ RUN yarn build
 
 # ── Архивы папки агента для узлов (раздаёт API: AGENT_BUNDLE_DIR) ─────────────
 # agent pack --env prod: по архиву на linux/amd64 и linux/arm64 (программа агента,
-# agent.yaml + agent.prod.yaml, воркеры проекта и их сборки) и release/ — сборки
-# воркеров для обновления узлов. Программа агента — с GitHub Release версии agent-sdk;
+# agent.yaml + agent.prod.yaml, воркеры проекта и их сборки), release/ — сборки
+# воркеров для обновления узлов, install.sh — установщик агента (API раздаёт его
+# вместе с архивами). Программа агента и install.sh — с GitHub Release версии agent-sdk;
 # агента под другие платформы и netprobe pack берёт оттуда же. Подпись воркеров ключом
 # проекта — секрет сборки agent_signing_key (необязательно: без него воркеры ставятся,
 # но с API не обновляются); открытый ключ pack кладёт в архив сам.
@@ -42,6 +43,7 @@ urllib.request.urlretrieve(f"{base}/{build['file']}", "/usr/local/bin/agent")
 if hashlib.sha256(open("/usr/local/bin/agent", "rb").read()).hexdigest() != build["sha256"].lower():
     raise SystemExit(f"{build['file']}: sha256 не совпадает с manifest.json")
 os.chmod("/usr/local/bin/agent", 0o755)
+urllib.request.urlretrieve(f"{base}/install.sh", "/usr/local/share/agent-install.sh")
 PY
 COPY agent/agent.yaml agent/agent.prod.yaml ./
 COPY agent/workers ./workers
@@ -50,7 +52,8 @@ RUN --mount=type=secret,id=agent_signing_key,required=false \
       AGENT_SIGNING_KEY="$(cat /run/secrets/agent_signing_key)"; export AGENT_SIGNING_KEY; \
     fi && \
     AGENT_NO_UPDATE_CHECK=1 agent pack --env prod --platform linux/amd64,linux/arm64 \
-      --out /agent-bundle --release-out /agent-bundle/release
+      --out /agent-bundle --release-out /agent-bundle/release && \
+    cp /usr/local/share/agent-install.sh /agent-bundle/install.sh
 
 # ── Только production-зависимости, без install-скриптов ──────────────────────
 # Кэш yarn — в cache-mount BuildKit, в слой не попадает: чистить не нужно.

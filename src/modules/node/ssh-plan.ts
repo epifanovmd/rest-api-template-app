@@ -1,7 +1,11 @@
-import { bundleInstallUrl } from "agent-sdk/server";
 import type { ConnectConfig } from "ssh2";
 
 import { JobContext, JobError } from "../../core";
+import {
+  bundleArchiveUrl,
+  bundleInstallFlags,
+  bundleInstallUrl,
+} from "../agent";
 import type { TNodeSshInstallMode } from "./dto";
 import type { ISshSession } from "./ssh-runner";
 
@@ -19,9 +23,13 @@ export const WORK_DIR_COMMAND = "mktemp -d /tmp/agent-node.XXXXXXXX";
 /** Путь из вывода `mktemp` — только такой попадает в команды. */
 export const WORK_DIR_PATTERN = /^\/tmp\/agent-node\.[A-Za-z0-9]+$/;
 
-/** Установщик агента на этом сервере: архив папки агента под машину узла. */
+/** Установщик агента на этом сервере (ставит архив папки агента под машину узла). */
 export const installScriptUrl = (backendUrl: string): string =>
   bundleInstallUrl(backendUrl);
+
+/** Флаги установщика: архив и адрес этого сервера. */
+const bundleFlags = (backendUrl: string): string =>
+  bundleInstallFlags(backendUrl).map(shQuote).join(" ");
 
 /** Как повышать права: sudo без пароля (`-n`) или с паролем в stdin (`-S`). */
 export interface ISshPrivilege {
@@ -94,7 +102,7 @@ export const buildInstallPlan = (
     {
       title: "Установка агента",
       command:
-        `sh ${files.script}${mode === "rootless" ? " --rootless" : ""} --token-file ${files.token}; ` +
+        `sh ${files.script} ${bundleFlags(backendUrl)}${mode === "rootless" ? " --rootless" : ""} --token-file ${files.token}; ` +
         `code=$?; rm -rf ${workDir}; exit $code`,
       privileged: mode !== "rootless",
       timeoutMs: 900_000,
@@ -119,7 +127,7 @@ export const buildUninstallPlan = (
   {
     title: "Удаление агента",
     command:
-      `sh ${workFiles(workDir).script} --uninstall${purge ? " --purge" : ""}; ` +
+      `sh ${workFiles(workDir).script} --bundle ${shQuote(bundleArchiveUrl(backendUrl))} --uninstall${purge ? " --purge" : ""}; ` +
       `code=$?; rm -rf ${workDir}; exit $code`,
     privileged: mode !== "rootless",
     timeoutMs: 300_000,

@@ -1,22 +1,16 @@
 import { expect } from "chai";
 
-import {
-  AGENT_RELEASES_DEFAULTS,
-  agentReleasesSchema,
-  toAgentReleasesOptions,
-} from "./agent.config";
+import { agentReleasesSchema, toAgentReleasesOptions } from "./agent.config";
 
 const options = (env: Record<string, string | undefined>) =>
   toAgentReleasesOptions(agentReleasesSchema.parse(env));
 
 describe("настройки агентов: откуда берутся сборки агента", () => {
-  it("по умолчанию — релизы GitHub, версии ^1, ключ автора агента", () => {
+  it("по умолчанию — релизы GitHub, версии — как мажорная версия agent-sdk", () => {
     expect(options({})).to.deep.equal({
       github: "epifanovmd/agent",
-      range: "^1",
       checkIntervalMs: 3_600_000,
       proxy: false,
-      publicKey: AGENT_RELEASES_DEFAULTS.publicKey,
     });
   });
 
@@ -28,7 +22,6 @@ describe("настройки агентов: откуда берутся сбо�
         token: "ghp_example",
         proxy: "true",
         checkIntervalMs: "60000",
-        publicKey: "example-key",
       }),
     ).to.deep.equal({
       github: "example/agent",
@@ -36,7 +29,6 @@ describe("настройки агентов: откуда берутся сбо�
       token: "ghp_example",
       checkIntervalMs: 60_000,
       proxy: true,
-      publicKey: "example-key",
     });
   });
 
@@ -47,7 +39,6 @@ describe("настройки агентов: откуда берутся сбо�
       url: "https://example.com/agent/v1.1.0",
       checkIntervalMs: 3_600_000,
       proxy: false,
-      publicKey: AGENT_RELEASES_DEFAULTS.publicKey,
     });
   });
 

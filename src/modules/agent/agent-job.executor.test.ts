@@ -133,7 +133,7 @@ describe("AgentJobExecutor", () => {
       jobId: "j1",
       data: { text: "hi" },
       files: { outputs: { result: "https://s3/put" } },
-      timeoutMs: 1,
+      wait: false,
     });
   });
 

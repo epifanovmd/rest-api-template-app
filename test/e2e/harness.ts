@@ -3,7 +3,7 @@ import { SDK_VERSION } from "agent-sdk";
 import { ChildProcess, execFile, spawn } from "child_process";
 import { generateKeyPairSync } from "crypto";
 import { once } from "events";
-import { existsSync, mkdtempSync, rmSync } from "fs";
+import { copyFileSync, existsSync, mkdtempSync, rmSync } from "fs";
 import { readFile } from "fs/promises";
 import { createServer as createHttpServer, Server } from "http";
 import { Redis } from "ioredis";
@@ -265,6 +265,8 @@ const buildProjectBundle = async (): Promise<string> => {
       },
     },
   );
+  // Установщик агента — рядом с архивами, как у yarn agent:pack.
+  copyFileSync(join(AGENT_DIST_DIR, "install.sh"), join(dir, "install.sh"));
 
   return dir;
 };

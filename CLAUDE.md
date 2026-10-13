@@ -15,7 +15,7 @@ Chai + Sinon, сборка `tsc`. Агенты — github.com/epifanovmd/agent: 
 на узлах — папка агента `agent/` (README простыми словами): настройки `agent.yaml`
 (машина разработчика) и `agent.prod.yaml` / `agent.docker.yaml` поверх него, воркеры проекта
 (`agent/workers/<имя>`: база `agent_worker.py` + класс-наследник, `yarn agent worker new`),
-`yarn agent*` (`agent/dev.mjs`), архивы для узлов (`yarn agent:pack` → `agent/bundle`; их раздаёт
+`yarn agent*` (`agent/dev.sh`), архивы для узлов (`yarn agent:pack` → `agent/bundle`; их раздаёт
 API из `AGENT_BUNDLE_DIR`, ставит `agent install`), образ (`agent/docker`). Агента и `netprobe`
 бэкенд берёт из релизов GitHub сам (`AGENT_RELEASES_*`) и замечает новые версии.
 Node >= 22.13 (Docker — 24 LTS). Роль процесса — `APP_ROLE=api|worker|all`.
@@ -35,7 +35,6 @@ yarn test:e2e             # интеграционный набор test/e2e/*.e
 yarn gen:module <name>    # каркас модуля по конвенциям (--dry-run — список файлов)
 yarn agent [команда]      # агент с воркерами echo и netprobe (agent/agent.yaml; AGENT_BOOTSTRAP_TOKEN);
                           # команды агента: config check, worker new|list|sync, upgrade …
-yarn agent:start | agent:stop [--force] | agent:status | agent:logs   # тот же агент в фоне
 yarn agent:pack           # архивы для узлов и сборки воркеров → agent/bundle (AGENT_BUNDLE_DIR)
 yarn agent:fetch          # программа агента и сборки агента с GitHub в agent/dist (e2e)
 yarn migration:generate src/migrations/<Name> | migration:run | migration:revert

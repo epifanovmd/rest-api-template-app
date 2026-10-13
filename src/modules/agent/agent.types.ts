@@ -49,10 +49,8 @@ export type TAgentLogLevel = (typeof AGENT_LOG_LEVELS)[number];
 export const AGENT_WATCH = {
   /** Частота метрик, мс. */
   metricsIntervalMs: 1_000,
-  /** Срок наблюдателя без продления, мс. */
+  /** Срок наблюдателя без продления (процесс упал), мс; SDK продлевает на половине срока. */
   ttlMs: 30_000,
-  /** Продление, мс (меньше срока). */
-  renewMs: 20_000,
   /** Уровень журнала по умолчанию. */
   logLevel: "info" as TAgentLogLevel,
 };
@@ -113,15 +111,3 @@ export const AGENT_INSTALL_MODES = [
   "rootless",
   "run",
 ] as const satisfies readonly AgentInstallMode[];
-
-/**
- * Обновляет ли агент себя по `agent.update`: `hello.agent.updateMode` нет
- * (агент старше 1.4) или `self`. Агент в контейнере (`external`) обновляют новым образом.
- */
-export const isSelfUpdating = (agent: {
-  hello?: { agent: { updateMode?: string } };
-}): boolean => {
-  const mode = agent.hello?.agent.updateMode;
-
-  return !mode || mode === "self";
-};

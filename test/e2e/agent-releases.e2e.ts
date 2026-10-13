@@ -106,8 +106,11 @@ describe("сборки агента из источника и воркеры п
       await fetch(`${BASE_URL}/api/v1/agent-link/bundle/install.sh`)
     ).text();
 
-    expect(script).to.include(`SERVER="${BASE_URL}"`);
-    expect(script).to.include('install --server "$SERVER" "$@"');
+    // Установщик агента из его релиза (раздаёт бэкенд из каталога архивов).
+    expect(script).to.include("--bundle URL");
+    expect(script).to.include(
+      '"$AGENT" install ${SERVER:+--server "$SERVER"} "$@"',
+    );
 
     const archive = await fetch(
       `${BASE_URL}/api/v1/agent-link/bundle/${platform()}.tar.gz`,

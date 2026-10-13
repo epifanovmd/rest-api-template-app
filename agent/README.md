@@ -14,7 +14,7 @@ agent/
 ├── .env.prod.example   образец .env.prod — если узел ставится не с API
 ├── workers/            воркеры проекта: каждый — папка (echo — пример)
 ├── docker/Dockerfile   образ агента
-├── dev.mjs             yarn agent*: программа агента, порт и токен API из .env.development
+├── dev.sh              yarn agent*: программа агента, порт и токен API из .env.development
 ├── bundle/             архивы для узлов (yarn agent:pack, не в git) — их раздаёт API
 └── dist/               сборки агента для сквозных тестов (yarn agent:fetch, не в git)
 ```
@@ -33,15 +33,16 @@ agent/
 ```bash
 yarn dev                          # API (в .env.development — AGENT_BOOTSTRAP_TOKEN)
 yarn agent                        # агент с воркерами echo и netprobe (agent.yaml); Ctrl+C — остановка
-yarn agent:start | agent:stop [--force] | agent:status | agent:logs   # то же в фоне
+yarn agent status                 # работает ли агент (запущенный в другом терминале)
 yarn agent config check           # итоговые настройки и откуда каждое значение
 yarn agent worker list            # воркеры: откуда каждый, версия
 yarn agent upgrade --check        # есть ли новая версия агента (yarn agent upgrade — поставить)
 ```
 
-`yarn agent` (это `agent/dev.mjs`) скачивает программу агента той же версии, что `agent-sdk` в
+`yarn agent` (это `agent/dev.sh`) скачивает программу агента той же версии, что `agent-sdk` в
 `package.json`, если её ещё нет, берёт `SERVER_PORT` и `AGENT_BOOTSTRAP_TOKEN` из
-`.env.development` (другой файл — `ENV_FILE=…`) и запускает `agent/agent run`. Воркер `echo` идёт
+`.env.development` (другой файл — `ENV_FILE=…`) и запускает `agent/agent run`; Ctrl+C останавливает агента вместе с
+воркерами. Каталог сборок вместо релиза на GitHub — `AGENT_RELEASES_URL`. Воркер `echo` идёт
 прямо из `workers/echo` (правки видны после перезапуска воркера), `netprobe` агент берёт из своего
 релиза сам. Данные агента — `.agent/data` (удалить — агент зарегистрируется заново и привяжется к
 своему узлу по имени). Второй агент — `AGENT_DIR=.agent-2 AGENT_NAME=dev-2 yarn agent`.
@@ -112,7 +113,7 @@ yarn agent:pack                   # agent/bundle: agent-prod-<версия>-linu
 | `mode`              | Что на узле                                                                                                                                                                                                                                                        |
 | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `systemd` (обычный) | служба `agent-rest` от root, пакеты из `install:` ставятся                                                                                                                                                                                                         |
-| `rootless`          | агент пользователя без root (`--rootless`, команда без `sudo`): `~/.agent-rest`, служба `systemctl --user` (её нет — агент в фоне с автозапуском из `crontab`); `python3` должен уже стоять на узле                                                                |
+| `rootless`          | агент пользователя без root (`--rootless`, команда без `sudo`): `~/.agent-rest`, служба `systemctl --user` (её нет — установка не идёт: запускайте агента сами, `run`); `python3` должен уже стоять на узле                                                        |
 | `run`               | без установки (`--run`, команда без `sudo`): агент на переднем плане — в контейнере или под своим менеджером процессов; данные — `AGENT_DATA_DIR` (по умолчанию `/var/lib/agent`, держите на томе), себя не обновляет. В образе должно быть то, что нужно воркерам |
 
 С `rootless` пакеты из `install:` пропускаются с предупреждением. Агент с `run` себя не обновляет:
@@ -125,9 +126,11 @@ yarn agent:pack                   # agent/bundle: agent-prod-<версия>-linu
 | с API по SSH         | `POST /api/v1/nodes/{id}/agent/install` — то же самое на узле, токен — файлом                                                                                                                  |
 | удалить              | `sudo agent-rest uninstall [--purge]` (без root — `agent-rest uninstall` без `sudo`), тем же скриптом `… \| sudo sh -s -- --uninstall [--purge]` или `POST /api/v1/nodes/{id}/agent/uninstall` |
 
-API раздаёт архивы из `AGENT_BUNDLE_DIR` через SDK (опция `bundlesDir`; `/api/v1/agent-link/bundle/install.sh` и
-`/api/v1/agent-link/bundle/linux-<arch>.tar.gz`); в образе API их собирает стадия `agent-bundle`
-`Dockerfile`, для разработки — `yarn agent:pack` (`AGENT_BUNDLE_DIR=agent/bundle`).
+API раздаёт архивы и установщик агента из `AGENT_BUNDLE_DIR` (`/api/v1/agent-link/bundle/install.sh` —
+`install.sh` из релиза агента той же версии, `/api/v1/agent-link/bundle/linux-<arch>.tar.gz` — новейший архив);
+в образе API их собирает стадия `agent-bundle` `Dockerfile`, для разработки — `yarn agent:pack`
+(`AGENT_BUNDLE_DIR=agent/bundle`). Установщику передаются `--server <API>` и
+`--bundle <API>/api/v1/agent-link/bundle/linux-{arch}.tar.gz`.
 
 На узле (экземпляр `rest`):
 

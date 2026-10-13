@@ -977,7 +977,7 @@ describe("агенты (настоящий агент и воркер echo)", fu
     ).data.command;
 
     expect(command).to.equal(
-      `curl -fsSL '${BASE_URL}/api/v1/agent-link/bundle/install.sh' | sudo sh -s -- --token 'tok.secret'`,
+      `curl -fsSL '${BASE_URL}/api/v1/agent-link/bundle/install.sh' | sudo sh -s -- '--server' '${BASE_URL}' '--bundle' '${BASE_URL}/api/v1/agent-link/bundle/linux-{arch}.tar.gz' '--token' 'tok.secret'`,
     );
     expectStatus(
       await call(admin, "POST", "/api/v1/agent-releases/install-command", {}),
@@ -993,7 +993,7 @@ describe("агенты (настоящий агент и воркер echo)", fu
         200,
       ).data.command,
     ).to.equal(
-      `curl -fsSL '${BASE_URL}/api/v1/agent-link/bundle/install.sh' | sh -s -- --rootless --token 'tok.secret'`,
+      `curl -fsSL '${BASE_URL}/api/v1/agent-link/bundle/install.sh' | sh -s -- '--server' '${BASE_URL}' '--bundle' '${BASE_URL}/api/v1/agent-link/bundle/linux-{arch}.tar.gz' '--rootless' '--token' 'tok.secret'`,
     );
     expect(
       expectStatus(
@@ -1004,7 +1004,7 @@ describe("агенты (настоящий агент и воркер echo)", fu
         200,
       ).data.command,
     ).to.equal(
-      `curl -fsSL '${BASE_URL}/api/v1/agent-link/bundle/install.sh' | sh -s -- --run --token 'tok.secret'`,
+      `curl -fsSL '${BASE_URL}/api/v1/agent-link/bundle/install.sh' | sh -s -- '--server' '${BASE_URL}' '--bundle' '${BASE_URL}/api/v1/agent-link/bundle/linux-{arch}.tar.gz' '--run' '--token' 'tok.secret'`,
     );
     expectStatus(
       await call(admin, "POST", "/api/v1/agent-releases/install-command", {
@@ -1018,8 +1018,9 @@ describe("агенты (настоящий агент и воркер echo)", fu
       `${BASE_URL}/api/v1/agent-link/bundle/install.sh`,
     );
 
+    // Установщик агента из его релиза: адрес сервера и архива — в команде.
     expect(script.status).to.equal(200);
-    expect(await script.text()).to.include(BASE_URL);
+    expect(await script.text()).to.include("--bundle URL");
     expectStatus(await call(admin, "GET", "/api/v1/agents/alerts"), 200);
     expectStatus(
       await call(admin, "GET", `/api/v1/agents/alerts?agentId=${agentId}`),

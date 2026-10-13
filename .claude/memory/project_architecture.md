@@ -277,7 +277,7 @@ E2E: `yarn test:e2e` (`.mocharc.e2e.yml`: `test/e2e/**/*.e2e.ts`, `setup.ts` —
 --release-out`, секрет `agent_signing_key`) → `/app/agent-bundle` (`AGENT_BUNDLE_DIR`).
   `agent/docker/Dockerfile` — агент версии agent-sdk (GitHub Release, sha256 по manifest) + python 3.12-slim + папка агента
   (`agent.yaml`, `agent.prod.yaml`, `agent.docker.yaml`, `workers/`) → `./agent run --env docker`; netprobe агент качает сам;
-  том `/var/lib/agent`. На машине: `agent/dev.mjs` — `yarn agent [команда]|agent:start|stop|status|logs|fetch|pack`
+  том `/var/lib/agent`. На машине: `agent/dev.sh` — `yarn agent [команда]|agent:fetch|agent:pack` (фонового режима нет)
   (`AGENT_DIR`, по умолчанию `.agent/`; программа — `agent/agent`).
 - `docker-compose.yml` (prod, только образы): `migrate` (одноразовый `typeorm migration:run -d build/data-source.js`),
   `api` (`:TAG-api`, `APP_ROLE=api`, масштабируется, `API_PORTS`), `worker` (`:TAG`, `APP_ROLE=worker`), профиль

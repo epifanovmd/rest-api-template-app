@@ -10,6 +10,10 @@ import {
   WORK_DIR_PATTERN,
 } from "./ssh-plan";
 
+/** Флаги установщика для архива этого сервера (https://api.example.com). */
+const BUNDLE =
+  "'--server' 'https://api.example.com' '--bundle' 'https://api.example.com/api/v1/agent-link/bundle/linux-{arch}.tar.gz'";
+
 describe("ssh-plan", () => {
   it("shQuote: одинарные кавычки POSIX", () => {
     expect(shQuote("a b")).to.equal("'a b'");
@@ -43,7 +47,7 @@ describe("ssh-plan", () => {
     );
     expect(install.privileged).to.equal(true);
     expect(install.command).to.equal(
-      `sh ${dir}/install.sh --token-file ${dir}/token; ` +
+      `sh ${dir}/install.sh ${BUNDLE} --token-file ${dir}/token; ` +
         `code=$?; rm -rf ${dir}; exit $code`,
     );
   });
@@ -54,9 +58,9 @@ describe("ssh-plan", () => {
     const system = buildInstallPlan(dir, "https://x", "systemd")[1];
 
     expect(rootless.privileged).to.equal(false);
-    expect(rootless.command).to.match(/install\.sh --rootless --token-file /);
+    expect(rootless.command).to.match(/tar\.gz' --rootless --token-file /);
     expect(system.privileged).to.equal(true);
-    expect(system.command).to.match(/install\.sh --token-file /);
+    expect(system.command).to.match(/tar\.gz' --token-file /);
     expect(
       buildUninstallPlan(dir, "https://x", true, "rootless")[1].privileged,
     ).to.equal(false);
@@ -66,7 +70,7 @@ describe("ssh-plan", () => {
     const dir = "/tmp/agent-node.abc123";
 
     expect(buildUninstallPlan(dir, "https://x", false)[1].command).to.match(
-      /install\.sh --uninstall; /,
+      /install\.sh --bundle '[^']+' --uninstall; /,
     );
     expect(buildUninstallPlan(dir, "https://x", true)[1].command).to.match(
       /--uninstall --purge; /,

@@ -16,18 +16,15 @@ import { resolveFromRoot } from "../../core";
 /** Откуда по умолчанию берутся агент и netprobe: релизы GitHub. */
 export const AGENT_RELEASES_DEFAULTS = {
   github: "epifanovmd/agent",
-  range: "^1",
   checkIntervalMs: 3_600_000,
-  /** Открытый ключ автора агента: им подписаны сборки агента и netprobe. */
-  publicKey: "9yYblu2wKJnjKccihbJv2lKtbxvqecCnX67u9LmgSuo=",
 };
 
 /** Источник агента и netprobe из env `AGENT_RELEASES_*`. */
 export const agentReleasesSchema = z.object({
   /** Репозиторий релизов `owner/repo`; пустое значение — не брать из GitHub. */
   github: z.string().default(AGENT_RELEASES_DEFAULTS.github),
-  /** Какие версии брать (semver), например `^1`. */
-  range: z.string().min(1).default(AGENT_RELEASES_DEFAULTS.range),
+  /** Какие версии брать (semver), например `^2`; нет — мажорная версия agent-sdk. */
+  range: optionalString,
   /** Каталог одной версии по ссылке (зеркало, своя версия); важнее `github`. */
   url: optionalString,
   /** Токен GitHub: только чтобы не упереться в лимит запросов. */
@@ -36,8 +33,6 @@ export const agentReleasesSchema = z.object({
   proxy: bool(false),
   /** Как часто проверять новую версию, мс. */
   checkIntervalMs: positiveInt.default(AGENT_RELEASES_DEFAULTS.checkIntervalMs),
-  /** Ключ автора агента (base64) для `install.sh`. */
-  publicKey: z.string().min(1).default(AGENT_RELEASES_DEFAULTS.publicKey),
 });
 
 export type TAgentReleasesConfig = z.output<typeof agentReleasesSchema>;
@@ -53,7 +48,6 @@ export const toAgentReleasesOptions = (
   const common = {
     checkIntervalMs: cfg.checkIntervalMs,
     proxy: cfg.proxy,
-    publicKey: cfg.publicKey,
   };
 
   if (cfg.url) return { ...common, url: cfg.url };
@@ -61,7 +55,7 @@ export const toAgentReleasesOptions = (
     return {
       ...common,
       github: cfg.github,
-      range: cfg.range,
+      ...(cfg.range && { range: cfg.range }),
       ...(cfg.token && { token: cfg.token }),
     };
   }
@@ -175,7 +169,6 @@ export const agentConfig = defineModuleConfig(
       proxy: process.env.AGENT_RELEASES_PROXY,
       checkIntervalMs:
         process.env.AGENT_RELEASES_CHECK_INTERVAL_MS || undefined,
-      publicKey: process.env.AGENT_RELEASES_PUBLIC_KEY || undefined,
     },
     configsKey: process.env.AGENT_CONFIGS_KEY,
     publicUrl: process.env.AGENT_PUBLIC_URL,

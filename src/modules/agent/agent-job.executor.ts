@@ -22,8 +22,6 @@ import {
 } from "../../core";
 import { AgentRuntime } from "./agent.runtime";
 
-/** Ждать итога долгой задачи при запуске не нужно: он придёт событием. */
-const RUN_WAIT_MS = 1;
 const TEXT_MAX = 200;
 const MESSAGE_MAX = 1000;
 
@@ -196,7 +194,8 @@ export class AgentJobExecutor implements IExternalJobExecutor {
         jobId: job.jobId,
         data: job.data,
         ...(job.files && { files: job.files }),
-        timeoutMs: RUN_WAIT_MS,
+        // Итог долгой задачи придёт событием: ждать его при запуске не нужно.
+        wait: false,
       }),
     );
 

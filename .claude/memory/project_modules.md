@@ -150,14 +150,14 @@ session, file, api-key, audit, jobs). Комнаты: `user_<id>` (всегда,
 `${}` — в кавычках, иначе пустое значение ломает YAML при pack), `agent.prod.yaml` (extends, instance `rest`, install
 `packages: [python3]`, `${AGENT_SERVER_URL}`/`${AGENT_ENROLL_TOKEN}` — их даёт установка), `agent.docker.yaml` (поверх prod,
 dataDir /var/lib/agent, update external), `workers/echo` (база `agent_worker.py` + `worker.py` класс `Echo`, `log_requests`,
-`WORKER_STATE_DIR` — ход задач; база — копия из агента, обновлять `yarn agent worker sync`), `dev.mjs` (yarn agent*: скачивает
+`WORKER_STATE_DIR` — ход задач; база — копия из агента, обновлять `yarn agent worker sync`), `dev.sh` (yarn agent*: скачивает
 `agent/agent` версии agent-sdk, env из .env.development, AGENT_NAME=dev-$USER, AGENT_DATA_DIR=.agent/data; fetch → ещё
 `agent/dist/v<v>` для e2e; pack → `agent/bundle` + `release/`), `docker/Dockerfile` (`run --env docker`), `.gitignore`
-(agent, bundle/, .env.prod). Удалены: dev.sh, release.sh, fetch.mjs, local/, docker/agent.yaml, release/, tools/.
+(agent, bundle/, .env.prod). Удалены: release.sh, fetch.mjs, local/, docker/agent.yaml, release/, tools/.
 Агент и netprobe — **из релизов GitHub** (`agentReleases` SDK, `toAgentReleasesOptions` в agent.config.ts):
-`AGENT_RELEASES_GITHUB` (epifanovmd/agent; пусто — выкл), `AGENT_RELEASES_RANGE` (^1), `AGENT_RELEASES_URL` (важнее
+`AGENT_RELEASES_GITHUB` (epifanovmd/agent; пусто — выкл), `AGENT_RELEASES_RANGE` (пусто — мажорная версия SDK), `AGENT_RELEASES_URL` (важнее
 github), `AGENT_RELEASES_TOKEN`, `AGENT_RELEASES_PROXY`, `AGENT_RELEASES_CHECK_INTERVAL_MS` (1 ч),
-`AGENT_RELEASES_PUBLIC_KEY` (ключ автора, по умолчанию 9yYb…uo=). Событие SDK `release` → журнал +
+Событие SDK `release` → журнал +
 `AgentReleaseChangedEvent` → сокет `agent:release` в `agents`. Бэкенд не пересобирают ради новой версии агента.
 **Установка узлов — архивами `agent pack`:** `AGENT_BUNDLE_DIR` (dev `agent/bundle`, образ — стадия `agent-bundle`
 Dockerfile: python-скрипт качает агента версии agent-sdk, `agent pack --env prod --platform linux/amd64,linux/arm64
@@ -180,8 +180,8 @@ REST: `/agents` (+ `/alerts`, `/events`, `/{id}`, revoke, delete, rotate-key, up
 `/agent-enrollment-tokens` (22 операции); `/api/v1/agent-link/*` — вне Swagger, `RAW_HTTP_HANDLER`.
 Строгость манифеста (SDK от 09.10.2026, тот же 1.0.0): агент пропускает только `routes` (иначе
 `AGENT_ROUTE_UNDECLARED` 404), типы задач из `jobs` (`AGENT_JOB_UNKNOWN` 409, во внешней очереди — final),
-события из `events`, запросы из `requests`. `AgentRuntime`: `validateConfigs|Jobs|Requests: true`,
-`validateEvents` = `AGENT_VALIDATE_EVENTS` (по умолчанию `log`; `invalidEvent` → warn + `agent_events.problems`
+события из `events`, запросы из `requests`. `AgentRuntime`: `validate: { configs, jobs, requests: true,
+events: AGENT_VALIDATE_EVENTS }` (по умолчанию `log`; замечания — `event.problems` → `agent_events.problems`
 (миграция `AgentEventProblems1791800000000`), `reject` — сохраняется из `invalidEvent`, обработчики модулей не
 вызываются). Тело не по `routes[].request` — `AGENT_REQUEST_INVALID` 400 (`details.reason`). Каталог возможностей —
 `AgentDto.workers[].manifest` (routes.request/response, events.schema, jobs, requests, configs), отдельного
@@ -190,7 +190,7 @@ REST: `/agents` (+ `/alerts`, `/events`, `/{id}`, revoke, delete, rotate-key, up
 нет обработчика — `REQUEST_UNHANDLED`, не тот воркер — `REQUEST_FORBIDDEN`, исключение — `REQUEST_FAILED`.
 Демо — `echo.lookup` (`jobs/demo-echo-lookup.handler.ts`: метка `echoPrefix` или `[<имя агента>] `, текст > 200 —
 `ECHO_TEXT_TOO_LONG`); echo 1.1.0: `POST /echo {text, repeat?, case?, reverse?}` + событие `echo.echoed`, `POST /emit`.
-`subscribeEvents`/`waitEvent` в модулях не используются: job-события нужны до подтверждения (`onEvent`).
+`waitEvent` в модулях не используется: job-события нужны до подтверждения (`onEvent`).
 Подробно — `src/modules/agent/README.md`.
 
 ## Модуль node (узлы с агентами, feat/agent-sdk)
