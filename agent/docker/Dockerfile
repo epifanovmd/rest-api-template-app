@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.7
 # Агент в контейнере — та же папка агента, что у разработчика и на узлах: программа агента,
-# agent.yaml + agent.prod.yaml + agent.docker.yaml (поверх друг друга) и воркеры из agent/workers.
-# netprobe (from: agent) агент скачивает из своего релиза сам при первом запуске — в том данных.
+# agent.yaml + agent.prod.yaml + agent.docker.yaml (поверх друг друга) и воркеры из agent/workers
+# (echo и netprobe).
 #
 #   docker build -f agent/docker/Dockerfile -t agent .
 #   docker run --rm -e AGENT_SERVER_URL=http://api:8181 \

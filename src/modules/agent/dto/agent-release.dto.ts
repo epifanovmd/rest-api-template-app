@@ -1,12 +1,9 @@
 import type { AgentInstallMode } from "../agent.types";
 
-/**
- * Откуда сборка: `remote` — откуда берутся сборки агента (GitHub или ссылка),
- * `local` — каталог сборок воркеров проекта.
- */
-export type TAgentReleaseSource = "remote" | "local";
+/** Откуда сборка: `local` — каталог сборок воркеров проекта. */
+export type TAgentReleaseSource = "local";
 
-/** Сборка агента. */
+/** Сборка в каталоге сборок. */
 export interface IAgentReleaseArtifactDto {
   os: string;
   arch: string;
@@ -14,7 +11,7 @@ export interface IAgentReleaseArtifactDto {
   sha256: string;
   signature?: string;
   source: TAgentReleaseSource;
-  /** Ссылка источника или путь от корня бэкенда. */
+  /** Путь от корня бэкенда. */
   url: string;
 }
 
@@ -27,20 +24,9 @@ export interface IAgentWorkerArtifactDto extends IAgentReleaseArtifactDto {
   stopTimeout?: string;
 }
 
-/** Версия агента в источнике: какая, откуда, когда проверена. */
-export interface IAgentReleaseRemoteDto {
-  version: string;
-  /** `github:owner/repo` или ссылка на каталог сборок. */
-  from: string;
-  /** Время проверки, мс. */
-  checkedAt: number;
-  /** Ключ, которым подписаны сборки (base64). */
-  publicKey?: string;
-}
-
 /**
- * Сборки, которые раздаёт бэкенд: агент и netprobe — из источника сборок
- * агента, воркеры проекта — из `release/` каталога архивов `AGENT_BUNDLE_DIR`.
+ * Сборки, которые раздаёт бэкенд: воркеры проекта — из `release/` каталога
+ * архивов `AGENT_BUNDLE_DIR` (`manifest.json` от `agent pack --release-out`).
  */
 export interface IAgentReleaseManifestDto {
   version: string;
@@ -48,24 +34,10 @@ export interface IAgentReleaseManifestDto {
   publicKey?: string;
   artifacts: IAgentReleaseArtifactDto[];
   workers?: IAgentWorkerArtifactDto[];
-  /** Нет — источник сборок агента не задан или ещё не ответил. */
-  remote?: IAgentReleaseRemoteDto;
 }
 
-/** Вышла другая версия агента (сокет `agent:release`). */
-export interface IAgentReleaseChangeDto {
-  version: string;
-  /** Прежняя версия; нет — версия получена впервые. */
-  previous?: string;
-  /** `github:owner/repo` или ссылка на каталог сборок. */
-  from: string;
-}
-
-/**
- * Откуда новая версия агента: `server` — сборки сервера (источник сборок агента), `agent` —
- * агент нашёл её в своём каталоге сборок сам.
- */
-export type TAgentUpdateSource = "server" | "agent";
+/** Откуда новая версия агента: `agent` — агент нашёл её в своём каталоге сборок сам. */
+export type TAgentUpdateSource = "agent";
 
 /** Агент, которого можно обновить до новой версии. */
 export interface IAgentUpdateCandidateDto {
@@ -93,7 +65,7 @@ export interface IAgentWorkerUpdateCandidateDto {
 
 /** Сборки агента и кого можно обновить. */
 export interface IAgentReleaseDto {
-  /** `null` — нет ни источника сборок агента, ни каталога сборок воркеров. */
+  /** `null` — нет каталога сборок воркеров. */
   manifest: IAgentReleaseManifestDto | null;
   candidates: IAgentUpdateCandidateDto[];
   workerCandidates: IAgentWorkerUpdateCandidateDto[];

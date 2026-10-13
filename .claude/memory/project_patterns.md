@@ -203,9 +203,9 @@ describe("FeatureService", () => {
   Захват записи — `claimDispatch` (status queued, external_id NULL, started_at NULL или старше 90 с → ставит
   started_at; статус остаётся queued), неудача — `releaseDispatch` (started_at NULL, error). pg-boss `dispatch`
   — тот же захват; захвачено другим → `JOB_DISPATCHING` (retry). Reconnect агента → `reconcile` + `startQueued`.
-- `AgentJobExecutor.dispatch`: агенты online, воркер running с типом в `workerManifest().jobs` (supports не умеет
-  jobs), без relay — только local; `runJob(..., { jobId: run.id, timeoutMs: 1 })` — 200 → `done` (workId = run.id),
-  202 → `progress` (workId = id воркера). JOB_REJECTED: 408/409/429/5xx — retry, иначе final; JOB_INVALID — final.
+- `AgentJobExecutor.dispatch`: агенты online, воркер running с типом в `workerManifest().jobs`, только local
+  (агент другой копии — AGENT_ELSEWHERE retry); data по схеме типа (JOB_INVALID final); `startAgentJob` (agent-jobs.ts,
+  `fetch POST /jobs`) — 200 → `done` (workId = run.id), 202 → `progress` (workId = id воркера). JOB_REJECTED: 408/409/429/5xx — retry, иначе final; JOB_INVALID — final.
   События `job.*` (JOB_EVENTS) → `ExternalJobService.apply`. Логгер редактирует ключ `code` — писать `errorCode`.
 - S3 (SeaweedFS) presigned PUT: `content-type` должен быть подписан и совпадать (без ContentType — 403) →
   выходам задавать `contentType`, воркер шлёт ровно его (echo — `text/plain`).
@@ -228,7 +228,7 @@ describe("FeatureService", () => {
   `leaseSeconds > expireInSeconds` у внешней очереди.
 - `bigintNumber` — `core/db/transformers.ts` (колонки `bigint` → number).
 
-### Агенты и задачи: файлы итога, своим лично, пересылка
+### Агенты и задачи: файлы итога, своим лично, несколько копий
 
 - Файлы итога внешней задачи: при `done` выходы `io(job).outputs`, которые есть в хранилище
   (`storage.stat`), пишутся в `job_runs.outputs` `[{name,key,size}]`; ссылки (`GET`, срок
@@ -238,7 +238,7 @@ describe("FeatureService", () => {
 - `node:mesh` своим — `NodeMeshService.byOwner(mesh)` + `OwnedEntityEmitter.toOwners`; нагрузка
   — `node:load {nodeId, agentId, point:{at, host}}` из `AgentMetricsReceivedEvent` (не чаще
   `NODE_LOAD_EMIT_MS` на агента; при watch метрики идут раз в секунду).
-- Пересылка — отдельный `AgentRelayServer` (`AGENT_RELAY_PORT`/`HOST`), `instanceId` с секретом —
-  адрес сервера пересылки, без секрета — адрес API. В e2e у каждой копии свой порт пересылки
-  (`RELAY_URL`, `peer.relayUrl`). Миграционный тест `node.repository.integration` откатывает
+- Пересылки между копиями нет: `instanceId` — адрес API копии; вызов агента в другой копии —
+  503 AGENT_ELSEWHERE + `Retry-After` (заголовок — `req.ctx.set`: `this.setHeader` tsoa на ошибке не
+  доходит). e2e: вторая копия (`startPeerServer`) — 503. Миграционный тест `node.repository.integration` откатывает
   последние миграции по порядку — новая миграция добавляет туда шаг.

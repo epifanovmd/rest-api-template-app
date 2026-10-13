@@ -1,9 +1,14 @@
 import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
-import { SDK_VERSION } from "agent-sdk";
 import { ChildProcess, execFile, spawn } from "child_process";
 import { generateKeyPairSync } from "crypto";
 import { once } from "events";
-import { copyFileSync, existsSync, mkdtempSync, rmSync } from "fs";
+import {
+  copyFileSync,
+  existsSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+} from "fs";
 import { readFile } from "fs/promises";
 import { createServer as createHttpServer, Server } from "http";
 import { Redis } from "ioredis";
@@ -127,23 +132,33 @@ export const readStored = async (key: string): Promise<string> => {
   }
 };
 
-/** Агенты стенда: общий токен регистрации. */
-/** Версия сборок агента — та же, что у agent-sdk. */
-export const AGENT_VERSION = SDK_VERSION;
-
-export const AGENT_BOOTSTRAP_TOKEN = "e2e-bootstrap-token-0123456789abcdef0123";
-
-/** Общий секрет копий API: вызовы агентов пересылаются между ними. */
-const AGENT_RELAY_SECRET = "e2e-relay-secret-0123456789abcdef0123456789";
+/** Версия agent-sdk из `node_modules`. */
+const sdkVersion = (): string =>
+  (
+    JSON.parse(
+      readFileSync(resolve("node_modules/agent-sdk/package.json"), "utf8"),
+    ) as { version: string }
+  ).version;
 
 /**
- * Сборки агента с GitHub (`yarn agent:fetch`): программа агента и netprobe.
- * Сервер стенда берёт их не из GitHub, а с локального сервера сборок
- * (`AGENT_RELEASES_URL`) — как с GitHub, но без сети.
+ * Сборки агента с GitHub (`yarn agent:fetch`): программа агента под каждую
+ * платформу, `manifest.json`, `install.sh`. По умолчанию — версии agent-sdk.
  */
 export const AGENT_DIST_DIR = resolve(
-  env.E2E_AGENT_DIST_DIR ?? `agent/dist/v${SDK_VERSION}`,
+  env.E2E_AGENT_DIST_DIR ?? `agent/dist/v${sdkVersion()}`,
 );
+
+/** Версия сборок агента стенда — из их `manifest.json`. */
+export const AGENT_VERSION = existsSync(join(AGENT_DIST_DIR, "manifest.json"))
+  ? (
+      JSON.parse(
+        readFileSync(join(AGENT_DIST_DIR, "manifest.json"), "utf8"),
+      ) as { version: string }
+    ).version
+  : sdkVersion();
+
+/** Агенты стенда: общий токен регистрации. */
+export const AGENT_BOOTSTRAP_TOKEN = "e2e-bootstrap-token-0123456789abcdef0123";
 
 /** Пара ключей проекта (Ed25519, base64): подпись воркеров проекта. */
 const projectKeys = (): { signing: string; public: string } => {
@@ -163,36 +178,26 @@ export const PROJECT_KEYS = projectKeys();
 /** Архивы папки агента стенда (agent pack во временный каталог): AGENT_BUNDLE_DIR. */
 let bundleDir = "";
 
-export interface IRemoteRelease {
-  /** Адрес каталога сборок для `AGENT_RELEASES_URL`. */
+export interface IAgentReleases {
+  /** Адрес каталога сборок агента (как релизы GitHub: `…/download/v<версия>`). */
   url: string;
-  /** Пути запросов к серверу сборок. */
-  requests: string[];
-  /** Версия в `manifest.json` источника (`null` — как в файле). */
-  setVersion: (version: string | null) => void;
   close: () => Promise<void>;
 }
 
-/** Сервер сборок агента (как GitHub): файлы `AGENT_DIST_DIR`. */
-const serveRemoteRelease = async (dir: string): Promise<IRemoteRelease> => {
+/**
+ * Каталог сборок агента (как релизы GitHub): файлы `AGENT_DIST_DIR`. Из него
+ * `agent pack` стенда берёт программу агента под платформу архива.
+ */
+const serveAgentReleases = async (dir: string): Promise<IAgentReleases> => {
   if (!existsSync(join(dir, "manifest.json"))) {
     throw new Error(`E2E: нет сборок агента в ${dir} — yarn agent:fetch`);
   }
-  const requests: string[] = [];
-  let version: string | null = null;
   const http: Server = createHttpServer(async (req, res) => {
-    const path = req.url ?? "";
-    const name = decodeURIComponent(path.split("/").pop() ?? "");
+    const name = decodeURIComponent((req.url ?? "").split("/").pop() ?? "");
 
-    requests.push(path);
     try {
-      let body = await readFile(join(dir, name));
+      const body = await readFile(join(dir, name));
 
-      if (name === "manifest.json" && version) {
-        body = Buffer.from(
-          JSON.stringify({ ...JSON.parse(body.toString("utf8")), version }),
-        );
-      }
       res.writeHead(200, { "content-length": body.length });
       res.end(body);
     } catch {
@@ -204,11 +209,7 @@ const serveRemoteRelease = async (dir: string): Promise<IRemoteRelease> => {
   await once(http, "listening");
 
   return {
-    url: `http://127.0.0.1:${(http.address() as AddressInfo).port}/download/v${SDK_VERSION}`,
-    requests,
-    setVersion: v => {
-      version = v;
-    },
+    url: `http://127.0.0.1:${(http.address() as AddressInfo).port}/download/v${AGENT_VERSION}`,
     close: () =>
       new Promise<void>(done => {
         http.closeAllConnections();
@@ -217,10 +218,7 @@ const serveRemoteRelease = async (dir: string): Promise<IRemoteRelease> => {
   };
 };
 
-export let REMOTE_RELEASE: IRemoteRelease;
-
-/** Как часто сервер стенда проверяет, не вышла ли новая версия агента, мс. */
-export const RELEASE_CHECK_INTERVAL_MS = 500;
+let agentReleases: IAgentReleases | undefined;
 
 /** Платформа этой машины в именах сборок агента: darwin-arm64, linux-amd64. */
 const hostPlatform = (): { os: string; arch: string } => ({
@@ -230,10 +228,10 @@ const hostPlatform = (): { os: string; arch: string } => ({
 
 /**
  * Архив папки агента под эту машину и сборки воркеров проекта (`release/`),
- * подписанные ключом проекта стенда — как `yarn agent:pack`; агент и
- * netprobe — с локального сервера сборок.
+ * подписанные ключом проекта стенда — как `yarn agent:pack`; программа агента —
+ * с локального каталога сборок агента.
  */
-const buildProjectBundle = async (): Promise<string> => {
+const buildProjectBundle = async (releases: string): Promise<string> => {
   const dir = mkdtempSync(join(tmpdir(), "e2e-agent-bundle-"));
   const { os, arch } = hostPlatform();
   const agentBin =
@@ -257,10 +255,7 @@ const buildProjectBundle = async (): Promise<string> => {
       env: {
         ...env,
         AGENT_SIGNING_KEY: PROJECT_KEYS.signing,
-        AGENT_UPDATE_RELEASES: REMOTE_RELEASE.url.replace(
-          /\/download\/v[^/]+$/,
-          "",
-        ),
+        AGENT_UPDATE_RELEASES: releases.replace(/\/download\/v[^/]+$/, ""),
         AGENT_NO_UPDATE_CHECK: "1",
       },
     },
@@ -275,14 +270,8 @@ let server: ChildProcess | undefined;
 
 export let BASE_URL = "";
 
-/** Внутренний сервер пересылки основной копии (её `instanceId`). */
-export let RELAY_URL = "";
-
-/**
- * Окружение копии API: публичный порт `port`, внутренний сервер пересылки —
- * `relayPort` (адрес копии — `http://127.0.0.1:<relayPort>`).
- */
-const serverEnv = (port: number, relayPort: number): NodeJS.ProcessEnv => ({
+/** Окружение копии API на порту `port` (имя копии — `http://127.0.0.1:<port>`). */
+const serverEnv = (port: number): NodeJS.ProcessEnv => ({
   ...env,
   NODE_ENV: "test",
   APP_ROLE: "all",
@@ -315,27 +304,17 @@ const serverEnv = (port: number, relayPort: number): NodeJS.ProcessEnv => ({
   ADMIN_PASSWORD: E2E.admin.password,
   AGENT_BOOTSTRAP_TOKEN,
   AGENT_BUNDLE_DIR: bundleDir,
-  // Агент и netprobe — с локального сервера сборок, не из GitHub.
-  AGENT_RELEASES_GITHUB: "",
-  AGENT_RELEASES_URL: REMOTE_RELEASE.url,
-  AGENT_RELEASES_CHECK_INTERVAL_MS: String(RELEASE_CHECK_INTERVAL_MS),
-  AGENT_RELAY_SECRET,
-  AGENT_RELAY_HOST: "127.0.0.1",
-  AGENT_RELAY_PORT: String(relayPort),
   AGENT_STATUS_INTERVAL_MS: "1000",
   AGENT_METRICS_INTERVAL_MS: "1000",
   AGENT_METRICS_STORE_INTERVAL_MS: "0",
 });
 
 /** Запустить копию API и дождаться готовности. */
-const spawnServer = async (
-  port: number,
-  relayPort: number,
-): Promise<ChildProcess> => {
+const spawnServer = async (port: number): Promise<ChildProcess> => {
   const child = spawn(process.execPath, ["--import", "tsx", "src/main.ts"], {
     cwd: process.cwd(),
     stdio: ["ignore", "pipe", "pipe"],
-    env: serverEnv(port, relayPort),
+    env: serverEnv(port),
   });
   const logs: string[] = [];
 
@@ -361,28 +340,25 @@ const spawnServer = async (
 export const startServer = async (): Promise<void> => {
   await resetDatabase();
   await resetRedis();
-  REMOTE_RELEASE = await serveRemoteRelease(AGENT_DIST_DIR);
-  bundleDir = await buildProjectBundle();
+  agentReleases = await serveAgentReleases(AGENT_DIST_DIR);
+  bundleDir = await buildProjectBundle(agentReleases.url);
 
-  const [port, relayPort] = await freePorts(2);
+  const [port] = await freePorts(1);
 
   BASE_URL = `http://127.0.0.1:${port}`;
-  RELAY_URL = `http://127.0.0.1:${relayPort}`;
-  server = await spawnServer(port, relayPort);
+  server = await spawnServer(port);
 };
 
-/** Вторая копия API над той же БД и Redis (пересылка вызовов агентов). */
+/** Вторая копия API над той же БД и Redis (без соединений агентов). */
 export const startPeerServer = async (): Promise<{
   url: string;
-  relayUrl: string;
   stop: () => Promise<void>;
 }> => {
-  const [port, relayPort] = await freePorts(2);
-  const child = await spawnServer(port, relayPort);
+  const [port] = await freePorts(1);
+  const child = await spawnServer(port);
 
   return {
     url: `http://127.0.0.1:${port}`,
-    relayUrl: `http://127.0.0.1:${relayPort}`,
     stop: async () => {
       if (child.exitCode !== null) return;
       child.kill("SIGTERM");
@@ -396,6 +372,6 @@ export const stopServer = async (): Promise<void> => {
     server.kill("SIGTERM");
     await once(server, "exit");
   }
-  await REMOTE_RELEASE?.close();
+  await agentReleases?.close();
   if (bundleDir) rmSync(bundleDir, { recursive: true, force: true });
 };

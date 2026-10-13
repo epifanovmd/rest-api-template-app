@@ -11,7 +11,6 @@ import {
   AgentEventReceivedEvent,
   AgentLogReceivedEvent,
   AgentMetricsReceivedEvent,
-  AgentReleaseChangedEvent,
   AgentUpdatedEvent,
 } from "./events";
 
@@ -25,8 +24,7 @@ const roomsOf = (agentId: string): string[] => [
  * События агентов → сокет. Список (`agents`) получает изменения агентов,
  * проблемы и события воркеров; комната агента — то же по нему и вдобавок
  * метрики, журнал, статусы настроек и итоги действий. Сокет в обеих
- * комнатах получает событие один раз. Вышла другая версия агента —
- * в список (интерфейс показывает доступное обновление).
+ * комнатах получает событие один раз.
  */
 @Injectable()
 export class AgentListener implements ISocketEventListener {
@@ -45,9 +43,6 @@ export class AgentListener implements ISocketEventListener {
     );
     on(AgentDeletedEvent, ({ agentId }) =>
       emitter.toRooms(roomsOf(agentId), "agent:deleted", { id: agentId }),
-    );
-    on(AgentReleaseChangedEvent, ({ release }) =>
-      emitter.toRoom(AGENTS_ROOM, "agent:release", release),
     );
     on(AgentAlertChangedEvent, ({ alert }) =>
       emitter.toRooms(roomsOf(alert.agentId), "agent:alert", alert),

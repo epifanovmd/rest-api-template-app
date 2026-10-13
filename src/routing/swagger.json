@@ -2684,13 +2684,13 @@
 			"TAgentReleaseSource": {
 				"type": "string",
 				"enum": [
-					"remote",
 					"local"
 				],
-				"description": "Откуда сборка: `remote` — откуда берутся сборки агента (GitHub или ссылка),\n`local` — каталог сборок воркеров проекта."
+				"nullable": false,
+				"description": "Откуда сборка: `local` — каталог сборок воркеров проекта."
 			},
 			"IAgentReleaseArtifactDto": {
-				"description": "Сборка агента.",
+				"description": "Сборка в каталоге сборок.",
 				"properties": {
 					"os": {
 						"type": "string"
@@ -2712,7 +2712,7 @@
 					},
 					"url": {
 						"type": "string",
-						"description": "Ссылка источника или путь от корня бэкенда."
+						"description": "Путь от корня бэкенда."
 					}
 				},
 				"required": [
@@ -2749,7 +2749,7 @@
 					},
 					"url": {
 						"type": "string",
-						"description": "Ссылка источника или путь от корня бэкенда."
+						"description": "Путь от корня бэкенда."
 					},
 					"name": {
 						"type": "string"
@@ -2778,36 +2778,8 @@
 				"type": "object",
 				"additionalProperties": false
 			},
-			"IAgentReleaseRemoteDto": {
-				"description": "Версия агента в источнике: какая, откуда, когда проверена.",
-				"properties": {
-					"version": {
-						"type": "string"
-					},
-					"from": {
-						"type": "string",
-						"description": "`github:owner/repo` или ссылка на каталог сборок."
-					},
-					"checkedAt": {
-						"type": "number",
-						"format": "double",
-						"description": "Время проверки, мс."
-					},
-					"publicKey": {
-						"type": "string",
-						"description": "Ключ, которым подписаны сборки (base64)."
-					}
-				},
-				"required": [
-					"version",
-					"from",
-					"checkedAt"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
 			"IAgentReleaseManifestDto": {
-				"description": "Сборки, которые раздаёт бэкенд: агент и netprobe — из источника сборок\nагента, воркеры проекта — из `release/` каталога архивов `AGENT_BUNDLE_DIR`.",
+				"description": "Сборки, которые раздаёт бэкенд: воркеры проекта — из `release/` каталога\nархивов `AGENT_BUNDLE_DIR` (`manifest.json` от `agent pack --release-out`).",
 				"properties": {
 					"version": {
 						"type": "string"
@@ -2827,10 +2799,6 @@
 							"$ref": "#/components/schemas/IAgentWorkerArtifactDto"
 						},
 						"type": "array"
-					},
-					"remote": {
-						"$ref": "#/components/schemas/IAgentReleaseRemoteDto",
-						"description": "Нет — источник сборок агента не задан или ещё не ответил."
 					}
 				},
 				"required": [
@@ -2843,10 +2811,10 @@
 			"TAgentUpdateSource": {
 				"type": "string",
 				"enum": [
-					"server",
 					"agent"
 				],
-				"description": "Откуда новая версия агента: `server` — сборки сервера (источник сборок агента), `agent` —\nагент нашёл её в своём каталоге сборок сам."
+				"nullable": false,
+				"description": "Откуда новая версия агента: `agent` — агент нашёл её в своём каталоге сборок сам."
 			},
 			"IAgentUpdateCandidateDto": {
 				"description": "Агент, которого можно обновить до новой версии.",
@@ -2940,7 +2908,7 @@
 							}
 						],
 						"nullable": true,
-						"description": "`null` — нет ни источника сборок агента, ни каталога сборок воркеров."
+						"description": "`null` — нет каталога сборок воркеров."
 					},
 					"candidates": {
 						"items": {
@@ -7631,7 +7599,7 @@
 						}
 					}
 				},
-				"description": "Обновить агента до доступной версии (сборки агента — по\nумолчанию с GitHub): итог — после запуска новой версии. Агент в контейнере\nсебя не обновляет.",
+				"description": "Обновить агента до новой версии, которую он нашёл в своём каталоге сборок\n(`update.latest`; сборки агента — по умолчанию с GitHub): итог — после\nзапуска новой версии. Агент в контейнере себя не обновляет.",
 				"summary": "Обновление агента",
 				"tags": [
 					"Agent"
@@ -7968,7 +7936,7 @@
 						}
 					}
 				},
-				"description": "Сборки, которые раздаёт бэкенд: агент и netprobe — из источника сборок\nагента (по умолчанию GitHub, `remote` — версия и когда проверен),\nворкеры проекта — из `release/` каталога архивов `AGENT_BUNDLE_DIR`; у каждой сборки — источник.\nИ кого из доступных агентов можно обновить: агентов и воркеры с сервера.",
+				"description": "Сборки, которые раздаёт бэкенд: воркеры проекта — из `release/` каталога\nархивов `AGENT_BUNDLE_DIR` (у каждой сборки — источник `local` и путь).\nИ кого из доступных агентов можно обновить: агентов — до версии, которую\nони нашли в своём каталоге сборок, и воркеры — до сборки с сервера.",
 				"summary": "Сборки агента",
 				"tags": [
 					"Agent"

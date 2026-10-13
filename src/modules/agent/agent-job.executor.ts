@@ -3,8 +3,6 @@ import {
   type AgentEvent,
   AgentsError,
   JOB_EVENTS,
-  type JobResult,
-  type JobStatus,
   workerManifest,
 } from "agent-sdk/server";
 import { inject } from "inversify";
@@ -21,6 +19,37 @@ import {
   TExternalJobUpdateKind,
 } from "../../core";
 import { AgentRuntime } from "./agent.runtime";
+import { AgentSignals } from "./agent.signals";
+import { AGENT_JOB_CONTROL_CHANNEL } from "./agent.types";
+import {
+  agentJobStatus,
+  cancelAgentJob,
+  type IAgentJobReply,
+  startAgentJob,
+} from "./agent-jobs";
+import { schemaProblemsOf } from "./agent-schema";
+
+/** Команда задаче воркера процессу с соединением агента (канал `AGENT_JOB_CONTROL_CHANNEL`). */
+export interface IAgentJobSignal {
+  op: "cancel";
+  /** Процесс, которому команда: `instanceId` с соединением агента. */
+  instance: string;
+  agentId: string;
+  worker: string;
+  workId: string;
+}
+
+const isJobSignal = (v: unknown): v is IAgentJobSignal => {
+  const s = v as Partial<IAgentJobSignal> | null;
+
+  return (
+    !!s &&
+    s.op === "cancel" &&
+    [s.instance, s.agentId, s.worker, s.workId].every(
+      x => typeof x === "string" && x !== "",
+    )
+  );
+};
 
 const TEXT_MAX = 200;
 const MESSAGE_MAX = 1000;
@@ -33,7 +62,7 @@ const EVENT_KINDS: Record<string, TExternalJobUpdateKind> = {
   "job.cancelled": "cancelled",
 };
 
-/** Состояние задачи у воркера (`GET /jobs/{id}`, ответ `runJob`). */
+/** Состояние задачи у воркера (ответ на запуск и `GET /jobs/{id}`). */
 const STATE_KINDS: Record<string, TExternalJobUpdateKind> = {
   running: "progress",
   done: "done",
@@ -126,13 +155,12 @@ export const eventUpdate = (event: AgentEvent): ExternalJobUpdate | null => {
   return jobUpdate(event.agentId, event.worker, kind, event.data);
 };
 
-/** Ответ `runJob` и `jobStatus` → изменение задачи. */
+/** Ответ на запуск и на `GET /jobs/{id}` → изменение задачи. */
 const resultUpdate = (
   agentId: string,
   worker: string,
   workId: string,
-  reply: Pick<JobResult, "state" | "progress" | "result" | "error"> &
-    Partial<Pick<JobStatus, "id">>,
+  reply: IAgentJobReply,
 ): ExternalJobUpdate =>
   jobUpdate(agentId, worker, STATE_KINDS[reply.state] ?? "progress", {
     ...reply,
@@ -161,12 +189,11 @@ const isRetryableRejection = (status: number): boolean =>
 
 /**
  * Исполнитель внешних очередей на агентах — задачи воркеров по стандарту
- * `/jobs` (`runJob`, `jobStatus`, `cancelJob` SDK). Передача: агент на
- * связи, у которого воркер объявил тип задачи (`manifest.jobs`); свободные
- * (не `busy`) — первыми. С пересылкой между копиями (`relay`) подходит агент
- * любой копии, без неё — только на связи с этим процессом. Быстрая задача —
- * итог в ответе, долгая — `202 { id }`, ход и итог — события `job.*` (в
- * `onEvent` SDK, до подтверждения агенту).
+ * `/jobs` (`agent-jobs.ts`: `fetch` SDK). Передача: агент на связи с этим
+ * процессом, у которого воркер объявил тип задачи (`manifest.jobs`);
+ * свободные (не `busy`) — первыми; `data` — по схеме типа из манифеста.
+ * Быстрая задача — итог в ответе, долгая — `202 { id }`, ход и итог — события
+ * `job.*` (в `onEvent` SDK, до подтверждения агенту).
  */
 @Injectable()
 export class AgentJobExecutor implements IExternalJobExecutor {
@@ -174,32 +201,37 @@ export class AgentJobExecutor implements IExternalJobExecutor {
     (update: ExternalJobUpdate) => Promise<void>
   >();
 
-  constructor(@inject(AgentRuntime) private readonly _runtime: AgentRuntime) {
+  constructor(
+    @inject(AgentRuntime) private readonly _runtime: AgentRuntime,
+    @inject(AgentSignals) private readonly _signals: AgentSignals,
+  ) {
     this._runtime.onWorkerEvent(event => this.onEvent(event));
+    this._signals.on(
+      AGENT_JOB_CONTROL_CHANNEL,
+      payload => void this.onSignal(payload),
+    );
   }
 
-  /**
-   * Соединения агентов — у процессов с HTTP (`api`, `all`); с пересылкой
-   * передавать может и процесс без них.
-   */
+  /** Соединения агентов — у процессов с HTTP (`api`, `all`). */
   get canDispatch(): boolean {
-    return this._runtime.hasConnections || this._runtime.relayEnabled;
+    return this._runtime.hasConnections;
   }
 
   async dispatch(job: ExternalJobDispatch): Promise<ExternalJobUpdate> {
-    const { agentId, worker } = await this.pick(job.target);
+    const { agent, worker } = await this.pick(job.target);
+
+    this.validate(agent, worker, job);
+    // Итог долгой задачи придёт событием: ждать его при запуске не нужно.
     const reply = await this.request(() =>
-      this._runtime.agents.runJob(agentId, worker, {
+      startAgentJob(this._runtime.agents, agent.id, worker, {
         type: job.target.type,
         jobId: job.jobId,
         data: job.data,
         ...(job.files && { files: job.files }),
-        // Итог долгой задачи придёт событием: ждать его при запуске не нужно.
-        wait: false,
       }),
     );
 
-    return resultUpdate(agentId, worker, reply.id ?? job.jobId, reply);
+    return resultUpdate(agent.id, worker, reply.id ?? job.jobId, reply);
   }
 
   async poll(
@@ -207,7 +239,8 @@ export class AgentJobExecutor implements IExternalJobExecutor {
   ): Promise<ExternalJobUpdate | null> {
     try {
       const status = await this.request(() =>
-        this._runtime.agents.jobStatus(
+        agentJobStatus(
+          this._runtime.agents,
           assignment.agentId,
           assignment.worker,
           assignment.workId,
@@ -226,9 +259,19 @@ export class AgentJobExecutor implements IExternalJobExecutor {
     }
   }
 
+  /**
+   * Отменить задачу у воркера. Соединение агента в другом процессе (например,
+   * отмена из роли `worker`) — команда уходит туда сигналом.
+   */
   async cancel(assignment: ExternalJobAssignment): Promise<void> {
+    if (await this.forwarded("cancel", assignment)) return;
+    await this.cancelHere(assignment);
+  }
+
+  private async cancelHere(assignment: ExternalJobAssignment): Promise<void> {
     try {
-      await this._runtime.agents.cancelJob(
+      await cancelAgentJob(
+        this._runtime.agents,
         assignment.agentId,
         assignment.worker,
         assignment.workId,
@@ -240,6 +283,50 @@ export class AgentJobExecutor implements IExternalJobExecutor {
         "[Agent] Отмена задачи у воркера не удалась",
       );
     }
+  }
+
+  /**
+   * Агент на связи с другим процессом — отправить ему команду; true — отправлена
+   * (здесь выполнять не нужно).
+   */
+  private async forwarded(
+    op: IAgentJobSignal["op"],
+    assignment: ExternalJobAssignment,
+  ): Promise<boolean> {
+    const agent = await this._runtime.agents
+      .getAgent(assignment.agentId)
+      .catch(() => undefined);
+    const instance = agent?.online ? agent.session?.instance : undefined;
+
+    if (!instance || instance === this._runtime.instanceId) return false;
+    const signal: IAgentJobSignal = {
+      op,
+      instance,
+      agentId: assignment.agentId,
+      worker: assignment.worker,
+      workId: assignment.workId,
+    };
+
+    await this._signals.notify(
+      AGENT_JOB_CONTROL_CHANNEL,
+      JSON.stringify(signal),
+    );
+
+    return true;
+  }
+
+  /** Команда задаче от другого процесса — только процессу, которому она адресована. */
+  private async onSignal(payload: string): Promise<void> {
+    let signal: unknown;
+
+    try {
+      signal = JSON.parse(payload);
+    } catch {
+      return;
+    }
+    if (!isJobSignal(signal) || signal.instance !== this._runtime.instanceId)
+      return;
+    await this.cancelHere(signal);
   }
 
   onUpdate(listener: (update: ExternalJobUpdate) => Promise<void>): () => void {
@@ -262,23 +349,43 @@ export class AgentJobExecutor implements IExternalJobExecutor {
     for (const listener of this._listeners) await listener(update);
   }
 
+  /** `data` задачи не по схеме типа из манифеста воркера — `JOB_INVALID` без повторов. */
+  private validate(
+    agent: Agent,
+    worker: string,
+    job: ExternalJobDispatch,
+  ): void {
+    const problems = schemaProblemsOf(
+      agent,
+      worker,
+      { job: job.target.type },
+      job.data,
+    );
+
+    if (problems.length) {
+      throw new JobError(
+        "JOB_INVALID",
+        `${worker}/${job.target.type}: ${problems.join("; ")}`,
+        false,
+      );
+    }
+  }
+
   /**
-   * Агент и воркер для задачи: на связи, воркер объявил тип; свободные —
-   * первыми. Без пересылки — только агенты этого процесса (у другого —
-   * повтор позже); нет подходящих — тоже повтор.
+   * Агент и воркер для задачи: на связи с этим процессом, воркер объявил
+   * тип; свободные — первыми. Подходят только агенты другого процесса —
+   * `AGENT_ELSEWHERE` (повтор позже); нет подходящих — `NO_AGENT` (тоже повтор).
    */
   private async pick(
     target: ExternalJobTarget,
-  ): Promise<{ agentId: string; worker: string }> {
+  ): Promise<{ agent: Agent; worker: string }> {
     const agents = (await this._runtime.agents.listAgents()).filter(
       agent => agent.online && !agent.revoked,
     );
     const candidates = agents.flatMap(agent =>
       workersFor(agent, target).map(worker => ({ agent, worker })),
     );
-    const reachable = this._runtime.relayEnabled
-      ? candidates
-      : candidates.filter(c => this._runtime.isLocal(c.agent));
+    const reachable = candidates.filter(c => this._runtime.isLocal(c.agent));
 
     if (reachable.length === 0) {
       throw candidates.length > 0
@@ -296,7 +403,7 @@ export class AgentJobExecutor implements IExternalJobExecutor {
     const pool = free.length ? free : reachable;
     const chosen = pool[Math.floor(Math.random() * pool.length)];
 
-    return { agentId: chosen.agent.id, worker: chosen.worker };
+    return { agent: chosen.agent, worker: chosen.worker };
   }
 
   /** Ошибки SDK → `JobError`: связь и занятый воркер — повтор, неверная задача — нет. */

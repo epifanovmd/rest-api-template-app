@@ -17,7 +17,6 @@ import {
   AGENT_VERSION,
   BASE_URL,
   readStored,
-  RELAY_URL,
   startPeerServer,
 } from "./harness";
 import { connectSocket, TestSocket } from "./socket";
@@ -726,7 +725,7 @@ describe("агенты (настоящий агент и воркер echo)", fu
     expect(failed.error.code).to.equal("ECHO_FAILED");
   });
 
-  it("вторая копия API: вызовы агента пересылаются в копию с соединением (relay), AGENT_ELSEWHERE не доходит", async () => {
+  it("вторая копия API без соединения агента: чтение — из общего хранилища, вызовы агента — 503 AGENT_ELSEWHERE с Retry-After", async () => {
     const peer = await startPeerServer();
 
     try {
@@ -736,11 +735,10 @@ describe("агенты (настоящий агент и воркер echo)", fu
         200,
       ).data;
 
-      // Адрес копии — её внутренний сервер пересылки, не публичный порт.
-      expect(card.session.instance).to.equal(RELAY_URL);
-      expect(card.session.instance).to.not.equal(BASE_URL);
+      // Соединение агента — у основной копии: её имя — адрес её API.
+      expect(card.session.instance).to.equal(BASE_URL);
 
-      const echo = expectStatus(
+      const elsewhere = expectStatus(
         await call(
           admin,
           "POST",
@@ -753,12 +751,11 @@ describe("агенты (настоящий агент и воркер echo)", fu
           },
           via,
         ),
-        200,
+        503,
+        "AGENT_ELSEWHERE",
       );
 
-      expect(echo.data).to.deep.equal({ text: "> ЧЕРЕЗ КОПИЮ" });
-      expect(echo.headers.get("x-agent-worker-status")).to.equal("200");
-
+      expect(elsewhere.headers.get("retry-after")).to.equal("2");
       const logs = expectStatus(
         await call(
           admin,
@@ -767,56 +764,11 @@ describe("агенты (настоящий агент и воркер echo)", fu
           undefined,
           via,
         ),
-        200,
-      ).data;
-
-      expect(logs.entries).to.be.an("array");
-
-      const created = expectStatus(
-        await call(
-          admin,
-          "POST",
-          "/api/v1/jobs/demo/echo",
-          { text: "копия", long: true, steps: 20, delayMs: 200 },
-          via,
-        ),
-        201,
-      ).data;
-
-      await eventually(
-        async () =>
-          (await call(admin, "GET", `/api/v1/jobs/${created.jobId}`)).data
-            ?.progress > 0,
-        { what: "задача из второй копии идёт" },
+        503,
+        "AGENT_ELSEWHERE",
       );
-      expectStatus(
-        await call(
-          admin,
-          "POST",
-          `/api/v1/jobs/${created.jobId}/cancel`,
-          undefined,
-          via,
-        ),
-        204,
-      );
-      expect((await jobSettled(created.jobId)).status).to.equal("cancelled");
 
-      // Пересылка — только на внутреннем порту и только с общим секретом;
-      // публичный порт её не обслуживает.
-      const relayCall = (base: string) =>
-        fetch(`${base}/internal/agent-relay`, {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ method: "logs", agentId, args: [{}] }),
-        });
-
-      expect((await relayCall(peer.relayUrl)).status).to.equal(401);
-      expect((await relayCall(peer.url)).status).to.equal(404);
-      expect((await relayCall(BASE_URL)).status).to.equal(404);
-      expect(
-        (await fetch(`${peer.relayUrl}/api/v1/agents`)).status,
-        "внутренний порт — только пересылка",
-      ).to.equal(404);
+      expect(logs.headers.get("retry-after")).to.equal("2");
     } finally {
       await peer.stop();
     }

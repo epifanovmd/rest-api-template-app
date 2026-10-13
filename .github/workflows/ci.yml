@@ -32,7 +32,8 @@ jobs:
       - run: yarn test
       - run: yarn build
 
-  # Воркер проекта echo (Python, база agent_worker.py — стандартная библиотека): синтаксис.
+  # Воркеры проекта echo и netprobe (Python, база agent_worker.py — стандартная библиотека):
+  # синтаксис и тесты netprobe.
   agent-worker:
     runs-on: ubuntu-latest
     steps:
@@ -40,7 +41,9 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: python -m py_compile agent/workers/echo/worker.py agent/workers/echo/agent_worker.py
+      - run: python -m py_compile agent/workers/echo/*.py agent/workers/netprobe/*.py
+      - run: python -B -m unittest -v test_netprobe.py
+        working-directory: agent/workers/netprobe
 
   migrations:
     runs-on: ubuntu-latest
@@ -138,10 +141,10 @@ jobs:
             amazon/aws-cli:latest --endpoint-url http://localhost:8333 s3 mb s3://e2e
       - run: yarn install --frozen-lockfile --ignore-scripts
       - run: yarn generate
-      # Настоящий агент и netprobe для сценариев агентов и узлов — сборки агента версии
-      # agent-sdk с GitHub Release в agent/dist (yarn agent:fetch, только эта платформа). Сервер
-      # стенда берёт их с локального сервера сборок, не из GitHub; архив папки агента стенд
-      # собирает сам (agent pack, свой ключ проекта).
+      # Настоящий агент для сценариев агентов и узлов — сборки агента версии agent-sdk с
+      # GitHub Release в agent/dist (yarn agent:fetch, только эта платформа). Агент стенда
+      # проверяет новые версии на локальном сервере сборок, не в GitHub; архив папки агента
+      # стенд собирает сам (agent pack, свой ключ проекта).
       - run: yarn agent:fetch
         env:
           AGENT_PLATFORMS: linux-amd64

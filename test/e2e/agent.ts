@@ -1,7 +1,6 @@
-import { ChildProcess, spawn } from "child_process";
+import { ChildProcess, execFile, spawn } from "child_process";
 import { once } from "events";
 import {
-  copyFileSync,
   cpSync,
   existsSync,
   mkdirSync,
@@ -11,17 +10,18 @@ import {
 } from "fs";
 import { tmpdir } from "os";
 import { join, resolve } from "path";
+import { promisify } from "util";
 
 import { AGENT_DIST_DIR, BASE_URL, PROJECT_KEYS } from "./harness";
 
 /**
- * Настоящий агент (github.com/epifanovmd/agent) для сценариев: программа и
- * воркер netprobe — из сборок агента (`AGENT_DIST_DIR`, `yarn agent:fetch`),
- * воркер echo — из исходников `agent/workers/echo` (python3) или как воркер
- * со сборкой с сервера (`echo-release`: прежняя версия уже стоит, обновление — из
+ * Настоящий агент (github.com/epifanovmd/agent) для сценариев: программа —
+ * из сборок агента (`AGENT_DIST_DIR`, `yarn agent:fetch`), воркеры echo и
+ * netprobe — из исходников `agent/workers` (python3), echo ещё и как воркер со
+ * сборкой с сервера (`echo-release`: прежняя версия уже стоит, обновление — из
  * сборок воркеров проекта). Агент проверяет подпись воркеров проекта ключом
- * проекта стенда. Работает в своём временном каталоге данных и
- * останавливается вместе с воркерами.
+ * проекта стенда. Работает в своём временном каталоге данных; остановка —
+ * агент и его воркеры (они переживают агента — `agent stop-workers`).
  */
 const env = process.env;
 
@@ -42,33 +42,6 @@ const agentBinary = (): string => {
 
 /** Версия воркера echo, которая стоит у агента до обновления с сервера. */
 export const ECHO_PREVIOUS_VERSION = "0.9.0";
-
-/** Сборка netprobe под эту машину и её версия — из `manifest.json` сборок. */
-const netprobeBuild = (): { file: string; version: string } => {
-  const [os, arch] = platform().split("-");
-  const manifest = JSON.parse(
-    readFileSync(join(AGENT_DIST_DIR, "manifest.json"), "utf8"),
-  ) as {
-    workers?: {
-      name: string;
-      version: string;
-      os: string;
-      arch: string;
-      file: string;
-    }[];
-  };
-  const build = manifest.workers?.find(
-    w => w.name === "netprobe" && w.os === os && w.arch === arch,
-  );
-
-  if (!build) {
-    throw new Error(
-      `E2E: в сборках ${AGENT_DIST_DIR} нет netprobe для ${platform()} — yarn agent:fetch`,
-    );
-  }
-
-  return { file: join(AGENT_DIST_DIR, build.file), version: build.version };
-};
 
 export interface IEnrollResult {
   status: number;
@@ -120,8 +93,7 @@ const echoEnv = (dataDir: string): string[] => [
   "    env:",
   '      PYTHONUNBUFFERED: "1"',
   `      WORKER_STATE_DIR: ${JSON.stringify(join(dataDir, "echo-state"))}`,
-  "    lifecycle:",
-  "      { onAgentStop: stop, onAgentRestart: restart, stopTimeout: 5s, health: { interval: 1s, timeout: 1s, failures: 5 } }",
+  "    lifecycle: { stopTimeout: 5s }",
 ];
 
 const workerYaml = (name: TWorkerName, dataDir: string): string => {
@@ -139,9 +111,10 @@ const workerYaml = (name: TWorkerName, dataDir: string): string => {
       );
     case "netprobe":
       return [
-        "  - name: netprobe",
-        "    release: true",
-        "    lifecycle: { onAgentStop: stop, onAgentRestart: restart, stopTimeout: 5s }",
+        `  - path: ${JSON.stringify(resolve("agent/workers/netprobe"))}`,
+        "    env:",
+        '      PYTHONUNBUFFERED: "1"',
+        "    lifecycle: { stopTimeout: 5s }",
       ].join("\n");
   }
 };
@@ -165,6 +138,7 @@ export class RealAgent {
 
   private constructor(
     readonly dataDir: string,
+    private readonly _config: string,
     private readonly _process: ChildProcess,
   ) {
     _process.stdout?.on("data", chunk => this._logs.push(String(chunk)));
@@ -177,13 +151,6 @@ export class RealAgent {
     const dataDir = join(dir, "data");
     const workers = options.workers ?? ["echo"];
 
-    if (workers.includes("netprobe")) {
-      const build = netprobeBuild();
-
-      installReleaseWorker(dataDir, "netprobe", build.version, current =>
-        copyFileSync(build.file, current),
-      );
-    }
     if (workers.includes("echo-release")) {
       installReleaseWorker(dataDir, "echo", ECHO_PREVIOUS_VERSION, current => {
         cpSync(resolve("agent/workers/echo"), current, {
@@ -201,7 +168,6 @@ export class RealAgent {
       [
         "server:",
         `  url: ${BASE_URL}`,
-        "  reconnect: { min: 200ms, max: 2s }",
         `dataDir: ${JSON.stringify(dataDir)}`,
         `name: ${JSON.stringify(options.name)}`,
         "enroll:",
@@ -227,7 +193,7 @@ export class RealAgent {
       stdio: ["ignore", "pipe", "pipe"],
       env: { PATH: env.PATH ?? "", HOME: dir },
     });
-    const agent = new RealAgent(dataDir, child);
+    const agent = new RealAgent(dataDir, config, child);
 
     await agent.waitForKey();
 
@@ -247,18 +213,23 @@ export class RealAgent {
     return this._logs.join("");
   }
 
-  /** Остановить агента (воркеры — вместе с ним). */
+  /** Остановить агента и его воркеры (`agent stop-workers`). */
   async stop(): Promise<void> {
-    if (this._process.exitCode !== null) return;
+    if (this._process.exitCode === null) {
+      const exited = once(this._process, "exit");
 
-    const exited = once(this._process, "exit");
+      this._process.kill("SIGTERM");
 
-    this._process.kill("SIGTERM");
+      const timer = setTimeout(() => this._process.kill("SIGKILL"), 15_000);
 
-    const timer = setTimeout(() => this._process.kill("SIGKILL"), 15_000);
-
-    await exited;
-    clearTimeout(timer);
+      await exited;
+      clearTimeout(timer);
+    }
+    await promisify(execFile)(
+      agentBinary(),
+      ["stop-workers", "-config", this._config],
+      { env: { PATH: env.PATH ?? "", HOME: join(this.dataDir, "..") } },
+    ).catch(() => undefined);
   }
 
   private async waitForKey(): Promise<void> {

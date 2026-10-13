@@ -4,26 +4,16 @@ import { createHash } from "crypto";
 import { readFileSync } from "fs";
 import { createServer } from "http";
 import { AddressInfo } from "net";
-import { join } from "path";
 
 import { ECHO_PREVIOUS_VERSION, platform, RealAgent } from "./agent";
 import { Actor, call, eventually, expectStatus, signInAdmin } from "./client";
 import {
   AGENT_BOOTSTRAP_TOKEN,
-  AGENT_DIST_DIR,
   AGENT_VERSION,
   BASE_URL,
   PROJECT_KEYS,
-  REMOTE_RELEASE,
 } from "./harness";
 import { connectSocket, TestSocket } from "./socket";
-
-/** manifest.json сборок агента (как на GitHub). */
-const distManifest = () =>
-  JSON.parse(readFileSync(join(AGENT_DIST_DIR, "manifest.json"), "utf8")) as {
-    publicKey: string;
-    artifacts: { os: string; arch: string; file: string; sha256: string }[];
-  };
 
 /** Версия воркера echo в исходниках — она же в сборках воркеров проекта. */
 const ECHO_VERSION = readFileSync("agent/workers/echo/VERSION", "utf8").trim();
@@ -34,7 +24,7 @@ const NEXT_VERSION = AGENT_VERSION.replace(
   patch => `${Number(patch) + 1}`,
 );
 
-describe("сборки агента из источника и воркеры проекта", function () {
+describe("сборки воркеров проекта и обновление агента", function () {
   this.timeout(120_000);
 
   let admin: Actor;
@@ -61,12 +51,11 @@ describe("сборки агента из источника и воркеры п
   });
 
   after(async () => {
-    REMOTE_RELEASE.setVersion(null);
     socket?.close();
     await agent?.stop();
   });
 
-  it("агент из скачанных сборок на связи; итоговый манифест: агент и netprobe — из источника, воркеры проекта — из AGENT_RELEASES_DIR", async () => {
+  it("агент на связи; манифест сборок — воркеры проекта из release/ каталога архивов", async () => {
     const card = await eventually(
       async () => {
         const a = (await call(admin, "GET", `/api/v1/agents/${agentId}`)).data;
@@ -80,28 +69,19 @@ describe("сборки агента из источника и воркеры п
     expect(card.version).to.equal(AGENT_VERSION);
 
     const { manifest } = await release();
-
-    expect(manifest.version).to.equal(AGENT_VERSION);
-    expect(manifest.remote).to.include({
-      version: AGENT_VERSION,
-      from: REMOTE_RELEASE.url,
-      publicKey: distManifest().publicKey,
-    });
-    expect(manifest.artifacts.length).to.be.greaterThan(0);
-    for (const a of manifest.artifacts) {
-      expect(a).to.include({
-        source: "remote",
-        url: `${REMOTE_RELEASE.url}/${a.file}`,
-      });
-    }
     const sources = Object.fromEntries(
       manifest.workers.map((w: any) => [w.name, w.source]),
     );
 
-    expect(sources).to.deep.equal({ netprobe: "remote", echo: "local" });
+    expect(sources).to.deep.equal({ echo: "local", netprobe: "local" });
+    for (const w of manifest.workers) {
+      expect(w.url).to.equal(
+        `/api/v1/agent-link/releases/${encodeURIComponent(w.file)}`,
+      );
+    }
   });
 
-  it("установка с сервера: скрипт и архив папки агента (ключ проекта — в нём); сборка агента — ссылкой на источник", async () => {
+  it("установка с сервера: скрипт и архив папки агента (ключ проекта — в нём); сборка воркера — с сервера", async () => {
     const script = await (
       await fetch(`${BASE_URL}/api/v1/agent-link/bundle/install.sh`)
     ).text();
@@ -135,60 +115,15 @@ describe("сборки агента из источника и воркеры п
         .status,
     ).to.equal(404);
 
-    const file = `agent-${platform()}`;
-    const redirect = await fetch(
-      `${BASE_URL}/api/v1/agent-link/releases/${file}`,
-      { redirect: "manual" },
-    );
-
-    expect(redirect.status).to.equal(302);
-    expect(redirect.headers.get("location")).to.equal(
-      `${REMOTE_RELEASE.url}/${file}`,
-    );
-
+    const { manifest } = await release();
+    const build = manifest.workers.find((w: any) => w.name === "netprobe");
     const body = Buffer.from(
-      await (await fetch(redirect.headers.get("location")!)).arrayBuffer(),
+      await (await fetch(`${BASE_URL}${build.url}`)).arrayBuffer(),
     );
 
     expect(createHash("sha256").update(body).digest("hex")).to.equal(
-      distManifest().artifacts.find(a => a.file === file)?.sha256,
+      build.sha256.toLowerCase(),
     );
-  });
-
-  it("новая версия агента в источнике: событие agent:release и кандидат на обновление", async () => {
-    const found = socket.next(
-      "agent:release",
-      (r: any) => r.version === NEXT_VERSION,
-      10_000,
-    );
-
-    REMOTE_RELEASE.setVersion(NEXT_VERSION);
-    expect(await found).to.deep.equal({
-      version: NEXT_VERSION,
-      previous: AGENT_VERSION,
-      from: REMOTE_RELEASE.url,
-    });
-
-    const { manifest, candidates } = await release();
-
-    expect(manifest.version).to.equal(NEXT_VERSION);
-    expect(candidates.find((c: any) => c.agentId === agentId)).to.include({
-      current: AGENT_VERSION,
-      target: NEXT_VERSION,
-      source: "server",
-    });
-
-    const back = socket.next(
-      "agent:release",
-      (r: any) => r.version === AGENT_VERSION,
-      10_000,
-    );
-
-    REMOTE_RELEASE.setVersion(null);
-    await back;
-    expect(
-      (await release()).candidates.some((c: any) => c.agentId === agentId),
-    ).to.equal(false);
   });
 
   it("новую версию нашёл сам агент: update агента, кандидат source=agent, agent:updated в сокете", async () => {

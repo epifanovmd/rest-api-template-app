@@ -39,8 +39,8 @@ jobs:
           # Облегчённый образ API без ffmpeg.
           - target: api
             suffix: "-api"
-          # Агент с воркерами без SDK (agent/docker/Dockerfile): программа агента и
-          # netprobe — с GitHub Release агента.
+          # Агент с воркерами проекта (agent/docker/Dockerfile): программа агента — с
+          # GitHub Release агента.
           - target: ""
             file: agent/docker/Dockerfile
             suffix: "-agent"

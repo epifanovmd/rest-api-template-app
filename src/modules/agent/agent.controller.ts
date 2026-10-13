@@ -171,16 +171,16 @@ export class AgentController extends Controller {
     @Path() id: TAgentId,
   ): Promise<void> {
     await withRetryAfter(
-      (name, value) => this.setHeader(name, value),
+      (name, value) => req.ctx.set(name, value),
       () => this._agents.rotateKey(getContextUser(req), id),
     );
     this.setStatus(204);
   }
 
   /**
-   * Обновить агента до доступной версии (сборки агента — по
-   * умолчанию с GitHub): итог — после запуска новой версии. Агент в контейнере
-   * себя не обновляет.
+   * Обновить агента до новой версии, которую он нашёл в своём каталоге сборок
+   * (`update.latest`; сборки агента — по умолчанию с GitHub): итог — после
+   * запуска новой версии. Агент в контейнере себя не обновляет.
    * @summary Обновление агента
    */
   @Security("jwt")
@@ -190,7 +190,7 @@ export class AgentController extends Controller {
     @Path() id: TAgentId,
   ): Promise<IAgentUpdateResultDto> {
     return withRetryAfter(
-      (name, value) => this.setHeader(name, value),
+      (name, value) => req.ctx.set(name, value),
       () => this._agents.update(getContextUser(req), id),
     );
   }
@@ -209,7 +209,7 @@ export class AgentController extends Controller {
     @Query() lines?: number,
   ): Promise<IAgentLogsDto> {
     return withRetryAfter(
-      (name, value) => this.setHeader(name, value),
+      (name, value) => req.ctx.set(name, value),
       () => this._agents.logs(getContextUser(req), id, { worker, lines }),
     );
   }

@@ -16,10 +16,9 @@
 # files) или внешний S3 через S3_*.
 # Агент с воркерами echo и netprobe (agent/docker/Dockerfile): `docker compose --profile
 # agent up -d`; регистрация — AGENT_BOOTSTRAP_TOKEN (тот же у API). Один агент — один том
-# данных: ещё агенты — своими сервисами со своими томами. Несколько реплик api пересылают
-# вызовы агентов друг другу (AGENT_RELAY_SECRET в .env.production) через внутренний сервер
-# пересылки: порт AGENT_RELAY_PORT (8182) внутри сети compose, на хост не публикуется; адрес
-# копии — http://<IP контейнера>:8182.
+# данных: ещё агенты — своими сервисами со своими томами. Несколько реплик api: вызов агента
+# выполняет реплика с его соединением, другая отвечает 503 AGENT_ELSEWHERE с Retry-After —
+# балансировщик перед репликами должен быть липким.
 
 x-logging: &logging
   driver: json-file
@@ -107,9 +106,6 @@ services:
     environment:
       <<: *app-env
       APP_ROLE: api
-      # Сервер пересылки между репликами — только в сети compose (без ports).
-      AGENT_RELAY_HOST: 0.0.0.0
-      AGENT_RELAY_PORT: "8182"
     # Несколько реплик: `docker compose up -d --scale api=3` и диапазон
     # API_PORTS=8181-8183 (или без host-портов — за reverse proxy по имени `api`).
     ports:
@@ -184,7 +180,7 @@ services:
     logging: *logging
 
 # Подпись воркеров проекта при сборке образа (agent pack): закрытый ключ проекта
-# (agent keygen) — файлом AGENT_SIGNING_KEY_FILE на машине сборки (не в .env: env_file
+# (base64, ключи подписи — agent/README.md) — файлом AGENT_SIGNING_KEY_FILE на машине сборки (не в .env: env_file
 # попадает в контейнеры); открытый ключ pack кладёт в архив сам. Без файла воркеры
 # без подписи: ставятся, но с API не обновляются.
 secrets:

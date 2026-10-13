@@ -144,21 +144,23 @@ session, file, api-key, audit, jobs). Комнаты: `user_<id>` (всегда,
 
 Агент и SDK — github.com/epifanovmd/agent (внешняя зависимость). Сервер — `Agents` из
 `agent-sdk/server` (зависимость — архив GitHub Release
-`https://github.com/epifanovmd/agent/releases/download/v1.2.0/agent-sdk-1.2.0.tgz`, `vendor/` нет; ESM, грузится из CJS через require(esm)).
-**Папка агента `agent/`** (агент 1.2.0: extends/envFiles, pack, install из архива, worker new):
+`https://github.com/epifanovmd/agent/releases/download/v<версия>/agent-sdk-<версия>.tgz`, до публикации 3.0.0 — `file:` на локальный tgz; `vendor/` нет; ESM, грузится из CJS через require(esm)).
+SDK 3: нет relay, runJob/jobStatus/cancelJob, by(actor)/audit, listAlerts/alert, updateCandidates, agentReleases/release-событие,
+validate/invalidEvent/problems, capabilities/supports/waitEvent — всё это делает модуль сам (ниже).
+**Папка агента `agent/`** (extends/envFiles, pack, install из архива; команд `worker new|sync|list`, `keygen` у агента нет):
 `agent.yaml` (dev: `${SERVER_PORT}`, `${AGENT_BOOTSTRAP_TOKEN}`, `dataDir ../.agent/data`, update disabled; значения с
 `${}` — в кавычках, иначе пустое значение ломает YAML при pack), `agent.prod.yaml` (extends, instance `rest`, install
 `packages: [python3]`, `${AGENT_SERVER_URL}`/`${AGENT_ENROLL_TOKEN}` — их даёт установка), `agent.docker.yaml` (поверх prod,
 dataDir /var/lib/agent, update external), `workers/echo` (база `agent_worker.py` + `worker.py` класс `Echo`, `log_requests`,
-`WORKER_STATE_DIR` — ход задач; база — копия из агента, обновлять `yarn agent worker sync`), `dev.sh` (yarn agent*: скачивает
+`WORKER_STATE_DIR` — ход задач; база одинаковая во всех воркерах проекта), `workers/netprobe` (воркер проекта на Python,
+`- path: workers/netprobe`, тесты `python3 -B -m unittest -v test_netprobe.py`), `dev.sh` (yarn agent*: скачивает
 `agent/agent` версии agent-sdk, env из .env.development, AGENT_NAME=dev-$USER, AGENT_DATA_DIR=.agent/data; fetch → ещё
 `agent/dist/v<v>` для e2e; pack → `agent/bundle` + `release/`), `docker/Dockerfile` (`run --env docker`), `.gitignore`
 (agent, bundle/, .env.prod). Удалены: release.sh, fetch.mjs, local/, docker/agent.yaml, release/, tools/.
-Агент и netprobe — **из релизов GitHub** (`agentReleases` SDK, `toAgentReleasesOptions` в agent.config.ts):
-`AGENT_RELEASES_GITHUB` (epifanovmd/agent; пусто — выкл), `AGENT_RELEASES_RANGE` (пусто — мажорная версия SDK), `AGENT_RELEASES_URL` (важнее
-github), `AGENT_RELEASES_TOKEN`, `AGENT_RELEASES_PROXY`, `AGENT_RELEASES_CHECK_INTERVAL_MS` (1 ч),
-Событие SDK `release` → журнал +
-`AgentReleaseChangedEvent` → сокет `agent:release` в `agents`. Бэкенд не пересобирают ради новой версии агента.
+Новую версию агента находит сам агент (`update.releases`, по умолчанию GitHub) → `agent.update.latest`; кандидаты —
+`agent-update.ts` (`updateCandidates(listAgents(), release())`: агент с updateMode self/нет; воркеры release: true — по
+сборкам `release/`); `POST /agents/{id}/update` — всегда с `version` (цель кандидата, иначе 409 UPDATE_NOT_AVAILABLE /
+UPDATE_NOT_SUPPORTED). Бэкенд не пересобирают ради новой версии агента; события `agent:release` нет.
 **Установка узлов — архивами `agent pack`:** `AGENT_BUNDLE_DIR` (dev `agent/bundle`, образ — стадия `agent-bundle`
 Dockerfile: python-скрипт качает агента версии agent-sdk, `agent pack --env prod --platform linux/amd64,linux/arm64
 --release-out`, секрет `agent_signing_key`) → `AgentBundleHandler` (RAW_HTTP_HANDLER, `agent-bundle.ts`):
@@ -180,17 +182,21 @@ REST: `/agents` (+ `/alerts`, `/events`, `/{id}`, revoke, delete, rotate-key, up
 `/agent-enrollment-tokens` (22 операции); `/api/v1/agent-link/*` — вне Swagger, `RAW_HTTP_HANDLER`.
 Строгость манифеста (SDK от 09.10.2026, тот же 1.0.0): агент пропускает только `routes` (иначе
 `AGENT_ROUTE_UNDECLARED` 404), типы задач из `jobs` (`AGENT_JOB_UNKNOWN` 409, во внешней очереди — final),
-события из `events`, запросы из `requests`. `AgentRuntime`: `validate: { configs, jobs, requests: true,
-events: AGENT_VALIDATE_EVENTS }` (по умолчанию `log`; замечания — `event.problems` → `agent_events.problems`
-(миграция `AgentEventProblems1791800000000`), `reject` — сохраняется из `invalidEvent`, обработчики модулей не
-вызываются). Тело не по `routes[].request` — `AGENT_REQUEST_INVALID` 400 (`details.reason`). Каталог возможностей —
+события из `events`, запросы из `requests`. Схемы проверяет модуль (`agent-schema.ts`, `schemaProblems` SDK):
+настройки — `AgentWorkerService.writeConfig` (CONFIG_INVALID 400), тело fetch — `requireValidRequest`
+(REQUEST_INVALID 400), data задачи — `AgentJobExecutor` (JOB_INVALID final), запрос воркера и события — `AgentRuntime`
+(`AGENT_VALIDATE_EVENTS`, по умолчанию `log`: замечания → `agent_events.problems` (миграция
+`AgentEventProblems1791800000000`); `reject` — только в историю, обработчики модулей не вызываются; job.* не проверяются).
+Аудит — `AgentRuntime.audit` / `AgentRuntime.action` (автор итога действия — по ключу агент+действие+воркер и actionId
+отложенного); `agent_configs.actor` — `AgentStore.withActor` (AsyncLocalStorage). Проблемы — `agent-alerts.ts`
+(`agentAlerts(agent, configStatus)` + `AgentAlertTracker` → `agent:alert`), `AgentDto.fromModel(agent, alerts)`. Тело не по `routes[].request` — `AGENT_REQUEST_INVALID` 400 (`details.reason`). Каталог возможностей —
 `AgentDto.workers[].manifest` (routes.request/response, events.schema, jobs, requests, configs), отдельного
 маршрута нет; `routes: open` в данных не видно. Запросы воркеров: core-токен `WORKER_REQUEST_HANDLER`
 (`IWorkerRequestHandler {type, workers?, handle}`, `WorkerRequestError(code, message)` → воркеру 422),
 нет обработчика — `REQUEST_UNHANDLED`, не тот воркер — `REQUEST_FORBIDDEN`, исключение — `REQUEST_FAILED`.
 Демо — `echo.lookup` (`jobs/demo-echo-lookup.handler.ts`: метка `echoPrefix` или `[<имя агента>] `, текст > 200 —
 `ECHO_TEXT_TOO_LONG`); echo 1.1.0: `POST /echo {text, repeat?, case?, reverse?}` + событие `echo.echoed`, `POST /emit`.
-`waitEvent` в модулях не используется: job-события нужны до подтверждения (`onEvent`).
+job-события нужны до подтверждения — обрабатываются в `onEvent`.
 Подробно — `src/modules/agent/README.md`.
 
 ## Модуль node (узлы с агентами, feat/agent-sdk)
@@ -199,6 +205,6 @@ events: AGENT_VALIDATE_EVENTS }` (по умолчанию `log`; замечан�
 - Права `node:*` (scoped, кроме create). Доступ к маршрутам агентов: `AgentAccessService` (agent) + политика `NodeAgentAccessPolicy` через `AGENT_ACCESS_POLICY`; маршруты агентов с `*` — `@Security("jwt")`.
 - Привязка: `AgentEnrollmentService.withContext` (AsyncLocalStorage) в `AgentRuntime.handle` → `AgentEnrolledEvent(agent, source{tokenId, createdBy, labels})` → метка `nodeId`; без метки — узел без агента, однозначно по `agentName` → `name` → `host` (`findUnbound` + условный `bindFree`), иначе авто-узел. `agentName` хранится и после отвязки.
 - SSH: ssh2 (`SSH_SESSION_FACTORY` для тестов), `NodeSecretBox` (`NODE_SECRETS_KEY`, иначе от JWT), скрипт `/api/v1/agent-bundle/install.sh` + `--token-file` (удаление — `--uninstall [--purge]`, экземпляр — из архива), sudo -n / -S.
-- netprobe (`from: agent` в agent/agent.yaml; на узел — в архиве): цели — настройка `netprobe/targets` `{targets:[{id: id узла, host, method:"icmp"}], intervalSec, count, timeoutMs}` через `AgentWorkerService.putConfig` (только агентам с воркером netprobe, только при другом содержимом); матрицу считает бэкенд по последней точке `agent.metrics.workers.netprobe` `{at, results[]}` (stale > 2 мин или offline). Очередь `node.netprobe-sync` (cron */10 + после изменений + при появлении агента с netprobe). Dev: агент сам скачивает netprobe из релиза своей версии в `<dataDir>/workers/netprobe`.
+- netprobe (воркер проекта `agent/workers/netprobe`, `- path: workers/netprobe`; на узел — в архиве): цели — настройка `netprobe/targets` `{targets:[{id: id узла, host, method:"icmp"}], intervalSec, count, timeoutMs}` через `AgentWorkerService.putConfig` (только агентам с воркером netprobe, только при другом содержимом); матрицу считает бэкенд по последней точке `agent.metrics.workers.netprobe` `{at, results[]}` (stale > 2 мин или offline). Очередь `node.netprobe-sync` (cron */10 + после изменений + при появлении агента с netprobe). Dev: агент запускает netprobe из `agent/workers/netprobe` (python3).
 - Отзыв и удаление агента — только `agent:manage` (политика узла не открывает); `node:agent` — update, rotate-key, restart/update воркеров, configs, fetch.
 - Gotcha: `mine` в query-схеме — строка `"true"|"false"` (ValidateQuery подменяет query; boolean ломает tsoa). e2e: `auth сброс пароля` падает и без модуля (письмо приходит позже 15 с).

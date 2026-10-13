@@ -1,13 +1,15 @@
 # Модуль Agent
 
 Агенты на узлах и их воркеры. Связь с агентами (регистрация, WebSocket, подтверждения и
-повторы), запросы к воркерам, настройки воркеров, наблюдение, встроенные действия, раздачу сборок агента и
-установку ведёт `Agents` из `agent-sdk/server` (агент и SDK —
+повторы), запросы к воркерам, настройки воркеров, наблюдение, встроенные действия и раздачу
+сборок воркеров проекта ведёт `Agents` из `agent-sdk/server` (агент и SDK —
 [github.com/epifanovmd/agent](https://github.com/epifanovmd/agent), формат —
 [sdk/spec/README.md](https://github.com/epifanovmd/agent/blob/main/sdk/spec/README.md)).
 Модуль даёт SDK хранилище на Postgres, регистрацию по токенам из БД, связь между процессами
-API, историю (события воркеров, метрики), REST, события Socket.IO, аудит, исполнителя
-внешних очередей модуля задач и ответы на запросы воркеров к серверу.
+API, историю (события воркеров, метрики), проверку по схемам манифеста воркеров, проблемы
+агентов, кандидатов на обновление, REST, события Socket.IO, аудит, исполнителя внешних
+очередей модуля задач (задачи — `fetch` к `/jobs` воркера) и ответы на запросы воркеров к
+серверу.
 
 ```
 бэкенд (Agents) ──WebSocket──► агент ──HTTP по unix-сокету──► воркер (без SDK)
@@ -26,7 +28,6 @@ src/modules/agent/
 ├── agent.bootstrap.ts          # старт: события, LISTEN; на ролях с HTTP — WebSocket и наблюдение
 ├── agent.signals.ts            # AgentSignals (PgSignals): канал agents_changed
 ├── agent-link.handler.ts       # RAW_HTTP_HANDLER: /api/v1/agent-link/* → agents.handle
-├── agent-relay.server.ts       # внутренний HTTP-сервер пересылки (AGENT_RELAY_PORT): POST /internal/agent-relay → handleRelay
 ├── store/agent.store.ts        # AgentStore implements Store (Postgres): агенты и настройки
 ├── store/stored-agent*.entity.ts
 ├── agent-history.service.ts    # события воркеров и точки метрик: запись, лента, история, уборка
@@ -34,8 +35,12 @@ src/modules/agent/
 ├── agent-enrollment.service.ts # токены регистрации + хук enroll, контекст регистрации
 ├── agent-enrollment-token.*    # сущность и репозиторий токенов
 ├── agent-access.service.ts     # доступ: право модуля или политики AGENT_ACCESS_POLICY
-├── agent.service.ts            # агенты: список, карточка, проблемы, отзыв, удаление, ключ, обновление, журнал, сборки агента
+├── agent.service.ts            # агенты: список, карточка, проблемы, отзыв, удаление, ключ, обновление, журнал, сборки
 ├── agent-worker.service.ts     # воркеры: перезапуск, обновление, настройки, запрос к воркеру
+├── agent-alerts.ts             # проблемы агента из записи и статусов настроек; что началось и закончилось
+├── agent-update.ts             # кандидаты на обновление: агенты (update.latest) и воркеры (сборки release/)
+├── agent-schema.ts             # проверка по схемам манифеста воркера (schemaProblems SDK)
+├── agent-jobs.ts               # задачи воркера: POST /jobs, GET /jobs/{id}, POST /jobs/{id}/cancel через fetch
 ├── agent-job.executor.ts       # EXTERNAL_JOB_EXECUTOR: внешние очереди модуля задач → воркеры
 ├── agent-worker-request.registry.ts # WORKER_REQUEST_HANDLER модулей: ответ на запрос воркера (onWorkerRequest)
 ├── *.controller.ts             # REST (ниже)
@@ -57,7 +62,7 @@ src/modules/agent/
 
 | Таблица         | Что                                                                                                                                |
 | --------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| `agents`        | `AgentRecord` целиком в `record` (хеш ключа, учёт потока, последние `hello`, `status`, метрики, проблемы), `rev`                   |
+| `agents`        | `AgentRecord` целиком в `record` (хеш ключа, учёт потока, последние `hello`, `status`, метрики), `rev`                             |
 | `agent_configs` | строка на ключ «агент, воркер, ключ»: версия, значение (`jsonb`; с `AGENT_CONFIGS_KEY` — `{ $sealed }`, AES-256-GCM), время, автор |
 
 - **Условная запись агента:** `UPDATE … WHERE id = … AND rev = …` одним запросом; не
@@ -67,6 +72,8 @@ src/modules/agent/
 GREATEST(version + 1, minVersion)` — одновременные записи получают разные версии; после
   удаления строка остаётся с `data = NULL` (счётчик), значение `null` — это `'null'::jsonb`.
 - Строки с `\u0000` очищаются перед записью (Postgres не принимает их в `jsonb`).
+- Автор значения (`actor`) — пользователь, от имени которого модуль записал его
+  (`AgentStore.withActor` вокруг `setConfig` SDK); `NULL` — система.
 - Id агента — 32 шестнадцатеричных символа (выдаёт SDK); в пути — тип `TAgentId`.
 
 ## История (вне SDK)
@@ -80,13 +87,25 @@ SDK историю не хранит: она приходит событиями
 
 Срок хранения — `AGENT_EVENTS_RETENTION_DAYS`, `AGENT_METRICS_RETENTION_HOURS`; уборка —
 cron `agents.prune` (раз в час). Итоги действий и «кто что сделал» — в журнал аудита
-проекта (`audit_events`): `agent.action` (событие `audit` SDK: `config.set`, `fetch`,
-`worker.restart`, `agent.revoke`, …) и `agent.action-result` (событие `action`: статус,
-ошибка).
+проекта (`audit_events`): `agent.action` (`AgentActionAuditedEvent` от сервисов модуля после
+вызова SDK: `config.set`, `config.delete`, `fetch`, `worker.restart`, `worker.update`,
+`agent.revoke`, `agent.delete`, `agent.rotateKey`, `agent.update`, `agent.logs`,
+`agent.enroll`) и `agent.action-result` (событие `action` SDK: статус, ошибка; автор — кто
+вызвал действие в этом процессе).
+
+## Проблемы агента
+
+Проблемы выводит модуль (`agent-alerts.ts`, без хранения): из записи агента и статусов его
+настроек. `offline` — агент без связи (с последней вести), `workerDown:<воркер>` —
+`backoff` или `stopped`, `workerInvalid:<воркер>` — `invalid`, `workerUnhealthy:<воркер>` —
+`health.ok: false`, `configFailed:<воркер>/<ключ>` — настройки не применены (статус
+`failed`). У отозванного агента проблем нет. Список — `GET /agents/alerts` и `alerts` в
+карточке; начало и конец — `agent:alert` (`active`), их замечает процесс, получивший событие
+агента или настроек (`agent`, `config` SDK).
 
 ## Связь и регистрация
 
-- `/api/v1/agent-link/*` (регистрация, сборки агента) — `RAW_HTTP_HANDLER`: до разбора тела,
+- `/api/v1/agent-link/*` (регистрация, сборки воркеров проекта) — `RAW_HTTP_HANDLER`: до разбора тела,
   CORS и лимита запросов; в Swagger не входят. WebSocket того же пути —
   `agents.attach(HttpServer)` на ролях `api` и `all`.
 - `/api/v1/agent-link/bundle/*` — установка узлов из архива папки агента (`agent-bundle.ts`,
@@ -98,11 +117,11 @@ cron `agents.prune` (раз в час). Итоги действий и «кто 
   (`<prefix>.<secret>`, в БД — префикс и хеш; срок, отзыв, лимит использований). Метки
   токена сильнее меток агента. Новый агент — событие `AgentEnrolledEvent` с источником
   (токен, кто создал, метки): по метке `nodeId` модуль узлов привязывает агента к узлу.
-- `onEvent`: обработчики модулей (ход внешних задач, события `job.*`) → запись в
-  `agent_events` → событие `AgentEventReceivedEvent` → подтверждение агенту. Ошибка — без
-  подтверждения: агент пришлёт событие снова с тем же id. `waitEvent` SDK для обработчиков
-  модулей не годится: он срабатывает после подтверждения и видит только события своего
-  процесса — важное обрабатывается в `onEvent`.
+- `onEvent`: проверка `data` по схеме (`AGENT_VALIDATE_EVENTS`) → обработчики модулей (ход
+  внешних задач, события `job.*`) → запись в `agent_events` → событие
+  `AgentEventReceivedEvent` → подтверждение агенту. Ошибка — без подтверждения: агент
+  пришлёт событие снова с тем же id. Событие SDK `event` для обработчиков модулей не
+  годится: оно приходит после подтверждения — важное обрабатывается в `onEvent`.
 - Связь: ping SDK раз в 5 с; агент после обрыва остаётся `online` ещё
   `AGENT_OFFLINE_GRACE_MS` (3 с) — остановленный агент виден `online: false` в сокете
   (`agent:updated`) через ~3 с, пропавшая сеть — через 13–18 с. Своих задержек поверх SDK
@@ -111,40 +130,28 @@ cron `agents.prune` (раз в час). Итоги действий и «кто 
 ## Несколько процессов
 
 Store общий; соединение агента живёт в одном процессе (`agent.session.instance` —
-`instanceId` процесса: с пересылкой — внутренний адрес его сервера пересылки
-`http://host:port` — `INSTANCE_URL`, иначе `AGENT_RELAY_HOST` (для `0.0.0.0` — IPv4
-машины или контейнера) и `AGENT_RELAY_PORT`; без пересылки — адрес API `SERVER_HOST` и
-`SERVER_PORT`; у роли `worker` — имя без адреса).
+`instanceId` процесса: адрес API `SERVER_HOST` и `SERVER_PORT`, для `0.0.0.0` — IPv4 машины
+или контейнера; у роли `worker` — имя без адреса).
 
 - **Изменения в Store** (настройки, отзыв, удаление) — событие SDK `change` → NOTIFY
   `agents_changed` → остальные процессы вызывают `agents.refresh(agentId)`: процесс с
   соединением досылает настройки или закрывает соединение.
-- **Пересылка (relay)** — при общем секрете копий `AGENT_RELAY_SECRET`: вызов, которому
-  нужно соединение (`fetch`, задачи `runJob`/`jobStatus`/`cancelJob`, перезапуск и
-  обновление воркера, обновление агента, смена ключа, журнал, `watch`), SDK из любого
-  процесса пересылает в процесс с соединением — `POST <instanceId>/internal/agent-relay`
-  с заголовком `x-agents-relay-secret`; тот выполняет вызов (`agents.handleRelay`) и
-  отвечает (у `fetch` — потоком). Маршрут обслуживает только внутренний сервер
-  пересылки (`AgentRelayServer`) — отдельный порт `AGENT_RELAY_PORT` (8182) на
-  внутреннем адресе `AGENT_RELAY_HOST` (по умолчанию `127.0.0.1`, в контейнере —
-  `0.0.0.0`); публичный порт API его не знает (404), без секрета — 401, другие пути — 404. Порт пересылки наружу не публикуют. Пользователю `AGENT_ELSEWHERE` не приходит;
-  процесс с соединением недоступен — 502 `RELAY_FAILED`. Сервер пересылки поднимается
-  только с секретом и на ролях с HTTP (`api`, `all`).
-- **Без секрета** пересылки нет: такой вызов в другом процессе — **503
-  `AGENT_ELSEWHERE`** с `Retry-After: 2` (одна копия API или «липкий» балансировщик).
-- **Наблюдение (`watch`)** — из процесса, где сокет в комнате агента; продлевается каждые
-  20 с, поэтому после переподключения агента к другому процессу доходит и туда.
+- **Вызовы, которым нужно соединение** (`fetch`, задачи, перезапуск и обновление воркера,
+  обновление агента, смена ключа, журнал), выполняет только процесс с соединением. В другом
+  процессе — **503 `AGENT_ELSEWHERE`** с `Retry-After: 2`: клиент повторяет запрос,
+  балансировщик перед копиями API должен быть «липким» (одна копия — так всегда).
+- **Наблюдение (`watch`)** — в памяти процесса, где сокет в комнате агента; действует, пока
+  агент на связи с этим процессом.
 - Роль `worker` соединений не держит: читает записи агентов и пишет настройки через Store;
-  с пересылкой передаёт и внешние задачи.
-- Dev: две копии на одной машине — разные `SERVER_PORT` и `AGENT_RELAY_PORT`, общий
-  `AGENT_RELAY_SECRET`. Docker Compose: реплики `api` — один секрет в `.env.production`,
-  `AGENT_RELAY_HOST=0.0.0.0`, порт 8182 только в сети compose, адрес — IP контейнера.
+  внешние задачи передают процессы с соединениями (`api`, `all`). Отмену задачи у воркера из
+  процесса без соединения агента исполнитель передаёт процессу с соединением
+  (`agent.session.instance`) сигналом NOTIFY `agent_job_control`.
 
 ## Права (`AgentPermissions`, группа «Агенты»)
 
 | Право          | Что                                                                               |
 | -------------- | --------------------------------------------------------------------------------- |
-| `agent:view`   | агенты, воркеры, настройки (чтение), события, метрики, проблемы, сборки агента    |
+| `agent:view`   | агенты, воркеры, настройки (чтение), события, метрики, проблемы, сборки           |
 | `agent:manage` | отзыв, удаление, смена ключа, обновление агента, перезапуск и обновление воркеров |
 | `agent:config` | запись и удаление настроек воркеров                                               |
 | `agent:fetch`  | запросы к воркерам                                                                |
@@ -160,26 +167,26 @@ Store общий; соединение агента живёт в одном п�
 
 Воркер описывает себя манифестом (`GET /manifest`), и агент пропускает только объявленное
 ([sdk/docs/workers.md](https://github.com/epifanovmd/agent/blob/main/sdk/docs/workers.md#манифест-что-воркер-умеет)).
-Что проверяет агент и что — сервер (`AgentRuntime`):
+Что проверяет агент и что — сервер (`schemaProblems` SDK, `agent-schema.ts`):
 
 | Что                                          | Кто проверяет                    | Не подошло                                                     |
 | -------------------------------------------- | -------------------------------- | -------------------------------------------------------------- |
 | метод и путь запроса к воркеру — `routes`    | агент                            | 404 `AGENT_ROUTE_UNDECLARED`, воркер запроса не видит          |
-| тип задачи `POST /jobs` — `jobs`             | агент (и SDK в `runJob`)         | 409 `AGENT_JOB_UNKNOWN`; внешняя очередь — провал без повторов |
-| тело запроса — `routes[].request`            | сервер (`validate.requests`)     | 400 `AGENT_REQUEST_INVALID`, замечания — в `details.reason`    |
-| `data` задачи — `jobs[].schema`              | сервер (`validate.jobs`)         | `JOB_INVALID` — провал без повторов                            |
-| значение настройки — `configs[].schema`      | сервер (`validate.configs`)      | 400 `AGENT_CONFIG_INVALID`                                     |
+| тип задачи `POST /jobs` — `jobs`             | агент                            | 409 `AGENT_JOB_UNKNOWN`; внешняя очередь — провал без повторов |
+| тело запроса — `routes[].request`            | сервер (`AgentWorkerService`)    | 400 `AGENT_REQUEST_INVALID`, замечания — в `details.reason`    |
+| `data` задачи — `jobs[].schema`              | сервер (`AgentJobExecutor`)      | `JOB_INVALID` — провал без повторов                            |
+| значение настройки — `configs[].schema`      | сервер (`AgentWorkerService`)    | 400 `AGENT_CONFIG_INVALID`                                     |
 | тип события — `events`                       | агент                            | воркеру `400 EVENT_UNDECLARED`, до сервера событие не доходит  |
 | `data` события — `events[].schema`           | сервер (`AGENT_VALIDATE_EVENTS`) | ниже                                                           |
 | тип запроса воркера — `requests`             | агент                            | воркеру `400 REQUEST_UNDECLARED`                               |
-| `data` запроса воркера — `requests[].schema` | сервер (`validate.requests`)     | воркеру `422 REQUEST_INVALID`, обработчик не вызывается        |
+| `data` запроса воркера — `requests[].schema` | сервер (`AgentRuntime`)          | воркеру `422 REQUEST_INVALID`, обработчик не вызывается        |
 
 **События не по схеме** — `AGENT_VALIDATE_EVENTS`: `log` (по умолчанию) — запись в журнал,
 событие обрабатывается как обычно и сохраняется с замечаниями (`problems` в ленте и в
 `agent:event`); `reject` — то же, но обработчикам модулей (`onEvent`: ход задач) событие не
 передаётся, в истории оно остаётся с замечаниями; `off` — без проверки. `log` выбран, чтобы
 событие воркера другой версии не терялось: расхождение видно в журнале и в ленте, а события
-задач (`job.*`) SDK по схеме не проверяет.
+задач (`job.*`) по схеме не проверяются.
 
 Каталог возможностей воркера — `manifest` в карточке агента (`workers[].manifest`):
 маршруты со схемами тела и ответа, события со схемой `data`, задачи, запросы к серверу,
@@ -231,7 +238,7 @@ Store общий; соединение агента живёт в одном п�
    `REQUEST_FAILED` без подробностей (они — в журнале сервера). Тип зарегистрирован дважды
    — ошибка запуска.
 
-Запрос обрабатывает процесс, с которым агент на связи (без пересылки). Если ответ нужен
+Запрос обрабатывает процесс, с которым агент на связи. Если ответ нужен
 гарантированно, а не сейчас, — событие от воркера и ответ настройкой или задачей.
 
 ## REST (jwt, под `/api/v1`)
@@ -269,7 +276,7 @@ Store общий; соединение агента живёт в одном п�
   запросы к серверу `requests`), `configs` (что на диске агента и итог применения);
   последняя точка метрик, проблемы, процесс с соединением.
 - **Настройки:** `PUT` проверяет значение по `schema` ключа из манифеста воркера
-  (`validate.configs`; не подходит — 400 `AGENT_CONFIG_INVALID`), даёт новую версию; агент на
+  (не подходит — 400 `AGENT_CONFIG_INVALID`), даёт новую версию; агент на
   связи получает её сразу, иначе — при подключении. Статус — `pending | applying | applied |
 failed | deleting` (`delivered`, `applied`, `error`); агент удалил ключ — событие сокета
   `agent:config` с `state: deleted` (`version: null`).
@@ -290,18 +297,22 @@ previous? }`. Свободный воркер заменяется сразу (`
   замена — после окончания работы, её итог — событие сокета `agent:action` (`id =
 actionId`, `deferred: true`); `force: true` — заменить сразу. Обновление — только воркер
   со сборкой с сервера (`release: true`), иначе 409 `AGENT_WORKER_NOT_RELEASED`.
-- **Ошибки SDK** → `AGENT_*` (`NOT_FOUND`, `REVOKED`, `OFFLINE` 503, `ELSEWHERE` 503 — только
-  без пересылки, `CONFIG_INVALID`, `ROUTE_UNDECLARED` 404, `JOB_UNKNOWN` 409,
+- **Обновление агента:** до версии, которую агент нашёл в своём каталоге сборок
+  (`update.latest`, кандидат в `GET /agent-releases`); новой версии нет — 409
+  `AGENT_UPDATE_NOT_AVAILABLE`, агент себя не обновляет (`updateMode` не `self`) — 409
+  `AGENT_UPDATE_NOT_SUPPORTED`.
+- **Ошибки SDK** → `AGENT_*` (`NOT_FOUND`, `REVOKED`, `OFFLINE` 503, `ELSEWHERE` 503 с
+  `Retry-After`, `CONFIG_INVALID`, `ROUTE_UNDECLARED` 404, `JOB_UNKNOWN` 409,
   `REQUEST_INVALID` 400, `EVENT_UNDECLARED` 409, `UPDATE_NOT_AVAILABLE`, `TIMEOUT`, …; текст
-  SDK — в `details.reason`); коды агента и SDK (`RELAY_FAILED` 502, `JOB_*`, …) — как есть
-  со статусом SDK.
+  SDK — в `details.reason`); коды агента и SDK (`WORKER_UNAVAILABLE` 502, …) — как есть со
+  статусом SDK.
 
 ## Socket.IO
 
-| Комната      | Кто входит                                           | События                                                                         |
-| ------------ | ---------------------------------------------------- | ------------------------------------------------------------------------------- |
-| `agents`     | `room:subscribe { type: "agents" }`, `agent:view`    | `agent:updated`, `agent:deleted`, `agent:alert`, `agent:event`, `agent:release` |
-| `agent_<id>` | `{ type: "agent", id }`: доступ к агенту на просмотр | то же по агенту + `agent:metrics`, `agent:log`, `agent:config`, `agent:action`  |
+| Комната      | Кто входит                                           | События                                                                        |
+| ------------ | ---------------------------------------------------- | ------------------------------------------------------------------------------ |
+| `agents`     | `room:subscribe { type: "agents" }`, `agent:view`    | `agent:updated`, `agent:deleted`, `agent:alert`, `agent:event`                 |
+| `agent_<id>` | `{ type: "agent", id }`: доступ к агенту на просмотр | то же по агенту + `agent:metrics`, `agent:log`, `agent:config`, `agent:action` |
 
 Пока сокет в комнате агента, сервер держит наблюдателя `watch`: метрики раз в секунду,
 журнал с уровня клиента (`agent:log-level { agentId, level }`, по умолчанию `info`).
@@ -310,26 +321,26 @@ actionId`, `deferred: true`); `force: true` — заменить сразу. О�
 ## Внешние очереди: задачи на воркерах
 
 `AgentJobExecutor` — исполнитель внешних очередей модуля задач (`definition.external`) по
-стандарту задач агента (`/jobs`, SDK `runJob`, `jobStatus`, `cancelJob`):
+стандарту задач агента (`/jobs` через `fetch` SDK — `agent-jobs.ts`):
 
 1. **Кому.** Очередь называет тип задачи воркера (`definition.job.type`, обработчик может
    выбрать тип на задачу — `jobType`) и, если нужно, воркер (`job.worker`). Подходит агент
-   на связи, чей воркер в `running` объявил тип в `manifest.jobs`; свободные (`busy:
-false`) — первыми. С пересылкой — агент любого процесса, без неё — только этого
-   (у другого — повтор `AGENT_ELSEWHERE`); подходящих нет — повтор `NO_AGENT`.
+   на связи с этим процессом, чей воркер в `running` объявил тип в `manifest.jobs`;
+   свободные (`busy: false`) — первыми. Подходят только агенты другого процесса — повтор
+   `AGENT_ELSEWHERE`; подходящих нет — повтор `NO_AGENT`.
 2. **Когда.** Сразу после постановки: сигнал `job_queued` в транзакции постановки (и
    outbox-транзакции — дойдёт после коммита) → процесс берёт запись условным UPDATE и
    передаёт задачу без ожидания опроса pg-boss. Задача pg-boss начинается через 10 с — для
    повторов передачи (`retryLimit`, `retryDelaySeconds`) и ожидания агента; подключился
    агент — ждущие задачи передаются сразу.
-3. **Как.** `runJob(agentId, worker, { type, jobId: <id задачи>, data, files })` → `POST
-/jobs`. Быстрая задача — `200 { result }`: итог сразу, без событий (хук `onComplete`).
+3. **Как.** `data` — по схеме типа из манифеста (не подошло — `JOB_INVALID`, провал без
+   повторов), затем `POST /jobs { type, jobId: <id задачи>, data, files }`. Быстрая задача — `200 { result }`: итог сразу, без событий (хук `onComplete`).
    Долгая — `202 { id }`: запись связывается с задачей воркера (`agentId`, `worker`,
    `externalId`, срок `deadlineAt`), ход и итог — события `job.progress { progress,
 message }`, `job.done { result }`, `job.failed { error }`, `job.cancelled` (в `onEvent`,
-   до подтверждения агенту). Отказ воркера: `400` и неверные `data` (`JOB_INVALID`,
-   `validate.jobs`), тип не из `manifest.jobs` (`JOB_UNKNOWN`) — провал без повторов; занят
-   (`409`), сбой, связь — повтор.
+   до подтверждения агенту). Отказ воркера (`JOB_REJECTED`): `4xx` — провал без повторов,
+   кроме `408`, `409` (занят), `429`; тип не из `manifest.jobs` (`JOB_UNKNOWN`) — провал без
+   повторов; сбой воркера (`5xx`), связь — повтор.
 4. **Файлы.** Хук `io(job)` возвращает ключи хранилища: `inputs` → подписанные `GET`,
    `outputs` → подписанные `PUT` (срок ссылок — не меньше срока задачи; `contentType`
    входит в подпись — воркер загружает файл ровно с этим `Content-Type`). Воркер получает
@@ -338,8 +349,8 @@ message }`, `job.done { result }`, `job.failed { error }`, `job.cancelled` (в `
    в записи задачи; клиенту — `outputs: [{ name, url, size?, expiresAt }]` (ссылки на
    скачивание). Тип задачи воркера и воркер — `jobType`, `worker` записи.
 5. **Сверка, отмена, срок.** После подключения агента и перезапуска воркера —
-   `jobStatus` (`GET /jobs/{id}`); воркер не знает задачу — провал `EXTERNAL_JOB_LOST`.
-   Отмена — `cancelJob` (`POST /jobs/{id}/cancel`) из любого процесса; срок истёк —
+   `GET /jobs/{id}`; воркер не знает задачу (404) — провал `EXTERNAL_JOB_LOST`.
+   Отмена — `POST /jobs/{id}/cancel` (из процесса с соединением агента); срок истёк —
    `JOB_TIMEOUT` и отмена у воркера.
 
 ## Своя очередь задач и воркер
@@ -389,7 +400,7 @@ message }`, `job.done { result }`, `job.failed { error }`, `job.cancelled` (в `
    Постановка — как у любой задачи: `jobQueue.enqueue("report.render", { reportId },
 { manager, ownerId, title })`; ждать итог из запроса — `jobQueue.request(...)`.
 
-2. **Воркер** — каталог `agent/workers/<имя>`: заготовка — `yarn agent worker new <имя>` (база
+2. **Воркер** — каталог `agent/workers/<имя>` по образцу `agent/workers/echo` (база
    `agent_worker.py` берёт на себя всё ниже, код воркера — класс-наследник); без неё — HTTP-сервис
    на unix-сокете `AGENT_WORKER_SOCKET` на любом языке (запуск — исполняемый `run`, версия —
    файл `VERSION`). Как он попадает на узлы — [agent/README.md](../../../agent/README.md):
@@ -413,8 +424,7 @@ result }` или `202 { id }` (повтор с тем же `jobId` — та же
 
    Образец — `agent/workers/echo` (класс `Echo` на базе `agent_worker.py`).
 
-3. **Агенту — воркер в настройках**: `- path: workers/<имя>` в `agent/agent.yaml` (`worker new`
-   добавляет сам). Локально агент запускает воркер из папки, в архиве для узлов (`yarn agent:pack`)
+3. **Агенту — воркер в настройках**: `- path: workers/<имя>` в `agent/agent.yaml`. Локально агент запускает воркер из папки, в архиве для узлов (`yarn agent:pack`)
    он едет подписанной сборкой, на узле `agent install` ставит его воркером со сборкой
    (`release: true`) — бэкенд потом обновляет его `worker.update`.
 
@@ -441,57 +451,44 @@ yarn agent:pack        # архивы для узлов и сборки ворк
 
 Подробно про локальный запуск, архивы и установку на узлы — [agent/README.md](../../../agent/README.md).
 
-## Откуда берутся сборки агента
+## Сборки и обновления
 
-Агента и воркер проверки сети `netprobe` бэкенд берёт из релизов GitHub (`agentReleases`
-SDK): репозиторий `AGENT_RELEASES_GITHUB` (`epifanovmd/agent`; пусто — не из GitHub),
-версии `AGENT_RELEASES_RANGE` (пусто — мажорная версия agent-sdk, например `^2`). Вместо GitHub — каталог одной версии по ссылке
-`AGENT_RELEASES_URL`. Проверка новой версии — при старте и раз в
-`AGENT_RELEASES_CHECK_INTERVAL_MS` (3600000); `AGENT_RELEASES_TOKEN` — токен GitHub от лимита
-запросов; `AGENT_RELEASES_PROXY=true` — узлы скачивают агента через бэкенд, иначе бэкенд
-отвечает им ссылкой на GitHub (302). Новая версия — запись в журнале и сокет-событие
-`agent:release` `{ version, previous?, from }` в комнату `agents` (`AgentReleaseChangedEvent`):
-кандидаты на обновление в `GET /agent-releases` уже другие. Ради новой версии агента бэкенд не
-пересобирают.
+Агент сам проверяет новую версию в своём каталоге сборок (`update.releases` в его
+`agent.yaml`: по умолчанию — релизы GitHub `epifanovmd/agent`, раз в `update.checkInterval`)
+и сообщает её в `hello`/`status` — `update { latest, checkedAt }` в `AgentDto`, до веба
+доходит с `agent:updated`. Агент, который обновляет себя по команде сервера
+(`hello.agent.updateMode` — `self` или нет), с такой версией — кандидат на обновление
+(`agent-update.ts`, `source: agent`); `POST /agents/{id}/update` обновляет его до этой
+версии (`updateAgent` SDK с `version`), сборку агент берёт из своего каталога сам. Ради новой
+версии агента бэкенд не пересобирают.
 
-Агент и сам проверяет новую версию в своём каталоге сборок (`update.releases`, раз в
-`update.checkInterval`) и сообщает её в `hello`/`status` — `update { latest, checkedAt }` в
-`AgentDto`, до веба доходит с `agent:updated`. Такой агент — тоже кандидат (`source: agent`, у
-версии с сервера — `source: server`; из двух целей — новейшая; `updateCandidates` SDK), даже если
-бэкенд её ещё не видел; `POST /agents/{id}/update` обновляет его до этой версии из его каталога.
-
-Воркеры проекта — `release/` каталога архивов `AGENT_BUNDLE_DIR` (`agent pack --release-out`:
-`manifest.json` и подписанные ключом проекта архивы). Итоговый манифест сборок
-(`GET /agent-releases`, `manifest`): агент и `netprobe` — `source: remote`, воркеры проекта —
-`source: local`; `remote` — версия в источнике, откуда и когда проверена. Ключ проекта узел
-получает из архива при `agent install` (его кладёт `agent pack`), ключ автора агента вшит в
-программу агента.
+Воркеры проекта (и `netprobe`) — `release/` каталога архивов `AGENT_BUNDLE_DIR` (`agent pack
+--release-out`: `manifest.json` и подписанные ключом проекта архивы). Манифест сборок
+(`GET /agent-releases`, `manifest`): у каждой сборки — `source: local` и путь `url`.
+Воркер со сборкой с сервера (`release: true`) — кандидат на обновление до новейшей сборки
+под платформу агента. Ключ проекта узел получает из архива при `agent install` (его кладёт
+`agent pack`), ключ автора агента вшит в программу агента.
 
 ## Конфигурация
 
 `AGENT_BOOTSTRAP_TOKEN`, `AGENT_STATUS_INTERVAL_MS` (15000), `AGENT_METRICS_INTERVAL_MS`
 (15000), `AGENT_METRICS_STORE_INTERVAL_MS` (60000), `AGENT_METRICS_RETENTION_HOURS` (168),
-`AGENT_EVENTS_RETENTION_DAYS` (14), `AGENT_OFFLINE_GRACE_MS` (3000), `AGENT_RELAY_SECRET`
-(пересылка между копиями), `AGENT_RELAY_PORT` (8182) и `AGENT_RELAY_HOST` (`127.0.0.1`) —
-внутренний сервер пересылки, `INSTANCE_URL` (адрес сервера пересылки копии),
-[сборки агента](#откуда-берутся-сборки-агента) — `AGENT_RELEASES_*`, `AGENT_BUNDLE_DIR` (архивы
-папки агента для узлов), `AGENT_PUBLIC_URL` (адрес API в скрипте и команде установки),
+`AGENT_EVENTS_RETENTION_DAYS` (14), `AGENT_OFFLINE_GRACE_MS` (3000), `AGENT_BUNDLE_DIR` (архивы
+папки агента для узлов и [сборки воркеров](#сборки-и-обновления)), `AGENT_PUBLIC_URL` (адрес API в скрипте и команде установки),
 `AGENT_VALIDATE_EVENTS` (`log`; `off | log | reject` —
 [выше](#строгость-манифеста)); `TRUST_PROXY` — адрес агента за прокси.
 
 ## Тесты
 
-Юнит: доступ, регистрация, ошибки, история, исполнитель внешних очередей, обработчики
-запросов воркеров, настройки источника сборок агента. Хранилище и
+Юнит: доступ, регистрация, ошибки, история, исполнитель внешних очередей (задачи через
+`fetch`), обработчики запросов воркеров, проблемы агента, кандидаты на обновление. Хранилище и
 история на Postgres —
 `TEST_DATABASE_URL=postgres://…/<тестовая база> yarn test:file src/modules/agent/store/agent.store.integration.test.ts`.
-E2E — `test/e2e/agent-releases.e2e.ts`: агент и `netprobe` с локального сервера сборок (не
-GitHub), скрипт установки и архив папки агента (ключ проекта — в нём), ссылка 302 на сборку,
-новая версия в источнике — событие
-`agent:release` и кандидат на обновление, обновление воркера проекта с сервера с подписью
-ключом проекта. `test/e2e/agents.e2e.ts` — с настоящим агентом версии `agent-sdk` и воркером
+E2E — `test/e2e/agent-releases.e2e.ts`: скрипт установки и архив папки агента (ключ проекта —
+в нём), новая версия в каталоге сборок агента — кандидат на обновление, обновление воркера
+проекта с сервера с подписью ключом проекта. `test/e2e/agents.e2e.ts` — с настоящим агентом версии `agent-sdk` и воркером
 echo (хелпер `test/e2e/agent.ts`; программа агента — `agent/dist`, `yarn agent:fetch`): задачи
 быстрые и долгие (`jobType`), файл итога — ссылка на скачивание, отмена, строгость манифеста
 (необъявленный маршрут, тело не по схеме, неизвестный тип задачи), событие не по схеме — с
-замечаниями, запрос воркера к серверу и отказ обработчика, пересылка через вторую копию API
-(внутренний порт пересылки; публичный — 404), отложенная замена, `online: false` за ~3 с.
+замечаниями, запрос воркера к серверу и отказ обработчика, вторая копия API без соединения
+агента (503 `AGENT_ELSEWHERE` и `Retry-After`), отложенная замена, `online: false` за ~3 с.

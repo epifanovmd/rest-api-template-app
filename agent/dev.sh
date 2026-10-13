@@ -5,7 +5,7 @@
 #
 #   yarn agent [команда агента …]   без команды — agent run на переднем плане (Ctrl+C — остановить
 #                                   вместе с воркерами); например, yarn agent status,
-#                                   yarn agent config check, yarn agent worker new report
+#                                   yarn agent config check
 #   yarn agent:fetch                программа агента, сборки агента и install.sh той же версии в
 #                                   agent/dist/v<версия> (сквозные тесты; AGENT_PLATFORMS="linux-amd64 …")
 #   yarn agent:pack                 архивы для узлов, сборки воркеров и установщик агента
@@ -68,7 +68,7 @@ ensure_agent() {
   get "$(field "$entry" file)" "$(field "$entry" sha256 | tr 'A-F' 'a-f')" "$AGENT"
 }
 
-# Сборки агента и воркеров (netprobe) той же версии в agent/dist/v<версия> — для сквозных тестов.
+# Сборки агента той же версии в agent/dist/v<версия> — для сквозных тестов.
 fetch_dist() {
   out="$ROOT/agent/dist/v$VERSION"
   mkdir -p "$out"
@@ -119,7 +119,7 @@ case "$cmd" in
   run)
     ensure_agent
     agent_env
-    # Воркеры переживают остановку агента (lifecycle.onAgentExit: keep) — их тоже останавливаем.
+    # Воркеры переживают остановку агента — их тоже останавливаем.
     "$AGENT" run "$@" &
     pid=$!
     trap 'kill -TERM "$pid" 2>/dev/null || true' INT TERM

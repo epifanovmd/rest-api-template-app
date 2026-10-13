@@ -1,5 +1,5 @@
 import type {
-  ConfigRecord,
+  Agent,
   RestartResult,
   WorkerUpdateResult,
 } from "agent-sdk/server";
@@ -14,6 +14,7 @@ import {
   AGENT_FETCH_TIMEOUT,
 } from "./agent.types";
 import { AgentAccessService, IAgentActor } from "./agent-access.service";
+import { requireValidConfig, requireValidRequest } from "./agent-schema";
 import {
   AgentConfigStatusDto,
   IAgentConfigDto,
@@ -21,6 +22,7 @@ import {
   IAgentFetchBody,
   IAgentWorkerActionResultDto,
 } from "./dto";
+import { AgentStore, IAgentConfigRecord } from "./store/agent.store";
 
 /** Заголовки ответа воркера, которые не передаются клиенту как есть. */
 const HOP_HEADERS = new Set([
@@ -42,7 +44,7 @@ export interface IAgentFetchResult {
  * настройки: в нём бывают секреты воркера.
  */
 const toConfigDto = (
-  record: ConfigRecord,
+  record: IAgentConfigRecord,
   withData: boolean,
 ): IAgentConfigDto => ({
   agentId: record.agentId,
@@ -87,13 +89,19 @@ const requestBody = (
   return new Uint8Array(bytes);
 };
 
+/** Аргументы замены воркера: имя и `force`, если задан. */
+const workerArgs = (
+  worker: string,
+  force: boolean,
+): Record<string, unknown> => ({ name: worker, ...(force && { force: true }) });
+
 /**
  * Воркеры агента: перезапуск и обновление с сервера (занятый воркер — ответ
  * сразу, замена после окончания работы, итог — событие `action`; `force` —
- * сразу), настройки по ключам (проверка по схеме из манифеста воркера —
- * `validateConfigs`), запрос к воркеру с потоком ответа (в аудит — только
- * изменяющие методы). Действия и запросы выполняет копия с соединением
- * агента: из другой копии SDK пересылает их туда (`relay`), без пересылки —
+ * сразу), настройки по ключам (значение — по схеме ключа из манифеста
+ * воркера, `CONFIG_INVALID`), запрос к воркеру с потоком ответа (тело — по
+ * схеме маршрута, `REQUEST_INVALID`; в аудит — только изменяющие методы).
+ * Действия и запросы выполняет копия с соединением агента; в другой копии —
  * `AGENT_ELSEWHERE` (503, повторить).
  */
 @Injectable()
@@ -101,6 +109,7 @@ export class AgentWorkerService {
   constructor(
     @inject(AgentRuntime) private readonly _runtime: AgentRuntime,
     @inject(AgentAccessService) private readonly _access: AgentAccessService,
+    @inject(AgentStore) private readonly _store: AgentStore,
   ) {}
 
   async restart(
@@ -113,9 +122,13 @@ export class AgentWorkerService {
 
     return toActionResult(
       await callAgents(() =>
-        this._runtime.agents
-          .by(actor.userId)
-          .restartWorker(id, worker, { force }),
+        this._runtime.action(
+          actor.userId,
+          id,
+          "worker.restart",
+          workerArgs(worker, force),
+          () => this._runtime.agents.restartWorker(id, worker, { force }),
+        ),
       ),
     );
   }
@@ -130,9 +143,13 @@ export class AgentWorkerService {
 
     return toActionResult(
       await callAgents(() =>
-        this._runtime.agents
-          .by(actor.userId)
-          .updateWorker(id, worker, { force }),
+        this._runtime.action(
+          actor.userId,
+          id,
+          "worker.update",
+          workerArgs(worker, force),
+          () => this._runtime.agents.updateWorker(id, worker, { force }),
+        ),
       ),
     );
   }
@@ -147,9 +164,11 @@ export class AgentWorkerService {
 
     const withData = await this._access.can(actor, id, "config");
 
-    const agents = this._runtime.agents;
     const [records, statuses] = await callAgents(() =>
-      Promise.all([agents.listConfigs(id), agents.configStatus(id, worker)]),
+      Promise.all([
+        this._store.listConfigs(id),
+        this._runtime.agents.configStatus(id, worker),
+      ]),
     );
     const byKey = new Map(
       records.map(record => [entryKey(record.worker, record.key), record]),
@@ -192,9 +211,7 @@ export class AgentWorkerService {
     data: unknown,
   ): Promise<IAgentConfigEntryDto> {
     await this._access.require(actor, id, "config");
-    await callAgents(() =>
-      this._runtime.agents.by(actor.userId).setConfig(id, worker, key, data),
-    );
+    await this.writeConfig(actor.userId, id, worker, key, data);
 
     return this.entry(id, worker, key, true);
   }
@@ -208,16 +225,18 @@ export class AgentWorkerService {
     await this._access.require(actor, id, "config");
 
     const deleted = await callAgents(() =>
-      this._runtime.agents.by(actor.userId).deleteConfig(id, worker, key),
+      this._runtime.agents.deleteConfig(id, worker, key),
     );
 
     if (!deleted) throw AgentError.CONFIG_NOT_FOUND();
+    this._runtime.audit(actor.userId, "config.delete", id, { worker, key });
   }
 
   /**
    * Запрос к воркеру через агента: ответ — статус, заголовки и поток тела
    * воркера. Ответ воркера с ошибкой (4xx, 5xx) — обычный ответ; ошибка до
    * ответа воркера — `AgentError` или код агента (`WORKER_UNAVAILABLE`, …).
+   * Тело — по схеме маршрута из манифеста воркера (`REQUEST_INVALID`).
    * Изменяющий запрос (`POST`, `PUT`, `PATCH`, `DELETE`) — от имени
    * пользователя, в аудит; чтение — без аудита.
    */
@@ -232,18 +251,33 @@ export class AgentWorkerService {
 
     const payload = requestBody(body);
     const method = (body.method ?? "GET").toUpperCase();
-    const agents = AGENT_AUDITED_FETCH_METHODS.includes(method)
-      ? this._runtime.agents.by(actor.userId)
-      : this._runtime.agents;
-    const response = await callAgents(() =>
-      agents.fetch(id, worker, body.path, {
+    const response = await callAgents(async () => {
+      requireValidRequest(
+        await this.requireAgent(id),
+        worker,
+        method,
+        body.path,
+        payload,
+      );
+
+      const res = await this._runtime.agents.fetch(id, worker, body.path, {
         method,
         headers: body.headers ?? {},
         ...(payload !== undefined && { body: payload }),
         timeoutMs: body.timeoutMs ?? AGENT_FETCH_TIMEOUT.defaultMs,
         signal,
-      }),
-    );
+      });
+
+      if (AGENT_AUDITED_FETCH_METHODS.includes(method)) {
+        this._runtime.audit(actor.userId, "fetch", id, {
+          worker,
+          method,
+          path: body.path,
+        });
+      }
+
+      return res;
+    });
     const headers: Record<string, string> = {};
 
     for (const [name, value] of response.headers) {
@@ -261,7 +295,7 @@ export class AgentWorkerService {
     worker: string,
     key: string,
   ): Promise<IAgentConfigDto | null> {
-    const record = await this._runtime.agents.getConfig(id, worker, key);
+    const record = await this.findRecord(id, worker, key);
 
     return record ? toConfigDto(record, true) : null;
   }
@@ -273,12 +307,55 @@ export class AgentWorkerService {
     key: string,
     data: unknown,
   ): Promise<IAgentConfigDto> {
-    return toConfigDto(
-      await callAgents(() =>
+    return toConfigDto(await this.writeConfig("", id, worker, key, data), true);
+  }
+
+  /**
+   * Новая версия значения: по схеме ключа из манифеста воркера
+   * (`CONFIG_INVALID`), от имени пользователя (`actorId`; пусто — система),
+   * в аудит.
+   */
+  private async writeConfig(
+    actorId: string,
+    id: string,
+    worker: string,
+    key: string,
+    data: unknown,
+  ): Promise<IAgentConfigRecord> {
+    const record = await callAgents(async () => {
+      requireValidConfig(await this.requireAgent(id), worker, key, data);
+
+      return this._store.withActor(actorId, () =>
         this._runtime.agents.setConfig(id, worker, key, data),
-      ),
-      true,
+      );
+    });
+
+    this._runtime.audit(actorId, "config.set", id, {
+      worker,
+      key,
+      version: record.version,
+    });
+
+    return { ...record, ...(actorId && { actor: actorId }) };
+  }
+
+  private async findRecord(
+    id: string,
+    worker: string,
+    key: string,
+  ): Promise<IAgentConfigRecord | undefined> {
+    return (await this._store.listConfigs(id)).find(
+      record => record.worker === worker && record.key === key,
     );
+  }
+
+  /** Запись агента; нет — `AGENT_NOT_FOUND`. */
+  private async requireAgent(id: string): Promise<Agent> {
+    const agent = await this._runtime.agents.getAgent(id);
+
+    if (!agent) throw AgentError.NOT_FOUND();
+
+    return agent;
   }
 
   private async entry(
@@ -287,11 +364,10 @@ export class AgentWorkerService {
     key: string,
     withData: boolean,
   ): Promise<IAgentConfigEntryDto> {
-    const agents = this._runtime.agents;
     const [record, statuses] = await callAgents(() =>
       Promise.all([
-        agents.getConfig(id, worker, key),
-        agents.configStatus(id, worker),
+        this.findRecord(id, worker, key),
+        this._runtime.agents.configStatus(id, worker),
       ]),
     );
     const status = statuses.find(s => s.key === key);

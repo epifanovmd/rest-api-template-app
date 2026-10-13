@@ -1,9 +1,11 @@
 import {
+  type ActionRecord,
   type Agent,
   type AgentEvent,
   Agents,
-  type InvalidEvent,
-  type RelayFunction,
+  AgentsError,
+  JOB_EVENTS,
+  type WorkerRequest,
 } from "agent-sdk/server";
 import { randomBytes } from "crypto";
 import type { IncomingMessage, ServerResponse } from "http";
@@ -13,15 +15,13 @@ import { z } from "zod";
 
 import { config } from "../../config";
 import { EventBus, Injectable, logger } from "../../core";
-import {
-  agentConfig,
-  bundleReleasesDir,
-  toAgentReleasesOptions,
-} from "./agent.config";
+import { agentConfig, bundleReleasesDir } from "./agent.config";
 import { AgentSignals } from "./agent.signals";
-import { AGENT_RELAY_PATH, AGENTS_CHANGED_CHANNEL } from "./agent.types";
+import { AGENTS_CHANGED_CHANNEL, TAgentActionName } from "./agent.types";
+import { agentAlerts, AgentAlertTracker, IAgentAlert } from "./agent-alerts";
 import { AgentEnrollmentService } from "./agent-enrollment.service";
 import { AgentHistoryService, toAgentEventDto } from "./agent-history.service";
+import { schemaProblemsOf } from "./agent-schema";
 import { AgentWorkerRequestRegistry } from "./agent-worker-request.registry";
 import {
   AgentAlertDto,
@@ -39,7 +39,6 @@ import {
   AgentEventReceivedEvent,
   AgentLogReceivedEvent,
   AgentMetricsReceivedEvent,
-  AgentReleaseChangedEvent,
   AgentUpdatedEvent,
 } from "./events";
 import { AgentStore } from "./store/agent.store";
@@ -108,44 +107,58 @@ const urlOf = (host: string, port: number): string => {
 };
 
 /**
- * Имя копии в `agent.session.instance`. С пересылкой — внутренний адрес её
- * сервера пересылки (по нему другие копии пересылают вызовы); без неё —
- * адрес API (уникален среди копий). Без HTTP (роль `worker`) соединений
- * агентов нет — узнаваемое уникальное имя.
+ * Имя копии в `agent.session.instance` — адрес её API (уникален среди
+ * копий). Без HTTP (роль `worker`) соединений агентов нет — узнаваемое
+ * уникальное имя.
  */
-const newInstanceId = (): string => {
-  if (config.app.role === "worker") {
-    return `worker:${hostname()}:${process.pid}:${randomBytes(3).toString("hex")}`;
-  }
-  if (agentConfig.instanceUrl)
-    return agentConfig.instanceUrl.replace(/\/+$/, "");
-
-  return agentConfig.relaySecret
-    ? urlOf(agentConfig.relayHost, agentConfig.relayPort)
+const newInstanceId = (): string =>
+  config.app.role === "worker"
+    ? `worker:${hostname()}:${process.pid}:${randomBytes(3).toString("hex")}`
     : urlOf(config.server.host, config.server.port);
-};
 
-/** Доставка вызова в копию с соединением агента: её сервер пересылки. */
-const relayTo: RelayFunction = (instanceId, request) =>
-  fetch(new URL(AGENT_RELAY_PATH, instanceId), {
-    method: "POST",
-    headers: request.headers,
-    body: request.body,
-    signal: request.signal,
-  });
+/** Действие агента до итога: агент, имя и воркер (`args.name`). */
+const actionKey = (agentId: string, name: string, worker: unknown): string =>
+  `${agentId}\n${name}\n${typeof worker === "string" ? worker : ""}`;
+
+/** id отложенного действия (`{ deferred: true, actionId }`) из итога вызова. */
+const deferredActionId = (result: unknown): string | undefined =>
+  !!result &&
+  typeof result === "object" &&
+  "deferred" in result &&
+  result.deferred === true &&
+  "actionId" in result &&
+  typeof result.actionId === "string"
+    ? result.actionId
+    : undefined;
+
+/** Отказ SDK до отправки агенту: агента нет, он не на связи с этим процессом, неверный вызов. */
+const NOT_SENT_CODES = new Set([
+  "AGENT_NOT_FOUND",
+  "AGENT_REVOKED",
+  "AGENT_OFFLINE",
+  "AGENT_ELSEWHERE",
+  "MESSAGE_INVALID",
+  "WORKER_UNKNOWN",
+  "WORKER_NOT_RELEASED",
+  "UPDATE_NOT_AVAILABLE",
+]);
+
+const isNotSent = (err: unknown): boolean =>
+  err instanceof AgentsError && NOT_SENT_CODES.has(err.code);
 
 type TWorkerEventHandler = (event: AgentEvent) => Promise<void>;
 
 /**
  * `Agents` из agent-sdk — один на процесс: регистрация, WebSocket агентов,
- * запросы к воркерам, задачи, настройки, наблюдение, действия, раздача сборок агента.
- * Хранилище — Postgres (`AgentStore`). События SDK уходят в EventBus;
- * история (события воркеров, метрики) — в свои таблицы. Изменения в Store,
- * которые должен доставить процесс с соединением агента, — сигналом
- * `agents_changed` (каждый процесс вызывает `refresh`). Вызовы, которым
- * нужна копия с соединением агента (запрос к воркеру, задачи, действия,
- * наблюдение), SDK пересылает туда сам (`relay`), если задан общий секрет
- * копий `AGENT_RELAY_SECRET`; адрес копии — её `instanceId`.
+ * запросы к воркерам, настройки, наблюдение, действия, раздача сборок
+ * воркеров проекта. Хранилище — Postgres (`AgentStore`). События SDK уходят
+ * в EventBus; история (события воркеров, метрики) — в свои таблицы. Изменения
+ * в Store, которые должен доставить процесс с соединением агента, — сигналом
+ * `agents_changed` (каждый процесс вызывает `refresh`). Вызовы, которым нужна
+ * копия с соединением агента (запрос к воркеру, задачи, действия,
+ * наблюдение), выполняет только она: в другой копии — `AGENT_ELSEWHERE`
+ * (клиенту — 503 и `Retry-After`). Проверка по схемам манифеста воркеров,
+ * проблемы агентов и аудит действий — здесь же, не в SDK.
  */
 @Injectable()
 export class AgentRuntime {
@@ -162,6 +175,12 @@ export class AgentRuntime {
   private readonly _connectedAt = new Map<string, number>();
   /** Воркеры агента в работе: «имя → перезапуски», — чтобы заметить их перезапуск. */
   private readonly _running = new Map<string, Map<string, number>>();
+  /** Проблемы агентов, о которых этот процесс уже сообщил. */
+  private readonly _alerts = new AgentAlertTracker();
+  /** Изменения агента — по порядку: событие агента и его проблемы. */
+  private readonly _agentQueue = new Map<string, Promise<void>>();
+  /** Кто вызвал действие, которое ещё не закончилось: ключ действия → пользователь. */
+  private readonly _actionActors = new Map<string, string>();
 
   constructor(
     @inject(AgentStore) private readonly _store: AgentStore,
@@ -190,18 +209,13 @@ export class AgentRuntime {
     return config.app.role !== "worker";
   }
 
-  /** Вызовы пересылаются в копию с соединением агента. */
-  get relayEnabled(): boolean {
-    return !!agentConfig.relaySecret;
-  }
-
   /** Соединение агента — в этом процессе. */
   isLocal(agent: Pick<Agent, "online" | "session">): boolean {
     return agent.online && agent.session?.instance === this._instanceId;
   }
 
   /**
-   * HTTP-запрос агента (регистрация, сборки агента, `install.sh`): в контексте
+   * HTTP-запрос агента (регистрация, сборки воркеров проекта): в контексте
    * регистрации, чтобы новый агент получил событие `AgentEnrolledEvent` с
    * источником.
    */
@@ -230,18 +244,69 @@ export class AgentRuntime {
   }
 
   /**
-   * Вызов, пересланный другой копией (`relay`, внутренний сервер
-   * пересылки): выполнить здесь и ответить. Без общего секрета пересылки
-   * нет — `false` (маршрут не обслуживается).
+   * Аудит вызова от имени пользователя (`actorId`; пусто — система):
+   * `AgentActionAuditedEvent`, цель — воркер из `details.worker` или агент.
    */
-  async handleRelay(
-    req: IncomingMessage,
-    res: ServerResponse,
-  ): Promise<boolean> {
-    if (!this.relayEnabled) return false;
-    await this.agents.handleRelay(req, res);
+  audit(
+    actorId: string | null,
+    action: string,
+    agentId: string,
+    details: Record<string, unknown> = {},
+  ): void {
+    this._eventBus.emit(
+      new AgentActionAuditedEvent(
+        action,
+        actorId || null,
+        String(details.worker ?? agentId),
+        agentId,
+        details,
+      ),
+    );
+  }
 
-    return true;
+  /**
+   * Действие агента от имени пользователя: аудит (`name`, аргументы) — если
+   * действие ушло агенту, и автор итога (`AgentActionFinishedEvent.action.actor`),
+   * в том числе отложенного (`deferred` с `actionId`).
+   */
+  async action<T>(
+    actorId: string,
+    agentId: string,
+    name: TAgentActionName,
+    args: Record<string, unknown> | undefined,
+    run: () => Promise<T>,
+  ): Promise<T> {
+    const key = actionKey(agentId, name, args?.name);
+
+    if (actorId) this._actionActors.set(key, actorId);
+    try {
+      const result = await run();
+      const actionId = deferredActionId(result);
+
+      if (actorId && actionId) this._actionActors.set(actionId, actorId);
+      this.audit(actorId, name, agentId, args);
+
+      return result;
+    } catch (err) {
+      if (!isNotSent(err)) this.audit(actorId, name, agentId, args);
+      throw err;
+    } finally {
+      if (actorId && this._actionActors.get(key) === actorId) {
+        this._actionActors.delete(key);
+      }
+    }
+  }
+
+  /** Текущие проблемы агента: из его записи и статусов настроек. */
+  async alertsOf(agent: Agent): Promise<IAgentAlert[]> {
+    const configs = await this.agents.configStatus(agent.id).catch(() => []);
+
+    return agentAlerts(agent, configs, this._alerts.known(agent.id));
+  }
+
+  /** Агент для API и событий: с текущими проблемами. */
+  async toDto(agent: Agent): Promise<AgentDto> {
+    return AgentDto.fromModel(agent, await this.alertsOf(agent));
   }
 
   /** События SDK → EventBus и история; сигналы между процессами. */
@@ -278,39 +343,41 @@ export class AgentRuntime {
       statusIntervalMs: agentConfig.statusIntervalMs,
       metricsIntervalMs: agentConfig.metricsIntervalMs,
       offlineGraceMs: agentConfig.offlineGraceMs,
-      ...(this.relayEnabled && {
-        relay: relayTo,
-        relaySecret: agentConfig.relaySecret,
-      }),
       releasesDir: bundleReleasesDir(),
-      agentReleases: toAgentReleasesOptions(agentConfig.agentReleases),
       trustProxy: config.server.trustProxy,
-      validate: {
-        configs: true,
-        jobs: true,
-        requests: true,
-        events: agentConfig.validateEvents,
-      },
       onEvent: event => this.handleWorkerEvent(event),
-      onWorkerRequest: request => this._requests.handle(request),
+      onWorkerRequest: request => this.handleWorkerRequest(request),
       log: (msg, extra) => logger.info({ ...extra }, `[Agent] ${msg}`),
     });
   }
 
   /**
-   * Событие воркера: обработчики модулей (задачи), затем история (с
-   * замечаниями проверки по схеме, если были); новое — в EventBus.
-   * Подтверждение агенту — после успеха.
+   * Событие воркера: проверка `data` по схеме манифеста (`validateEvents`),
+   * обработчики модулей (задачи), затем история (с замечаниями, если были);
+   * новое — в EventBus. Не по схеме: журнал; `reject` — событие только в
+   * историю, обработчикам модулей не передаётся. Подтверждение агенту — после
+   * успеха.
    */
   private async handleWorkerEvent(event: AgentEvent): Promise<void> {
-    for (const handler of this._eventHandlers) await handler(event);
-    await this.saveEvent(event, event.problems);
-  }
+    const problems = await this.eventProblems(event);
+    const rejected =
+      problems.length > 0 && agentConfig.validateEvents === "reject";
 
-  private async saveEvent(
-    event: AgentEvent,
-    problems: string[] | undefined,
-  ): Promise<void> {
+    if (problems.length) {
+      logger.warn(
+        {
+          agentId: event.agentId,
+          worker: event.worker,
+          type: event.type,
+          problems,
+          rejected,
+        },
+        "[Agent] data события не подходит под схему манифеста воркера",
+      );
+    }
+    if (!rejected) {
+      for (const handler of this._eventHandlers) await handler(event);
+    }
     if (await this._history.saveEvent(event, problems)) {
       this._eventBus.emit(
         new AgentEventReceivedEvent(toAgentEventDto(event, problems)),
@@ -318,29 +385,48 @@ export class AgentRuntime {
     }
   }
 
-  /**
-   * `data` события не по схеме манифеста (`validate.events`): журнал;
-   * `log` — замечания приходят в самом событии (`problems`, `onEvent`),
-   * `reject` — событие только в историю, обработчикам модулей не передаётся.
-   */
-  private onInvalidEvent({ event, problems, rejected }: InvalidEvent): void {
-    logger.warn(
-      {
-        agentId: event.agentId,
-        worker: event.worker,
-        type: event.type,
-        problems,
-        rejected,
-      },
-      "[Agent] data события не подходит под схему манифеста воркера",
-    );
-    if (!rejected) return;
-    this.saveEvent(event, problems).catch(err =>
-      logger.warn(
-        { err, agentId: event.agentId },
-        "[Agent] Отклонённое событие не сохранено",
-      ),
-    );
+  /** Замечания к `data` события по `events[].schema` (события задач `job.*` — без проверки). */
+  private async eventProblems(event: AgentEvent): Promise<string[]> {
+    if (
+      agentConfig.validateEvents === "off" ||
+      (JOB_EVENTS as readonly string[]).includes(event.type)
+    ) {
+      return [];
+    }
+
+    const agent = await this.agents.getAgent(event.agentId);
+
+    return agent
+      ? schemaProblemsOf(
+          agent,
+          event.worker,
+          { event: event.type },
+          event.data ?? null,
+        )
+      : [];
+  }
+
+  /** Запрос воркера к серверу: `data` по схеме из манифеста, затем обработчик модуля. */
+  private async handleWorkerRequest(request: WorkerRequest): Promise<unknown> {
+    const agent = await this.agents.getAgent(request.agentId);
+    const problems = agent
+      ? schemaProblemsOf(
+          agent,
+          request.worker,
+          { request: request.type },
+          request.data ?? null,
+        )
+      : [];
+
+    if (problems.length) {
+      throw new AgentsError(
+        "REQUEST_INVALID",
+        `${request.type}: ${problems.join("; ")}`,
+        400,
+      );
+    }
+
+    return this._requests.handle(request);
   }
 
   /** События SDK этого процесса → доменные события модуля. */
@@ -348,18 +434,22 @@ export class AgentRuntime {
     const emit = this._eventBus.emit.bind(this._eventBus);
 
     agents.on("agent", agent => {
-      const dto = AgentDto.fromModel(agent);
       // Регистрация: SDK сообщает о новом агенте в цепочке запроса enroll.
       const source = this._enrollment.takeSource();
 
-      emit(new AgentUpdatedEvent(dto));
-      if (source) emit(new AgentEnrolledEvent(dto, source));
       this.detectReconnect(agent);
+      this.serial(agent.id, async () => {
+        const alerts = await this.alertsOf(agent);
+        const dto = AgentDto.fromModel(agent, alerts);
+
+        emit(new AgentUpdatedEvent(dto));
+        if (source) {
+          emit(new AgentEnrolledEvent(dto, source));
+          this.audit(null, "agent.enroll", agent.id, { name: agent.name });
+        }
+        this.emitAlerts(agent.id, alerts);
+      });
     });
-    agents.on("invalidEvent", invalid => this.onInvalidEvent(invalid));
-    agents.on("alert", alert =>
-      emit(new AgentAlertChangedEvent(AgentAlertDto.fromModel(alert))),
-    );
     agents.on("metrics", point => {
       emit(
         new AgentMetricsReceivedEvent(point.agentId, toMetricsPointDto(point)),
@@ -373,31 +463,17 @@ export class AgentRuntime {
           ),
         );
     });
-    agents.on("release", release => {
-      logger.info(
-        {
-          version: release.version,
-          previous: release.previous ?? null,
-          from: release.from,
-        },
-        release.previous
-          ? "[Agent] Вышла новая версия агента"
-          : "[Agent] Версия агента получена из источника",
-      );
-      emit(
-        new AgentReleaseChangedEvent({
-          version: release.version,
-          ...(release.previous && { previous: release.previous }),
-          from: release.from,
-        }),
-      );
-    });
     agents.on("log", ({ agentId, entries }) =>
       emit(new AgentLogReceivedEvent(agentId, entries)),
     );
-    agents.on("config", status =>
-      emit(new AgentConfigChangedEvent(AgentConfigStatusDto.fromModel(status))),
-    );
+    agents.on("config", status => {
+      emit(new AgentConfigChangedEvent(AgentConfigStatusDto.fromModel(status)));
+      this.serial(status.agentId, async () => {
+        const agent = await agents.getAgent(status.agentId);
+
+        if (agent) this.emitAlerts(agent.id, await this.alertsOf(agent));
+      });
+    });
     agents.on("action", action =>
       emit(
         new AgentActionFinishedEvent({
@@ -405,7 +481,7 @@ export class AgentRuntime {
           agentId: action.agentId,
           name: action.name,
           ...(action.args && { args: action.args }),
-          ...(action.actor && { actor: action.actor }),
+          ...this.actorOf(action),
           status: action.status,
           ...(action.result !== undefined && { result: action.result }),
           ...(action.error && { error: action.error }),
@@ -415,20 +491,57 @@ export class AgentRuntime {
         }),
       ),
     );
-    agents.on("audit", entry => {
-      emit(
-        new AgentActionAuditedEvent(
-          entry.action,
-          entry.actor || null,
-          String(entry.details?.worker ?? entry.agentId),
-          entry.agentId,
-          entry.details ?? {},
-        ),
+    agents.on("change", ({ agentId, reason }) => {
+      if (reason !== "delete") return;
+      this._connectedAt.delete(agentId);
+      this._running.delete(agentId);
+      this.serial(agentId, async () => {
+        for (const alert of this._alerts.forget(agentId)) {
+          emit(new AgentAlertChangedEvent(AgentAlertDto.fromModel(alert)));
+        }
+        emit(new AgentDeletedEvent(agentId));
+      });
+    });
+  }
+
+  /** Автор итога действия: вызов от имени пользователя этого процесса. */
+  private actorOf(action: ActionRecord): { actor?: string } {
+    const byId = this._actionActors.get(action.id);
+
+    if (byId) {
+      if (action.deferred) this._actionActors.delete(action.id);
+
+      return { actor: byId };
+    }
+
+    const actor = this._actionActors.get(
+      actionKey(action.agentId, action.name, action.args?.name),
+    );
+
+    return actor ? { actor } : {};
+  }
+
+  /** Проблемы агента изменились — `AgentAlertChangedEvent` на каждую. */
+  private emitAlerts(agentId: string, alerts: IAgentAlert[]): void {
+    for (const alert of this._alerts.update(agentId, alerts)) {
+      this._eventBus.emit(
+        new AgentAlertChangedEvent(AgentAlertDto.fromModel(alert)),
       );
-      if (entry.action === "agent.delete") {
-        this._connectedAt.delete(entry.agentId);
-        this._running.delete(entry.agentId);
-        emit(new AgentDeletedEvent(entry.agentId));
+    }
+  }
+
+  /** Работа по агенту — после прежней работы по нему (порядок событий). */
+  private serial(agentId: string, run: () => Promise<void>): void {
+    const next = (this._agentQueue.get(agentId) ?? Promise.resolve())
+      .then(run)
+      .catch(err =>
+        logger.warn({ err, agentId }, "[Agent] Событие агента не обработано"),
+      );
+
+    this._agentQueue.set(agentId, next);
+    void next.then(() => {
+      if (this._agentQueue.get(agentId) === next) {
+        this._agentQueue.delete(agentId);
       }
     });
   }

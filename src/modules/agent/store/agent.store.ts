@@ -4,6 +4,7 @@ import type {
   SetConfigOptions,
   Store,
 } from "agent-sdk/server";
+import { AsyncLocalStorage } from "async_hooks";
 import { inject } from "inversify";
 import { DataSource } from "typeorm";
 
@@ -36,6 +37,11 @@ export const jsonSafe = <T>(value: T): T =>
           );
         }),
       );
+
+/** Значение ключа настроек и кто его записал (`null` — система). */
+export interface IAgentConfigRecord extends ConfigRecord {
+  actor?: string;
+}
 
 /** Запись агента: `rev` — из колонки, она источник правды для условной записи. */
 const agentOf = (row: {
@@ -102,7 +108,8 @@ const rowsOf = <T>(result: unknown): T[] =>
 
 /**
  * `Store` SDK агентов на Postgres. Значения настроек — зашифрованы, если
- * задан `AGENT_CONFIGS_KEY`. Агент — строка `agents` с записью целиком в
+ * задан `AGENT_CONFIGS_KEY`; кто записал значение — `withActor` вокруг вызова
+ * SDK (колонка `actor`). Агент — строка `agents` с записью целиком в
  * `jsonb` и `rev` колонкой: запись — одним условным `UPDATE … WHERE rev = …`,
  * несколько процессов не затирают изменения друг друга. Настройки — строка
  * `agent_configs` на ключ; после удаления строка остаётся (`data = NULL`) со
@@ -111,10 +118,16 @@ const rowsOf = <T>(result: unknown): T[] =>
 @Injectable()
 export class AgentStore implements Store {
   private readonly _cipher = new ConfigCipher();
+  private readonly _actor = new AsyncLocalStorage<string>();
 
   constructor(@inject(DataSource) private readonly _db: DataSource) {}
 
-  private _configOf(row: IConfigRow): ConfigRecord {
+  /** Записи настроек внутри `fn` — от имени пользователя `actor`. */
+  withActor<T>(actor: string, fn: () => Promise<T>): Promise<T> {
+    return this._actor.run(actor, fn);
+  }
+
+  private _configOf(row: IConfigRow): IAgentConfigRecord {
     return {
       agentId: row.agent_id,
       worker: row.worker,
@@ -192,7 +205,7 @@ export class AgentStore implements Store {
     key: string,
     data: unknown,
     opts: SetConfigOptions = {},
-  ): Promise<ConfigRecord> {
+  ): Promise<IAgentConfigRecord> {
     const result: unknown = await this._db.query(
       `INSERT INTO "agent_configs" ("agent_id", "worker", "key", "version", "data", "updated_at", "actor")
        VALUES ($1, $2, $3, GREATEST(1, $4::bigint), $5::jsonb, $6, $7)
@@ -209,14 +222,14 @@ export class AgentStore implements Store {
         opts.minVersion ?? 0,
         JSON.stringify(this._cipher.seal(jsonSafe(data) ?? null)),
         Date.now(),
-        opts.actor ?? null,
+        this._actor.getStore() || null,
       ],
     );
 
     return this._configOf(rowsOf<IConfigRow>(result)[0]);
   }
 
-  async listConfigs(agentId: string): Promise<ConfigRecord[]> {
+  async listConfigs(agentId: string): Promise<IAgentConfigRecord[]> {
     const rows: IConfigRow[] = await this._db.query(
       `SELECT * FROM "agent_configs" WHERE "agent_id" = $1 AND "data" IS NOT NULL
        ORDER BY "worker", "key"`,

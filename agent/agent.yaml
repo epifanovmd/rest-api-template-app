@@ -1,6 +1,6 @@
 # Агент на машине разработчика: yarn agent (порт API и токен регистрации — из .env.development).
 # Боевые узлы — agent.prod.yaml поверх этого файла, контейнер — agent.docker.yaml.
-# Что получилось и откуда каждое значение: yarn agent config check.
+# Что получилось: yarn agent config check.
 server:
   url: "http://localhost:${SERVER_PORT}"
 enroll:
@@ -23,6 +23,8 @@ workers:
     env:
       PYTHONUNBUFFERED: "1"
       WORKER_STATE_DIR: "${AGENT_DATA_DIR}/echo-state"
-  # Проверка сети между узлами (настройка targets, итоги — в метриках) — сборка из релиза агента.
-  - name: netprobe
-    from: agent
+  # Воркер проекта (workers/netprobe): проверка сети между узлами (настройка targets, итоги —
+  # в метриках).
+  - path: workers/netprobe
+    env:
+      PYTHONUNBUFFERED: "1"

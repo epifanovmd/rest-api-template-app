@@ -59,11 +59,10 @@ export const AGENT_WATCH = {
 export const AGENTS_CHANGED_CHANNEL = "agents_changed";
 
 /**
- * Маршрут пересылки вызовов агентов между копиями API (`relay`) на
- * внутреннем сервере пересылки (`AGENT_RELAY_PORT`): закрыт общим секретом
- * `AGENT_RELAY_SECRET`.
+ * Канал NOTIFY: команда задаче воркера (отмена) из процесса без соединения
+ * агента — процессу с соединением (payload — JSON `IAgentJobSignal`).
  */
-export const AGENT_RELAY_PATH = "/internal/agent-relay";
+export const AGENT_JOB_CONTROL_CHANNEL = "agent_job_control";
 
 /** Заголовок ответа прокси запроса к воркеру: статус ответа воркера. */
 export const AGENT_WORKER_STATUS_HEADER = "X-Agent-Worker-Status";

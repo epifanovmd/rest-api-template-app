@@ -177,8 +177,8 @@ SSH (не root) без sudo, `--rootless`; удаление такого аге�
 
 ## Связность
 
-Воркер `netprobe` из релиза агента (`from: agent` в `agent/agent.yaml`: агент берёт его сам,
-на узел он едет в архиве папки агента) проверяет связность до целей своей
+Воркер проекта `netprobe` (`agent/workers/netprobe`, `- path: workers/netprobe` в
+`agent/agent.yaml`; на узел он едет в архиве папки агента) проверяет связность до целей своей
 настройки `targets` и отдаёт итог последнего круга в `GET /metrics`: агент кладёт его в
 `metrics.workers.netprobe` — `{at, results: [{id, host, method, via?, sent, received,
 lossPct, rttMinMs?, rttAvgMs?, rttMaxMs?, error?}]}`.

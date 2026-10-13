@@ -61,9 +61,8 @@ const abortOnClose = (req: KoaRequest): AbortSignal => {
 /**
  * Воркеры агента: перезапуск и обновление, настройки по ключам, запрос к
  * воркеру. Доступ — право модуля или политика (агент своего узла); проверяет
- * сервис. Действия и запросы выполняет копия с соединением агента (из другой
- * копии вызов пересылается); без пересылки между копиями — 503
- * `AGENT_ELSEWHERE` с `Retry-After`.
+ * сервис. Действия и запросы выполняет копия с соединением агента; в другой
+ * копии — 503 `AGENT_ELSEWHERE` с `Retry-After`.
  */
 @Injectable()
 @Tags("Agent")
@@ -94,7 +93,7 @@ export class AgentWorkerController extends Controller {
     @Body() body: IAgentWorkerActionBody,
   ): Promise<IAgentWorkerActionResultDto> {
     return withRetryAfter(
-      (name, value) => this.setHeader(name, value),
+      (name, value) => req.ctx.set(name, value),
       () =>
         this._workers.restart(getContextUser(req), id, worker, !!body.force),
     );
@@ -117,7 +116,7 @@ export class AgentWorkerController extends Controller {
     @Body() body: IAgentWorkerActionBody,
   ): Promise<IAgentWorkerActionResultDto> {
     return withRetryAfter(
-      (name, value) => this.setHeader(name, value),
+      (name, value) => req.ctx.set(name, value),
       () => this._workers.update(getContextUser(req), id, worker, !!body.force),
     );
   }
@@ -143,7 +142,7 @@ export class AgentWorkerController extends Controller {
     @Body() body: IAgentFetchBody,
   ): Promise<Readable> {
     const result = await withRetryAfter(
-      (name, value) => this.setHeader(name, value),
+      (name, value) => req.ctx.set(name, value),
       () =>
         this._workers.fetch(
           getContextUser(req),

@@ -1,67 +1,14 @@
-import type { AgentReleasesOptions } from "agent-sdk/server";
 import { existsSync } from "fs";
 import { join } from "path";
 import { z } from "zod";
 
 import {
-  bool,
   defineModuleConfig,
   nonNegativeInt,
   optionalString,
-  port,
   positiveInt,
 } from "../../config";
 import { resolveFromRoot } from "../../core";
-
-/** Откуда по умолчанию берутся агент и netprobe: релизы GitHub. */
-export const AGENT_RELEASES_DEFAULTS = {
-  github: "epifanovmd/agent",
-  checkIntervalMs: 3_600_000,
-};
-
-/** Источник агента и netprobe из env `AGENT_RELEASES_*`. */
-export const agentReleasesSchema = z.object({
-  /** Репозиторий релизов `owner/repo`; пустое значение — не брать из GitHub. */
-  github: z.string().default(AGENT_RELEASES_DEFAULTS.github),
-  /** Какие версии брать (semver), например `^2`; нет — мажорная версия agent-sdk. */
-  range: optionalString,
-  /** Каталог одной версии по ссылке (зеркало, своя версия); важнее `github`. */
-  url: optionalString,
-  /** Токен GitHub: только чтобы не упереться в лимит запросов. */
-  token: optionalString,
-  /** Сборки узлам — через бэкенд (узлы без доступа к GitHub). */
-  proxy: bool(false),
-  /** Как часто проверять новую версию, мс. */
-  checkIntervalMs: positiveInt.default(AGENT_RELEASES_DEFAULTS.checkIntervalMs),
-});
-
-export type TAgentReleasesConfig = z.output<typeof agentReleasesSchema>;
-
-/**
- * Настройки источника агента для SDK (`agentReleases`): ссылка важнее
- * GitHub; ни того, ни другого — `undefined` (агент только из
- * `AGENT_RELEASES_DIR`).
- */
-export const toAgentReleasesOptions = (
-  cfg: TAgentReleasesConfig,
-): AgentReleasesOptions | undefined => {
-  const common = {
-    checkIntervalMs: cfg.checkIntervalMs,
-    proxy: cfg.proxy,
-  };
-
-  if (cfg.url) return { ...common, url: cfg.url };
-  if (cfg.github) {
-    return {
-      ...common,
-      github: cfg.github,
-      ...(cfg.range && { range: cfg.range }),
-      ...(cfg.token && { token: cfg.token }),
-    };
-  }
-
-  return undefined;
-};
 
 /** Настройки агентов (env `AGENT_*`). */
 export const agentConfig = defineModuleConfig(
@@ -92,33 +39,6 @@ export const agentConfig = defineModuleConfig(
      */
     offlineGraceMs: positiveInt.default(3_000),
     /**
-     * Общий секрет копий API для пересылки вызовов агентов (relay): вызов
-     * в копии без соединения агента уходит в копию с соединением на её
-     * внутренний сервер пересылки (`relayHost:relayPort`, маршрут
-     * `/internal/agent-relay`). Без секрета пересылки и сервера нет (одна
-     * копия или липкая маршрутизация по агенту).
-     */
-    relaySecret: z
-      .string()
-      .min(32, "AGENT_RELAY_SECRET — не короче 32 символов")
-      .optional(),
-    /**
-     * Порт внутреннего сервера пересылки (отдельно от публичного порта API):
-     * у каждой копии на одной машине — свой.
-     */
-    relayPort: port.default(8182),
-    /**
-     * Адрес, на котором слушает сервер пересылки: в контейнере — `0.0.0.0`
-     * (копии ходят друг к другу по сети compose), иначе — только локально.
-     */
-    relayHost: z.string().min(1).default("127.0.0.1"),
-    /**
-     * Внутренний адрес сервера пересылки этой копии (`http://host:port`):
-     * по нему другие копии находят её. Без него — `AGENT_RELAY_HOST` (для
-     * `0.0.0.0` — IPv4 машины или контейнера) и `AGENT_RELAY_PORT`.
-     */
-    instanceUrl: optionalString,
-    /**
      * Архивы папки агента для узлов (`yarn agent:pack` = `agent pack --env prod`):
      * `agent-prod-<версия>-linux-<arch>.tar.gz` — их ставит `agent install`, и
      * `release/` — сборки воркеров проекта для их обновления (`worker.update`).
@@ -127,8 +47,6 @@ export const agentConfig = defineModuleConfig(
     bundleDir: optionalString.transform(dir =>
       dir ? resolveFromRoot(dir) : undefined,
     ),
-    /** Откуда брать агента и netprobe: релизы GitHub или ссылка. */
-    agentReleases: agentReleasesSchema,
     /**
      * Ключ шифрования значений настроек воркеров в БД (AES-256-GCM, 32 байта
      * hex или base64): в настройках бывают ключи и пароли. Без него значения
@@ -156,20 +74,7 @@ export const agentConfig = defineModuleConfig(
     metricsRetentionHours: process.env.AGENT_METRICS_RETENTION_HOURS,
     eventsRetentionDays: process.env.AGENT_EVENTS_RETENTION_DAYS,
     offlineGraceMs: process.env.AGENT_OFFLINE_GRACE_MS,
-    relaySecret: process.env.AGENT_RELAY_SECRET || undefined,
-    relayPort: process.env.AGENT_RELAY_PORT || undefined,
-    relayHost: process.env.AGENT_RELAY_HOST || undefined,
-    instanceUrl: process.env.INSTANCE_URL,
     bundleDir: process.env.AGENT_BUNDLE_DIR,
-    agentReleases: {
-      github: process.env.AGENT_RELEASES_GITHUB,
-      range: process.env.AGENT_RELEASES_RANGE || undefined,
-      url: process.env.AGENT_RELEASES_URL,
-      token: process.env.AGENT_RELEASES_TOKEN,
-      proxy: process.env.AGENT_RELEASES_PROXY,
-      checkIntervalMs:
-        process.env.AGENT_RELEASES_CHECK_INTERVAL_MS || undefined,
-    },
     configsKey: process.env.AGENT_CONFIGS_KEY,
     publicUrl: process.env.AGENT_PUBLIC_URL,
     validateEvents: process.env.AGENT_VALIDATE_EVENTS || undefined,

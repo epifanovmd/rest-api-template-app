@@ -32,7 +32,6 @@ import { AgentLinkHandler } from "./agent-link.handler";
 import { AgentMetric } from "./agent-metric.entity";
 import { AgentMetricRepository } from "./agent-metric.repository";
 import { AgentPruneJob } from "./agent-prune.job";
-import { AgentRelayServer } from "./agent-relay.server";
 import { AgentReleaseController } from "./agent-release.controller";
 import { AgentRoomPolicy } from "./agent-room.policy";
 import { AgentWatchService } from "./agent-watch.service";
@@ -48,7 +47,7 @@ import { StoredAgentConfig } from "./store/stored-agent-config.entity";
 /**
  * Агенты на agent-sdk: регистрация по токенам, связь по WebSocket, воркеры
  * (статус, манифест, перезапуск, обновление, настройки, запросы), события и
- * история метрик, журнал, сборки агента и установка; исполнитель внешних очередей
+ * история метрик, журнал, проблемы агентов, сборки воркеров и установка; исполнитель внешних очередей
  * модуля задач; ответы на запросы воркеров к серверу (обработчики модулей —
  * `WORKER_REQUEST_HANDLER`).
  */
@@ -74,7 +73,6 @@ import { StoredAgentConfig } from "./store/stored-agent-config.entity";
     AgentService,
     AgentWorkerService,
     AgentWatchService,
-    AgentRelayServer,
     AgentController,
     AgentWorkerController,
     AgentEnrollmentController,

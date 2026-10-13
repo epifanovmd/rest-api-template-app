@@ -12,7 +12,7 @@ agent/
 ├── agent.prod.yaml     боевые узлы: поверх agent.yaml (экземпляр rest, пакеты, адрес и токен — от установки)
 ├── agent.docker.yaml   контейнер: поверх agent.prod.yaml
 ├── .env.prod.example   образец .env.prod — если узел ставится не с API
-├── workers/            воркеры проекта: каждый — папка (echo — пример)
+├── workers/            воркеры проекта: каждый — папка (echo — пример, netprobe — проверка сети)
 ├── docker/Dockerfile   образ агента
 ├── dev.sh              yarn agent*: программа агента, порт и токен API из .env.development
 ├── bundle/             архивы для узлов (yarn agent:pack, не в git) — их раздаёт API
@@ -25,8 +25,8 @@ agent/
   запросы и настройки, а бэкенду — их события и метрики. Что делают воркеры, агент не знает.
 - **Воркер** — небольшой сервис, который делает работу на узле. Воркеры проекта — папки в
   `workers/`: база `agent_worker.py` (весь протокол агента) и класс-наследник с кодом воркера.
-- **Настройки** — `agent.yaml` и файлы поверх него (`extends`): что запускать и как. Итог и
-  откуда каждое значение — `yarn agent config check` (или `--env prod`).
+- **Настройки** — `agent.yaml` и файлы поверх него (`extends`): что запускать и как. Итог —
+  `yarn agent config check` (или `--env prod`).
 
 ## Агент на своей машине
 
@@ -34,24 +34,22 @@ agent/
 yarn dev                          # API (в .env.development — AGENT_BOOTSTRAP_TOKEN)
 yarn agent                        # агент с воркерами echo и netprobe (agent.yaml); Ctrl+C — остановка
 yarn agent status                 # работает ли агент (запущенный в другом терминале)
-yarn agent config check           # итоговые настройки и откуда каждое значение
-yarn agent worker list            # воркеры: откуда каждый, версия
+yarn agent config check           # итоговые настройки
 yarn agent upgrade --check        # есть ли новая версия агента (yarn agent upgrade — поставить)
 ```
 
 `yarn agent` (это `agent/dev.sh`) скачивает программу агента той же версии, что `agent-sdk` в
 `package.json`, если её ещё нет, берёт `SERVER_PORT` и `AGENT_BOOTSTRAP_TOKEN` из
 `.env.development` (другой файл — `ENV_FILE=…`) и запускает `agent/agent run`; Ctrl+C останавливает агента вместе с
-воркерами. Каталог сборок вместо релиза на GitHub — `AGENT_RELEASES_URL`. Воркер `echo` идёт
-прямо из `workers/echo` (правки видны после перезапуска воркера), `netprobe` агент берёт из своего
-релиза сам. Данные агента — `.agent/data` (удалить — агент зарегистрируется заново и привяжется к
+воркерами. Каталог сборок вместо релиза на GitHub — `AGENT_RELEASES_URL`. Воркеры `echo` и
+`netprobe` идут прямо из `workers/` (правки видны после перезапуска воркера). Данные агента — `.agent/data` (удалить — агент зарегистрируется заново и привяжется к
 своему узлу по имени). Второй агент — `AGENT_DIR=.agent-2 AGENT_NAME=dev-2 yarn agent`.
 
 ## Свой воркер
 
-```bash
-yarn agent worker new report      # agent/workers/report: база, класс Report, run, VERSION + строка в agent.yaml
-```
+Новый воркер — папка `workers/<имя>` по образцу `workers/echo`: `agent_worker.py` (база, одна и та
+же во всех воркерах проекта), `worker.py` (класс-наследник), `run` (`exec python3 …/worker.py`) и
+`VERSION`; в `agent.yaml` — строка `- path: workers/<имя>` (с `env: { PYTHONUNBUFFERED: "1" }`).
 
 ```python
 # agent/workers/report/worker.py — только код воркера
@@ -79,8 +77,8 @@ if __name__ == "__main__":
 Всё, что нужно агенту, база делает сама: сокет, `GET /health` (с `busy`, пока идут задачи),
 `GET /manifest` из объявлений и `VERSION`, настройки, задачи (ход, отмена, повтор `jobId`,
 продолжение после перезапуска — `resumable=True` и `WORKER_STATE_DIR`), события, запросы к бэкенду
-(`self.ask`), метрики, уборку. Базу не правят: `yarn agent worker sync` обновит её до версии
-агента. Полный пример — `workers/echo/worker.py`.
+(`self.ask`), метрики, уборку. Базу не правят по месту: изменение базы — во всех воркерах сразу.
+Полный пример — `workers/echo/worker.py`.
 
 - **Манифест — всё, что воркер умеет.** Агент пропускает только объявленное: маршруты (`@route`),
   задачи (`@job`), события (`events`), запросы к бэкенду (`requests`), ключи настроек (`Config`);
@@ -103,8 +101,8 @@ yarn agent:pack                   # agent/bundle: agent-prod-<версия>-linu
 ```
 
 `agent pack --env prod` кладёт в архив программу агента под платформу узла, `agent.yaml` +
-`agent.prod.yaml`, воркеры проекта и их подписанные сборки (`release/`), `netprobe` из релиза
-агента. `agent install` на узле ставит агента службой: один файл настроек, воркеры — в каталог
+`agent.prod.yaml`, воркеры проекта (`echo`, `netprobe`) и их подписанные сборки (`release/`).
+`agent install` на узле ставит агента службой: один файл настроек, воркеры — в каталог
 данных, пакеты из `install:` (`python3`), экземпляр `rest` — своя служба `agent-rest` рядом с
 агентами других бэкендов. Адрес API и токен регистрации передаёт установка.
 
@@ -147,14 +145,20 @@ API раздаёт архивы и установщик агента из `AGENT
 
 ## Обновления и подписи
 
-- **Агента и `netprobe`** бэкенд берёт из релизов GitHub `epifanovmd/agent` сам (`AGENT_RELEASES_*`)
-  и замечает новые версии; агент на узле тоже сам проверяет новые версии и сообщает о них.
-  Обновить — `POST /api/v1/agents/{id}/update` или `sudo agent-rest upgrade` на узле (агент с `run` —
-  новым запуском). Пересобирать
-  бэкенд ради новой версии агента не нужно.
-- **Воркеры проекта** подписывает `agent pack` ключом проекта из `AGENT_SIGNING_KEY` (пара — `yarn
-agent keygen`). Открытый ключ попадает в архив, и `agent install` добавляет его к ключам узла.
-  Без ключа воркеры ставятся, но с API не обновляются.
+- **Агент** на узле сам проверяет новые версии в своём каталоге сборок (`update.releases`; по
+  умолчанию — релизы GitHub `epifanovmd/agent`) и сообщает о них бэкенду: агент с новой версией —
+  кандидат на обновление (`GET /api/v1/agent-releases`). Обновить — `POST /api/v1/agents/{id}/update`
+  или `sudo agent-rest upgrade` на узле (агент с `run` — новым запуском). Пересобирать бэкенд ради
+  новой версии агента не нужно.
+- **Воркеры проекта** (и `netprobe`) подписывает `agent pack` ключом проекта из `AGENT_SIGNING_KEY`.
+  Открытый ключ попадает в архив, и `agent install` добавляет его к ключам узла. Без ключа воркеры
+  ставятся, но с API не обновляются. Пара ключей — `openssl`:
+
+  ```bash
+  openssl genpkey -algorithm ed25519 -outform DER -out signing.der
+  echo "AGENT_SIGNING_KEY=$(tail -c 32 signing.der | base64)"
+  echo "AGENT_UPDATE_PUBLIC_KEYS=$(openssl pkey -inform DER -in signing.der -pubout -outform DER | tail -c 32 | base64)"
+  ```
 
 | Где собираются архивы          | Как передать закрытый ключ                              |
 | ------------------------------ | ------------------------------------------------------- |
@@ -176,9 +180,7 @@ docker compose --profile agent up -d    # агент рядом с API из dock
 
 ## Несколько копий бэкенда
 
-Агент подключён к одной копии API. Если копий несколько, задайте всем один
-`AGENT_RELAY_SECRET`: копия без соединения агента пересылает вызов той, у которой оно
-есть, на её внутренний сервер пересылки — отдельный порт `AGENT_RELAY_PORT` (8182) на
-адресе `AGENT_RELAY_HOST` (`127.0.0.1`; в контейнере — `0.0.0.0`). Внутренний адрес копии
-— `INSTANCE_URL` или `AGENT_RELAY_HOST:AGENT_RELAY_PORT`. Публичный порт API пересылку не
-обслуживает; порт пересылки наружу не публикуют.
+Агент подключён к одной копии API, и вызовы агента (запрос к воркеру, задача, действие,
+наблюдение) выполняет она. Копия без соединения агента отвечает `503` с кодом
+`AGENT_ELSEWHERE` и заголовком `Retry-After`: клиент повторяет запрос, а балансировщик перед
+копиями должен быть липким, чтобы повтор пришёл в копию с соединением.
