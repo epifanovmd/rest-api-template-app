@@ -192,7 +192,8 @@ describe("выдача агента: архив с токеном, .env и од�
     unpacked.push(archive);
     rmSync(join(archive.dir, ".env"));
     const child = runFrom(archive);
-    const [code] = await once(child, "exit");
+    // close — после exit и конца вывода: текст ошибки уже прочитан.
+    const [code] = await once(child, "close");
 
     expect(code).to.not.equal(0);
     expect(archive.output.join("")).to.include("AGENT_SERVER_URL");
