@@ -273,15 +273,18 @@ E2E: `yarn test:e2e` (`.mocharc.e2e.yml`: `test/e2e/**/*.e2e.ts`, `setup.ts` —
 - `Dockerfile`: стадии deps → builder → prod-deps → `api` (tini, без yarn, `USER node`, `templates/`,
   `VOLUME /app/files`, HEALTHCHECK `/ping`) → `worker` (= api + `ffmpeg`, последняя стадия — дефолт).
   `APP_VERSION` build-arg; стадия
-  `agent-bundle` (python:3.12-slim: агент версии AGENT_VERSION (.env.example или build-arg) с GitHub, `agent pack --env prod --platform linux/amd64,linux/arm64
---release-out`, секрет `agent_signing_key`) → `/app/agent-bundle` (`AGENT_BUNDLE_DIR`).
-  `agent/docker/Dockerfile` — агент версии AGENT_VERSION (GitHub Release, sha256 по manifest) + python 3.12-slim + папка агента
-  (`agent.yaml`, `agent.prod.yaml`, `agent.docker.yaml`, `workers/`) → `./agent run --env docker`;
-  том `/var/lib/agent`. На машине: `agent/dev.sh` — `yarn agent [команда]|agent:fetch|agent:pack` (фонового режима нет)
-  (`AGENT_DIR`, по умолчанию `.agent/`; программа — `agent/agent`).
+  `agent-bundle` (python:3.12-slim: агент версии AGENT_VERSION (.env.example или build-arg) с GitHub, `agent pack --env prod
+--platform linux/amd64,linux/arm64 --release-out`, секрет `agent_signing_key`) → `/app/agent-bundle` (`AGENT_BUNDLE_DIR`);
+  стадия `agent-archives` (scratch) — только архивы (CI: `--target agent-archives --output`).
+  Архив агента (`agent pack --env prod`; `pack.files` в agent.prod.yaml — `agent/package/` (Dockerfile, compose.yml,
+  .env.example, .dockerignore, README.md) и `agent.docker.yaml`) — единственный источник образа агента: `make agent-image` / CI
+  (`agent-image` в ci.yml, `agent` в release.yml: файлы релиза и образ `<версия>-agent` amd64+arm64 из архивов).
+  Получатель кладёт адрес и токен в `agent/.env` (`envFiles: [.env]` в agent.prod.yaml). На машине: `agent/dev.sh` —
+  `yarn agent [команда]|agent:fetch|agent:pack|image` (`AGENT_DIR`, по умолчанию `.agent/`; программа — `agent/agent`);
+  `make agent-archive|agent-image` без `.env.deploy`.
 - `docker-compose.yml` (prod, только образы): `migrate` (одноразовый `typeorm migration:run -d build/data-source.js`),
   `api` (`:TAG-api`, `APP_ROLE=api`, масштабируется, `API_PORTS`), `worker` (`:TAG`, `APP_ROLE=worker`), профиль
-  `agent` (agent/docker/Dockerfile, том `agent-data`, `AGENT_ENROLL_TOKEN` ← `AGENT_BOOTSTRAP_TOKEN`), `postgres:16`, `redis:7` (без persistence, allkeys-lru), `s3` (SeaweedFS `:8333`) + `s3-init`
+  `agent` (образ `:TAG-agent` из архива, том `agent-data`, `AGENT_ENROLL_TOKEN` ← `AGENT_BOOTSTRAP_TOKEN`), `postgres:16`, `redis:7` (без persistence, allkeys-lru), `s3` (SeaweedFS `:8333`) + `s3-init`
   (aws-cli, создаёт bucket). `env_file: ${ENV_FILE:-.env.production}`, `DB_MIGRATIONS_RUN=false`,
   `STORAGE_DRIVER=s3`, `S3_PUBLIC_ENDPOINT` по умолчанию `http://localhost:8333`, `read_only`, `cap_drop: ALL`.
 - `docker-compose.dev.yml`: Postgres, Redis, Mailpit (1025/8025), SeaweedFS (8333, `storage`/`storage12345`),
@@ -290,8 +293,9 @@ E2E: `yarn test:e2e` (`.mocharc.e2e.yml`: `test/e2e/**/*.e2e.ts`, `setup.ts` —
   (ключ сервисного аккаунта) игнорируется — чтобы локальный ключ не попал в коммит.
 - CI `.github/workflows/ci.yml` (push и pull_request в `main`; ветки-примеры CI не запускают): verify (generate + `git diff --exit-code src/routing`, lint, typecheck, test,
   build), migrations (чистый Postgres + дрейф через `migration:generate CiDrift`), e2e (матрица `storage: [s3, local]`,
-  SeaweedFS запускается `docker run`; перед ним `yarn agent:fetch` (linux-amd64); стенд сам собирает архив папки агента (`agent pack`, свой ключ проекта, `AGENT_UPDATE_RELEASES` — локальный сервер сборок) и раздаёт сборки агента с локального сервера — в GitHub не ходит), audit (`continue-on-error`), agent-worker (py_compile `agent/workers/echo/worker.py agent_worker.py`), docker (api/worker/agent + Trivy CRITICAL/HIGH, ignore-unfixed). `release.yml`: тег `v*` →
-  GHCR, amd64+arm64, worker без суффикса, api `-api`, agent `-agent`.
+  SeaweedFS запускается `docker run`; перед ним `yarn agent:fetch` (linux-amd64); стенд сам собирает архив агента (`agent pack`, свой ключ проекта, `AGENT_UPDATE_RELEASES` — локальный сервер сборок) и раздаёт сборки агента с локального сервера — в GitHub не ходит), audit (`continue-on-error`), agent-worker (py_compile `agent/workers/echo/worker.py agent_worker.py`), docker (api/worker + Trivy CRITICAL/HIGH, ignore-unfixed), agent-image (архивы — артефакт, образ из архива
+  linux-amd64, Trivy, `<sha>-agent`). `release.yml`: тег `v*` → GHCR, amd64+arm64, worker без суффикса, api `-api`;
+  задача `agent` — архивы в файлы релиза GitHub, образ `-agent` из архивов.
   `deploy.yml`: после Release или вручную — scp `docker-compose.yml`, `pull` → `run --rm migrate` → `up -d`.
   `Makefile`: `deploy` (compose/pull/migrate/up), `env`, `logs`, `backup`, `build`.
 

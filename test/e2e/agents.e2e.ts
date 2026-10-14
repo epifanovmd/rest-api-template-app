@@ -920,7 +920,7 @@ describe("агенты (настоящий агент и воркер echo)", fu
     ).to.equal(
       `${prefix} sh -s -- --server '${BASE_URL}' --bundle ${bundle} --token 'tok.secret' --run`,
     );
-    expectStatus(await install({ token: "tok.secret", mode: "docker" }), 400);
+    expectStatus(await install({ token: "tok.secret", mode: "podman" }), 400);
 
     const script = await fetch(`${BASE_URL}/agent/v1/bundle/install.sh`);
 

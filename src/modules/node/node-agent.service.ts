@@ -2,17 +2,27 @@ import { inject } from "inversify";
 
 import {
   AgentEnrollmentService,
+  AgentIssueService,
   EventBus,
   IAgentEnrollmentSource,
+  IAgentIssueInput,
   Injectable,
   logger,
   PG_ERROR,
   pgErrorCode,
+  TAgentArchivePlatform,
 } from "../../core";
 import type { AuthContext } from "../../types/koa";
-import { AgentDto, AgentService } from "../agent";
+import {
+  AgentDto,
+  AgentService,
+  IAgentIssuedEnvDto,
+  IAgentIssuedLinkDto,
+} from "../agent";
 import type {
   ICreateNodeInstallCommandBody,
+  IIssueNodeAgentBody,
+  IIssueNodeAgentLinkBody,
   INodeInstallCommandDto,
 } from "./dto";
 import { NodeCreatedEvent, NodeUpdatedEvent } from "./events";
@@ -68,6 +78,7 @@ export class NodeAgentService {
     @inject(AgentService) private readonly _agents: AgentService,
     @inject(AgentEnrollmentService)
     private readonly _enrollment: AgentEnrollmentService,
+    @inject(AgentIssueService) private readonly _issue: AgentIssueService,
     @inject(EventBus) private readonly _eventBus: EventBus,
   ) {}
 
@@ -91,13 +102,85 @@ export class NodeAgentService {
       node,
       body.expiresInMinutes ?? NODE_INSTALL_TOKEN_TTL_MINUTES,
     );
-    const command = this._agents.installCommand({
-      token: issued.token,
-      server: body.baseUrl,
-      mode: body.mode,
-    });
+    const command = await this._agents
+      .installCommand({
+        token: issued.token,
+        server: body.baseUrl,
+        mode: body.mode,
+        // В Docker у агента имя контейнера — задаём имя агента узла.
+        name:
+          body.mode === "docker" ? (node.agentName ?? node.name) : undefined,
+      })
+      .catch(async (err: unknown) => {
+        await this.revokeToken(issued.tokenId);
+        throw err;
+      });
 
     return { command, ...issued };
+  }
+
+  /** `.env` агента узла: адрес, одноразовый токен с меткой узла, имя агента. */
+  async issueEnv(
+    actor: AuthContext,
+    id: string,
+    body: IIssueNodeAgentBody,
+  ): Promise<IAgentIssuedEnvDto> {
+    const input = await this.issueInput(actor, id, body);
+    const issued = await this._issue.env(actor.userId, input);
+
+    return { ...issued, expiresAt: issued.expiresAt.getTime() };
+  }
+
+  /** Архив агента платформы с `.env` агента узла. */
+  async issueArchive(
+    actor: AuthContext,
+    id: string,
+    platform: TAgentArchivePlatform,
+    body: IIssueNodeAgentBody,
+  ): Promise<{ file: string; data: Buffer }> {
+    const input = await this.issueInput(actor, id, body);
+    const issued = await this._issue.archive(actor.userId, platform, input);
+
+    return { file: issued.file, data: issued.data };
+  }
+
+  /** Одноразовая ссылка на архив агента узла (токен — при скачивании). */
+  async issueLink(
+    actor: AuthContext,
+    id: string,
+    body: IIssueNodeAgentLinkBody,
+  ): Promise<IAgentIssuedLinkDto> {
+    const input = await this.issueInput(actor, id, body);
+    const link = await this._issue.link(
+      actor.userId,
+      body.platform,
+      input,
+      body.linkExpiresInMinutes ?? NODE_INSTALL_TOKEN_TTL_MINUTES,
+    );
+
+    return { url: link.url, expiresAt: link.expiresAt.getTime() };
+  }
+
+  /** Выдача для узла: метка узла, имя — заданное, прежнее имя агента узла или имя узла. */
+  private async issueInput(
+    actor: AuthContext,
+    id: string,
+    body: IIssueNodeAgentBody,
+  ): Promise<IAgentIssueInput> {
+    const node = await this._nodes.findFor(
+      actor,
+      id,
+      NodePermissions.PROVISION,
+    );
+
+    return {
+      tokenName: `node:${node.name}`,
+      name: body.name ?? node.agentName ?? node.name,
+      labels: { [NODE_ID_LABEL]: node.id },
+      maxUses: 1,
+      tokenTtlMinutes: body.expiresInMinutes ?? NODE_INSTALL_TOKEN_TTL_MINUTES,
+      server: body.baseUrl,
+    };
   }
 
   /** Одноразовый токен регистрации с меткой узла. */

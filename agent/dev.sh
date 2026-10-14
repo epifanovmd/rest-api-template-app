@@ -8,8 +8,10 @@
 #                                   yarn agent config check
 #   yarn agent:fetch                программа агента, сборки агента и install.sh той же версии в
 #                                   agent/dist/v<версия> (сквозные тесты; AGENT_PLATFORMS="linux-amd64 …")
-#   yarn agent:pack                 архивы для узлов, сборки воркеров и установщик агента
-#                                   (install.sh той же версии) → agent/bundle
+#   yarn agent:pack                 архивы для узлов (agent pack; файлы получателя agent/package —
+#                                   Dockerfile, compose.yml, .env.example — по pack.files),
+#                                   сборки воркеров и установщик агента той же версии → agent/bundle
+#   sh agent/dev.sh image [ТЕГ]     образ агента из архива agent/bundle под эту машину (make agent-image)
 #
 # Другой env-файл — ENV_FILE=…, второй агент — AGENT_DIR=.agent-2 AGENT_NAME=dev-2 (свои ключ и
 # данные). Данные агента — <AGENT_DIR>/data; удалить их — агент зарегистрируется заново.
@@ -125,6 +127,18 @@ case "$cmd" in
     "$AGENT" pack --env prod --out "$out" --release-out "$out/release" "$@"
     # Установщик агента: API раздаёт его вместе с архивами (bundle/install.sh).
     curl -fsSL "$BASE/install.sh" -o "$out/install.sh" || die "нет $BASE/install.sh"
+    ;;
+  image)
+    # Образ агента из архива под платформу Docker этой машины (Dockerfile архива).
+    tag=${1:-agent-rest:local}
+    case "$(docker info -f '{{.Architecture}}')" in aarch64 | arm64) arch=arm64 ;; *) arch=amd64 ;; esac
+    archive=$(ls -t "$ROOT"/agent/bundle/*-linux-"$arch".tar.gz 2>/dev/null | head -n 1) || true
+    [ -n "$archive" ] || die "нет архива под linux-$arch в agent/bundle — сначала yarn agent:pack (make agent-archive)"
+    tmp=$(mktemp -d)
+    tar -xzf "$archive" -C "$tmp"
+    docker build -t "$tag" "$tmp/agent" || { rm -rf "$tmp"; exit 1; }
+    rm -rf "$tmp"
+    echo "образ $tag — из $(basename "$archive")"
     ;;
   run)
     ensure_agent

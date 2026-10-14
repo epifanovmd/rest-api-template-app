@@ -229,8 +229,9 @@ const hostPlatform = (): { os: string; arch: string } => ({
 
 /**
  * Архив папки агента под эту машину и сборки воркеров проекта (`release/`),
- * подписанные ключом проекта стенда — как `yarn agent:pack`; программа агента —
- * с локального каталога сборок агента.
+ * подписанные ключом проекта стенда — как `yarn agent:pack` (с файлами
+ * agent/package по pack.files); программа агента — с локального каталога
+ * сборок агента.
  */
 const buildProjectBundle = async (releases: string): Promise<string> => {
   const dir = mkdtempSync(join(tmpdir(), "e2e-agent-bundle-"));

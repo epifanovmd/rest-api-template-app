@@ -1,13 +1,17 @@
 # Боевые узлы: этот файл поверх agent.yaml (воркеры — оттуда же). Архив для узлов — yarn agent:pack
 # (его же раздаёт API), установка на узле — sudo ./agent install --token <токен> из архива или
 # одной командой с API (без root — --rootless: install.packages тогда пропускается; без установки,
-# например в контейнере, — install.sh --run). Адрес API и токен узлу передаёт установка; свои значения — в .env.prod.
+# например в контейнере, — install.sh --run). Адрес API и токен узлу передаёт установка; свои значения — в .env (образец package/.env.example).
 extends: agent.yaml
-envFiles: [.env.prod]
+envFiles: [.env]
 # Экземпляр агента проекта: свои служба (agent-rest), настройки и данные рядом с агентами других бэкендов.
 instance: rest
 install:
   packages: [python3]
+# Файлы получателя в архиве (agent pack): Dockerfile, compose.yml, .env.example, README.md —
+# в корень архива; agent.docker.yaml — настройки агента в контейнере.
+pack:
+  files: [package/, agent.docker.yaml]
 server:
   url: "${AGENT_SERVER_URL}"
 enroll:

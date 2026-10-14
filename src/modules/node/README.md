@@ -81,19 +81,22 @@ src/modules/node/
 
 ## REST (jwt, под `/api/v1`)
 
-| Метод  | Путь                             | operationId                      | Право                |
-| ------ | -------------------------------- | -------------------------------- | -------------------- |
-| GET    | `/nodes?query&mine&offset&limit` | `GetNodes`                       | `node:view:own`      |
-| GET    | `/nodes/options?mine`            | `GetNodeOptions`                 | `node:view:own`      |
-| GET    | `/nodes/{id}`                    | `GetNodeById`                    | `node:view:own`      |
-| POST   | `/nodes`                         | `CreateNode` (201)               | `node:create`        |
-| PATCH  | `/nodes/{id}`                    | `UpdateNode`                     | `node:update:own`    |
-| DELETE | `/nodes/{id}`                    | `DeleteNode` (204)               | `node:delete:own`    |
-| POST   | `/nodes/{id}/assign`             | `AssignNodeOwner`                | `node:assign:own`    |
-| POST   | `/nodes/{id}/unassign`           | `UnassignNodeOwner`              | `node:assign:own`    |
-| POST   | `/nodes/{id}/install-command`    | `CreateNodeInstallCommand` (201) | `node:provision:own` |
-| POST   | `/nodes/{id}/agent/install`      | `InstallNodeAgent` (202)         | `node:provision:own` |
-| POST   | `/nodes/{id}/agent/uninstall`    | `UninstallNodeAgent` (202)       | `node:provision:own` |
+| Метод  | Путь                              | operationId                      | Право                |
+| ------ | --------------------------------- | -------------------------------- | -------------------- |
+| GET    | `/nodes?query&mine&offset&limit`  | `GetNodes`                       | `node:view:own`      |
+| GET    | `/nodes/options?mine`             | `GetNodeOptions`                 | `node:view:own`      |
+| GET    | `/nodes/{id}`                     | `GetNodeById`                    | `node:view:own`      |
+| POST   | `/nodes`                          | `CreateNode` (201)               | `node:create`        |
+| PATCH  | `/nodes/{id}`                     | `UpdateNode`                     | `node:update:own`    |
+| DELETE | `/nodes/{id}`                     | `DeleteNode` (204)               | `node:delete:own`    |
+| POST   | `/nodes/{id}/assign`              | `AssignNodeOwner`                | `node:assign:own`    |
+| POST   | `/nodes/{id}/unassign`            | `UnassignNodeOwner`              | `node:assign:own`    |
+| POST   | `/nodes/{id}/install-command`     | `CreateNodeInstallCommand` (201) | `node:provision:own` |
+| POST   | `/nodes/{id}/agent/install`       | `InstallNodeAgent` (202)         | `node:provision:own` |
+| POST   | `/nodes/{id}/agent/uninstall`     | `UninstallNodeAgent` (202)       | `node:provision:own` |
+| POST   | `/nodes/{id}/agent/issue/env`     | `IssueNodeAgentEnv` (201)        | `node:provision:own` |
+| POST   | `/nodes/{id}/agent/issue/archive` | `IssueNodeAgentArchive` (файл)   | `node:provision:own` |
+| POST   | `/nodes/{id}/agent/issue/link`    | `IssueNodeAgentLink` (201)       | `node:provision:own` |
 
 Создание с владельцем, отличным от себя, — только с `node:assign`. Удаление узла
 отзывает и удаляет его агента (программа на машине остаётся — её удаляет задача
@@ -109,7 +112,12 @@ src/modules/node/
 (`agent pack`, `AGENT_BUNDLE_DIR`) и запускает из него `agent install`: воркеры (`echo`),
 пакеты и экземпляр — из настроек папки (`agent/agent.prod.yaml`). Токен — только
 в ответе. `mode` — способ установки: `systemd` (по умолчанию), `rootless` (агент пользователя
-без root, `--rootless`, строка без `sudo`), `run` (без установки — контейнер, `--run`, строка без `sudo`).
+без root, `--rootless`, строка без `sudo`), `run` (без установки — контейнер, `--run`, строка без `sudo`),
+`docker` (архив, `.env` и `docker compose up -d --build`; нет `compose.yml` в архиве — 409, токен отзывается).
+
+**Выдача архива.** `agent/issue/*` — то же для получателя, который запустит агента сам: `.env`
+(адрес, одноразовый токен с меткой узла, имя агента — заданное, прежнее имя агента узла или имя
+узла), архив платформы с этим `.env` или одноразовая ссылка на него (`AgentIssueService` ядра).
 
 **Экземпляр агента.** Агент проекта ставится на узел отдельным экземпляром — `instance: rest`
 в `agent/agent.prod.yaml`: служба `agent-rest`, настройки `/etc/agent-rest`, данные и воркеры

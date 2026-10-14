@@ -8,7 +8,7 @@ files/
 .env*
 !.env.example
 !.env.deploy.example
-!agent/.env.prod.example
+!agent/package/.env.example
 .DS_Store
 coverage
 

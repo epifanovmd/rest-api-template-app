@@ -8,6 +8,7 @@ import type {
   IAgentLogEntry,
   IAgentWorkerView,
 } from "../../../core";
+import { type TAgentArchivePlatform } from "../../../core";
 
 /**
  * Id агента в пути: формат проверяется до контроллера.
@@ -236,6 +237,38 @@ export interface ICreatedAgentEnrollmentTokenDto {
 
 export interface IAgentInstallCommandDto {
   command: string;
+}
+
+/** Архив агента для узлов под платформу. */
+export interface IAgentArchiveDto {
+  platform: TAgentArchivePlatform;
+  file: string;
+  version?: string;
+  size: number;
+  /** В архиве есть compose.yml: запуск в Docker Compose. */
+  compose: boolean;
+}
+
+/** Что можно выдать: адрес бэкенда для агентов и архивы по платформам. */
+export interface IAgentInstallOptionsDto {
+  server: string;
+  archives: IAgentArchiveDto[];
+}
+
+/** Выданный токен регистрации и `.env` с ним (показывается один раз). */
+export interface IAgentIssuedEnvDto {
+  env: string;
+  token: string;
+  tokenId: string;
+  /** Срок токена, мс. */
+  expiresAt: number;
+}
+
+/** Одноразовая ссылка на архив агента с токеном. */
+export interface IAgentIssuedLinkDto {
+  url: string;
+  /** Срок ссылки, мс. */
+  expiresAt: number;
 }
 
 /** Сборка воркера в каталоге сборок проекта. */

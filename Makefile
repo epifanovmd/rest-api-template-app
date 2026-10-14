@@ -2,10 +2,17 @@
 # приложения — .env.production (кладёт `make env`).
 #   make release  — готовые образы коммита из ghcr (TAG=<sha>; их собирает CI)
 #   make deploy   — запасной путь: исходники на хост и сборка там же
+# Агент проекта (без .env.deploy):
+#   make agent-archive — архивы агента для узлов → agent/bundle (agent pack: тот же архив раздаёт API)
+#   make agent-image   — образ агента из архива под эту машину ($(IMAGE):$(TAG)-agent)
+AGENT_GOALS := agent-archive agent-image
+ifneq ($(if $(MAKECMDGOALS),$(filter-out $(AGENT_GOALS),$(MAKECMDGOALS)),deploy),)
 ifeq ($(wildcard .env.deploy),)
 $(error Нет .env.deploy — скопируйте .env.deploy.example и заполните)
 endif
 include .env.deploy
+endif
+IMAGE ?= ghcr.io/epifanovmd/rest-api-template-app
 
 TAG ?= latest
 # Нестабильная сеть до хоста: повтор установки соединения (не команды) и
@@ -18,7 +25,7 @@ LOCAL = export IMAGE=$(IMAGE) TAG=$(TAG) COMPOSE_FILE=$(subst $() ,:,$(strip $(C
 DUMP = src/core/db/dump
 DB = --host $(SSH_USER)@$(SSH_HOST) --container $(DB_CONTAINER) --user $(DB_USER) --db $(DB_NAME)
 
-.PHONY: deploy release sync compose env build pull migrate up down status logs restart db-dump db-restore image local-up local-down local-logs
+.PHONY: deploy release sync compose env build pull migrate up down status logs restart db-dump db-restore image local-up local-down local-logs agent-archive agent-image
 
 deploy: sync build migrate up
 release: compose pull migrate up
@@ -80,3 +87,10 @@ local-down:
 
 local-logs:
 	$(LOCAL) logs -f --tail=200 api worker
+
+# --- Агент проекта ---
+agent-archive:
+	sh agent/dev.sh pack
+
+agent-image:
+	sh agent/dev.sh image $(IMAGE):$(TAG)-agent

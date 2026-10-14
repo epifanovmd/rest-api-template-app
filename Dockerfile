@@ -20,10 +20,11 @@ COPY . .
 RUN yarn build
 
 # ── Архивы папки агента для узлов (раздаёт API: AGENT_BUNDLE_DIR) ─────────────
-# agent pack --env prod: по архиву на linux/amd64 и linux/arm64 (программа агента,
-# agent.yaml + agent.prod.yaml, воркеры проекта и их сборки), release/ — сборки
-# воркеров для обновления узлов, install.sh — установщик агента (API раздаёт его
-# вместе с архивами). Программа агента и install.sh — с GitHub Release версии AGENT_VERSION (build-arg, по умолчанию — из .env.example);
+# agent pack --env prod (тот же архив, что make agent-archive): по архиву на
+# linux/amd64 и linux/arm64 (программа агента, agent.yaml + agent.prod.yaml, воркеры
+# проекта и их сборки, файлы pack.files — agent/package: Dockerfile, compose.yml,
+# .env.example, README.md); release/ — сборки воркеров для обновления узлов,
+# install.sh — установщик агента (API раздаёт его вместе с архивами). Программа агента и install.sh — с GitHub Release версии AGENT_VERSION (build-arg, по умолчанию — из .env.example);
 # агента под другие платформы pack берёт оттуда же. Подпись воркеров ключом
 # проекта — секрет сборки agent_signing_key (необязательно: без него воркеры ставятся,
 # но с API не обновляются); открытый ключ pack кладёт в архив сам.
@@ -45,7 +46,8 @@ if hashlib.sha256(open("/usr/local/bin/agent", "rb").read()).hexdigest() != buil
 os.chmod("/usr/local/bin/agent", 0o755)
 urllib.request.urlretrieve(f"{base}/install.sh", "/usr/local/share/agent-install.sh")
 PY
-COPY agent/agent.yaml agent/agent.prod.yaml ./
+COPY agent/agent.yaml agent/agent.prod.yaml agent/agent.docker.yaml ./
+COPY agent/package ./package
 COPY agent/workers ./workers
 RUN --mount=type=secret,id=agent_signing_key,required=false \
     if [ -s /run/secrets/agent_signing_key ]; then \
@@ -54,6 +56,10 @@ RUN --mount=type=secret,id=agent_signing_key,required=false \
     AGENT_NO_UPDATE_CHECK=1 agent pack --env prod --platform linux/amd64,linux/arm64 \
       --out /agent-bundle --release-out /agent-bundle/release && \
     cp /usr/local/share/agent-install.sh /agent-bundle/install.sh
+
+# ── Только архивы агента (CI: docker build --target agent-archives --output …) ──
+FROM scratch AS agent-archives
+COPY --from=agent-bundle /agent-bundle /
 
 # ── Только production-зависимости, без install-скриптов ──────────────────────
 # Кэш yarn — в cache-mount BuildKit, в слой не попадает: чистить не нужно.

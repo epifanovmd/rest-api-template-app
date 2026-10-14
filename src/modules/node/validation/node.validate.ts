@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { AGENT_ARCHIVE_PLATFORMS } from "../../../core";
 import { AGENT_INSTALL_MODES } from "../../agent";
 import {
   NODE_DESCRIPTION_MAX,
@@ -83,6 +84,36 @@ export const CreateNodeInstallCommandSchema = z.object({
     .max(30 * 24 * 60)
     .optional(),
   mode: z.enum(AGENT_INSTALL_MODES).optional(),
+});
+
+export const IssueNodeAgentSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(1)
+    .max(128)
+    .refine(value => !/[\r\n]/.test(value), "Без перевода строки")
+    .optional(),
+  baseUrl: serverUrl.optional(),
+  expiresInMinutes: z
+    .number()
+    .int()
+    .min(5)
+    .max(30 * 24 * 60)
+    .optional(),
+});
+
+export const IssueNodeAgentArchiveSchema = IssueNodeAgentSchema.extend({
+  platform: z.enum(AGENT_ARCHIVE_PLATFORMS),
+});
+
+export const IssueNodeAgentLinkSchema = IssueNodeAgentArchiveSchema.extend({
+  linkExpiresInMinutes: z
+    .number()
+    .int()
+    .min(5)
+    .max(7 * 24 * 60)
+    .optional(),
 });
 
 const ssh = {

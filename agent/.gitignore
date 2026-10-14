@@ -3,5 +3,5 @@
 /agent.prev
 /agent.update.json
 # Свои переменные, архивы для узлов и каталог сборок воркеров (yarn agent:pack).
-/.env.prod
+/.env
 /bundle/

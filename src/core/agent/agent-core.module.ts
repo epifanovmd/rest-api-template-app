@@ -14,6 +14,9 @@ import { AgentEnrollmentToken } from "./agent-enrollment-token.entity";
 import { AgentEnrollmentTokenRepository } from "./agent-enrollment-token.repository";
 import { AgentEvent } from "./agent-event.entity";
 import { AgentEventRepository } from "./agent-event.repository";
+import { AgentIssue } from "./agent-issue.entity";
+import { AgentIssueRepository } from "./agent-issue.repository";
+import { AgentIssueService } from "./agent-issue.service";
 import { AgentJobExecutor } from "./agent-job.executor";
 import { AgentLinkHandler } from "./agent-link.handler";
 import { AgentMetric } from "./agent-metric.entity";
@@ -37,6 +40,7 @@ import { Agents } from "./agents.service";
     AgentEvent,
     AgentMetric,
     AgentEnrollmentToken,
+    AgentIssue,
   ],
   providers: [
     AgentRepository,
@@ -45,8 +49,10 @@ import { Agents } from "./agents.service";
     AgentEventRepository,
     AgentMetricRepository,
     AgentEnrollmentTokenRepository,
+    AgentIssueRepository,
     AgentSignals,
     AgentEnrollmentService,
+    AgentIssueService,
     Agents,
     AgentProtocolService,
     AgentStreams,

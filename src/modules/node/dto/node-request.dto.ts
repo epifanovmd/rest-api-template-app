@@ -1,3 +1,4 @@
+import { type TAgentArchivePlatform } from "../../../core";
 import type { AgentInstallMode } from "../../agent";
 
 /** Способ установки по SSH: служба или агент без root (`run` занял бы сеанс SSH). */
@@ -27,14 +28,37 @@ export interface IAssignNodeBody {
 export interface ICreateNodeInstallCommandBody {
   /**
    * Способ установки: `systemd` (по умолчанию) — служба от root, `rootless` —
-   * агент пользователя без root, `run` — без установки, агент на переднем плане
-   * (контейнер); `rootless` и `run` — команда без sudo.
+   * агент пользователя без root, `run` — без установки, агент на переднем плане,
+   * `docker` — Docker Compose из архива агента; кроме `systemd` — команда без sudo.
    */
   mode?: AgentInstallMode;
   /** Адрес сервера для агента; без него — `AGENT_PUBLIC_URL` / `APP_PUBLIC_URL`. */
   baseUrl?: string;
   /** Срок одноразового токена, минут (по умолчанию сутки). */
   expiresInMinutes?: number;
+}
+
+/**
+ * Выдача агента узла: `.env` (адрес, токен с меткой узла, имя агента), архив с ним или
+ * одноразовая ссылка на архив.
+ */
+export interface IIssueNodeAgentBody {
+  /** Имя агента; нет — прежнее имя агента узла или имя узла. */
+  name?: string;
+  /** Адрес сервера для агента; без него — `AGENT_PUBLIC_URL` / `APP_PUBLIC_URL`. */
+  baseUrl?: string;
+  /** Срок одноразового токена, минут (по умолчанию сутки). */
+  expiresInMinutes?: number;
+}
+
+export interface IIssueNodeAgentArchiveBody extends IIssueNodeAgentBody {
+  /** Платформа: `linux-amd64`, `linux-arm64` (`install-options` — какие есть). */
+  platform: TAgentArchivePlatform;
+}
+
+export interface IIssueNodeAgentLinkBody extends IIssueNodeAgentArchiveBody {
+  /** Срок ссылки, минут (по умолчанию сутки); токен создаётся при скачивании. */
+  linkExpiresInMinutes?: number;
 }
 
 /** Команда установки и одноразовый токен регистрации узла. */

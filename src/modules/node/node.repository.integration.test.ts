@@ -90,6 +90,8 @@ describe("NodeRepository (Postgres, TEST_DATABASE_URL)", function () {
       )[0].n === 1;
 
     await dataSource.undoLastMigration();
+    expect(await tableExists("agent_issues")).to.equal(false);
+    await dataSource.undoLastMigration();
     expect(await columnExists("agents", "deleted_at")).to.equal(false);
     await dataSource.undoLastMigration();
     expect(await tableExists("agent_commands")).to.equal(false);
@@ -117,13 +119,15 @@ describe("NodeRepository (Postgres, TEST_DATABASE_URL)", function () {
     expect(await columnExists("agent_events", "problems")).to.equal(true);
     expect(await tableExists("agent_commands")).to.equal(true);
     expect(await columnExists("agents", "deleted_at")).to.equal(true);
+    expect(await tableExists("agent_issues")).to.equal(true);
   });
 
   it("миграция имени агента узла: имя привязанного агента сохраняется у узла", async () => {
     const agentId = randomBytes(16).toString("hex");
 
-    // Последние — удалённые агенты, протокол агента, замечания событий и файлы итога задач,
-    // перед ними — имя агента узла.
+    // Последние — выдачи агентов, удалённые агенты, протокол агента, замечания событий и файлы
+    // итога задач, перед ними — имя агента узла.
+    await dataSource.undoLastMigration();
     await dataSource.undoLastMigration();
     await dataSource.undoLastMigration();
     await dataSource.undoLastMigration();

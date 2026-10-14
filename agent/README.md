@@ -11,11 +11,11 @@ agent/
 ├── agent.yaml          машина разработчика — yarn agent
 ├── agent.prod.yaml     боевые узлы: поверх agent.yaml (экземпляр rest, пакеты, адрес и токен — от установки)
 ├── agent.docker.yaml   контейнер: поверх agent.prod.yaml
-├── .env.prod.example   образец .env.prod — если узел ставится не с API
 ├── workers/            воркеры проекта: каждый — папка (echo — пример)
-├── docker/Dockerfile   образ агента
+├── package/            файлы архива для получателя: Dockerfile, compose.yml, .env.example,
+│                       .dockerignore, README.md
 ├── dev.sh              yarn agent*: программа агента, порт и токен API из .env.development
-├── bundle/             архивы для узлов (yarn agent:pack, не в git) — их раздаёт API
+├── bundle/             архивы для узлов (yarn agent:pack / make agent-archive, не в git) — их раздаёт API
 └── dist/               сборки агента для сквозных тестов (yarn agent:fetch, не в git)
 ```
 
@@ -98,14 +98,22 @@ files}` (`call.data`, `call.files`), ход и итог — ход и итог �
 
 ## Как агент попадает на узел
 
-Принцип один — вручную и с API: архив папки агента под машину узла и `agent install` из него.
+Принцип один — вручную, из веба и в CI: **архив агента** под машину узла. Он самодостаточен:
+распаковал — и запускай как удобно (службой, на месте, в Docker).
 
 ```bash
-yarn agent:pack                   # agent/bundle: agent-prod-<версия>-linux-{amd64,arm64}.tar.gz и release/
+make agent-archive                # = yarn agent:pack → agent/bundle: agent-prod-<версия>-linux-{amd64,arm64}.tar.gz и release/
+make agent-image                  # образ агента из архива под эту машину (его Dockerfile)
 ```
 
 `agent pack --env prod` кладёт в архив программу агента под платформу узла, `agent.yaml` +
-`agent.prod.yaml`, воркеры проекта (`echo`) и их подписанные сборки (`release/`).
+`agent.prod.yaml`, воркеры проекта (`echo`) и их подписанные сборки `release/`, `bundle.json`, а
+по `pack.files` (`agent.prod.yaml`) — файлы получателя из `package/`: `Dockerfile` и `compose.yml` (агент из архива в контейнере),
+`.env.example`, `README.md`, а также `agent.docker.yaml`. Секретов в общем архиве нет: адрес и
+токен получатель кладёт в `agent/.env` (образец `.env.example`; его читают `envFiles` настроек и
+`compose.yml`). Без адреса и токена агент не запустится (`server.required` агента): он скажет, чего
+не хватает. Тот же архив собирает стадия образа API `agent-bundle` (раздаёт API) и CI (артефакт
+сборки, файлы релиза GitHub и образ `…:<версия>-agent` из архива).
 `agent install` на узле ставит агента службой: один файл настроек, воркеры — в каталог
 данных, пакеты из `install:` (`python3`), экземпляр `rest` — своя служба `agent-rest` рядом с
 агентами других бэкендов. Адрес API и токен регистрации передаёт установка.
@@ -117,16 +125,18 @@ yarn agent:pack                   # agent/bundle: agent-prod-<версия>-linu
 | `systemd` (обычный) | служба `agent-rest` от root, пакеты из `install:` ставятся                                                                                                                                                                                                         |
 | `rootless`          | агент пользователя без root (`--rootless`, команда без `sudo`): `~/.agent-rest`, служба `systemctl --user` (её нет — установка не идёт: запускайте агента сами, `run`); `python3` должен уже стоять на узле                                                        |
 | `run`               | без установки (`--run`, команда без `sudo`): агент на переднем плане — в контейнере или под своим менеджером процессов; данные — `AGENT_DATA_DIR` (по умолчанию `/var/lib/agent`, держите на томе), себя не обновляет. В образе должно быть то, что нужно воркерам |
+| `docker`            | Docker Compose из архива (только команда, не SSH): архив под машину (`uname -m`), `.env` (0600) с адресом и токеном, `docker compose up -d --build` по `compose.yml` архива; нет `compose.yml` в архиве — 409 `AGENT_ARCHIVE_NO_COMPOSE`                           |
 
 С `rootless` пакеты из `install:` пропускаются с предупреждением. Агент с `run` себя не обновляет:
 с API «Обновить» ему недоступно, новая версия — при следующем запуске.
 
-| Как                  | Что сделать                                                                                                                                                                                    |
-| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| вручную, архивом     | `scp agent/bundle/agent-prod-…-linux-amd64.tar.gz узел:` → `tar xzf … && cd agent && sudo ./agent install --server https://<api> --token <токен>` (без root — `./agent install --rootless …`)  |
-| одной командой с API | `POST /api/v1/nodes/{id}/install-command` (или `/api/v1/agent-enrollment/install-command`) → `curl -fsSL https://<api>/agent/v1/bundle/install.sh \| sudo sh -s -- --token …`                  |
-| с API по SSH         | `POST /api/v1/nodes/{id}/agent/install` — то же самое на узле, токен — файлом                                                                                                                  |
-| удалить              | `sudo agent-rest uninstall [--purge]` (без root — `agent-rest uninstall` без `sudo`), тем же скриптом `… \| sudo sh -s -- --uninstall [--purge]` или `POST /api/v1/nodes/{id}/agent/uninstall` |
+| Как                  | Что сделать                                                                                                                                                                                                                |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| вручную, архивом     | `scp agent/bundle/agent-prod-…-linux-amd64.tar.gz узел:` → `tar xzf … && cd agent && cp .env.example .env` (адрес, токен) → `sudo ./agent install --env prod`, `./agent run --env prod` или `docker compose up -d --build` |
+| архив с токеном      | веб: «Установить агента» → «Архив» (или `POST /api/v1/nodes/{id}/agent/issue/archive`): тот же архив и `.env` с одноразовым токеном; одноразовая ссылка — `…/issue/link`, только `.env` — `…/issue/env`                    |
+| одной командой с API | `POST /api/v1/nodes/{id}/install-command` (или `/api/v1/agent-enrollment/install-command`) → `curl -fsSL https://<api>/agent/v1/bundle/install.sh \| sudo sh -s -- --token …`                                              |
+| с API по SSH         | `POST /api/v1/nodes/{id}/agent/install` — то же самое на узле, токен — файлом                                                                                                                                              |
+| удалить              | `sudo agent-rest uninstall [--purge]` (без root — `agent-rest uninstall` без `sudo`), тем же скриптом `… \| sudo sh -s -- --uninstall [--purge]` или `POST /api/v1/nodes/{id}/agent/uninstall`                             |
 
 API раздаёт архивы и установщик агента из `AGENT_BUNDLE_DIR` (`/agent/v1/bundle/install.sh` —
 `install.sh` из релиза агента той же версии, `/agent/v1/bundle/linux-<arch>.tar.gz` — новейший архив,
@@ -172,16 +182,33 @@ API раздаёт архивы и установщик агента из `AGENT
 | образ на хосте (`make deploy`) | файл с ключом на хосте, путь — `AGENT_SIGNING_KEY_FILE` |
 | `docker build`                 | `--secret id=agent_signing_key,env=AGENT_SIGNING_KEY`   |
 
+## Выдача агента получателю
+
+Ядро (`AgentIssueService`) выдаёт агента человеку, который запустит его сам:
+
+| Что                | REST (`agent:enroll`; узла — `node:provision`)                                            | Получатель                                                                         |
+| ------------------ | ----------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| архив с токеном    | `POST /api/v1/agent-enrollment/issue/archive`, `…/nodes/{id}/agent/issue/archive`         | распаковать → `docker compose up -d --build` или `sudo ./agent install --env prod` |
+| одноразовая ссылка | `…/issue/link` → `GET /agent/v1/bundle/issued/{id}` один раз и до срока (потом 410)       | `curl -fsSL <ссылка> \| tar -xz && cd agent` → как выше                            |
+| только `.env`      | `…/issue/env`                                                                             | положить как `agent/.env` общего архива или `--env-file` образа                    |
+| варианты           | `GET /api/v1/agent-enrollment/install-options` — платформы архивов, есть ли `compose.yml` | —                                                                                  |
+
+Архив с токеном — общий архив платформы и дописанный `agent/.env` (0600: адрес, одноразовый токен,
+имя; для `http://` — `AGENT_SERVER_ALLOW_INSECURE`); на сервере он не хранится. Ссылка хранит только
+параметры выдачи (`agent_issues`): токен создаётся при скачивании. Токен нужен только до первой
+регистрации. Выдача — в журнале аудита (`agent.issue`).
+
 ## Docker
 
 ```bash
-docker build -f agent/docker/Dockerfile -t agent .
-docker compose --profile agent up -d    # агент рядом с API из docker-compose.yml
+make agent-archive agent-image          # образ агента из архива под эту машину
+docker compose --profile agent up -d    # агент рядом с API из docker-compose.yml (образ <тег>-agent)
 ```
 
-Образ — та же папка агента: `agent run --env docker` (`agent.docker.yaml` поверх `agent.prod.yaml`),
-данные — том `/var/lib/agent`. В контейнере агент себя не обновляет — обновляют образ. Это агент
-рядом с API; на узле в своём контейнере агента запускают командой с `mode: run` (`install.sh --run`).
+Образ собирается только из архива — его `Dockerfile` (у получателя, в CI и `make agent-image`):
+`./agent run --env docker` (`agent.docker.yaml` поверх `agent.prod.yaml`), данные — том
+`/var/lib/agent`, токен — при запуске (`env_file`, в слои не попадает). В контейнере агент себя не
+обновляет — обновляют архивом и образом.
 
 ## Несколько копий бэкенда
 

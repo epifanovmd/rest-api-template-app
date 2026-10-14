@@ -28,6 +28,7 @@ src/core/agent/                   # ядро: протокол без привя
 ├── agent-link.handler.ts         # RAW_HTTP_HANDLER: /agent/v1/*
 ├── agent-files.ts                # раздача архивов (/agent/v1/bundle) и сборок воркеров (/agent/v1/releases), команда установки
 ├── agent-enrollment.service.ts   # токены регистрации
+├── agent-issue.service.ts        # выдача: .env, архив с токеном, одноразовая ссылка (agent-archive.ts)
 ├── agent-schemas.ts              # проверка по JSON Schema из манифестов воркеров
 ├── agent-job.executor.ts         # EXTERNAL_JOB_EXECUTOR: внешние задачи → команды воркерам
 ├── agent-prune.job.ts            # cron agents.prune: история, старые и просроченные команды
@@ -100,6 +101,7 @@ src/modules/agent/                # модуль проекта
 | `agent_events`            | события воркеров, `problems` — замечания проверки по схеме                                        |
 | `agent_metrics`           | история точек метрик                                                                              |
 | `agent_enrollment_tokens` | токены регистрации: хеш, метки, лимит, срок, отзыв                                                |
+| `agent_issues`            | одноразовые ссылки на архив с токеном: параметры токена, срок, когда скачан, созданный токен      |
 
 Уборка — `agents.prune` раз в час: метрики старше `AGENT_METRICS_RETENTION_HOURS`, события и
 выполненные команды старше `AGENT_EVENTS_RETENTION_DAYS`; незавершённые команды с истёкшим
@@ -111,23 +113,25 @@ src/modules/agent/                # модуль проекта
 `agent:logs`, `agent:enroll`; по умолчанию — только у admin (через `*`). Без права модуля доступ
 дают политики `AGENT_ACCESS_POLICY` (модуль `node`: агенты своих узлов); чужой агент — 404.
 
-| Метод  | Путь (`/api/v1/…`)                                                     | Что                                                    |
-| ------ | ---------------------------------------------------------------------- | ------------------------------------------------------ |
-| GET    | `agents`, `agents/{id}`                                                | агенты: связь, узел, воркеры, метрики, проблемы        |
-| GET    | `agents/events`                                                        | лента событий воркеров (курсор)                        |
-| GET    | `agents/{id}/metrics`, `agents/{id}/logs`                              | история метрик; журнал с узла (агент на связи)         |
-| GET    | `agents/{id}/configs`                                                  | ключи настроек и итоги; значения — с `agent:config`    |
-| PUT    | `agents/{id}/workers/{worker}/configs/{key}`                           | записать настройку (тело — значение)                   |
-| DELETE | `agents/{id}/workers/{worker}/configs/{key}`                           | удалить настройку                                      |
-| POST   | `agents/{id}/workers/{worker}/commands`                                | команда воркеру `{type, args, timeoutMs, waitSeconds}` |
-| GET    | `agents/{id}/commands`, `agents/{id}/commands/{cid}`                   | команды и итог (`waitSeconds` — подождать)             |
-| POST   | `agents/{id}/commands/{cid}/cancel`                                    | отменить идущую команду воркера                        |
-| POST   | `agents/{id}/workers/{worker}/restart` / `update`                      | перезапуск; обновление из каталога сборок (`force`)    |
-| POST   | `agents/{id}/update`, `agents/{id}/rotate-key`                         | обновить агента; сменить ключ                          |
-| POST   | `agents/{id}/revoke`; DELETE `agents/{id}`                             | отозвать; удалить со всей историей                     |
-| POST   | `agent-enrollment/tokens`, GET `…/tokens`, POST `…/tokens/{id}/revoke` | токены регистрации                                     |
-| POST   | `agent-enrollment/install-command`                                     | команда установки `curl … \| sudo sh -s -- …`          |
-| GET    | `agent-enrollment/release`                                             | сборки воркеров проекта                                |
+| Метод  | Путь (`/api/v1/…`)                                                     | Что                                                        |
+| ------ | ---------------------------------------------------------------------- | ---------------------------------------------------------- |
+| GET    | `agents`, `agents/{id}`                                                | агенты: связь, узел, воркеры, метрики, проблемы            |
+| GET    | `agents/events`                                                        | лента событий воркеров (курсор)                            |
+| GET    | `agents/{id}/metrics`, `agents/{id}/logs`                              | история метрик; журнал с узла (агент на связи)             |
+| GET    | `agents/{id}/configs`                                                  | ключи настроек и итоги; значения — с `agent:config`        |
+| PUT    | `agents/{id}/workers/{worker}/configs/{key}`                           | записать настройку (тело — значение)                       |
+| DELETE | `agents/{id}/workers/{worker}/configs/{key}`                           | удалить настройку                                          |
+| POST   | `agents/{id}/workers/{worker}/commands`                                | команда воркеру `{type, args, timeoutMs, waitSeconds}`     |
+| GET    | `agents/{id}/commands`, `agents/{id}/commands/{cid}`                   | команды и итог (`waitSeconds` — подождать)                 |
+| POST   | `agents/{id}/commands/{cid}/cancel`                                    | отменить идущую команду воркера                            |
+| POST   | `agents/{id}/workers/{worker}/restart` / `update`                      | перезапуск; обновление из каталога сборок (`force`)        |
+| POST   | `agents/{id}/update`, `agents/{id}/rotate-key`                         | обновить агента; сменить ключ                              |
+| POST   | `agents/{id}/revoke`; DELETE `agents/{id}`                             | отозвать; удалить со всей историей                         |
+| POST   | `agent-enrollment/tokens`, GET `…/tokens`, POST `…/tokens/{id}/revoke` | токены регистрации                                         |
+| POST   | `agent-enrollment/install-command`                                     | команда установки (`mode`: systemd, rootless, run, docker) |
+| GET    | `agent-enrollment/install-options`                                     | адрес для агентов, архивы по платформам (compose.yml)      |
+| POST   | `agent-enrollment/issue/env` / `archive` / `link`                      | выдать `.env`, архив с `.env`, одноразовую ссылку          |
+| GET    | `agent-enrollment/release`                                             | сборки воркеров проекта                                    |
 
 Действия возвращают поставленную команду (`AgentCommandDto`); итог — по её id и в сокете.
 

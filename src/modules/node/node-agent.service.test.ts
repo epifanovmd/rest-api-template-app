@@ -33,6 +33,7 @@ describe("NodeAgentService", () => {
   let agents: Record<string, sinon.SinonStub>;
   let enrollment: Record<string, sinon.SinonStub>;
   let eventBus: ReturnType<typeof createMockEventBus>;
+  let issue: Record<string, sinon.SinonStub>;
   let service: NodeAgentService;
 
   beforeEach(() => {
@@ -54,7 +55,7 @@ describe("NodeAgentService", () => {
       revokeAndDelete: sinon.stub().resolves(),
       installCommand: sinon
         .stub()
-        .callsFake((body: any) => `curl … --token ${body.token}`),
+        .callsFake(async (body: any) => `curl … --token ${body.token}`),
     };
     enrollment = {
       createToken: sinon.stub().resolves({
@@ -64,11 +65,31 @@ describe("NodeAgentService", () => {
       revokeToken: sinon.stub().resolves(),
     };
     eventBus = createMockEventBus();
+    issue = {
+      env: sinon.stub().resolves({
+        env: "AGENT_SERVER_URL=…\n",
+        token: "pref.secret",
+        tokenId: "t1",
+        expiresAt: new Date(1000),
+      }),
+      archive: sinon.stub().resolves({
+        file: "agent-prod-1.0.0-linux-amd64.tar.gz",
+        data: Buffer.from("x"),
+        tokenId: "t1",
+        expiresAt: new Date(1000),
+      }),
+      link: sinon.stub().resolves({
+        id: "i1",
+        url: "https://api.example.com/agent/v1/bundle/issued/i1",
+        expiresAt: new Date(2000),
+      }),
+    };
     service = new NodeAgentService(
       repo as any,
       nodes as any,
       agents as any,
       enrollment as any,
+      issue as any,
       eventBus as any,
     );
   });
@@ -100,7 +121,57 @@ describe("NodeAgentService", () => {
       token: "pref.secret",
       server: undefined,
       mode: undefined,
+      name: undefined,
     });
+    // В Docker — имя агента узла (у контейнера своё имя).
+    await service.installCommand({ userId: "u1" } as any, "n1", {
+      mode: "docker",
+    });
+    expect(agents.installCommand.secondCall.args[0]).to.include({
+      mode: "docker",
+      name: "узел",
+    });
+  });
+
+  it("выдача агента узла: метка узла, одноразовый токен, имя — прежнее имя агента или имя узла", async () => {
+    const actor = { userId: "u1" } as any;
+
+    expect(await service.issueEnv(actor, "n1", {})).to.deep.include({
+      token: "pref.secret",
+      expiresAt: 1000,
+    });
+    expect(issue.env.firstCall.args[1]).to.deep.include({
+      tokenName: "node:узел",
+      name: "узел",
+      labels: { nodeId: "n1" },
+      maxUses: 1,
+    });
+    expect(nodes.findFor.firstCall.args[2]).to.equal("node:provision");
+
+    nodes.findFor.resolves({ id: "n1", name: "узел", agentName: "vps-1" });
+    await service.issueArchive(actor, "n1", "linux-arm64", { name: "свой" });
+    expect(issue.archive.firstCall.args.slice(1, 3)).to.deep.equal([
+      "linux-arm64",
+      {
+        tokenName: "node:узел",
+        name: "свой",
+        labels: { nodeId: "n1" },
+        maxUses: 1,
+        tokenTtlMinutes: 24 * 60,
+        server: undefined,
+      },
+    ]);
+    expect(
+      await service.issueLink(actor, "n1", {
+        platform: "linux-amd64",
+        linkExpiresInMinutes: 60,
+      }),
+    ).to.deep.equal({
+      url: "https://api.example.com/agent/v1/bundle/issued/i1",
+      expiresAt: 2000,
+    });
+    expect(issue.link.firstCall.args[2].name).to.equal("vps-1");
+    expect(issue.link.firstCall.args[3]).to.equal(60);
   });
 
   it("регистрация токеном узла — агент привязывается, прежний отзывается", async () => {

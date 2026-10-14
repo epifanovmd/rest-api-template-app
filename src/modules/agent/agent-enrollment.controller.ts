@@ -1,10 +1,12 @@
 import { inject } from "inversify";
+import { Readable } from "stream";
 import {
   Body,
   Controller,
   Get,
   Path,
   Post,
+  Produces,
   Query,
   Request,
   Response,
@@ -14,7 +16,11 @@ import {
   Tags,
 } from "tsoa";
 
-import type { IErrorResponseDto, IPaginatedDto } from "../../core";
+import type {
+  IErrorResponseDto,
+  IPaginatedDto,
+  TAgentArchivePlatform,
+} from "../../core";
 import {
   getContextUser,
   Injectable,
@@ -24,15 +30,22 @@ import {
 import { UUID } from "../../core/http";
 import { KoaRequest } from "../../types/koa";
 import { AgentService } from "./agent.service";
+import type { AgentInstallMode } from "./agent.types";
 import {
   AgentEnrollmentTokenDto,
   IAgentInstallCommandDto,
+  IAgentInstallOptionsDto,
+  IAgentIssuedEnvDto,
+  IAgentIssuedLinkDto,
   IAgentReleaseDto,
   ICreatedAgentEnrollmentTokenDto,
 } from "./dto";
 import {
   CreateEnrollmentTokenSchema,
   InstallCommandBodySchema,
+  IssueAgentArchiveBodySchema,
+  IssueAgentBodySchema,
+  IssueAgentLinkBodySchema,
   PageQuerySchema,
 } from "./validation";
 
@@ -51,7 +64,30 @@ interface IInstallCommandBody {
   name?: string;
   /** Адрес API для узла; без него — `AGENT_PUBLIC_URL`. */
   baseUrl?: string;
-  mode?: "systemd" | "rootless" | "run";
+  mode?: AgentInstallMode;
+}
+
+interface IIssueAgentBody {
+  /** Имя агента (`AGENT_NAME` в `.env`); нет — имя машины. */
+  name?: string;
+  /** Метки зарегистрированного агента (агент их не перепишет). */
+  labels?: Record<string, string>;
+  /** Сколько машин может зарегистрироваться этим токеном (по умолчанию 1). */
+  maxUses?: number;
+  /** Срок токена, мин (по умолчанию сутки). */
+  expiresInMinutes?: number;
+  /** Адрес API для агента; без него — `AGENT_PUBLIC_URL`. */
+  baseUrl?: string;
+}
+
+interface IIssueAgentArchiveBody extends IIssueAgentBody {
+  /** Платформа: `linux-amd64`, `linux-arm64` (`install-options` — какие есть). */
+  platform: TAgentArchivePlatform;
+}
+
+interface IIssueAgentLinkBody extends IIssueAgentArchiveBody {
+  /** Срок ссылки, мин (по умолчанию сутки); токен создаётся при скачивании. */
+  linkExpiresInMinutes?: number;
 }
 
 /** Регистрация агентов: токены, команда установки, каталог сборок воркеров. */
@@ -114,14 +150,101 @@ export class AgentEnrollmentController extends Controller {
   @Security("jwt", ["permission:agent:enroll"])
   @ValidateBody(InstallCommandBodySchema)
   @Post("install-command")
-  createAgentInstallCommand(
+  async createAgentInstallCommand(
     @Body() body: IInstallCommandBody,
-  ): IAgentInstallCommandDto {
+  ): Promise<IAgentInstallCommandDto> {
     const { baseUrl, ...rest } = body;
 
     return {
-      command: this._agents.installCommand({ ...rest, server: baseUrl }),
+      command: await this._agents.installCommand({ ...rest, server: baseUrl }),
     };
+  }
+
+  /**
+   * Адрес бэкенда для агентов и архивы агента по платформам (есть ли запуск в Docker Compose).
+   * @summary Варианты установки агента
+   */
+  @Security("jwt", ["permission:agent:enroll"])
+  @Get("install-options")
+  getAgentInstallOptions(
+    @Request() req: KoaRequest,
+  ): Promise<IAgentInstallOptionsDto> {
+    return this._agents.installOptions(getContextUser(req));
+  }
+
+  /**
+   * Токен регистрации и `.env` с адресом, токеном и именем — для архива агента или образа
+   * (`--env-file`). Токен — только в этом ответе.
+   * @summary Выдать токен и .env агента
+   */
+  @Security("jwt", ["permission:agent:enroll"])
+  @ValidateBody(IssueAgentBodySchema)
+  @SuccessResponse(201)
+  @Post("issue/env")
+  async issueAgentEnv(
+    @Request() req: KoaRequest,
+    @Body() body: IIssueAgentBody,
+  ): Promise<IAgentIssuedEnvDto> {
+    const issued = await this._agents.issueEnv(getContextUser(req), body);
+
+    this.setStatus(201);
+
+    return issued;
+  }
+
+  /**
+   * Архив агента под платформу с `.env` (адрес, одноразовый токен, имя): распаковать и
+   * запустить — службой, на месте или в Docker. Архив на сервере не хранится.
+   * @summary Выдать архив агента с токеном
+   */
+  @Security("jwt", ["permission:agent:enroll"])
+  @ValidateBody(IssueAgentArchiveBodySchema)
+  @Produces("application/gzip")
+  @Post("issue/archive")
+  async issueAgentArchive(
+    @Request() req: KoaRequest,
+    @Body() body: IIssueAgentArchiveBody,
+  ): Promise<Readable> {
+    const { platform, ...rest } = body;
+    const archive = await this._agents.issueArchive(
+      getContextUser(req),
+      platform,
+      rest,
+    );
+
+    this.setHeader("Content-Type", "application/gzip");
+    this.setHeader(
+      "Content-Disposition",
+      `attachment; filename="${archive.file}"`,
+    );
+    this.setHeader("Cache-Control", "no-store");
+
+    return Readable.from(archive.data);
+  }
+
+  /**
+   * Одноразовая ссылка на архив агента с токеном (для передачи человеку): скачать можно один
+   * раз и до срока, токен создаётся при скачивании.
+   * @summary Выдать ссылку на архив агента
+   */
+  @Security("jwt", ["permission:agent:enroll"])
+  @ValidateBody(IssueAgentLinkBodySchema)
+  @SuccessResponse(201)
+  @Post("issue/link")
+  async issueAgentLink(
+    @Request() req: KoaRequest,
+    @Body() body: IIssueAgentLinkBody,
+  ): Promise<IAgentIssuedLinkDto> {
+    const { platform, ...rest } = body;
+    const link = await this._agents.issueLink(
+      getContextUser(req),
+      platform,
+      rest,
+    );
+
+    this.setStatus(201);
+
+    return link;
   }
 
   /**
