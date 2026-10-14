@@ -221,7 +221,9 @@ describe("узлы", function () {
 
     const online = bobSocket.next(
       "node:updated",
-      (n: any) => n.id === nodeB.id && n.status === "online",
+      // Версия агента — с его приветствием: событие «на связи» может прийти раньше.
+      (n: any) =>
+        n.id === nodeB.id && n.status === "online" && !!n.agent?.version,
       30_000,
     );
 
