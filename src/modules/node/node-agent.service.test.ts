@@ -73,7 +73,7 @@ describe("NodeAgentService", () => {
         expiresAt: new Date(1000),
       }),
       archive: sinon.stub().resolves({
-        file: "agent-prod-1.0.0-linux-amd64.tar.gz",
+        file: "agent-prod-1.0.0.tar.gz",
         data: Buffer.from("x"),
         tokenId: "t1",
         expiresAt: new Date(1000),
@@ -149,9 +149,8 @@ describe("NodeAgentService", () => {
     expect(nodes.findFor.firstCall.args[2]).to.equal("node:provision");
 
     nodes.findFor.resolves({ id: "n1", name: "узел", agentName: "vps-1" });
-    await service.issueArchive(actor, "n1", "linux-arm64", { name: "свой" });
-    expect(issue.archive.firstCall.args.slice(1, 3)).to.deep.equal([
-      "linux-arm64",
+    await service.issueArchive(actor, "n1", { name: "свой" });
+    expect(issue.archive.firstCall.args.slice(1, 2)).to.deep.equal([
       {
         tokenName: "node:узел",
         name: "свой",
@@ -163,15 +162,14 @@ describe("NodeAgentService", () => {
     ]);
     expect(
       await service.issueLink(actor, "n1", {
-        platform: "linux-amd64",
         linkExpiresInMinutes: 60,
       }),
     ).to.deep.equal({
       url: "https://api.example.com/agent/v1/bundle/issued/i1",
       expiresAt: 2000,
     });
-    expect(issue.link.firstCall.args[2].name).to.equal("vps-1");
-    expect(issue.link.firstCall.args[3]).to.equal(60);
+    expect(issue.link.firstCall.args[1].name).to.equal("vps-1");
+    expect(issue.link.firstCall.args[2]).to.equal(60);
   });
 
   it("регистрация токеном узла — агент привязывается, прежний отзывается", async () => {

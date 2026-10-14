@@ -10,7 +10,6 @@ import {
   logger,
   PG_ERROR,
   pgErrorCode,
-  TAgentArchivePlatform,
 } from "../../core";
 import type { AuthContext } from "../../types/koa";
 import {
@@ -131,15 +130,14 @@ export class NodeAgentService {
     return { ...issued, expiresAt: issued.expiresAt.getTime() };
   }
 
-  /** Архив агента платформы с `.env` агента узла. */
+  /** Архив агента (все платформы) с `.env` агента узла. */
   async issueArchive(
     actor: AuthContext,
     id: string,
-    platform: TAgentArchivePlatform,
     body: IIssueNodeAgentBody,
   ): Promise<{ file: string; data: Buffer }> {
     const input = await this.issueInput(actor, id, body);
-    const issued = await this._issue.archive(actor.userId, platform, input);
+    const issued = await this._issue.archive(actor.userId, input);
 
     return { file: issued.file, data: issued.data };
   }
@@ -153,7 +151,6 @@ export class NodeAgentService {
     const input = await this.issueInput(actor, id, body);
     const link = await this._issue.link(
       actor.userId,
-      body.platform,
       input,
       body.linkExpiresInMinutes ?? NODE_INSTALL_TOKEN_TTL_MINUTES,
     );

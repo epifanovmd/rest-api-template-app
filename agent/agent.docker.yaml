@@ -1,4 +1,4 @@
-# Агент в контейнере (docker/Dockerfile): поверх agent.prod.yaml. Адрес API — AGENT_SERVER_URL,
+# Агент в контейнере (Dockerfile архива, package/Dockerfile): поверх agent.prod.yaml. Адрес API — AGENT_SERVER_URL,
 # токен — AGENT_ENROLL_TOKEN, данные — том /var/lib/agent. Себя не обновляет: обновляют образ.
 extends: agent.prod.yaml
 dataDir: /var/lib/agent

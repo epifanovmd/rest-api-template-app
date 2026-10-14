@@ -1165,17 +1165,12 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "TAgentArchivePlatform": {
-        "dataType": "refAlias",
-        "type": {"dataType":"union","subSchemas":[{"dataType":"enum","enums":["linux-amd64"]},{"dataType":"enum","enums":["linux-arm64"]},{"dataType":"enum","enums":["darwin-amd64"]},{"dataType":"enum","enums":["darwin-arm64"]}],"validators":{}},
-    },
-    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "IAgentArchiveDto": {
         "dataType": "refObject",
         "properties": {
-            "platform": {"ref":"TAgentArchivePlatform","required":true},
             "file": {"dataType":"string","required":true},
             "version": {"dataType":"string"},
+            "platforms": {"dataType":"array","array":{"dataType":"string"},"required":true},
             "size": {"dataType":"double","required":true},
             "compose": {"dataType":"boolean","required":true},
         },
@@ -1186,7 +1181,7 @@ const models: TsoaRoute.Models = {
         "dataType": "refObject",
         "properties": {
             "server": {"dataType":"string","required":true},
-            "archives": {"dataType":"array","array":{"dataType":"refObject","ref":"IAgentArchiveDto"},"required":true},
+            "archive": {"ref":"IAgentArchiveDto"},
         },
         "additionalProperties": false,
     },
@@ -1214,19 +1209,6 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "IIssueAgentArchiveBody": {
-        "dataType": "refObject",
-        "properties": {
-            "name": {"dataType":"string"},
-            "labels": {"ref":"Record_string.string_"},
-            "maxUses": {"dataType":"double"},
-            "expiresInMinutes": {"dataType":"double"},
-            "baseUrl": {"dataType":"string"},
-            "platform": {"ref":"TAgentArchivePlatform","required":true},
-        },
-        "additionalProperties": false,
-    },
-    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "IAgentIssuedLinkDto": {
         "dataType": "refObject",
         "properties": {
@@ -1244,7 +1226,6 @@ const models: TsoaRoute.Models = {
             "maxUses": {"dataType":"double"},
             "expiresInMinutes": {"dataType":"double"},
             "baseUrl": {"dataType":"string"},
-            "platform": {"ref":"TAgentArchivePlatform","required":true},
             "linkExpiresInMinutes": {"dataType":"double"},
         },
         "additionalProperties": false,
@@ -1562,24 +1543,12 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "IIssueNodeAgentArchiveBody": {
-        "dataType": "refObject",
-        "properties": {
-            "name": {"dataType":"string"},
-            "baseUrl": {"dataType":"string"},
-            "expiresInMinutes": {"dataType":"double"},
-            "platform": {"ref":"TAgentArchivePlatform","required":true},
-        },
-        "additionalProperties": false,
-    },
-    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "IIssueNodeAgentLinkBody": {
         "dataType": "refObject",
         "properties": {
             "name": {"dataType":"string"},
             "baseUrl": {"dataType":"string"},
             "expiresInMinutes": {"dataType":"double"},
-            "platform": {"ref":"TAgentArchivePlatform","required":true},
             "linkExpiresInMinutes": {"dataType":"double"},
         },
         "additionalProperties": false,
@@ -4544,7 +4513,7 @@ export function RegisterRoutes(router: KoaRouter,opts?:{multer?:ReturnType<typeo
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         const argsAgentEnrollmentController_issueAgentArchive: Record<string, TsoaRoute.ParameterSchema> = {
                 req: {"in":"request","name":"req","required":true,"dataType":"object"},
-                body: {"in":"body","name":"body","required":true,"ref":"IIssueAgentArchiveBody"},
+                body: {"in":"body","name":"body","required":true,"ref":"IIssueAgentBody"},
         };
         router.post('/api/v1/agent-enrollment/issue/archive',
             authenticateMiddleware([{"jwt":["permission:agent:enroll"]}]),
@@ -5381,7 +5350,7 @@ export function RegisterRoutes(router: KoaRouter,opts?:{multer?:ReturnType<typeo
         const argsNodeAgentController_issueNodeAgentArchive: Record<string, TsoaRoute.ParameterSchema> = {
                 req: {"in":"request","name":"req","required":true,"dataType":"object"},
                 id: {"in":"path","name":"id","required":true,"ref":"UUID"},
-                body: {"in":"body","name":"body","required":true,"ref":"IIssueNodeAgentArchiveBody"},
+                body: {"in":"body","name":"body","required":true,"ref":"IIssueNodeAgentBody"},
         };
         router.post('/api/v1/nodes/:id/agent/issue/archive',
             authenticateMiddleware([{"jwt":["permission:node:provision:own"]}]),

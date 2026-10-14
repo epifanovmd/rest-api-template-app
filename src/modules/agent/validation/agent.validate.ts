@@ -1,6 +1,5 @@
 import { z } from "zod";
 
-import { AGENT_ARCHIVE_PLATFORMS } from "../../../core";
 import {
   AGENT_ID_PATTERN,
   AGENT_INSTALL_MODES,
@@ -113,11 +112,7 @@ export const IssueAgentBodySchema = z.object({
   baseUrl: z.url("Адрес — URL").max(500).optional(),
 });
 
-export const IssueAgentArchiveBodySchema = IssueAgentBodySchema.extend({
-  platform: z.enum(AGENT_ARCHIVE_PLATFORMS),
-});
-
-export const IssueAgentLinkBodySchema = IssueAgentArchiveBodySchema.extend({
+export const IssueAgentLinkBodySchema = IssueAgentBodySchema.extend({
   /** Срок ссылки, мин (по умолчанию сутки). */
   linkExpiresInMinutes: z
     .number()

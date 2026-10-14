@@ -1,6 +1,5 @@
 import { z } from "zod";
 
-import { AGENT_ARCHIVE_PLATFORMS } from "../../../core";
 import { AGENT_INSTALL_MODES } from "../../agent";
 import {
   NODE_DESCRIPTION_MAX,
@@ -103,11 +102,7 @@ export const IssueNodeAgentSchema = z.object({
     .optional(),
 });
 
-export const IssueNodeAgentArchiveSchema = IssueNodeAgentSchema.extend({
-  platform: z.enum(AGENT_ARCHIVE_PLATFORMS),
-});
-
-export const IssueNodeAgentLinkSchema = IssueNodeAgentArchiveSchema.extend({
+export const IssueNodeAgentLinkSchema = IssueNodeAgentSchema.extend({
   linkExpiresInMinutes: z
     .number()
     .int()

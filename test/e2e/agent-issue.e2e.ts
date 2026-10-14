@@ -116,27 +116,27 @@ describe("выдача агента: архив с токеном, .env и од�
     for (const u of unpacked) await stop(u);
   });
 
-  it("варианты установки: архив этой платформы с compose.yml, адрес сервера", async () => {
+  it("варианты установки: архив агента (платформы, compose.yml), адрес сервера", async () => {
     const options = expectStatus(
       await call(admin, "GET", "/api/v1/agent-enrollment/install-options"),
       200,
     ).data;
 
     expect(options.server).to.equal(BASE_URL);
-    expect(
-      options.archives.find((a: any) => a.platform === PLATFORM),
-    ).to.include({ compose: true });
+    expect(options.archive).to.include({ compose: true });
+    expect(options.archive.platforms).to.deep.equal([
+      PLATFORM.replace("-", "/"),
+    ]);
   });
 
   it("архив узла с токеном: .env (0600) в архиве, агент из архива регистрируется и привязывается к узлу", async () => {
     const res = await download(`/api/v1/nodes/${nodeId}/agent/issue/archive`, {
-      platform: PLATFORM,
       name: "e2e-issued",
     });
 
     expect(res.status).to.equal(200);
     expect(res.headers.get("content-disposition")).to.match(
-      new RegExp(`${PLATFORM}\\.tar\\.gz`),
+      /agent-prod-.+\.tar\.gz/,
     );
     const archive = unpack(Buffer.from(await res.arrayBuffer()));
 
@@ -184,9 +184,7 @@ describe("выдача агента: архив с токеном, .env и од�
   });
 
   it("архив без .env: агент не запускается и пишет, чего не хватает", async () => {
-    const res = await download("/api/v1/agent-enrollment/issue/archive", {
-      platform: PLATFORM,
-    });
+    const res = await download("/api/v1/agent-enrollment/issue/archive", {});
     const archive = unpack(Buffer.from(await res.arrayBuffer()));
 
     unpacked.push(archive);
@@ -202,7 +200,6 @@ describe("выдача агента: архив с токеном, .env и од�
   it("одноразовая ссылка: архив с токеном один раз, затем 410", async () => {
     const link = expectStatus(
       await call(admin, "POST", "/api/v1/agent-enrollment/issue/link", {
-        platform: PLATFORM,
         name: "e2e-link",
         linkExpiresInMinutes: 10,
       }),
@@ -226,9 +223,7 @@ describe("выдача агента: архив с токеном, .env и од�
     expect((await fetch(link.url)).status).to.equal(410);
 
     const nodeLink = expectStatus(
-      await call(admin, "POST", `/api/v1/nodes/${nodeId}/agent/issue/link`, {
-        platform: PLATFORM,
-      }),
+      await call(admin, "POST", `/api/v1/nodes/${nodeId}/agent/issue/link`, {}),
       201,
     ).data;
 
@@ -258,18 +253,7 @@ describe("выдача агента: архив с токеном, .env и од�
     expect(node.env).to.include("AGENT_NAME=");
   });
 
-  it("платформы, которой нет в каталоге архивов, — 404", async () => {
-    const other = ["linux-amd64", "linux-arm64", "darwin-arm64"].find(
-      p => p !== PLATFORM,
-    )!;
-    const res = await download("/api/v1/agent-enrollment/issue/archive", {
-      platform: other,
-    });
-
-    expect(res.status).to.equal(404);
-  });
-
-  it("команда запуска в Docker: архив под платформу машины, .env, docker compose", async () => {
+  it("команда запуска в Docker: архив агента, .env, docker compose", async () => {
     const { command } = expectStatus(
       await call(admin, "POST", "/api/v1/agent-enrollment/install-command", {
         token: "abc.def",
@@ -279,7 +263,7 @@ describe("выдача агента: архив с токеном, .env и од�
       200,
     ).data;
 
-    expect(command).to.include(`${BASE_URL}/agent/v1/bundle/linux-`);
+    expect(command).to.include(`${BASE_URL}/agent/v1/bundle/agent.tar.gz`);
     expect(command).to.include("'AGENT_ENROLL_TOKEN=abc.def'");
     expect(command).to.include("docker compose up -d --build");
   });

@@ -102,11 +102,12 @@ files}` (`call.data`, `call.files`), ход и итог — ход и итог �
 распаковал — и запускай как удобно (службой, на месте, в Docker).
 
 ```bash
-make agent-archive                # = yarn agent:pack → agent/bundle: agent-prod-<версия>-linux-{amd64,arm64}.tar.gz и release/
+make agent-archive                # = yarn agent:pack → agent/bundle: agent-prod-<версия>.tar.gz (linux amd64 и arm64) и release/
 make agent-image                  # образ агента из архива под эту машину (его Dockerfile)
 ```
 
-`agent pack --env prod` кладёт в архив программу агента под платформу узла, `agent.yaml` +
+`agent pack --env prod` кладёт в один архив программы агента под все платформы (`bin/`, их выбирает
+скрипт `agent` по `uname`), `agent.yaml` +
 `agent.prod.yaml`, воркеры проекта (`echo`) и их подписанные сборки `release/`, `bundle.json`, а
 по `pack.files` (`agent.prod.yaml`) — файлы получателя из `package/`: `Dockerfile` и `compose.yml` (агент из архива в контейнере),
 `.env.example`, `README.md`, а также `agent.docker.yaml`. Секретов в общем архиве нет: адрес и
@@ -130,20 +131,20 @@ make agent-image                  # образ агента из архива п
 С `rootless` пакеты из `install:` пропускаются с предупреждением. Агент с `run` себя не обновляет:
 с API «Обновить» ему недоступно, новая версия — при следующем запуске.
 
-| Как                  | Что сделать                                                                                                                                                                                                                |
-| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| вручную, архивом     | `scp agent/bundle/agent-prod-…-linux-amd64.tar.gz узел:` → `tar xzf … && cd agent && cp .env.example .env` (адрес, токен) → `sudo ./agent install --env prod`, `./agent run --env prod` или `docker compose up -d --build` |
-| архив с токеном      | веб: «Установить агента» → «Архив» (или `POST /api/v1/nodes/{id}/agent/issue/archive`): тот же архив и `.env` с одноразовым токеном; одноразовая ссылка — `…/issue/link`, только `.env` — `…/issue/env`                    |
-| одной командой с API | `POST /api/v1/nodes/{id}/install-command` (или `/api/v1/agent-enrollment/install-command`) → `curl -fsSL https://<api>/agent/v1/bundle/install.sh \| sudo sh -s -- --token …`                                              |
-| с API по SSH         | `POST /api/v1/nodes/{id}/agent/install` — то же самое на узле, токен — файлом                                                                                                                                              |
-| удалить              | `sudo agent-rest uninstall [--purge]` (без root — `agent-rest uninstall` без `sudo`), тем же скриптом `… \| sudo sh -s -- --uninstall [--purge]` или `POST /api/v1/nodes/{id}/agent/uninstall`                             |
+| Как                  | Что сделать                                                                                                                                                                                                    |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| вручную, архивом     | `scp agent/bundle/agent-prod-….tar.gz узел:` → `tar xzf … && cd agent && cp .env.example .env` (адрес, токен) → `sudo ./agent install --env prod`, `./agent run --env prod` или `docker compose up -d --build` |
+| архив с токеном      | веб: «Установить агента» → «Архив» (или `POST /api/v1/nodes/{id}/agent/issue/archive`): тот же архив и `.env` с одноразовым токеном; одноразовая ссылка — `…/issue/link`, только `.env` — `…/issue/env`        |
+| одной командой с API | `POST /api/v1/nodes/{id}/install-command` (или `/api/v1/agent-enrollment/install-command`) → `curl -fsSL https://<api>/agent/v1/bundle/install.sh \| sudo sh -s -- --token …`                                  |
+| с API по SSH         | `POST /api/v1/nodes/{id}/agent/install` — то же самое на узле, токен — файлом                                                                                                                                  |
+| удалить              | `sudo agent-rest uninstall [--purge]` (без root — `agent-rest uninstall` без `sudo`), тем же скриптом `… \| sudo sh -s -- --uninstall [--purge]` или `POST /api/v1/nodes/{id}/agent/uninstall`                 |
 
 API раздаёт архивы и установщик агента из `AGENT_BUNDLE_DIR` (`/agent/v1/bundle/install.sh` —
-`install.sh` из релиза агента той же версии, `/agent/v1/bundle/linux-<arch>.tar.gz` — новейший архив,
+`install.sh` из релиза агента той же версии, `/agent/v1/bundle/agent.tar.gz` — новейший архив (все платформы),
 `/agent/v1/releases/*` — каталог сборок воркеров `release/`);
 в образе API их собирает стадия `agent-bundle` `Dockerfile`, для разработки — `yarn agent:pack`
 (`AGENT_BUNDLE_DIR=agent/bundle`). Установщику передаются `--server <API>` и
-`--bundle <API>/agent/v1/bundle/linux-{arch}.tar.gz`.
+`--bundle <API>/agent/v1/bundle/agent.tar.gz`.
 
 На узле (экземпляр `rest`):
 

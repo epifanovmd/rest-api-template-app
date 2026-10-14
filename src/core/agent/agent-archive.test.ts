@@ -70,7 +70,7 @@ describe("архив агента с .env", () => {
     ).to.include(`'AGENT_ENROLL_TOKEN=t' "AGENT_NAME=$(hostname)" > .env`);
   });
 
-  it("команда docker: архив под платформу, .env (0600), docker compose", () => {
+  it("команда docker: архив агента, .env (0600), docker compose", () => {
     const command = agentInstallCommand({
       mode: "docker",
       server: "http://api.example.com/",
@@ -79,7 +79,7 @@ describe("архив агента с .env", () => {
     });
 
     expect(command).to.equal(
-      "curl -fsSL 'http://api.example.com/agent/v1/bundle/linux-'\"$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')\".tar.gz | tar -xz" +
+      "curl -fsSL 'http://api.example.com/agent/v1/bundle/agent.tar.gz' | tar -xz" +
         " && cd agent" +
         " && (umask 077 && printf '%s\\n' 'AGENT_SERVER_URL=http://api.example.com' 'AGENT_ENROLL_TOKEN=ab.cd' 'AGENT_SERVER_ALLOW_INSECURE=true' 'AGENT_NAME=vps-1' > .env)" +
         " && docker compose up -d --build",

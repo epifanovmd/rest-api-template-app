@@ -3,7 +3,7 @@
 #   make release  — готовые образы коммита из ghcr (TAG=<sha>; их собирает CI)
 #   make deploy   — запасной путь: исходники на хост и сборка там же
 # Агент проекта (без .env.deploy):
-#   make agent-archive — архивы агента для узлов → agent/bundle (agent pack: тот же архив раздаёт API)
+#   make agent-archive — архив агента для узлов (все платформы) → agent/bundle (agent pack: тот же архив раздаёт API)
 #   make agent-image   — образ агента из архива под эту машину ($(IMAGE):$(TAG)-agent)
 AGENT_GOALS := agent-archive agent-image
 ifneq ($(if $(MAKECMDGOALS),$(filter-out $(AGENT_GOALS),$(MAKECMDGOALS)),deploy),)

@@ -1,4 +1,3 @@
-import { type TAgentArchivePlatform } from "../../../core";
 import type { AgentInstallMode } from "../../agent";
 
 /** Способ установки по SSH: служба или агент без root (`run` занял бы сеанс SSH). */
@@ -51,12 +50,7 @@ export interface IIssueNodeAgentBody {
   expiresInMinutes?: number;
 }
 
-export interface IIssueNodeAgentArchiveBody extends IIssueNodeAgentBody {
-  /** Платформа: `linux-amd64`, `linux-arm64` (`install-options` — какие есть). */
-  platform: TAgentArchivePlatform;
-}
-
-export interface IIssueNodeAgentLinkBody extends IIssueNodeAgentArchiveBody {
+export interface IIssueNodeAgentLinkBody extends IIssueNodeAgentBody {
   /** Срок ссылки, минут (по умолчанию сутки); токен создаётся при скачивании. */
   linkExpiresInMinutes?: number;
 }

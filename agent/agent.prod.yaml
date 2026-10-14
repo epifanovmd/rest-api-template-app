@@ -14,6 +14,8 @@ pack:
   files: [package/, agent.docker.yaml]
 server:
   url: "${AGENT_SERVER_URL}"
+  # Только https:// (http:// — AGENT_SERVER_ALLOW_INSECURE=true в .env).
+  allowInsecure: false
 enroll:
   token: "${AGENT_ENROLL_TOKEN}"
 labels:

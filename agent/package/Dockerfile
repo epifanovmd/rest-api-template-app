@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 # Агент из этого архива в контейнере: программа агента, настройки и воркеры — отсюда же
-# (архив под платформу машины: linux-amd64 или linux-arm64). Обычно — через compose.yml:
+# (программу под платформу образа выбирает скрипт agent: amd64 и arm64). Обычно — через compose.yml:
 #
 #   cp .env.example .env    # адрес, токен, имя
 #   docker compose up -d --build

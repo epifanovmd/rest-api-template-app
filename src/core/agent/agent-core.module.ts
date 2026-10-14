@@ -23,6 +23,7 @@ import { AgentMetric } from "./agent-metric.entity";
 import { AgentMetricRepository } from "./agent-metric.repository";
 import { AgentProtocolService } from "./agent-protocol.service";
 import { AgentPruneJob } from "./agent-prune.job";
+import { AgentRecentMetrics } from "./agent-recent-metrics";
 import { AgentStreams } from "./agent-streams";
 import { Agents } from "./agents.service";
 
@@ -50,6 +51,7 @@ import { Agents } from "./agents.service";
     AgentMetricRepository,
     AgentEnrollmentTokenRepository,
     AgentIssueRepository,
+    AgentRecentMetrics,
     AgentSignals,
     AgentEnrollmentService,
     AgentIssueService,

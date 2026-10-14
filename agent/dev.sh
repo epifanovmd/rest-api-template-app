@@ -129,11 +129,10 @@ case "$cmd" in
     curl -fsSL "$BASE/install.sh" -o "$out/install.sh" || die "нет $BASE/install.sh"
     ;;
   image)
-    # Образ агента из архива под платформу Docker этой машины (Dockerfile архива).
+    # Образ агента из архива (Dockerfile архива; платформу выбирает скрипт agent в образе).
     tag=${1:-agent-rest:local}
-    case "$(docker info -f '{{.Architecture}}')" in aarch64 | arm64) arch=arm64 ;; *) arch=amd64 ;; esac
-    archive=$(ls -t "$ROOT"/agent/bundle/*-linux-"$arch".tar.gz 2>/dev/null | head -n 1) || true
-    [ -n "$archive" ] || die "нет архива под linux-$arch в agent/bundle — сначала yarn agent:pack (make agent-archive)"
+    archive=$(ls -t "$ROOT"/agent/bundle/agent-*.tar.gz 2>/dev/null | head -n 1) || true
+    [ -n "$archive" ] || die "нет архива в agent/bundle — сначала yarn agent:pack (make agent-archive)"
     tmp=$(mktemp -d)
     tar -xzf "$archive" -C "$tmp"
     docker build -t "$tag" "$tmp/agent" || { rm -rf "$tmp"; exit 1; }

@@ -16,11 +16,7 @@ import {
   Tags,
 } from "tsoa";
 
-import type {
-  IErrorResponseDto,
-  IPaginatedDto,
-  TAgentArchivePlatform,
-} from "../../core";
+import type { IErrorResponseDto, IPaginatedDto } from "../../core";
 import {
   getContextUser,
   Injectable,
@@ -43,7 +39,6 @@ import {
 import {
   CreateEnrollmentTokenSchema,
   InstallCommandBodySchema,
-  IssueAgentArchiveBodySchema,
   IssueAgentBodySchema,
   IssueAgentLinkBodySchema,
   PageQuerySchema,
@@ -80,12 +75,7 @@ interface IIssueAgentBody {
   baseUrl?: string;
 }
 
-interface IIssueAgentArchiveBody extends IIssueAgentBody {
-  /** Платформа: `linux-amd64`, `linux-arm64` (`install-options` — какие есть). */
-  platform: TAgentArchivePlatform;
-}
-
-interface IIssueAgentLinkBody extends IIssueAgentArchiveBody {
+interface IIssueAgentLinkBody extends IIssueAgentBody {
   /** Срок ссылки, мин (по умолчанию сутки); токен создаётся при скачивании. */
   linkExpiresInMinutes?: number;
 }
@@ -161,7 +151,7 @@ export class AgentEnrollmentController extends Controller {
   }
 
   /**
-   * Адрес бэкенда для агентов и архивы агента по платформам (есть ли запуск в Docker Compose).
+   * Адрес бэкенда для агентов и архив агента: платформы, есть ли запуск в Docker Compose.
    * @summary Варианты установки агента
    */
   @Security("jwt", ["permission:agent:enroll"])
@@ -193,24 +183,19 @@ export class AgentEnrollmentController extends Controller {
   }
 
   /**
-   * Архив агента под платформу с `.env` (адрес, одноразовый токен, имя): распаковать и
+   * Архив агента (все платформы) с `.env` (адрес, одноразовый токен, имя): распаковать и
    * запустить — службой, на месте или в Docker. Архив на сервере не хранится.
    * @summary Выдать архив агента с токеном
    */
   @Security("jwt", ["permission:agent:enroll"])
-  @ValidateBody(IssueAgentArchiveBodySchema)
+  @ValidateBody(IssueAgentBodySchema)
   @Produces("application/gzip")
   @Post("issue/archive")
   async issueAgentArchive(
     @Request() req: KoaRequest,
-    @Body() body: IIssueAgentArchiveBody,
+    @Body() body: IIssueAgentBody,
   ): Promise<Readable> {
-    const { platform, ...rest } = body;
-    const archive = await this._agents.issueArchive(
-      getContextUser(req),
-      platform,
-      rest,
-    );
+    const archive = await this._agents.issueArchive(getContextUser(req), body);
 
     this.setHeader("Content-Type", "application/gzip");
     this.setHeader(
@@ -235,12 +220,7 @@ export class AgentEnrollmentController extends Controller {
     @Request() req: KoaRequest,
     @Body() body: IIssueAgentLinkBody,
   ): Promise<IAgentIssuedLinkDto> {
-    const { platform, ...rest } = body;
-    const link = await this._agents.issueLink(
-      getContextUser(req),
-      platform,
-      rest,
-    );
+    const link = await this._agents.issueLink(getContextUser(req), body);
 
     this.setStatus(201);
 

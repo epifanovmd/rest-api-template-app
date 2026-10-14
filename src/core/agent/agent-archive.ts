@@ -5,18 +5,6 @@ import { gunzipSync, gzipSync } from "zlib";
 import { agentConfig } from "./agent.config";
 import { newestBundleArchive } from "./agent-files";
 
-/** Платформа архива агента для узлов: `<os>-<arch>`. */
-export const AGENT_ARCHIVE_PLATFORMS = [
-  "linux-amd64",
-  "linux-arm64",
-  "darwin-amd64",
-  "darwin-arm64",
-] as const;
-export type TAgentArchivePlatform = (typeof AGENT_ARCHIVE_PLATFORMS)[number];
-
-const splitPlatform = (platform: TAgentArchivePlatform): [string, string] =>
-  platform.split("-") as [string, string];
-
 /** Папка агента в архиве (`agent pack`). */
 const ARCHIVE_ROOT = "agent";
 
@@ -94,9 +82,16 @@ const tarHeader = (path: string, size: number, mode: number): Buffer => {
   return header;
 };
 
-/** Записи tar: имя и размер; `end` — начало завершающих нулевых блоков. */
-const tarEntries = (tar: Buffer): { names: string[]; end: number } => {
+/**
+ * Записи tar: имена; `end` — начало завершающих нулевых блоков; `read` — содержимое записи с
+ * этим именем (если просили).
+ */
+const tarEntries = (
+  tar: Buffer,
+  read?: string,
+): { names: string[]; end: number; content?: Buffer } => {
   const names: string[] = [];
+  let content: Buffer | undefined;
   let offset = 0;
 
   while (offset + BLOCK <= tar.length) {
@@ -110,11 +105,16 @@ const tarEntries = (tar: Buffer): { names: string[]; end: number } => {
       8,
     );
 
-    names.push(prefix ? `${prefix}/${name}` : name);
+    const full = prefix ? `${prefix}/${name}` : name;
+
+    names.push(full);
+    if (read && (full === read || full === `./${read}`)) {
+      content = tar.subarray(offset + BLOCK, offset + BLOCK + size);
+    }
     offset += BLOCK + Math.ceil(size / BLOCK) * BLOCK;
   }
 
-  return { names, end: offset };
+  return { names, end: offset, content };
 };
 
 /**
@@ -149,69 +149,62 @@ export const appendToTarGz = (
   );
 };
 
-/** Новейший архив платформы и его записи. */
+/** Архив агента для узлов (все платформы) и что в нём. */
 export interface IAgentArchiveInfo {
-  platform: TAgentArchivePlatform;
   file: string;
-  /** Версия агента из имени архива (`agent-prod-<версия>-linux-<arch>.tar.gz`). */
+  /** Версия агента (`bundle.json` архива). */
   version: string | null;
+  /** Платформы архива: `linux/amd64`, `linux/arm64` (`bundle.json`). */
+  platforms: string[];
   size: number;
   /** В архиве есть `compose.yml` (запуск в Docker Compose). */
   compose: boolean;
 }
 
-const ARCHIVE_VERSION =
-  /-(\d+\.\d+\.\d+[^-]*)-(?:linux|darwin)-(?:amd64|arm64)\.tar\.gz$/;
+let infoCache: { path: string; mtime: number; info: IAgentArchiveInfo } | null =
+  null;
 
-const infoCache = new Map<string, { mtime: number; info: IAgentArchiveInfo }>();
-
-/** Архивы агента для узлов (`AGENT_BUNDLE_DIR`) по платформам. */
-export const agentArchives = async (): Promise<IAgentArchiveInfo[]> => {
+/** Новейший архив агента для узлов (`AGENT_BUNDLE_DIR`); нет — `null`. */
+export const agentArchive = async (): Promise<IAgentArchiveInfo | null> => {
   const dir = agentConfig.bundleDir;
+  const file = dir ? await newestBundleArchive(dir) : null;
 
-  if (!dir) return [];
-  const out: IAgentArchiveInfo[] = [];
-
-  for (const platform of AGENT_ARCHIVE_PLATFORMS) {
-    const file = await newestBundleArchive(dir, ...splitPlatform(platform));
-
-    if (!file) continue;
-    const cached = infoCache.get(file.path);
-
-    if (cached && cached.mtime === file.mtime) {
-      out.push(cached.info);
-      continue;
-    }
-    const { names } = tarEntries(gunzipSync(await readFile(file.path)));
-    const info: IAgentArchiveInfo = {
-      platform,
-      file: basename(file.path),
-      version: ARCHIVE_VERSION.exec(basename(file.path))?.[1] ?? null,
-      size: file.size,
-      compose: names.some(
-        n => n === `${ARCHIVE_ROOT}/compose.yml` || n === "compose.yml",
-      ),
-    };
-
-    infoCache.set(file.path, { mtime: file.mtime, info });
-    out.push(info);
+  if (!file) return null;
+  if (infoCache?.path === file.path && infoCache.mtime === file.mtime) {
+    return infoCache.info;
   }
+  const { names, content } = tarEntries(
+    gunzipSync(await readFile(file.path)),
+    `${ARCHIVE_ROOT}/bundle.json`,
+  );
+  const bundle = JSON.parse(content?.toString("utf8") ?? "{}") as {
+    version?: string;
+    platforms?: string[];
+  };
+  const info: IAgentArchiveInfo = {
+    file: basename(file.path),
+    version: bundle.version ?? null,
+    platforms: bundle.platforms ?? [],
+    size: file.size,
+    compose: names.some(
+      n => n === `${ARCHIVE_ROOT}/compose.yml` || n === "./agent/compose.yml",
+    ),
+  };
 
-  return out;
+  infoCache = { path: file.path, mtime: file.mtime, info };
+
+  return info;
 };
 
 /**
- * Архив платформы с `.env` получателя (права 0600): тот же архив, что раздаётся всем, и файл
- * переменных с адресом и токеном. `null` — архива этой платформы нет.
+ * Архив агента с `.env` получателя (права 0600): тот же архив, что раздаётся всем, и файл
+ * переменных с адресом и токеном. `null` — архива нет.
  */
 export const agentArchiveWithEnv = async (
-  platform: TAgentArchivePlatform,
   values: IAgentEnvValues,
 ): Promise<{ file: string; data: Buffer } | null> => {
   const dir = agentConfig.bundleDir;
-  const file = dir
-    ? await newestBundleArchive(dir, ...splitPlatform(platform))
-    : null;
+  const file = dir ? await newestBundleArchive(dir) : null;
 
   if (!file) return null;
 

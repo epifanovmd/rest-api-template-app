@@ -22,7 +22,6 @@ import type { IAgentIssuedEnvDto, IAgentIssuedLinkDto } from "../agent";
 import {
   ICreateNodeInstallCommandBody,
   IInstallNodeAgentBody,
-  IIssueNodeAgentArchiveBody,
   IIssueNodeAgentBody,
   IIssueNodeAgentLinkBody,
   INodeInstallCommandDto,
@@ -34,7 +33,6 @@ import { NodeProvisionService } from "./node-provision.service";
 import {
   CreateNodeInstallCommandSchema,
   InstallNodeAgentSchema,
-  IssueNodeAgentArchiveSchema,
   IssueNodeAgentLinkSchema,
   IssueNodeAgentSchema,
   UninstallNodeAgentSchema,
@@ -105,25 +103,23 @@ export class NodeAgentController extends Controller {
   }
 
   /**
-   * Архив агента под платформу с `.env` агента узла: распаковать и запустить — службой, на
+   * Архив агента (все платформы) с `.env` агента узла: распаковать и запустить — службой, на
    * месте или в Docker.
    * @summary Выдать архив агента узла
    */
   @Security("jwt", ["permission:node:provision:own"])
-  @ValidateBody(IssueNodeAgentArchiveSchema)
+  @ValidateBody(IssueNodeAgentSchema)
   @Produces("application/gzip")
   @Post("{id}/agent/issue/archive")
   async issueNodeAgentArchive(
     @Request() req: KoaRequest,
     @Path() id: UUID,
-    @Body() body: IIssueNodeAgentArchiveBody,
+    @Body() body: IIssueNodeAgentBody,
   ): Promise<Readable> {
-    const { platform, ...rest } = body;
     const archive = await this._nodeAgents.issueArchive(
       getContextUser(req),
       id,
-      platform,
-      rest,
+      body,
     );
 
     this.setHeader("Content-Type", "application/gzip");

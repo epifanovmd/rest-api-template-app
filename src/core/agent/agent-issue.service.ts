@@ -3,11 +3,10 @@ import { inject } from "inversify";
 import { Injectable } from "../decorators";
 import { AgentError } from "./agent.errors";
 import {
-  agentArchives,
+  agentArchive,
   agentArchiveWithEnv,
   agentEnvText,
   IAgentArchiveInfo,
-  TAgentArchivePlatform,
 } from "./agent-archive";
 import { AgentEnrollmentService } from "./agent-enrollment.service";
 import { AGENT_BUNDLE_PATH, agentPublicUrl } from "./agent-files";
@@ -55,10 +54,10 @@ export interface IAgentIssuedLink {
   expiresAt: Date;
 }
 
-/** Что можно выдать: адрес бэкенда и архивы по платформам. */
+/** Что можно выдать: адрес бэкенда и архив агента (все платформы). */
 export interface IAgentIssueOptions {
   server: string;
-  archives: IAgentArchiveInfo[];
+  archive: IAgentArchiveInfo | null;
 }
 
 /**
@@ -77,7 +76,7 @@ export class AgentIssueService {
   ) {}
 
   async options(): Promise<IAgentIssueOptions> {
-    return { server: agentPublicUrl(), archives: await agentArchives() };
+    return { server: agentPublicUrl(), archive: await agentArchive() };
   }
 
   /** Токен и `.env` с ним. */
@@ -94,16 +93,15 @@ export class AgentIssueService {
     };
   }
 
-  /** Архив платформы с `.env` (токен — в нём). */
+  /** Архив агента (все платформы) с `.env` (токен — в нём). */
   async archive(
     createdBy: string | null,
-    platform: TAgentArchivePlatform,
     input: IAgentIssueInput,
   ): Promise<IAgentIssuedArchive> {
-    await this.requireArchive(platform);
+    await this.requireArchive();
     const server = this.server(input.server);
     const issued = await this.token(createdBy, input);
-    const archive = await agentArchiveWithEnv(platform, {
+    const archive = await agentArchiveWithEnv({
       server,
       token: issued.token,
       name: input.name,
@@ -123,11 +121,10 @@ export class AgentIssueService {
    */
   async link(
     createdBy: string | null,
-    platform: TAgentArchivePlatform,
     input: IAgentIssueInput,
     linkTtlMinutes: number,
   ): Promise<IAgentIssuedLink> {
-    await this.requireArchive(platform);
+    await this.requireArchive();
     const server = this.server(input.server);
     const params: IAgentIssueParams = {
       tokenName: input.tokenName,
@@ -138,7 +135,6 @@ export class AgentIssueService {
       server,
     };
     const issue = await this._issues.createAndSave({
-      platform,
       params,
       createdBy,
       expiresAt: new Date(Date.now() + linkTtlMinutes * MINUTE_MS),
@@ -162,11 +158,7 @@ export class AgentIssueService {
 
     if (!issue) return null;
     try {
-      const archive = await this.archive(
-        issue.createdBy,
-        issue.platform,
-        issue.params,
-      );
+      const archive = await this.archive(issue.createdBy, issue.params);
 
       await this._issues.setToken(issue.id, archive.tokenId);
 
@@ -181,8 +173,8 @@ export class AgentIssueService {
     return (server || agentPublicUrl()).replace(/\/+$/, "");
   }
 
-  private async requireArchive(platform: TAgentArchivePlatform): Promise<void> {
-    if (!(await agentArchives()).some(a => a.platform === platform)) {
+  private async requireArchive(): Promise<void> {
+    if (!(await agentArchive())) {
       throw AgentError.ARCHIVE_NOT_FOUND();
     }
   }

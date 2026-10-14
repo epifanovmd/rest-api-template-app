@@ -74,7 +74,6 @@ describe("AgentRepository, AgentIssueRepository (Postgres, TEST_DATABASE_URL)", 
       server: "https://api.example.com",
     };
     const live = await issues.createAndSave({
-      platform: "linux-amd64",
       params,
       createdBy: null,
       expiresAt: new Date(Date.now() + 60_000),
@@ -82,7 +81,6 @@ describe("AgentRepository, AgentIssueRepository (Postgres, TEST_DATABASE_URL)", 
       tokenId: null,
     });
     const expired = await issues.createAndSave({
-      platform: "linux-amd64",
       params,
       createdBy: null,
       expiresAt: new Date(Date.now() - 1000),

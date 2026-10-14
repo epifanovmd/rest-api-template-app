@@ -14,6 +14,7 @@ import { AgentEventProblems1791800000000 } from "./1791800000000-AgentEventProbl
 import { AgentProtocol1791900000000 } from "./1791900000000-AgentProtocol";
 import { AgentDeleted1792000000000 } from "./1792000000000-AgentDeleted";
 import { AgentIssues1792100000000 } from "./1792100000000-AgentIssues";
+import { AgentIssuesAllPlatforms1792200000000 } from "./1792200000000-AgentIssuesAllPlatforms";
 import { OwnFilePermissions1790770000000 } from "./1790770000000-OwnFilePermissions";
 
 /**
@@ -39,4 +40,5 @@ export const migrations: Function[] = [
   AgentProtocol1791900000000,
   AgentDeleted1792000000000,
   AgentIssues1792100000000,
+  AgentIssuesAllPlatforms1792200000000,
 ];

@@ -16,7 +16,6 @@ import {
   Injectable,
   IPaginatedDto,
   normalizePagination,
-  TAgentArchivePlatform,
   TAgentInstallMode,
   toPage,
 } from "../../core";
@@ -174,11 +173,10 @@ export class AgentService {
     server?: string;
   }): Promise<string> {
     if (options.mode === "docker") {
-      const { archives } = await this._issue.options();
+      const { archive } = await this._issue.options();
 
-      if (!archives.length) throw AgentError.ARCHIVE_NOT_FOUND();
-      if (!archives.every(a => a.compose))
-        throw AgentError.ARCHIVE_NO_COMPOSE();
+      if (!archive) throw AgentError.ARCHIVE_NOT_FOUND();
+      if (!archive.compose) throw AgentError.ARCHIVE_NO_COMPOSE();
     }
 
     return agentInstallCommand(options);
@@ -614,14 +612,16 @@ export class AgentService {
     }
   }
 
-  /** Что можно выдать: адрес бэкенда и архивы по платформам. */
+  /** Что можно выдать: адрес бэкенда и архив агента (все платформы). */
   async installOptions(actor: IAgentActor): Promise<IAgentInstallOptionsDto> {
     this.requireEnroll(actor);
-    const { server, archives } = await this._issue.options();
+    const { server, archive } = await this._issue.options();
 
     return {
       server,
-      archives: archives.map(a => ({ ...a, version: a.version ?? undefined })),
+      archive: archive
+        ? { ...archive, version: archive.version ?? undefined }
+        : undefined,
     };
   }
 
@@ -638,23 +638,15 @@ export class AgentService {
     return { ...issued, expiresAt: issued.expiresAt.getTime() };
   }
 
-  /** Архив агента платформы с `.env` (токен — в нём). */
+  /** Архив агента (все платформы) с `.env` (токен — в нём). */
   async issueArchive(
     actor: IAgentActor,
-    platform: TAgentArchivePlatform,
     request: IAgentIssueRequest,
   ): Promise<{ file: string; data: Buffer }> {
     this.requireEnroll(actor);
-    const issued = await this._issue.archive(
-      actor.userId,
-      platform,
-      issueInput(request),
-    );
+    const issued = await this._issue.archive(actor.userId, issueInput(request));
 
-    this.auditIssue(actor.userId, "archive", issued.tokenId, {
-      ...request,
-      platform,
-    });
+    this.auditIssue(actor.userId, "archive", issued.tokenId, request);
 
     return { file: issued.file, data: issued.data };
   }
@@ -662,18 +654,16 @@ export class AgentService {
   /** Одноразовая ссылка на архив агента с токеном. */
   async issueLink(
     actor: IAgentActor,
-    platform: TAgentArchivePlatform,
     request: IAgentIssueRequest & { linkExpiresInMinutes?: number },
   ): Promise<IAgentIssuedLinkDto> {
     this.requireEnroll(actor);
     const link = await this._issue.link(
       actor.userId,
-      platform,
       issueInput(request),
       request.linkExpiresInMinutes ?? AGENT_ISSUE_TTL_MINUTES,
     );
 
-    this.auditIssue(actor.userId, "link", link.id, { ...request, platform });
+    this.auditIssue(actor.userId, "link", link.id, request);
 
     return { url: link.url, expiresAt: link.expiresAt.getTime() };
   }
@@ -682,13 +672,12 @@ export class AgentService {
     actorId: string,
     kind: string,
     target: string,
-    request: IAgentIssueRequest & { platform?: string },
+    request: IAgentIssueRequest,
   ): void {
     this._bus.emit(
       new AgentActionAuditedEvent("agent.issue", actorId, target, null, {
         kind,
         name: request.name,
-        platform: request.platform,
         labels: request.labels,
       }),
     );

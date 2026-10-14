@@ -896,7 +896,7 @@ describe("агенты (настоящий агент и воркер echo)", fu
   it("команда установки, install.sh", async () => {
     const install = (body: object) =>
       call(admin, "POST", "/api/v1/agent-enrollment/install-command", body);
-    const bundle = `'${BASE_URL}/agent/v1/bundle/linux-{arch}.tar.gz'`;
+    const bundle = `'${BASE_URL}/agent/v1/bundle/agent.tar.gz'`;
     const prefix = `curl -fsSL '${BASE_URL}/agent/v1/bundle/install.sh' |`;
 
     expect(

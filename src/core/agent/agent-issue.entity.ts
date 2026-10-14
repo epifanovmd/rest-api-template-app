@@ -5,8 +5,6 @@ import {
   PrimaryGeneratedColumn,
 } from "typeorm";
 
-import type { TAgentArchivePlatform } from "./agent-archive";
-
 /** Параметры выдачи: токен создаётся по ним при скачивании архива. */
 export interface IAgentIssueParams {
   /** Имя токена регистрации (в списке токенов). */
@@ -31,9 +29,6 @@ export interface IAgentIssueParams {
 export class AgentIssue {
   @PrimaryGeneratedColumn("uuid")
   id!: string;
-
-  @Column({ type: "varchar", length: 16 })
-  platform!: TAgentArchivePlatform;
 
   @Column({ type: "jsonb" })
   params!: IAgentIssueParams;

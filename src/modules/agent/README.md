@@ -129,7 +129,7 @@ src/modules/agent/                # модуль проекта
 | POST   | `agents/{id}/revoke`; DELETE `agents/{id}`                             | отозвать; удалить со всей историей                         |
 | POST   | `agent-enrollment/tokens`, GET `…/tokens`, POST `…/tokens/{id}/revoke` | токены регистрации                                         |
 | POST   | `agent-enrollment/install-command`                                     | команда установки (`mode`: systemd, rootless, run, docker) |
-| GET    | `agent-enrollment/install-options`                                     | адрес для агентов, архивы по платформам (compose.yml)      |
+| GET    | `agent-enrollment/install-options`                                     | адрес для агентов, архив агента (платформы, compose.yml)   |
 | POST   | `agent-enrollment/issue/env` / `archive` / `link`                      | выдать `.env`, архив с `.env`, одноразовую ссылку          |
 | GET    | `agent-enrollment/release`                                             | сборки воркеров проекта                                    |
 

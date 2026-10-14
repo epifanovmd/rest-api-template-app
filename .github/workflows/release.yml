@@ -79,8 +79,8 @@ jobs:
           cache-from: type=gha,scope=release${{ matrix.suffix }}
           cache-to: type=gha,mode=max,scope=release${{ matrix.suffix }}
 
-  # Агент проекта: архивы (agent pack — те же, что раздаёт API) — файлы релиза GitHub,
-  # образ <версия>-agent (amd64 и arm64) — из архива каждой платформы его Dockerfile.
+  # Агент проекта: архив (agent pack, все платформы — тот же, что раздаёт API) — файл релиза
+  # GitHub, образ <версия>-agent (amd64 и arm64) — из него же его Dockerfile.
   agent:
     needs: on-main
     runs-on: ubuntu-latest
@@ -123,17 +123,13 @@ jobs:
             type=semver,pattern={{major}}.{{minor}}
             type=ref,event=tag
             type=sha,format=short
-      - name: Образ агента из архивов
+      - name: Образ агента из архива
         env:
           TAGS: ${{ steps.meta.outputs.tags }}
-          BASE: ghcr.io/${{ github.repository }}:${{ github.sha }}-agent
         run: |
-          for arch in amd64 arm64; do
-            mkdir -p "ctx-$arch"
-            tar -xzf agent-archives/*-linux-$arch.tar.gz -C "ctx-$arch"
-            docker buildx build --platform "linux/$arch" --push -t "$BASE-$arch" \
-              --label org.opencontainers.image.source=https://github.com/${{ github.repository }} "ctx-$arch/agent"
-          done
+          mkdir ctx
+          tar -xzf agent-archives/agent-*.tar.gz -C ctx
           args=""
           for tag in $TAGS; do args="$args -t $tag"; done
-          docker buildx imagetools create $args "$BASE-amd64" "$BASE-arm64"
+          docker buildx build --platform linux/amd64,linux/arm64 --push $args \
+            --label org.opencontainers.image.source=https://github.com/${{ github.repository }} ctx/agent

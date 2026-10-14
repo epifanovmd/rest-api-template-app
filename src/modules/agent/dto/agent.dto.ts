@@ -8,7 +8,6 @@ import type {
   IAgentLogEntry,
   IAgentWorkerView,
 } from "../../../core";
-import { type TAgentArchivePlatform } from "../../../core";
 
 /**
  * Id агента в пути: формат проверяется до контроллера.
@@ -239,20 +238,21 @@ export interface IAgentInstallCommandDto {
   command: string;
 }
 
-/** Архив агента для узлов под платформу. */
+/** Архив агента для узлов (все платформы). */
 export interface IAgentArchiveDto {
-  platform: TAgentArchivePlatform;
   file: string;
   version?: string;
+  /** Платформы: `linux/amd64`, `linux/arm64`. */
+  platforms: string[];
   size: number;
   /** В архиве есть compose.yml: запуск в Docker Compose. */
   compose: boolean;
 }
 
-/** Что можно выдать: адрес бэкенда для агентов и архивы по платформам. */
+/** Что можно выдать: адрес бэкенда для агентов и архив агента (нет — `AGENT_BUNDLE_DIR` пуст). */
 export interface IAgentInstallOptionsDto {
   server: string;
-  archives: IAgentArchiveDto[];
+  archive?: IAgentArchiveDto;
 }
 
 /** Выданный токен регистрации и `.env` с ним (показывается один раз). */

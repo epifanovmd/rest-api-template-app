@@ -36,7 +36,7 @@ export const AgentError = defineErrors("AGENT", {
   },
   ARCHIVE_NOT_FOUND: {
     status: 404,
-    message: "Архива агента под эту платформу нет (AGENT_BUNDLE_DIR)",
+    message: "Архива агента нет (AGENT_BUNDLE_DIR)",
   },
   ARCHIVE_NO_COMPOSE: {
     status: 409,

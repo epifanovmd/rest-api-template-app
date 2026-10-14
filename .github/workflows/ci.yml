@@ -228,8 +228,8 @@ jobs:
         run: docker push "ghcr.io/${{ github.repository }}:${{ github.sha }}${{ matrix.suffix }}"
 
   # Архивы агента (agent pack — те же, что раздаёт API и собирает make agent-archive) —
-  # артефакт сборки; образ агента — из архива linux-amd64 его же Dockerfile, в ghcr —
-  # <sha>-agent (на push в main).
+  # артефакт сборки; образ агента — из архива его же Dockerfile, в ghcr — <sha>-agent (на push
+  # в main).
   agent-image:
     runs-on: ubuntu-latest
     needs: verify
@@ -260,7 +260,7 @@ jobs:
       - name: Образ из архива
         run: |
           mkdir ctx
-          tar -xzf agent-archives/*-linux-amd64.tar.gz -C ctx
+          tar -xzf agent-archives/agent-*.tar.gz -C ctx
           docker build -t rest-api:ci-agent -t "$IMAGE" \
             --label org.opencontainers.image.source=https://github.com/${{ github.repository }} ctx/agent
       - name: Trivy

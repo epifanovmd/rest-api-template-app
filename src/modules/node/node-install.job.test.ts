@@ -117,7 +117,7 @@ describe("NodeInstallAgentJob", () => {
     );
     expect(commands[2]).to.match(/^sudo -S -p '' sh -c '/);
     expect(commands[2]).to.include(
-      `linux-{arch}.tar.gz'\\'' --token-file ${WORK_DIR}/token`,
+      `agent.tar.gz'\\'' --token-file ${WORK_DIR}/token`,
     );
     expect(commands[2]).to.not.include("pref.secret");
     expect(execs[2].options?.stdin).to.equal("pw\n");
@@ -196,7 +196,7 @@ describe("NodeUninstallAgentJob", () => {
     await job.handle(context(data).ctx);
 
     expect(execs[2].command).to.equal(
-      `sh ${WORK_DIR}/install.sh --bundle 'https://api.example.com/agent/v1/bundle/linux-{arch}.tar.gz' --uninstall --purge; code=$?; rm -rf ${WORK_DIR}; exit $code`,
+      `sh ${WORK_DIR}/install.sh --bundle 'https://api.example.com/agent/v1/bundle/agent.tar.gz' --uninstall --purge; code=$?; rm -rf ${WORK_DIR}; exit $code`,
     );
     expect(nodeAgents.detach.calledOnceWith("n1", "u1")).to.be.true;
   });

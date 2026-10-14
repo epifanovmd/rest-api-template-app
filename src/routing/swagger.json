@@ -2674,26 +2674,21 @@
 				"type": "object",
 				"additionalProperties": false
 			},
-			"TAgentArchivePlatform": {
-				"type": "string",
-				"enum": [
-					"linux-amd64",
-					"linux-arm64",
-					"darwin-amd64",
-					"darwin-arm64"
-				]
-			},
 			"IAgentArchiveDto": {
-				"description": "Архив агента для узлов под платформу.",
+				"description": "Архив агента для узлов (все платформы).",
 				"properties": {
-					"platform": {
-						"$ref": "#/components/schemas/TAgentArchivePlatform"
-					},
 					"file": {
 						"type": "string"
 					},
 					"version": {
 						"type": "string"
+					},
+					"platforms": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array",
+						"description": "Платформы: `linux/amd64`, `linux/arm64`."
 					},
 					"size": {
 						"type": "number",
@@ -2705,8 +2700,8 @@
 					}
 				},
 				"required": [
-					"platform",
 					"file",
+					"platforms",
 					"size",
 					"compose"
 				],
@@ -2714,21 +2709,17 @@
 				"additionalProperties": false
 			},
 			"IAgentInstallOptionsDto": {
-				"description": "Что можно выдать: адрес бэкенда для агентов и архивы по платформам.",
+				"description": "Что можно выдать: адрес бэкенда для агентов и архив агента (нет — `AGENT_BUNDLE_DIR` пуст).",
 				"properties": {
 					"server": {
 						"type": "string"
 					},
-					"archives": {
-						"items": {
-							"$ref": "#/components/schemas/IAgentArchiveDto"
-						},
-						"type": "array"
+					"archive": {
+						"$ref": "#/components/schemas/IAgentArchiveDto"
 					}
 				},
 				"required": [
-					"server",
-					"archives"
+					"server"
 				],
 				"type": "object",
 				"additionalProperties": false
@@ -2788,41 +2779,6 @@
 				"type": "object",
 				"additionalProperties": false
 			},
-			"IIssueAgentArchiveBody": {
-				"properties": {
-					"name": {
-						"type": "string",
-						"description": "Имя агента (`AGENT_NAME` в `.env`); нет — имя машины."
-					},
-					"labels": {
-						"$ref": "#/components/schemas/Record_string.string_",
-						"description": "Метки зарегистрированного агента (агент их не перепишет)."
-					},
-					"maxUses": {
-						"type": "number",
-						"format": "double",
-						"description": "Сколько машин может зарегистрироваться этим токеном (по умолчанию 1)."
-					},
-					"expiresInMinutes": {
-						"type": "number",
-						"format": "double",
-						"description": "Срок токена, мин (по умолчанию сутки)."
-					},
-					"baseUrl": {
-						"type": "string",
-						"description": "Адрес API для агента; без него — `AGENT_PUBLIC_URL`."
-					},
-					"platform": {
-						"$ref": "#/components/schemas/TAgentArchivePlatform",
-						"description": "Платформа: `linux-amd64`, `linux-arm64` (`install-options` — какие есть)."
-					}
-				},
-				"required": [
-					"platform"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
 			"IAgentIssuedLinkDto": {
 				"description": "Одноразовая ссылка на архив агента с токеном.",
 				"properties": {
@@ -2866,19 +2822,12 @@
 						"type": "string",
 						"description": "Адрес API для агента; без него — `AGENT_PUBLIC_URL`."
 					},
-					"platform": {
-						"$ref": "#/components/schemas/TAgentArchivePlatform",
-						"description": "Платформа: `linux-amd64`, `linux-arm64` (`install-options` — какие есть)."
-					},
 					"linkExpiresInMinutes": {
 						"type": "number",
 						"format": "double",
 						"description": "Срок ссылки, мин (по умолчанию сутки); токен создаётся при скачивании."
 					}
 				},
-				"required": [
-					"platform"
-				],
 				"type": "object",
 				"additionalProperties": false
 			},
@@ -3759,32 +3708,6 @@
 				"type": "object",
 				"additionalProperties": false
 			},
-			"IIssueNodeAgentArchiveBody": {
-				"properties": {
-					"name": {
-						"type": "string",
-						"description": "Имя агента; нет — прежнее имя агента узла или имя узла."
-					},
-					"baseUrl": {
-						"type": "string",
-						"description": "Адрес сервера для агента; без него — `AGENT_PUBLIC_URL` / `APP_PUBLIC_URL`."
-					},
-					"expiresInMinutes": {
-						"type": "number",
-						"format": "double",
-						"description": "Срок одноразового токена, минут (по умолчанию сутки)."
-					},
-					"platform": {
-						"$ref": "#/components/schemas/TAgentArchivePlatform",
-						"description": "Платформа: `linux-amd64`, `linux-arm64` (`install-options` — какие есть)."
-					}
-				},
-				"required": [
-					"platform"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
 			"IIssueNodeAgentLinkBody": {
 				"properties": {
 					"name": {
@@ -3800,19 +3723,12 @@
 						"format": "double",
 						"description": "Срок одноразового токена, минут (по умолчанию сутки)."
 					},
-					"platform": {
-						"$ref": "#/components/schemas/TAgentArchivePlatform",
-						"description": "Платформа: `linux-amd64`, `linux-arm64` (`install-options` — какие есть)."
-					},
 					"linkExpiresInMinutes": {
 						"type": "number",
 						"format": "double",
 						"description": "Срок ссылки, минут (по умолчанию сутки); токен создаётся при скачивании."
 					}
 				},
-				"required": [
-					"platform"
-				],
 				"type": "object",
 				"additionalProperties": false
 			},
@@ -7912,7 +7828,7 @@
 						}
 					}
 				},
-				"description": "Адрес бэкенда для агентов и архивы агента по платформам (есть ли запуск в Docker Compose).",
+				"description": "Адрес бэкенда для агентов и архив агента: платформы, есть ли запуск в Docker Compose.",
 				"summary": "Варианты установки агента",
 				"tags": [
 					"Agent"
@@ -8003,7 +7919,7 @@
 						}
 					}
 				},
-				"description": "Архив агента под платформу с `.env` (адрес, одноразовый токен, имя): распаковать и\nзапустить — службой, на месте или в Docker. Архив на сервере не хранится.",
+				"description": "Архив агента (все платформы) с `.env` (адрес, одноразовый токен, имя): распаковать и\nзапустить — службой, на месте или в Docker. Архив на сервере не хранится.",
 				"summary": "Выдать архив агента с токеном",
 				"tags": [
 					"Agent"
@@ -8021,7 +7937,7 @@
 					"content": {
 						"application/json": {
 							"schema": {
-								"$ref": "#/components/schemas/IIssueAgentArchiveBody"
+								"$ref": "#/components/schemas/IIssueAgentBody"
 							}
 						}
 					}
@@ -9247,7 +9163,7 @@
 						}
 					}
 				},
-				"description": "Архив агента под платформу с `.env` агента узла: распаковать и запустить — службой, на\nместе или в Docker.",
+				"description": "Архив агента (все платформы) с `.env` агента узла: распаковать и запустить — службой, на\nместе или в Docker.",
 				"summary": "Выдать архив агента узла",
 				"tags": [
 					"Node"
@@ -9274,7 +9190,7 @@
 					"content": {
 						"application/json": {
 							"schema": {
-								"$ref": "#/components/schemas/IIssueNodeAgentArchiveBody"
+								"$ref": "#/components/schemas/IIssueNodeAgentBody"
 							}
 						}
 					}

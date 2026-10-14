@@ -113,9 +113,7 @@ describe("сборки воркеров проекта и обновление �
       '"$AGENT" install ${SERVER:+--server "$SERVER"} "$@"',
     );
 
-    const archive = await fetch(
-      `${BASE_URL}/agent/v1/bundle/${platform()}.tar.gz`,
-    );
+    const archive = await fetch(`${BASE_URL}/agent/v1/bundle/agent.tar.gz`);
 
     expect(archive.status).to.equal(200);
     const info = JSON.parse(
@@ -131,8 +129,9 @@ describe("сборки воркеров проекта и обновление �
     });
     expect(info.publicKeys).to.deep.equal([PROJECT_KEYS.public]);
     expect(info.workers).to.include("echo");
+    expect(info.platforms).to.deep.equal([platform().replace("-", "/")]);
     expect(
-      (await fetch(`${BASE_URL}/agent/v1/bundle/linux-sparc.tar.gz`)).status,
+      (await fetch(`${BASE_URL}/agent/v1/bundle/linux-amd64.tar.gz`)).status,
     ).to.equal(404);
   });
 
