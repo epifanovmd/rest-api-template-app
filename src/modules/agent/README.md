@@ -61,7 +61,7 @@ src/modules/agent/                # модуль проекта
 | `POST events`           | события воркеров: по ключу `(agent_id, id)` один раз; `command.progress` — ход команды                 |
 | `POST metrics` / `logs` | последняя точка — в агента, история — не чаще `AGENT_METRICS_STORE_INTERVAL_MS`; журнал — в сокет      |
 | `POST requests`         | запрос воркера к бэкенду: обработчик `WORKER_REQUEST_HANDLER` модуля-владельца                         |
-| `GET bundle/*`          | `install.sh` и новейший архив платформы из `AGENT_BUNDLE_DIR` (без входа)                              |
+| `GET bundle/*`          | `install.sh` и архив агента (`agent.tar.gz`, все платформы) из `AGENT_BUNDLE_DIR` (без входа)          |
 | `GET releases/*`        | каталог сборок воркеров `AGENT_BUNDLE_DIR/release` (без входа)                                         |
 
 - **Вход** — `Authorization: Agent <id>.<secret>`; неизвестный ключ — `401 AGENT_UNKNOWN`

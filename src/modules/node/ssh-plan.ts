@@ -24,7 +24,7 @@ export const WORK_DIR_COMMAND = "mktemp -d /tmp/agent-node.XXXXXXXX";
 /** Путь из вывода `mktemp` — только такой попадает в команды. */
 export const WORK_DIR_PATTERN = /^\/tmp\/agent-node\.[A-Za-z0-9]+$/;
 
-/** Установщик агента на этом сервере (ставит архив папки агента под машину узла). */
+/** Установщик агента на этом сервере (ставит архив папки агента). */
 export const installScriptUrl = (backendUrl: string): string =>
   bundleInstallUrl(backendUrl);
 
@@ -84,7 +84,7 @@ const downloadStep = (workDir: string, backendUrl: string): ISshStep => {
 };
 
 /**
- * Установка: установщик сервера скачивает архив папки агента под машину узла
+ * Установка: установщик сервера скачивает архив папки агента (все платформы)
  * и запускает из него `agent install` — пакеты, экземпляр, воркеры и
  * настройки берутся из архива; агент регистрируется токеном и встаёт
  * службой. Агент без root (`rootless`) ставится от

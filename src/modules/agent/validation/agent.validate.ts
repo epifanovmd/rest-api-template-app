@@ -90,7 +90,7 @@ export const InstallCommandBodySchema = z
     path: ["token"],
   });
 
-/** Выдача агента получателю: токен, `.env` с адресом и именем; архив — ещё и платформа. */
+/** Выдача агента получателю: токен, `.env` с адресом и именем (архив и ссылка — с ним же). */
 export const IssueAgentBodySchema = z.object({
   /** Имя агента (`AGENT_NAME`); нет — имя машины. */
   name: z

@@ -98,11 +98,11 @@ files}` (`call.data`, `call.files`), ход и итог — ход и итог �
 
 ## Как агент попадает на узел
 
-Принцип один — вручную, из веба и в CI: **архив агента** под машину узла. Он самодостаточен:
+Принцип один — вручную, из веба и в CI: **архив агента** (все платформы в одном). Он самодостаточен:
 распаковал — и запускай как удобно (службой, на месте, в Docker).
 
 ```bash
-make agent-archive                # = yarn agent:pack → agent/bundle: agent-prod-<версия>.tar.gz (linux amd64 и arm64) и release/
+make agent-archive                # = yarn agent:pack → agent/bundle: agent-prod-<версия>.tar.gz (linux amd64 и arm64 в одном) и release/
 make agent-image                  # образ агента из архива под эту машину (его Dockerfile)
 ```
 
@@ -126,7 +126,7 @@ make agent-image                  # образ агента из архива п
 | `systemd` (обычный) | служба `agent-rest` от root, пакеты из `install:` ставятся                                                                                                                                                                                                         |
 | `rootless`          | агент пользователя без root (`--rootless`, команда без `sudo`): `~/.agent-rest`, служба `systemctl --user` (её нет — установка не идёт: запускайте агента сами, `run`); `python3` должен уже стоять на узле                                                        |
 | `run`               | без установки (`--run`, команда без `sudo`): агент на переднем плане — в контейнере или под своим менеджером процессов; данные — `AGENT_DATA_DIR` (по умолчанию `/var/lib/agent`, держите на томе), себя не обновляет. В образе должно быть то, что нужно воркерам |
-| `docker`            | Docker Compose из архива (только команда, не SSH): архив под машину (`uname -m`), `.env` (0600) с адресом и токеном, `docker compose up -d --build` по `compose.yml` архива; нет `compose.yml` в архиве — 409 `AGENT_ARCHIVE_NO_COMPOSE`                           |
+| `docker`            | Docker Compose из архива (только команда, не SSH): архив агента (все платформы), `.env` (0600) с адресом и токеном, `docker compose up -d --build` по `compose.yml` архива; нет `compose.yml` в архиве — 409 `AGENT_ARCHIVE_NO_COMPOSE`                            |
 
 С `rootless` пакеты из `install:` пропускаются с предупреждением. Агент с `run` себя не обновляет:
 с API «Обновить» ему недоступно, новая версия — при следующем запуске.
@@ -187,14 +187,14 @@ API раздаёт архивы и установщик агента из `AGENT
 
 Ядро (`AgentIssueService`) выдаёт агента человеку, который запустит его сам:
 
-| Что                | REST (`agent:enroll`; узла — `node:provision`)                                            | Получатель                                                                         |
-| ------------------ | ----------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
-| архив с токеном    | `POST /api/v1/agent-enrollment/issue/archive`, `…/nodes/{id}/agent/issue/archive`         | распаковать → `docker compose up -d --build` или `sudo ./agent install --env prod` |
-| одноразовая ссылка | `…/issue/link` → `GET /agent/v1/bundle/issued/{id}` один раз и до срока (потом 410)       | `curl -fsSL <ссылка> \| tar -xz && cd agent` → как выше                            |
-| только `.env`      | `…/issue/env`                                                                             | положить как `agent/.env` общего архива или `--env-file` образа                    |
-| варианты           | `GET /api/v1/agent-enrollment/install-options` — платформы архивов, есть ли `compose.yml` | —                                                                                  |
+| Что                | REST (`agent:enroll`; узла — `node:provision`)                                           | Получатель                                                                         |
+| ------------------ | ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| архив с токеном    | `POST /api/v1/agent-enrollment/issue/archive`, `…/nodes/{id}/agent/issue/archive`        | распаковать → `docker compose up -d --build` или `sudo ./agent install --env prod` |
+| одноразовая ссылка | `…/issue/link` → `GET /agent/v1/bundle/issued/{id}` один раз и до срока (потом 410)      | `curl -fsSL <ссылка> \| tar -xz && cd agent` → как выше                            |
+| только `.env`      | `…/issue/env`                                                                            | положить как `agent/.env` общего архива или `--env-file` образа                    |
+| варианты           | `GET /api/v1/agent-enrollment/install-options` — архив: платформы, есть ли `compose.yml` | —                                                                                  |
 
-Архив с токеном — общий архив платформы и дописанный `agent/.env` (0600: адрес, одноразовый токен,
+Архив с токеном — общий архив агента и дописанный `agent/.env` (0600: адрес, одноразовый токен,
 имя; для `http://` — `AGENT_SERVER_ALLOW_INSECURE`); на сервере он не хранится. Ссылка хранит только
 параметры выдачи (`agent_issues`): токен создаётся при скачивании. Токен нужен только до первой
 регистрации. Выдача — в журнале аудита (`agent.issue`).

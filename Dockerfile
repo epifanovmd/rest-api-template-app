@@ -20,8 +20,8 @@ COPY . .
 RUN yarn build
 
 # ── Архивы папки агента для узлов (раздаёт API: AGENT_BUNDLE_DIR) ─────────────
-# agent pack --env prod (тот же архив, что make agent-archive): по архиву на
-# linux/amd64 и linux/arm64 (программа агента, agent.yaml + agent.prod.yaml, воркеры
+# agent pack --env prod (тот же архив, что make agent-archive): один архив на
+# linux/amd64 и linux/arm64 (программы агента, agent.yaml + agent.prod.yaml, воркеры
 # проекта и их сборки, файлы pack.files — agent/package: Dockerfile, compose.yml,
 # .env.example, README.md); release/ — сборки воркеров для обновления узлов,
 # install.sh — установщик агента (API раздаёт его вместе с архивами). Программа агента и install.sh — с GitHub Release версии AGENT_VERSION (build-arg, по умолчанию — из .env.example);

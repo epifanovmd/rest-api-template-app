@@ -108,7 +108,7 @@ src/modules/node/
 **Команда установки.** `install-command` создаёт одноразовый токен регистрации
 (`maxUses: 1`, срок `expiresInMinutes`, по умолчанию сутки) с меткой
 `nodeId=<id узла>` и строку `curl …/agent/v1/bundle/install.sh | sudo sh -s -- --token …`
-(`AgentService.installCommand`). Скрипт скачивает с API архив папки агента под машину узла
+(`AgentService.installCommand`). Скрипт скачивает с API архив папки агента (все платформы)
 (`agent pack`, `AGENT_BUNDLE_DIR`) и запускает из него `agent install`: воркеры (`echo`),
 пакеты и экземпляр — из настроек папки (`agent/agent.prod.yaml`). Токен — только
 в ответе. `mode` — способ установки: `systemd` (по умолчанию), `rootless` (агент пользователя
@@ -117,7 +117,7 @@ src/modules/node/
 
 **Выдача архива.** `agent/issue/*` — то же для получателя, который запустит агента сам: `.env`
 (адрес, одноразовый токен с меткой узла, имя агента — заданное, прежнее имя агента узла или имя
-узла), архив платформы с этим `.env` или одноразовая ссылка на него (`AgentIssueService` ядра).
+узла), архив агента (все платформы) с этим `.env` или одноразовая ссылка на него (`AgentIssueService` ядра).
 
 **Экземпляр агента.** Агент проекта ставится на узел отдельным экземпляром — `instance: rest`
 в `agent/agent.prod.yaml`: служба `agent-rest`, настройки `/etc/agent-rest`, данные и воркеры
@@ -167,7 +167,7 @@ password?, privateKey?, passphrase?, sudo?, backendUrl?, mode?}` (+ `purge` у �
 Задача (воркер, `tracked`, без повторов): подключение ssh2 → рабочий каталог
 `mktemp -d /tmp/agent-node.XXXXXXXX` → токен файлом (umask 077) → установщик с
 этого сервера (`/agent/v1/bundle/install.sh`, curl или wget) → `sh install.sh
---token-file …` (архив папки агента под машину узла → `agent install`; удаление —
+--token-file …` (архив папки агента → `agent install`; удаление —
 `--uninstall [--purge]`, экземпляр — из настроек архива) с
 `sudo -n` (вход по ключу) или `sudo -S` (пароль в stdin). `mode: rootless` — от пользователя
 SSH (не root) без sudo, `--rootless`; удаление такого агента — тоже без sudo; `run` по SSH нельзя (занял бы сеанс). Вывод команд — в журнал

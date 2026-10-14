@@ -131,8 +131,10 @@ case "$cmd" in
   image)
     # Образ агента из архива (Dockerfile архива; платформу выбирает скрипт agent в образе).
     tag=${1:-agent-rest:local}
-    archive=$(ls -t "$ROOT"/agent/bundle/agent-*.tar.gz 2>/dev/null | head -n 1) || true
-    [ -n "$archive" ] || die "нет архива в agent/bundle — сначала yarn agent:pack (make agent-archive)"
+    # Архив в agent/bundle один: pack каждый раз собирает каталог заново.
+    set -- "$ROOT"/agent/bundle/agent-*.tar.gz
+    archive=$1
+    [ -f "$archive" ] || die "нет архива в agent/bundle — сначала yarn agent:pack (make agent-archive)"
     tmp=$(mktemp -d)
     tar -xzf "$archive" -C "$tmp"
     docker build -t "$tag" "$tmp/agent" || { rm -rf "$tmp"; exit 1; }
