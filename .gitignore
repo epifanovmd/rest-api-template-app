@@ -7,6 +7,7 @@ yarn-error.log
 files/
 .env*
 !.env.example
+!.env.docker.example
 !.env.deploy.example
 !agent/package/.env.example
 .DS_Store

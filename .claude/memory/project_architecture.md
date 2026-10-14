@@ -253,9 +253,13 @@ pino: уровень `LOG_LEVEL`, `pino-pretty` только при `LOG_PRETTY`
 
 E2E: `yarn test:e2e` (`.mocharc.e2e.yml`: `test/e2e/**/*.e2e.ts`, `setup.ts` — корневые хуки, timeout 30s).
 `test/e2e/harness.ts` поднимает `src/main.ts` через `tsx` дочерним процессом (`APP_ROLE=all`, свободный порт,
-`NODE_ENV=test`), перед этим `DROP/CREATE DATABASE` (имя обязано содержать `e2e|test`) и `FLUSHDB` Redis
-(база ≠ 0, по умолчанию `/15`). Env `E2E_*` (Postgres, Redis, SMTP, `E2E_MAILPIT_URL`, `E2E_S3_*`,
-`E2E_STORAGE_DRIVER`), умолчания — dev-compose. Файлы: `auth`, `user` (профиль, email, пароль и удаление,
+`NODE_ENV=test`), перед этим очистка БД (имя обязано содержать `e2e|test`): база есть — DROP всех
+не-системных схем + `CREATE SCHEMA public` (хватает прав владельца; схема чужой роли — понятная ошибка),
+нет — `CREATE DATABASE` через базу `postgres`. Redis: `E2E_REDIS_KEY_PREFIX` — SCAN+DEL по префиксу
+(общий Redis с ACL), иначе `FLUSHDB` базы ≠ 0 (`/15`); префикс уходит серверу как `REDIS_KEY_PREFIX`
+(многосегментный допустим — `redisKeyPrefix` в config.ts). Env `E2E_*` (Postgres, Redis, SMTP,
+`E2E_MAILPIT_URL`, `E2E_S3_*`, `E2E_STORAGE_DRIVER`), умолчания — dev-compose (5433, 6380/15, 1026/8026,
+8334, bucket `e2e`); CI задаёт стандартные порты явно. Файлы: `auth`, `user` (профиль, email, пароль и удаление,
 администрирование, сессии, аудит), `agents` (настоящий агент версии AGENT_VERSION + воркер echo: регистрация, ключ, манифест, настройки по схеме, команды, события с problems, demo.echo быстрая/lookup/долгая/файл/отмена, вторая копия — команды через БД, перезапуск занятого, offline ≤ 5 с, метрики, журнал, аудит, смена ключа), `nodes` (привязка агента, доступ через узел, нагрузка), `platform` (файлы S3/local, задачи, api-keys,
 биометрия/passkeys); ветки-примеры добавляют свои. `client.ts`
 (HTTP-клиент, пишет `calledEndpoints`),
@@ -287,8 +291,12 @@ E2E: `yarn test:e2e` (`.mocharc.e2e.yml`: `test/e2e/**/*.e2e.ts`, `setup.ts` —
   `agent` (образ `:TAG-agent` из архива, том `agent-data`, `AGENT_ENROLL_TOKEN` ← `AGENT_BOOTSTRAP_TOKEN`), `postgres:16`, `redis:7` (без persistence, allkeys-lru), `s3` (SeaweedFS `:8333`) + `s3-init`
   (aws-cli, создаёт bucket). `env_file: ${ENV_FILE:-.env.production}`, `DB_MIGRATIONS_RUN=false`,
   `STORAGE_DRIVER=s3`, `S3_PUBLIC_ENDPOINT` по умолчанию `http://localhost:8333`, `read_only`, `cap_drop: ALL`.
-- `docker-compose.dev.yml`: Postgres, Redis, Mailpit (1025/8025), SeaweedFS (8333, `storage`/`storage12345`),
-  `s3-init` создаёт bucket-ы `rest-api` и `e2e`.
+- `docker-compose.dev.yml` (`name: rest-api-dev`, `yarn services:up|down`, порты на 127.0.0.1 сдвинуты, чтобы
+  жить рядом с ~/dev/infra на стандартных): Postgres 5433 (`postgres`/`postgres`, база `rest_api`), Redis 6380,
+  Mailpit 1026/8026, SeaweedFS 8334 (`storage`/`storage12345`), `s3-init` создаёт bucket-ы `rest-api` и `e2e`.
+  `.env.example` подключения по умолчанию — на эти порты. Проект с infra НЕ связан (решение пользователя).
+- `make local-*` (`LOCAL_GOALS` — без `.env.deploy`): `docker-compose.yml` + redis/postgres/s3-файлы,
+  `--env-file .env.docker` (копия `.env.docker.example`, в git только пример), `TAG=local`, S3 на 8335.
 - `.gitignore`/`.dockerignore`: Python `__pycache__/`, `*.pyc` игнорируются (из git убраны). `firebaseAccount.json`
   (ключ сервисного аккаунта) игнорируется — чтобы локальный ключ не попал в коммит.
 - CI `.github/workflows/ci.yml` (push и pull_request в `main`; ветки-примеры CI не запускают): verify (generate + `git diff --exit-code src/routing`, lint, typecheck, test,

@@ -1,12 +1,19 @@
+# Команды проекта (make help). Разработка — yarn (package.json), здесь — Docker и деплой.
+#
+# Локально (без .env.deploy):
+#   make local-up | local-down | local-logs | local-ps — production-стек в Docker со своими
+#     Postgres, Redis и S3 (.env.docker из .env.docker.example, другой файл — LOCAL_ENV_FILE=…;
+#     образы с тегом LOCAL_TAG=local)
+#   make image         — образы worker и api
+#   make agent-archive — архив агента для узлов (все платформы) → agent/bundle (тот же архив раздаёт API)
+#   make agent-image   — образ агента из архива под эту машину ($(IMAGE):$(TAG)-agent)
+#
 # Деплой по SSH. Настройки — .env.deploy (образец .env.deploy.example); секреты
 # приложения — .env.production (кладёт `make env`).
 #   make release  — готовые образы коммита из ghcr (TAG=<sha>; их собирает CI)
 #   make deploy   — запасной путь: исходники на хост и сборка там же
-# Агент проекта (без .env.deploy):
-#   make agent-archive — архив агента для узлов (все платформы) → agent/bundle (agent pack: тот же архив раздаёт API)
-#   make agent-image   — образ агента из архива под эту машину ($(IMAGE):$(TAG)-agent)
-AGENT_GOALS := agent-archive agent-image
-ifneq ($(if $(MAKECMDGOALS),$(filter-out $(AGENT_GOALS),$(MAKECMDGOALS)),deploy),)
+LOCAL_GOALS := help image local-up local-down local-logs local-ps agent-archive agent-image
+ifneq ($(if $(MAKECMDGOALS),$(filter-out $(LOCAL_GOALS),$(MAKECMDGOALS)),deploy),)
 ifeq ($(wildcard .env.deploy),)
 $(error Нет .env.deploy — скопируйте .env.deploy.example и заполните)
 endif
@@ -21,11 +28,17 @@ SSH_OPTS ?= -o ConnectTimeout=15 -o ConnectionAttempts=5 -o ServerAliveInterval=
 SSH = ssh $(SSH_OPTS) $(SSH_USER)@$(SSH_HOST)
 COMPOSE = docker compose --env-file $(ENV_FILE)
 REMOTE = cd $(SSH_PROJECT_DIR) && export IMAGE=$(IMAGE) TAG=$(TAG) COMPOSE_FILE=$(subst $() ,:,$(strip $(COMPOSE_FILES))) COMPOSE_PROFILES=$(subst $() ,$(),$(COMPOSE_PROFILES)) && $(COMPOSE)
-LOCAL = export IMAGE=$(IMAGE) TAG=$(TAG) COMPOSE_FILE=$(subst $() ,:,$(strip $(COMPOSE_FILES))) COMPOSE_PROFILES=$(subst $() ,$(),$(COMPOSE_PROFILES)) && $(COMPOSE)
+LOCAL_ENV_FILE ?= .env.docker
+LOCAL_COMPOSE_FILES ?= docker-compose.yml docker-compose.redis.yml docker-compose.postgres.yml docker-compose.s3.yml
+LOCAL_TAG ?= local
+LOCAL = export IMAGE=$(IMAGE) TAG=$(LOCAL_TAG) ENV_FILE=$(LOCAL_ENV_FILE) COMPOSE_FILE=$(subst $() ,:,$(strip $(LOCAL_COMPOSE_FILES))) && docker compose --env-file $(LOCAL_ENV_FILE)
 DUMP = src/core/db/dump
 DB = --host $(SSH_USER)@$(SSH_HOST) --container $(DB_CONTAINER) --user $(DB_USER) --db $(DB_NAME)
 
-.PHONY: deploy release sync compose env build pull migrate up down status logs restart db-dump db-restore image local-up local-down local-logs agent-archive agent-image
+.PHONY: help local-ps deploy release sync compose env build pull migrate up down status logs restart db-dump db-restore image local-up local-down local-logs agent-archive agent-image
+
+help:
+	@sed -n '1,/^LOCAL_GOALS/p' Makefile | sed -n 's/^# \{0,1\}//p'
 
 deploy: sync build migrate up
 release: compose pull migrate up
@@ -78,8 +91,9 @@ image:
 	docker build --target worker -t $(IMAGE):$(TAG) .
 	docker build --target api -t $(IMAGE):$(TAG)-api .
 
-# --- Локально (docker на этой машине, тот же состав стека) ---
+# --- Локально: production-стек в Docker со своими Postgres, Redis и S3 ---
 local-up:
+	@test -f $(LOCAL_ENV_FILE) || { cp .env.docker.example $(LOCAL_ENV_FILE) && echo "Создан $(LOCAL_ENV_FILE) из .env.docker.example"; }
 	$(LOCAL) up -d --build --remove-orphans
 
 local-down:
@@ -87,6 +101,9 @@ local-down:
 
 local-logs:
 	$(LOCAL) logs -f --tail=200 api worker
+
+local-ps:
+	$(LOCAL) ps
 
 # --- Агент проекта ---
 agent-archive:

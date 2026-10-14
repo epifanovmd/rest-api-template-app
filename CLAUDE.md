@@ -26,7 +26,7 @@ Node >= 22.13 (Docker — 24 LTS). Роль процесса — `APP_ROLE=api|w
 ## Команды
 
 ```bash
-docker compose -f docker-compose.dev.yml up -d   # Postgres, Redis, Mailpit, S3
+yarn services:up          # docker-compose.dev.yml: Postgres :5433, Redis :6380, S3 :8334, Mailpit :1026/:8026
 yarn dev                  # генерация маршрутов + tsx watch (APP_ROLE=all)
 yarn generate             # tsoa: routes.ts + swagger.json
 yarn build                # генерация + tsc: src/ → build/
@@ -34,7 +34,8 @@ yarn server               # production-сборка (node build/main.js)
 yarn lint | lint:fix | prettier:fix
 yarn typecheck            # проверка типов (yarn dev:types — watch)
 yarn test                 # юнит, src/**/*.test.ts (один файл: yarn test:file <path>)
-yarn test:e2e             # интеграционный набор test/e2e/*.e2e.ts (нужен dev-compose)
+yarn test:e2e             # интеграционный набор test/e2e/*.e2e.ts (нужен yarn services:up)
+make local-up | local-ps | local-logs | local-down   # production-стек в Docker (.env.docker); make help
 yarn gen:module <name>    # каркас модуля по конвенциям (--dry-run — список файлов)
 yarn agent [команда]      # агент с воркером echo (agent/agent.yaml; AGENT_BOOTSTRAP_TOKEN);
                           # команды агента: config check, status, upgrade …

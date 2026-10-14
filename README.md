@@ -84,8 +84,9 @@ scripts/             ← генератор модуля
 git clone <repository-url>
 cd <project-directory>
 yarn
-cp .env.example .env.development
-docker compose -f docker-compose.dev.yml up -d   # Postgres, Redis, Mailpit, S3 (SeaweedFS)
+cp .env.example .env.development   # подключения уже настроены на сервисы ниже
+yarn services:up     # docker-compose.dev.yml: Postgres, Redis, Mailpit, S3 (SeaweedFS)
+yarn dev
 ```
 
 В `.env.<NODE_ENV>` задаются параметры БД, секрет JWT, учётные данные администратора,
@@ -95,11 +96,13 @@ SMTP, хранилище и прочие переменные — их полн�
 `NODE_ENV` работает как production; в production небезопасные умолчания (пустой
 пароль БД, CORS `*`, отсутствие Redis, неполные ключи S3) — ошибка запуска.
 
-Локальная инфраструктура (`docker-compose.dev.yml`): Postgres `:5432`, Redis `:6379`,
-Mailpit (SMTP `:1025`, веб-интерфейс писем — http://localhost:8025), S3 `:8333`
-(bucket-ы `rest-api` и `e2e` создаются автоматически). Для S3 локально:
-`STORAGE_DRIVER=s3 S3_ENDPOINT=http://localhost:8333 S3_FORCE_PATH_STYLE=true
-S3_BUCKET=rest-api S3_ACCESS_KEY_ID=storage S3_SECRET_ACCESS_KEY=storage12345`.
+Локальная инфраструктура (`docker-compose.dev.yml`, `yarn services:up` / `services:down`) —
+на нестандартных портах, чтобы не мешать другим Postgres/Redis/S3 на машине: Postgres
+`:5433` (`postgres`/`postgres`), Redis `:6380`, Mailpit (SMTP `:1026`, веб-интерфейс писем —
+http://localhost:8026), S3 `:8334` (bucket-ы `rest-api` и `e2e` создаются автоматически).
+Порты слушают только `127.0.0.1`. Для S3 локально: `STORAGE_DRIVER=s3
+S3_ENDPOINT=http://localhost:8334 S3_FORCE_PATH_STYLE=true S3_BUCKET=rest-api
+S3_ACCESS_KEY_ID=storage S3_SECRET_ACCESS_KEY=storage12345`.
 Без SMTP письма в development пишутся в лог.
 
 ### Run
@@ -122,6 +125,7 @@ Swagger UI — `/api-docs` (в production — по `API_DOCS_ENABLED`). Сист
 
 | Команда                 | Что делает                                                                                   |
 | ----------------------- | -------------------------------------------------------------------------------------------- |
+| `yarn services:up`      | поднять локальные сервисы `docker-compose.dev.yml` (`services:down` — остановить)            |
 | `yarn dev`              | генерация маршрутов + сервер с перезапуском при изменениях (роль `all`, миграции при старте) |
 | `yarn dev:types`        | проверка типов в режиме watch                                                                |
 | `yarn dev:routes`       | перегенерация маршрутов и спецификации при изменении модулей                                 |
@@ -191,11 +195,14 @@ API — `http://localhost:$SERVER_PORT`. Программа агента — `ag
 | `make db-dump` / `db-restore`      | дамп базы с хоста в файл / восстановление из файла (`DB_*`, `DB_DUMP_FILE`)          |
 | `make image`                       | собрать образы `worker` и `api` на этой машине                                       |
 
-**Makefile — production-стек на этой машине** (тот же состав, что на сервере)
+**Makefile — production-стек на этой машине** со своими Postgres, Redis и S3 (без
+`.env.deploy`; настройки — `.env.docker`, при первом `local-up` копируется из
+`.env.docker.example`; образы — с тегом `local`; S3 — `:8335`). `make help` — список команд.
 
 | Команда           | Что делает                        |
 | ----------------- | --------------------------------- |
 | `make local-up`   | собрать и запустить стек в Docker |
+| `make local-ps`   | состояние сервисов                |
 | `make local-down` | остановить                        |
 | `make local-logs` | журнал `api` и `worker`           |
 
@@ -272,15 +279,17 @@ pre-commit (lefthook): prettier и eslint по staged-файлам, typecheck, �
 ### E2E
 
 ```sh
-docker compose -f docker-compose.dev.yml up -d
+yarn services:up
 yarn agent:fetch     # программа и сборки агента с GitHub в agent/dist (один раз на AGENT_VERSION)
 yarn test:e2e
 ```
 
 Набор `test/e2e/*.e2e.ts` поднимает настоящий сервер (`APP_ROLE=all`) против
 Postgres, Redis, Mailpit и S3 и прогоняет сценарии всех эндпоинтов по HTTP и сокетам;
-коды из писем берутся через API Mailpit. Перед прогоном стенд пересоздаёт базу
-(только с `e2e`/`test` в имени) и очищает отдельную базу Redis (не `0`). Последний
+коды из писем берутся через API Mailpit. Перед прогоном стенд очищает базу
+(только с `e2e`/`test` в имени): пересоздаёт её схемы — хватает прав владельца базы, а
+если базы нет — создаёт её; в Redis удаляет ключи своего префикса (`E2E_REDIS_KEY_PREFIX` —
+общий Redis с доступом по префиксу) или очищает отдельную базу (не `0`). Последний
 тест проверяет, что вызван каждый эндпоинт спецификации. Параметры — переменные
 `E2E_*` (по умолчанию — сервисы `docker-compose.dev.yml`), драйвер хранилища —
 `E2E_STORAGE_DRIVER=s3|local`. В GitHub стенд не ходит: программа агента — из `agent/dist`

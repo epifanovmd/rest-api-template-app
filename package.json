@@ -17,6 +17,8 @@
     "url": "https://github.com/epifanovmd/rest-api-template-app.git"
   },
   "scripts": {
+    "services:up": "docker compose -f docker-compose.dev.yml up -d --wait",
+    "services:down": "docker compose -f docker-compose.dev.yml down",
     "dev": "yarn generate && NODE_ENV=development tsx watch --clear-screen=false src/main.ts",
     "dev:types": "tsc --noEmit --watch --preserveWatchOutput",
     "dev:routes": "nodemon --watch src/modules --ext ts --ignore \"src/routing/routes.ts\" --delay 1 --exec \"yarn generate\"",
