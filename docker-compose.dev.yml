@@ -60,7 +60,8 @@ services:
       timeout: 5s
       retries: 24
 
-  # Bucket приложения и e2e (идемпотентно).
+  # Bucket приложения и e2e (идемпотентно). Повторы: S3 API поднимается позже, чем
+  # healthcheck мастера SeaweedFS.
   s3-init:
     image: amazon/aws-cli:latest
     depends_on:
@@ -74,9 +75,10 @@ services:
       - /bin/sh
       - -c
       - >-
-        for b in rest-api e2e; do
-        aws --endpoint-url http://s3:8333 s3api head-bucket --bucket "$$b" 2>/dev/null ||
-        aws --endpoint-url http://s3:8333 s3 mb "s3://$$b"; done
+        for b in rest-api e2e; do i=0;
+        until aws --endpoint-url http://s3:8333 s3api head-bucket --bucket "$$b" 2>/dev/null ||
+        aws --endpoint-url http://s3:8333 s3 mb "s3://$$b"; do
+        i=$$((i+1)); [ $$i -lt 30 ] || exit 1; sleep 2; done; done
     restart: "no"
 
 volumes:
