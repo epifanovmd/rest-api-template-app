@@ -108,16 +108,14 @@ scopes API-ключей; down собирает `manage` обратно у име
 `*` «Система». `PermissionController` зарегистрирован в `UserModule`. Совместимого `Permissions`/`KnownPermission`
 нет: `TPermission = string`, `*` — `ALL_PERMISSIONS` из `core/auth/superuser.ts`.
 
-| Группа                        | Права                                                                                     |
-| ----------------------------- | ----------------------------------------------------------------------------------------- |
-| `user` «Пользователи»         | `user:view`, `user:update` (контакты), `user:delete`, `user:privileges` (роли и права)    |
-| `role` «Роли»                 | `role:view`, `role:create`, `role:update` (права роли), `role:delete`                     |
-| `profile` «Профили»           | `profile:view`, `profile:update`, `profile:delete` (очистка)                              |
-| `apikey` «API-ключи»          | `apikey:view`, `apikey:create`, `apikey:revoke`                                           |
-| `audit` «Журнал безопасности» | `audit:view`                                                                              |
-| `jobs` «Фоновые задачи»       | `jobs:demo` (демо-задача проверки агентов)                                                |
-| `agent` «Агенты»              | `agent:view`, `agent:manage`, `agent:config`, `agent:fetch`, `agent:logs`, `agent:enroll` |
-| `file` «Файлы»                | `file:view`, `file:delete` — scoped, есть `file:view:own`, `file:delete:own`              |
+| Группа                        | Права                                                                                  |
+| ----------------------------- | -------------------------------------------------------------------------------------- |
+| `user` «Пользователи»         | `user:view`, `user:update` (контакты), `user:delete`, `user:privileges` (роли и права) |
+| `role` «Роли»                 | `role:view`, `role:create`, `role:update` (права роли), `role:delete`                  |
+| `profile` «Профили»           | `profile:view`, `profile:update`, `profile:delete` (очистка)                           |
+| `apikey` «API-ключи»          | `apikey:view`, `apikey:create`, `apikey:revoke`                                        |
+| `audit` «Журнал безопасности» | `audit:view`                                                                           |
+| `file` «Файлы»                | `file:view`, `file:delete` — scoped, есть `file:view:own`, `file:delete:own`           |
 
 Засев ролей (`RoleService.seedDefaultPermissions`) берёт `getRegisteredPermissions()`. Страж —
 `src/routing/spec.test.ts`: каждое `permission:`-право в security спецификации объявлено.
@@ -125,7 +123,7 @@ scopes API-ключей; down собирает `manage` обратно у име
 **Права по userId без HTTP-контекста** — `AccessService` ядра (`core/auth/access.ts`: `grantOf`, `can`,
 `isSuperUser`, статический `allows`), без кэша, источник — `GRANT_RESOLVER` (`asGrantResolver`), реализует
 `UserGrantResolver` модуля user (`grantOfUser(user)` — его же использует `toTokenSubject`). Используют:
-политики сокет-комнат (`JobRoomPolicy`, `permissionRoomPolicy`), `UserListener`, `ProfileService`.
+политики сокет-комнат (`permissionRoomPolicy`), `UserListener`, `ProfileService`.
 
 **Защита суперпользователя и ролей:**
 
@@ -135,7 +133,6 @@ scopes API-ключей; down собирает `manage` обратно у име
   → `UserService.notifyUsersPrivilegesChanged`. `createRole` → `RoleCreatedEvent(roleId, roleName)`.
 - `UserService.updateUser(actor, id, body)`: цель — суперпользователь, актор нет → 403 `USER_SUPERUSER_EDIT`.
 - `ProfileService.updateProfileOf/clearProfileOf(actor, userId, …)`: то же → 403 `PROFILE_SUPERUSER_EDIT`.
-- `JobRoomPolicy` передаёт реальный флаг суперпользователя: `JobsService.canView(userId, id, isSuperUser)`.
 
 **Области прав «все / свои» (scoped):**
 
@@ -191,8 +188,7 @@ Scope API-ключа: точное совпадение, wildcard (`reports:*`, 
 ## Доступ к данным предметных модулей
 
 В main нет ролей внутри сущностей: доступ — глобальные роли/права, для сущностей с владельцем — области
-«все / свои» (`OwnedAccess`; образец — модуль file: `file.permissions.ts`, `file.access.ts`, `FileService._findFor`);
-задачи — пока владелец/суперпользователь или `IJobAccessPolicy` по scope (в main политик нет), на области не переведены.
+«все / свои» (`OwnedAccess`; образец — модуль file: `file.permissions.ts`, `file.access.ts`, `FileService._findFor`).
 
 ## Session Entity
 

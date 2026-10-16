@@ -6,16 +6,6 @@ import { config, nodeEnv } from "../../config";
 import { Injectable, logger, ServiceUnavailableException } from "../../core";
 import { PGBOSS_SCHEMA } from "./jobs.types";
 
-export type TPgBossJobState =
-  "created" | "retry" | "active" | "completed" | "cancelled" | "failed";
-
-export interface IPgBossJobRef {
-  queue: string;
-  state: TPgBossJobState;
-  retryCount: number;
-  retryLimit: number;
-}
-
 /** Процесс выполняет задачи и cron: роли `worker` и `all`. */
 export const isJobsWorkerRole = (): boolean => config.app.role !== "api";
 
@@ -130,62 +120,6 @@ export class PgBossService {
 
     await this._boss.stop({ graceful: true, timeout: timeoutMs });
     this._boss = null;
-  }
-
-  /** Очередь и состояние задачи по id; `null` — задачи нет (или удалена). */
-  async findJob(id: string): Promise<IPgBossJobRef | null> {
-    const boss = await this.ready();
-    const { rows } = await boss
-      .getDb()
-      .executeSql(
-        `SELECT name, state, retry_count, retry_limit FROM ${PGBOSS_SCHEMA}.job WHERE id = $1 LIMIT 1`,
-        [id],
-      );
-    const row = rows[0] as
-      | {
-          name: string;
-          state: TPgBossJobState;
-          retry_count: number;
-          retry_limit: number;
-        }
-      | undefined;
-
-    return row
-      ? {
-          queue: row.name,
-          state: row.state,
-          retryCount: row.retry_count,
-          retryLimit: row.retry_limit,
-        }
-      : null;
-  }
-
-  /** Данные задачи; задачи нет (удалена по сроку) — `null`. */
-  async findJobData(id: string): Promise<unknown> {
-    const boss = await this.ready();
-    const { rows } = await boss
-      .getDb()
-      .executeSql(
-        `SELECT data FROM ${PGBOSS_SCHEMA}.job WHERE id = $1 LIMIT 1`,
-        [id],
-      );
-
-    return (rows[0] as { data?: unknown } | undefined)?.data ?? null;
-  }
-
-  /** Из `ids` — задачи, отменённые в pg-boss. */
-  async findCancelledIds(ids: string[]): Promise<string[]> {
-    if (!ids.length) return [];
-
-    const boss = await this.ready();
-    const { rows } = await boss
-      .getDb()
-      .executeSql(
-        `SELECT id FROM ${PGBOSS_SCHEMA}.job WHERE id = ANY($1::uuid[]) AND state = 'cancelled'`,
-        [ids],
-      );
-
-    return rows.map(row => String((row as { id: string }).id));
   }
 
   private createReady(): Promise<PgBoss> {

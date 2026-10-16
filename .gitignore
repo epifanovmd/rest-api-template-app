@@ -9,23 +9,9 @@ files/
 !.env.example
 !.env.docker.example
 !.env.deploy.example
-!agent/package/.env.example
 .DS_Store
 coverage
 
-# Python
-__pycache__/
-*.pyc
 
 # Ключи сервисных аккаунтов (Firebase и т. п.) — не в репозиторий и не в образ
 firebaseAccount.json
-
-# Python-окружения
-.venv/
-
-# Агент для разработки: данные и окружение воркера (yarn agent)
-.agent/
-
-# Скачанные сборки агента (yarn agent:fetch: e2e) — не хранятся; программа агента и
-# архивы для узлов — в agent/.gitignore
-agent/dist/

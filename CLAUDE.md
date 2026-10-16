@@ -10,17 +10,7 @@
 (маршруты и OpenAPI из декораторов), Inversify (DI), TypeORM + PostgreSQL, pg-boss
 (очередь задач на Postgres), Redis (между процессами), Socket.IO, S3-совместимое
 хранилище (SeaweedFS в compose) или диск, Zod, pino, prom-client + Sentry, Mocha +
-Chai + Sinon, сборка `tsc`. Агенты — github.com/epifanovmd/agent (версия — `AGENT_VERSION` в
-`.env.example`): сторона сервера протокола — ядро `src/core/agent` (без зависимостей от
-модулей, переносится как есть), REST/права/сокет — модуль `agent`; всё про агента
-на узлах — папка агента `agent/` (README простыми словами): настройки `agent.yaml`
-(машина разработчика) и `agent.prod.yaml` / `agent.docker.yaml` поверх него, воркеры проекта
-(`agent/workers/<имя>`: база `agent_worker.py` + класс-наследник; `echo`),
-`yarn agent*` (`agent/dev.sh`), архив агента для узлов (`agent pack` с файлами
-получателя `agent/package` по `pack.files` — Dockerfile, compose.yml, .env.example; `yarn agent:pack` = `make
-agent-archive` → `agent/bundle`; его раздаёт API из `AGENT_BUNDLE_DIR`, выдаёт с токеном — ядро
-`AgentIssueService`), образ агента — только из архива (`make agent-image`, CI). Новые версии
-агента находит сам агент (его каталог сборок) и сообщает бэкенду.
+Chai + Sinon, сборка `tsc`.
 Node >= 22.13 (Docker — 24 LTS). Роль процесса — `APP_ROLE=api|worker|all`.
 
 ## Команды
@@ -37,20 +27,13 @@ yarn test                 # юнит, src/**/*.test.ts (один файл: yarn 
 yarn test:e2e             # интеграционный набор test/e2e/*.e2e.ts (нужен yarn services:up)
 make local-up | local-ps | local-logs | local-down   # production-стек в Docker (.env.docker); make help
 yarn gen:module <name>    # каркас модуля по конвенциям (--dry-run — список файлов)
-yarn agent [команда]      # агент с воркером echo (agent/agent.yaml; AGENT_BOOTSTRAP_TOKEN);
-                          # команды агента: config check, status, upgrade …
-yarn agent:pack           # архивы для узлов (agent pack) и сборки воркеров → agent/bundle (= make agent-archive)
-make agent-image          # образ агента из архива под эту машину
-yarn agent:fetch          # программа агента и сборки агента с GitHub в agent/dist (e2e)
 yarn migration:generate src/migrations/<Name> | migration:run | migration:revert
 yarn migration:run:prod   # миграции из build/ (в контейнере)
 ```
 
 Перед завершением задачи обязательны: `yarn generate`, `yarn lint`, `yarn typecheck`,
 `yarn test`; при изменении API, схемы БД или инфраструктуры — ещё `yarn test:e2e`;
-при изменении хранилища агентов — интеграционный тест Store (`TEST_DATABASE_URL`);
-e2e агентов и узлов — с настоящим агентом из `agent/dist` (`yarn agent:fetch`); в GitHub
-стенд не ходит.
+при изменении очереди задач — её интеграционный тест (`TEST_DATABASE_URL`).
 
 ## Никогда не редактировать вручную
 
@@ -64,7 +47,7 @@ e2e агентов и узлов — с настоящим агентом из `
 - Модульный монолит: код живёт в модуле-владельце (`src/modules/<feature>/`);
   контроллер → сервис → репозиторий → сущность; наружу — только DTO.
 - Ядро (`src/core`, `src/types`) не импортирует модули — страж-тест. Расширение —
-  только токенами-реестрами (`asSecurityScheme`, `asJobHandler`, `asJobAccessPolicy`,
+  только токенами-реестрами (`asSecurityScheme`, `asJobHandler`,
   `asSocketRoomProvider/Policy`, `ROUTE_PROVIDER`, `asHealthIndicator`,
   `definePermissions` и т. п.).
 - Регистрация в IoC — только через `@Module.providers`; `@Injectable()` — маркер.
@@ -152,8 +135,3 @@ e2e агентов и узлов — с настоящим агентом из `
 modules, patterns, reference. Загружай тематический файл, когда работаешь в
 соответствующей области. Внутри каждого модуля есть `README.md` с описанием его
 сущностей, эндпоинтов и событий — это часть кода модуля, а не общей документации.
-Воркеры и агенты (где код, как добавить очередь и воркер без SDK, диагностика) —
-[src/modules/agent/README.md](src/modules/agent/README.md), узлы с агентами (привязка,
-установка по SSH, связность) — [src/modules/node/README.md](src/modules/node/README.md);
-формат сообщений агентов —
-[sdk/spec/README.md](https://github.com/epifanovmd/agent/blob/main/sdk/spec/README.md).

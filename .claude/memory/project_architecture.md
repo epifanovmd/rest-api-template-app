@@ -38,41 +38,38 @@ type: project
 
 ## Роли процесса (`APP_ROLE`, `config.app.role`, по умолчанию `all`)
 
-| Роль     | tsoa-маршруты | Клиентские сокеты                                   | Очередь                                     |
-| -------- | ------------- | --------------------------------------------------- | ------------------------------------------- |
-| `api`    | да            | да                                                  | постановка + `work` внешних очередей        |
-| `worker` | нет (пробы)   | нет: `SocketBootstrap` только `registerListeners()` | `work` Node-очередей, cron, watcher, reaper |
-| `all`    | да            | да                                                  | всё (в т.ч. внешние очереди)                |
+| Роль     | tsoa-маршруты | Клиентские сокеты                                   | Очередь                          |
+| -------- | ------------- | --------------------------------------------------- | -------------------------------- |
+| `api`    | да            | да                                                  | только постановка (`enqueue`)    |
+| `worker` | нет (пробы)   | нет: `SocketBootstrap` только `registerListeners()` | `work` очередей, cron, supervise |
+| `all`    | да            | да                                                  | всё                              |
 
-`isJobsWorkerRole()` (`modules/jobs/pg-boss.service.ts`) = `role !== "api"`. Воркер шлёт события
+`isJobsWorkerRole()` (`modules/jobs/pg-boss.service.ts`) = `role !== "api"` (pg-boss `schedule`/`supervise`/`useListenNotify` только у воркеров). Воркер шлёт события
 клиентам через Redis-адаптер Socket.IO (`socket-server.service.ts`, `createAdapter(pub, sub)`).
 
 ## Реестры расширения (токен → хелпер → кто регистрирует)
 
-| Токен (файл)                                                       | Хелпер                                        | Реализации                                                                                                                                              |
-| ------------------------------------------------------------------ | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `SECURITY_SCHEME` (`core/auth/security-scheme.ts`)                 | `asSecurityScheme`                            | `JwtSecurityScheme` (CoreModule), `ApiKeySecurityScheme` (api-key)                                                                                      |
-| `JOB_HANDLER` (`core/jobs/jobs.types.ts`)                          | `asJobHandler` / `asExternalJobHandler`       | см. project_modules.md «Очереди»                                                                                                                        |
-| `JOB_ACCESS_POLICY` (`core/jobs`, optional)                        | `asJobAccessPolicy`                           | в main никто                                                                                                                                            |
-| `JOB_METRICS` (`core/jobs`, optional)                              | `{ provide }`                                 | `PrometheusJobMetrics` (ObservabilityModule)                                                                                                            |
-| `ROUTE_PROVIDER` (`core/routing/route-provider.ts`)                | `{ provide }`                                 | `StorageRouteProvider` (`/files/*`)                                                                                                                     |
-| `RAW_HTTP_HANDLER` (`core/routing/raw-http.ts`)                    | `{ provide }`                                 | `AgentLinkHandler` (core/agent, `/agent/v1/*`, до bodyParser/CORS/лимита)                                                                               |
-| `EXTERNAL_JOB_EXECUTOR` (`core/jobs`, optional)                    | `{ provide }`                                 | `AgentJobExecutor` (core/agent) — внешние очереди jobs: команды воркерам агентов (`canDispatch` — все роли)                                             |
-| `WORKER_REQUEST_HANDLER` (`core/worker-requests`, optional)        | `asWorkerRequestHandler`                      | `DemoEchoLookupHandler` (jobs, `echo.lookup`) — ответы на запросы воркеров к серверу; отвечает `AgentProtocolService.request` (core/agent, multiInject) |
-| `HEALTH_INDICATOR` (`core/observability/health.ts`)                | `asHealthIndicator`                           | `JobsHealthIndicator` (jobs, `name = "jobs"`, pg-boss запущен)                                                                                          |
-| `BOOTSTRAP` (`core/bootstrap`)                                     | `@Module.bootstrappers`                       | Admin, Seed (user), Jobs, Socket                                                                                                                        |
-| `SOCKET_HANDLER` / `SOCKET_EVENT_LISTENER` (socket)                | `asSocketHandler` / `asSocketListener`        | profile (handlers), auth, user, role, profile, session, file, api-key, audit, jobs (listeners)                                                          |
-| `SOCKET_ROOM_PROVIDER` / `SOCKET_ROOM_POLICY` (`socket-rooms.ts`)  | `asSocketRoomProvider` / `asSocketRoomPolicy` | provider: в main никто; policy: `JobRoomPolicy` (`job`), `permissionRoomPolicy`: users, roles, api-keys, audit                                          |
-| `PASSWORD_POLICY` (`modules/user/password-policy.ts`)              | `asPasswordPolicy`                            | `AuthPasswordPolicy` (auth)                                                                                                                             |
-| `FILE_USAGE_PROBE` (`modules/file/file-usage.probe.ts`, optional)  | `{ provide }`                                 | в main никто                                                                                                                                            |
-| `CONTACT_RELATION` (`modules/profile/profile.relations.ts`, opt.)  | `asContactRelation`                           | в main никто                                                                                                                                            |
-| `PRESENCE_AUDIENCE` (`modules/profile/profile.relations.ts`, opt.) | `asPresenceAudience`                          | в main никто                                                                                                                                            |
-| реестр прав (`modules/permission/permission.registry.ts`)          | `definePermissions(domain, group, {...})`     | `<module>.permissions.ts`: api-key, audit, jobs, profile, role, user                                                                                    |
-| `GRANT_RESOLVER` (`core/auth/access.ts`)                           | `asGrantResolver`                             | `UserGrantResolver` (user) → `AccessService` ядра (права по userId, без кэша)                                                                           |
-| конфиг модуля (`src/config.ts`)                                    | `defineModuleConfig(section, schema, values)` | в main никто (`<feature>.config.ts` в ветках-примерах)                                                                                                  |
-| шаблоны писем (`modules/mailer/mailer.types.ts`)                   | `declare module` → `IMailTemplateData`        | базовые шаблоны объявлены в самом mailer                                                                                                                |
-| сокет-события (`modules/socket/socket.types.ts`)                   | `declare module` → `ISocketEvents/EmitEvents` | `*.socket-events.ts`: auth, user, role, profile, session, file, api-key, audit, jobs                                                                    |
-| `PRESENCE_STORE` (socket, optional)                                | `{ provide }`                                 | подмена в тестах; по умолчанию Redis/Memory                                                                                                             |
+| Токен (файл)                                                       | Хелпер                                        | Реализации                                                                               |
+| ------------------------------------------------------------------ | --------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `SECURITY_SCHEME` (`core/auth/security-scheme.ts`)                 | `asSecurityScheme`                            | `JwtSecurityScheme` (CoreModule), `ApiKeySecurityScheme` (api-key)                       |
+| `JOB_HANDLER` (`core/jobs/jobs.types.ts`)                          | `asJobHandler`                                | см. project_modules.md «Очереди»                                                         |
+| `JOB_METRICS` (`core/jobs`, optional)                              | `{ provide }`                                 | `PrometheusJobMetrics` (ObservabilityModule)                                             |
+| `ROUTE_PROVIDER` (`core/routing/route-provider.ts`)                | `{ provide }`                                 | `StorageRouteProvider` (`/files/*`)                                                      |
+| `RAW_HTTP_HANDLER` (`core/routing/raw-http.ts`)                    | `{ provide }`                                 | в main никто (сырые обработчики до bodyParser/CORS/лимита; App опрашивает при `isBound`) |
+| `HEALTH_INDICATOR` (`core/observability/health.ts`)                | `asHealthIndicator`                           | `JobsHealthIndicator` (jobs, `name = "jobs"`, pg-boss запущен)                           |
+| `BOOTSTRAP` (`core/bootstrap`)                                     | `@Module.bootstrappers`                       | Admin, Seed (user), Jobs, Socket                                                         |
+| `SOCKET_HANDLER` / `SOCKET_EVENT_LISTENER` (socket)                | `asSocketHandler` / `asSocketListener`        | profile (handlers), auth, user, role, profile, session, file, api-key, audit (listeners) |
+| `SOCKET_ROOM_PROVIDER` / `SOCKET_ROOM_POLICY` (`socket-rooms.ts`)  | `asSocketRoomProvider` / `asSocketRoomPolicy` | provider: в main никто; policy: `permissionRoomPolicy`: users, roles, api-keys, audit    |
+| `PASSWORD_POLICY` (`modules/user/password-policy.ts`)              | `asPasswordPolicy`                            | `AuthPasswordPolicy` (auth)                                                              |
+| `FILE_USAGE_PROBE` (`modules/file/file-usage.probe.ts`, optional)  | `{ provide }`                                 | в main никто                                                                             |
+| `CONTACT_RELATION` (`modules/profile/profile.relations.ts`, opt.)  | `asContactRelation`                           | в main никто                                                                             |
+| `PRESENCE_AUDIENCE` (`modules/profile/profile.relations.ts`, opt.) | `asPresenceAudience`                          | в main никто                                                                             |
+| реестр прав (`modules/permission/permission.registry.ts`)          | `definePermissions(domain, group, {...})`     | `<module>.permissions.ts`: api-key, audit, file, profile, role, user                     |
+| `GRANT_RESOLVER` (`core/auth/access.ts`)                           | `asGrantResolver`                             | `UserGrantResolver` (user) → `AccessService` ядра (права по userId, без кэша)            |
+| конфиг модуля (`src/config.ts`)                                    | `defineModuleConfig(section, schema, values)` | в main никто (`<feature>.config.ts` в ветках-примерах)                                   |
+| шаблоны писем (`modules/mailer/mailer.types.ts`)                   | `declare module` → `IMailTemplateData`        | базовые шаблоны объявлены в самом mailer                                                 |
+| сокет-события (`modules/socket/socket.types.ts`)                   | `declare module` → `ISocketEvents/EmitEvents` | `*.socket-events.ts`: auth, user, role, profile, session, file, api-key, audit           |
+| `PRESENCE_STORE` (socket, optional)                                | `{ provide }`                                 | подмена в тестах; по умолчанию Redis/Memory                                              |
 
 Как пользоваться последними пятью — project_patterns.md «Точки расширения для модулей».
 Страж границ — `src/core/auth/core-boundaries.test.ts` (`src/core/**`, `src/types/**` → `src/modules/**` запрещено).
@@ -143,8 +140,10 @@ tsoa создаётся без DI — сервисы брать из `iocContain
   `core/http/exceptions.ts` — `HttpException(message, status, reason?, code?)`, семейство
   `BadRequest…ServiceUnavailableException`, `ValidationException(fields)`, `defineErrors(prefix, defs)` →
   фабрики + `.codes`, `defaultErrorCode(status)`, `HttpStatus`. `UUID` — `core/http/uuid.type.ts`.
-- `JobQueue` (абстрактный класс-токен), `IJobHandler`, `JobDefinition`, `JobContext`, `EnqueueOptions`,
-  `JobError(code, msg, retryable)`, внешние: `IExternalJobHandler`, `ExternalJobFiles` — `core/jobs/jobs.types.ts`.
+- `JobQueue` (абстрактный класс-токен, только `enqueue(queue, data, { startAfter, singletonKey, priority, manager })`),
+  `IJobHandler`, `JobDefinition { queue, retryLimit, retryDelaySeconds, retryBackoff, expireInSeconds, concurrency, cron }`,
+  `JobContext { id, queue, data, attempt, signal }`, `EnqueueOptions`, `JobError(code, msg, retryable)`,
+  `asJobHandler`, `JOB_METRICS` — `core/jobs/jobs.types.ts`.
 - `FileStorage` (абстрактный класс-токен: `put/get/stat/delete/deletePrefix/signedGetUrl/signedPutUrl/withLocalFile`)
   — `core/storage/storage.types.ts`.
 - Legacy: `IListResponseDto` (`core/dto/ListResponse.ts`) — нигде не используется, не применять;
@@ -227,11 +226,13 @@ Env: `APP_ROLE`, `APP_PUBLIC_URL`, `JOBS_*`, `STORAGE_*`, `S3_*` (`S3_PUBLIC_END
 `createDataSource({ entities, migrations })` (`core/db/data-source.ts`): `synchronize: false`,
 `applicationName`, `maxQueryExecutionTime` (slow log), pool, `connectionTimeoutMillis`, `statement_timeout`.
 Сущности — из `@Module({ entities })`; тест `core/db/entity-registry.test.ts`. Миграции — список
-`src/migrations/index.ts`; в main **одна базовая** `InitialSchema1790353961289`
+`src/migrations/index.ts`; базовая — `InitialSchema1790353961289`
 (`src/migrations/1790353961289-InitialSchema.ts`, только базовые таблицы: users,
 roles, permissions, role_permissions, user_roles, user_permissions, profiles, privacy_settings, files, api_keys,
 audit_events, sessions, email_change_requests, otp, reset_password_tokens, biometrics, passkeys,
 passkey_challenges, job_runs). **Больше не пересоздаётся**: на неё опираются ветки-примеры, их миграции идут поверх.
+Поверх неё в main — миграции из `index.ts` по порядку (история, применённые — не править);
+последняя — `DropLegacyTables1792300000000`: удаляет устаревшие таблицы (в т.ч. job_runs) и их права.
 Изменение схемы = новая миграция: `yarn migration:generate src/migrations/<Name>` (нужна БД с применёнными
 миграциями) → в список.
 pg-boss держит свою схему `pgboss` (мигрирует сам). `core/db/pg-errors.ts`: `isUniqueViolation`, `PG_ERROR`,
@@ -260,7 +261,7 @@ E2E: `yarn test:e2e` (`.mocharc.e2e.yml`: `test/e2e/**/*.e2e.ts`, `setup.ts` —
 (многосегментный допустим — `redisKeyPrefix` в config.ts). Env `E2E_*` (Postgres, Redis, SMTP,
 `E2E_MAILPIT_URL`, `E2E_S3_*`, `E2E_STORAGE_DRIVER`), умолчания — dev-compose (5433, 6380/15, 1026/8026,
 8334, bucket `e2e`); CI задаёт стандартные порты явно. Файлы: `auth`, `user` (профиль, email, пароль и удаление,
-администрирование, сессии, аудит), `agents` (настоящий агент версии AGENT_VERSION + воркер echo: регистрация, ключ, манифест, настройки по схеме, команды, события с problems, demo.echo быстрая/lookup/долгая/файл/отмена, вторая копия — команды через БД, перезапуск занятого, offline ≤ 5 с, метрики, журнал, аудит, смена ключа), `nodes` (привязка агента, доступ через узел, нагрузка), `platform` (файлы S3/local, задачи, api-keys,
+администрирование, сессии, аудит), `platform` (файлы S3/local, задачи, api-keys,
 биометрия/passkeys); ветки-примеры добавляют свои. `client.ts`
 (HTTP-клиент, пишет `calledEndpoints`),
 `zz-coverage.e2e.ts` — последний: каждый path+method из `swagger.json` должен быть вызван.
@@ -276,19 +277,9 @@ E2E: `yarn test:e2e` (`.mocharc.e2e.yml`: `test/e2e/**/*.e2e.ts`, `setup.ts` —
   validation, errors, events, module, README, тесты; печатает шаги (app.module до SocketModule, generate, миграция).
 - `Dockerfile`: стадии deps → builder → prod-deps → `api` (tini, без yarn, `USER node`, `templates/`,
   `VOLUME /app/files`, HEALTHCHECK `/ping`) → `worker` (= api + `ffmpeg`, последняя стадия — дефолт).
-  `APP_VERSION` build-arg; стадия
-  `agent-bundle` (python:3.12-slim: агент версии AGENT_VERSION (.env.example или build-arg) с GitHub, `agent pack --env prod
---platform linux/amd64,linux/arm64 --release-out`, секрет `agent_signing_key`) → `/app/agent-bundle` (`AGENT_BUNDLE_DIR`);
-  стадия `agent-archives` (scratch) — только архивы (CI: `--target agent-archives --output`).
-  Архив агента (`agent pack --env prod`; `pack.files` в agent.prod.yaml — `agent/package/` (Dockerfile, compose.yml,
-  .env.example, .dockerignore, README.md) и `agent.docker.yaml`) — единственный источник образа агента: `make agent-image` / CI
-  (`agent-image` в ci.yml, `agent` в release.yml: файлы релиза и образ `<версия>-agent` amd64+arm64 из архивов).
-  Получатель кладёт адрес и токен в `agent/.env` (`envFiles: [.env]` в agent.prod.yaml). На машине: `agent/dev.sh` —
-  `yarn agent [команда]|agent:fetch|agent:pack|image` (`AGENT_DIR`, по умолчанию `.agent/`; программа — `agent/agent`);
-  `make agent-archive|agent-image` без `.env.deploy`.
+  `APP_VERSION` build-arg.
 - `docker-compose.yml` (prod, только образы): `migrate` (одноразовый `typeorm migration:run -d build/data-source.js`),
-  `api` (`:TAG-api`, `APP_ROLE=api`, масштабируется, `API_PORTS`), `worker` (`:TAG`, `APP_ROLE=worker`), профиль
-  `agent` (образ `:TAG-agent` из архива, том `agent-data`, `AGENT_ENROLL_TOKEN` ← `AGENT_BOOTSTRAP_TOKEN`), `postgres:16`, `redis:7` (без persistence, allkeys-lru), `s3` (SeaweedFS `:8333`) + `s3-init`
+  `api` (`:TAG-api`, `APP_ROLE=api`, масштабируется, `API_PORTS`), `worker` (`:TAG`, `APP_ROLE=worker`), `postgres:16`, `redis:7` (без persistence, allkeys-lru), `s3` (SeaweedFS `:8333`) + `s3-init`
   (aws-cli, создаёт bucket). `env_file: ${ENV_FILE:-.env.production}`, `DB_MIGRATIONS_RUN=false`,
   `STORAGE_DRIVER=s3`, `S3_PUBLIC_ENDPOINT` по умолчанию `http://localhost:8333`, `read_only`, `cap_drop: ALL`.
 - `docker-compose.dev.yml` (`name: rest-api-dev`, `yarn services:up|down`, порты на 127.0.0.1 сдвинуты, чтобы
@@ -297,13 +288,12 @@ E2E: `yarn test:e2e` (`.mocharc.e2e.yml`: `test/e2e/**/*.e2e.ts`, `setup.ts` —
   `.env.example` подключения по умолчанию — на эти порты. Проект с infra НЕ связан (решение пользователя).
 - `make local-*` (`LOCAL_GOALS` — без `.env.deploy`): `docker-compose.yml` + redis/postgres/s3-файлы,
   `--env-file .env.docker` (копия `.env.docker.example`, в git только пример), `TAG=local`, S3 на 8335.
-- `.gitignore`/`.dockerignore`: Python `__pycache__/`, `*.pyc` игнорируются (из git убраны). `firebaseAccount.json`
+- `.gitignore`: `firebaseAccount.json`
   (ключ сервисного аккаунта) игнорируется — чтобы локальный ключ не попал в коммит.
 - CI `.github/workflows/ci.yml` (push и pull_request в `main`; ветки-примеры CI не запускают): verify (generate + `git diff --exit-code src/routing`, lint, typecheck, test,
   build), migrations (чистый Postgres + дрейф через `migration:generate CiDrift`), e2e (матрица `storage: [s3, local]`,
-  SeaweedFS запускается `docker run`; перед ним `yarn agent:fetch` (linux-amd64); стенд сам собирает архив агента (`agent pack`, свой ключ проекта, `AGENT_UPDATE_RELEASES` — локальный сервер сборок) и раздаёт сборки агента с локального сервера — в GitHub не ходит), audit (`continue-on-error`), agent-worker (py_compile `agent/workers/echo/worker.py agent_worker.py`), docker (api/worker + Trivy CRITICAL/HIGH, ignore-unfixed), agent-image (архив — артефакт, образ из архива
-  (все платформы в одном), Trivy, `<sha>-agent`). `release.yml`: тег `v*` → GHCR, amd64+arm64, worker без суффикса, api `-api`;
-  задача `agent` — архив в файлы релиза GitHub, образ `-agent` (amd64+arm64) из него.
+  SeaweedFS запускается `docker run`), audit (`continue-on-error`), docker (api/worker + Trivy CRITICAL/HIGH, ignore-unfixed).
+  `release.yml`: тег `v*` → GHCR, amd64+arm64, worker без суффикса, api `-api`.
   `deploy.yml`: после Release или вручную — scp `docker-compose.yml`, `pull` → `run --rm migrate` → `up -d`.
   `Makefile`: `deploy` (compose/pull/migrate/up), `env`, `logs`, `backup`, `build`.
 
@@ -336,7 +326,7 @@ E2E: `yarn test:e2e` (`.mocharc.e2e.yml`: `test/e2e/**/*.e2e.ts`, `setup.ts` —
 
 ## Общие механизмы ядра
 
-- `core/db/PgSignals<TChannel>` — LISTEN/NOTIFY между процессами: одно соединение на наследника, переподключение раз в 30 с, `isListening`/`onStatus` для перехода на опрос (PgBouncer transaction mode). Модуль наследует со своими каналами и регистрирует в DI (пример — `JobSignals`). NOTIFY с `manager` доходит после коммита.
+- `core/db/PgSignals<TChannel>` — LISTEN/NOTIFY между процессами: одно соединение на наследника, переподключение раз в 30 с, `isListening`/`onStatus` для перехода на опрос (PgBouncer transaction mode). Модуль наследует со своими каналами и регистрирует в DI (в main наследников нет). NOTIFY с `manager` доходит после коммита.
 - `core/crypto/secret-box` — `parseSecretBoxKey` (32 байта hex/base64), `sealSecret`/`openSecret` (AES-256-GCM, формат `v1`): секреты в БД ключом приложения.
 - `core/redis/LiveStore(prefix)` — живое состояние с TTL (`getJson`/`setJson`/`delete`/`setIfAbsent`/`incrBy`): Redis, без него — память процесса. Модуль наследует со своим префиксом.
 - Socket: `room:subscribe` регистрируется синхронно до первого await в `connection` (иначе подписка сразу после connect/reconnect терялась). e2e сокетов — `test/e2e/socket.ts` (`connectSocket`, `join`, `next`, `none`).

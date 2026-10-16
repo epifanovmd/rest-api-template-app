@@ -7,15 +7,8 @@ coverage
 /storage
 /data
 + /.env.example
-+ /agent/package/.env.example
 .env*
 .idea
 .claude
-.venv
-.venv-*
-__pycache__
 *.dump
 backup_*.sql.gz
-/agent/bundle
-/agent/agent
-/agent/dist

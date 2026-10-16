@@ -22,35 +22,11 @@ describe("JobHandlerRegistry", () => {
     ).to.throw(/больше суток/);
   });
 
-  it("внешней очереди нужен тип задачи воркера", () => {
+  it("умолчания определения очереди", () => {
     const registry = new JobHandlerRegistry();
 
-    expect(() =>
-      registry.register([handler({ queue: "ext", external: true })]),
-    ).to.throw(/job\.type/);
-
-    registry.register([
-      handler({
-        queue: "ext2",
-        external: true,
-        job: { type: "report.build", worker: "report" },
-      }),
-    ]);
-    expect(registry.definition("ext2")?.job).to.deep.equal({
-      type: "report.build",
-      worker: "report",
-    });
-  });
-
-  it("внешняя очередь всегда видимая", () => {
-    const registry = new JobHandlerRegistry();
-
-    registry.register([
-      handler({ queue: "ext", external: true, job: { type: "x.run" } }),
-    ]);
-    expect(registry.definition("ext")).to.include({
-      tracked: true,
-      external: true,
-    });
+    registry.register([handler({ queue: "a", cron: "* * * * *" })]);
+    expect(registry.get("a")).to.exist;
+    expect(registry.all()).to.have.length(1);
   });
 });

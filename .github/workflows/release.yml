@@ -68,68 +68,8 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          # Подпись воркеров проекта в образе (стадия agent-bundle, agent pack): закрытый ключ
-          # проекта — секрет AGENT_SIGNING_KEY; открытый pack кладёт в архив сам. Без секрета
-          # воркеры проекта без подписи.
           build-args: |
             APP_VERSION=${{ github.ref_name }}
-          secrets: |
-            agent_signing_key=${{ secrets.AGENT_SIGNING_KEY }}
           provenance: true
           cache-from: type=gha,scope=release${{ matrix.suffix }}
           cache-to: type=gha,mode=max,scope=release${{ matrix.suffix }}
-
-  # Агент проекта: архив (agent pack, все платформы — тот же, что раздаёт API) — файл релиза
-  # GitHub, образ <версия>-agent (amd64 и arm64) — из него же его Dockerfile.
-  agent:
-    needs: on-main
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      packages: write
-    steps:
-      - uses: actions/checkout@v4
-      - uses: docker/setup-qemu-action@v3
-      - uses: docker/setup-buildx-action@v3
-      - uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Архивы агента
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          target: agent-archives
-          outputs: type=local,dest=agent-archives
-          secrets: |
-            agent_signing_key=${{ secrets.AGENT_SIGNING_KEY }}
-          cache-from: type=gha,scope=release-api
-      - name: Архивы — в релиз
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --generate-notes
-          gh release upload "$GITHUB_REF_NAME" agent-archives/*.tar.gz agent-archives/install.sh --clobber
-      - id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ghcr.io/${{ github.repository }}
-          flavor: |
-            latest=auto
-            suffix=-agent,onlatest=true
-          tags: |
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=ref,event=tag
-            type=sha,format=short
-      - name: Образ агента из архива
-        env:
-          TAGS: ${{ steps.meta.outputs.tags }}
-        run: |
-          mkdir ctx
-          tar -xzf agent-archives/agent-*.tar.gz -C ctx
-          args=""
-          for tag in $TAGS; do args="$args -t $tag"; done
-          docker buildx build --platform linux/amd64,linux/arm64 --push $args \
-            --label org.opencontainers.image.source=https://github.com/${{ github.repository }} ctx/agent

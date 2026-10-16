@@ -32,16 +32,6 @@ jobs:
       - run: yarn test
       - run: yarn build
 
-  # Воркеры проекта (Python, база agent_worker.py — стандартная библиотека): синтаксис.
-  agent-worker:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - run: python -m py_compile agent/workers/*/*.py
-
   migrations:
     runs-on: ubuntu-latest
     services:
@@ -139,13 +129,6 @@ jobs:
             amazon/aws-cli:latest --endpoint-url http://localhost:8333 s3 mb s3://e2e
       - run: yarn install --frozen-lockfile --ignore-scripts
       - run: yarn generate
-      # Настоящий агент для сценариев агентов и узлов — сборки агента версии AGENT_VERSION с
-      # GitHub Release в agent/dist (yarn agent:fetch, только эта платформа). Агент стенда
-      # проверяет новые версии на локальном сервере сборок, не в GitHub; архив папки агента
-      # стенд собирает сам (agent pack, свой ключ проекта).
-      - run: yarn agent:fetch
-        env:
-          AGENT_PLATFORMS: linux-amd64
       - run: yarn test:e2e
 
   audit:
@@ -168,9 +151,8 @@ jobs:
           yarn audit --level high --groups dependencies || code=$?
           if [ $((code & 24)) -ne 0 ]; then exit "$code"; fi
 
-  # Образы: на push в main — с подписью воркеров проекта, проверка Trivy и отправка в
-  # ghcr с тегом коммита (<sha>, <sha>-api); деплой берёт именно их. Образ агента — задача
-  # agent-image.
+  # Образы: на push в main — проверка Trivy и отправка в ghcr с тегом коммита
+  # (<sha>, <sha>-api); деплой берёт именно их.
   # В pull request — только сборка и проверка.
   docker:
     runs-on: ubuntu-latest
@@ -208,12 +190,8 @@ jobs:
             rest-api:ci-${{ matrix.name }}
             ghcr.io/${{ github.repository }}:${{ github.sha }}${{ matrix.suffix }}
           labels: org.opencontainers.image.source=https://github.com/${{ github.repository }}
-          # Подпись воркеров проекта (стадия agent-bundle, agent pack): закрытый ключ — секрет
-          # AGENT_SIGNING_KEY (в слои не попадает); открытый pack кладёт в архив сам.
           build-args: |
             APP_VERSION=${{ github.sha }}
-          secrets: |
-            agent_signing_key=${{ secrets.AGENT_SIGNING_KEY }}
           cache-from: type=gha,scope=${{ matrix.name }}
           cache-to: type=gha,mode=max,scope=${{ matrix.name }}
       - name: Trivy
@@ -228,64 +206,10 @@ jobs:
         if: env.PUBLISH == 'true'
         run: docker push "ghcr.io/${{ github.repository }}:${{ github.sha }}${{ matrix.suffix }}"
 
-  # Архивы агента (agent pack — те же, что раздаёт API и собирает make agent-archive) —
-  # артефакт сборки; образ агента — из архива его же Dockerfile, в ghcr — <sha>-agent (на push
-  # в main).
-  agent-image:
-    runs-on: ubuntu-latest
-    needs: verify
-    permissions:
-      contents: read
-      packages: write
-    env:
-      PUBLISH: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
-      IMAGE: ghcr.io/${{ github.repository }}:${{ github.sha }}-agent
-    steps:
-      - uses: actions/checkout@v4
-      - uses: docker/setup-buildx-action@v3
-      - name: Архивы агента
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          target: agent-archives
-          outputs: type=local,dest=agent-archives
-          secrets: |
-            agent_signing_key=${{ secrets.AGENT_SIGNING_KEY }}
-          cache-from: type=gha,scope=api
-      - uses: actions/upload-artifact@v4
-        with:
-          name: agent-archives
-          path: |
-            agent-archives/*.tar.gz
-            agent-archives/install.sh
-      - name: Образ из архива
-        run: |
-          mkdir ctx
-          tar -xzf agent-archives/agent-*.tar.gz -C ctx
-          docker build -t rest-api:ci-agent -t "$IMAGE" \
-            --label org.opencontainers.image.source=https://github.com/${{ github.repository }} ctx/agent
-      - name: Trivy
-        uses: aquasecurity/trivy-action@v0.36.0
-        with:
-          image-ref: rest-api:ci-agent
-          severity: CRITICAL,HIGH
-          ignore-unfixed: true
-          exit-code: "1"
-          vuln-type: os,library
-      - if: env.PUBLISH == 'true'
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Образ в ghcr
-        if: env.PUBLISH == 'true'
-        run: docker push "$IMAGE"
-
   # Деплой main на хост после всех проверок: готовые образы коммита из ghcr; без
   # настроек (форки шаблона) — пропуск.
   deploy:
-    needs: [verify, agent-worker, migrations, e2e, docker, agent-image]
+    needs: [verify, migrations, e2e, docker]
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && vars.DEPLOY_ENV != ''
     uses: ./.github/workflows/deploy.yml
     permissions:

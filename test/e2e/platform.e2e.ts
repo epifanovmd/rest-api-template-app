@@ -232,32 +232,6 @@ describe("платформа", () => {
         204,
       );
     });
-
-    it("внешняя задача без агента ждёт в очереди; отмена ждущей; чужому не видна", async () => {
-      const cancelled = expectStatus(
-        await call(admin, "POST", "/api/v1/jobs/demo/echo", { text: "cancel" }),
-        201,
-      );
-      const queued = expectStatus(
-        await call(admin, "GET", `/api/v1/jobs/${cancelled.data.jobId}`),
-        200,
-      );
-
-      expect(queued.data.status).to.equal("queued");
-      expectStatus(
-        await call(
-          admin,
-          "POST",
-          `/api/v1/jobs/${cancelled.data.jobId}/cancel`,
-        ),
-        204,
-      );
-      expectStatus(
-        await call(bob, "GET", `/api/v1/jobs/${cancelled.data.jobId}`),
-        [403, 404],
-      );
-      expectStatus(await call(admin, "GET", "/api/v1/jobs?limit=5"), 200);
-    });
   });
 
   describe("биометрия, passkeys", () => {

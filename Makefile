@@ -5,14 +5,12 @@
 #     Postgres, Redis и S3 (.env.docker из .env.docker.example, другой файл — LOCAL_ENV_FILE=…;
 #     образы с тегом LOCAL_TAG=local)
 #   make image         — образы worker и api
-#   make agent-archive — архив агента для узлов (все платформы) → agent/bundle (тот же архив раздаёт API)
-#   make agent-image   — образ агента из архива под эту машину ($(IMAGE):$(TAG)-agent)
 #
 # Деплой по SSH. Настройки — .env.deploy (образец .env.deploy.example); секреты
 # приложения — .env.production (кладёт `make env`).
 #   make release  — готовые образы коммита из ghcr (TAG=<sha>; их собирает CI)
 #   make deploy   — запасной путь: исходники на хост и сборка там же
-LOCAL_GOALS := help image local-up local-down local-logs local-ps agent-archive agent-image
+LOCAL_GOALS := help image local-up local-down local-logs local-ps
 ifneq ($(if $(MAKECMDGOALS),$(filter-out $(LOCAL_GOALS),$(MAKECMDGOALS)),deploy),)
 ifeq ($(wildcard .env.deploy),)
 $(error Нет .env.deploy — скопируйте .env.deploy.example и заполните)
@@ -35,7 +33,7 @@ LOCAL = export IMAGE=$(IMAGE) TAG=$(LOCAL_TAG) ENV_FILE=$(LOCAL_ENV_FILE) COMPOS
 DUMP = src/core/db/dump
 DB = --host $(SSH_USER)@$(SSH_HOST) --container $(DB_CONTAINER) --user $(DB_USER) --db $(DB_NAME)
 
-.PHONY: help local-ps deploy release sync compose env build pull migrate up down status logs restart db-dump db-restore image local-up local-down local-logs agent-archive agent-image
+.PHONY: help local-ps deploy release sync compose env build pull migrate up down status logs restart db-dump db-restore image local-up local-down local-logs
 
 help:
 	@sed -n '1,/^LOCAL_GOALS/p' Makefile | sed -n 's/^# \{0,1\}//p'
@@ -105,9 +103,3 @@ local-logs:
 local-ps:
 	$(LOCAL) ps
 
-# --- Агент проекта ---
-agent-archive:
-	sh agent/dev.sh pack
-
-agent-image:
-	sh agent/dev.sh image $(IMAGE):$(TAG)-agent

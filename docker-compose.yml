@@ -14,11 +14,6 @@
 # docker-compose.postgres.yml, POSTGRES_HOST в .env.production (с хоста —
 # host.docker.internal). Без docker-compose.s3.yml — STORAGE_DRIVER=local (том
 # files) или внешний S3 через S3_*.
-# Агент с воркером echo — образ из архива агента (CI: <sha>-agent; на машине — make agent-archive
-# agent-image): `docker compose --profile agent up -d`; регистрация — AGENT_BOOTSTRAP_TOKEN (тот же
-# у API). Агент на другой машине — архив агента (agent/package/README.md). Один агент — один том
-# данных: ещё агенты — своими сервисами со своими томами. Несколько реплик api: поток агента
-# держит одна, остальные будят её через Postgres NOTIFY — балансировщик может быть любым.
 
 x-logging: &logging
   driver: json-file
@@ -102,8 +97,6 @@ services:
       target: api
       args:
         APP_VERSION: ${TAG:-latest}
-        AGENT_VERSION: ${AGENT_VERSION:-}
-      secrets: [agent_signing_key]
     environment:
       <<: *app-env
       APP_ROLE: api
@@ -132,8 +125,6 @@ services:
       target: worker
       args:
         APP_VERSION: ${TAG:-latest}
-        AGENT_VERSION: ${AGENT_VERSION:-}
-      secrets: [agent_signing_key]
     environment:
       <<: *app-env
       APP_ROLE: worker
@@ -149,45 +140,5 @@ services:
     healthcheck: *ready-check
     restart: unless-stopped
 
-  # Агент с воркером echo (очередь demo.echo), по профилю; образ — из архива агента.
-  agent:
-    profiles: ["agent"]
-    image: ${IMAGE:-ghcr.io/epifanovmd/rest-api-template-app}:${TAG:-latest}-agent
-    environment:
-      AGENT_SERVER_URL: ${AGENT_SERVER_URL:-http://api:8181}
-      # http:// — внутри сети compose; снаружи — https:// и false.
-      AGENT_SERVER_ALLOW_INSECURE: ${AGENT_SERVER_ALLOW_INSECURE:-true}
-      # Токен регистрации: bootstrap-токен API или выпущенный
-      # (POST /api/v1/agent-enrollment/tokens).
-      AGENT_ENROLL_TOKEN: ${AGENT_ENROLL_TOKEN:-${AGENT_BOOTSTRAP_TOKEN:-}}
-      AGENT_LOG_LEVEL: ${AGENT_LOG_LEVEL:-info}
-    volumes:
-      # Ключ агента, очередь важных сообщений (события без связи), настройки
-      # воркеров и ход работ echo переживают рестарт.
-      - agent-data:/var/lib/agent
-    depends_on:
-      api:
-        condition: service_healthy
-    # Воркеры останавливаются вместе с агентом (lifecycle.stopTimeout в agent/agent.yaml).
-    stop_grace_period: 90s
-    read_only: true
-    tmpfs:
-      - /tmp
-    cap_drop:
-      - ALL
-    security_opt:
-      - no-new-privileges:true
-    restart: unless-stopped
-    logging: *logging
-
-# Подпись воркеров проекта при сборке образа (agent pack): закрытый ключ проекта
-# (base64, ключи подписи — agent/README.md) — файлом AGENT_SIGNING_KEY_FILE на машине сборки (не в .env: env_file
-# попадает в контейнеры); открытый ключ pack кладёт в архив сам. Без файла воркеры
-# без подписи: ставятся, но с API не обновляются.
-secrets:
-  agent_signing_key:
-    file: ${AGENT_SIGNING_KEY_FILE:-/dev/null}
-
 volumes:
-  agent-data:
   files:

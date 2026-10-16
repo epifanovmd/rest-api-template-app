@@ -15,6 +15,7 @@ import { AgentProtocol1791900000000 } from "./1791900000000-AgentProtocol";
 import { AgentDeleted1792000000000 } from "./1792000000000-AgentDeleted";
 import { AgentIssues1792100000000 } from "./1792100000000-AgentIssues";
 import { AgentIssuesAllPlatforms1792200000000 } from "./1792200000000-AgentIssuesAllPlatforms";
+import { DropLegacyTables1792300000000 } from "./1792300000000-DropLegacyTables";
 import { OwnFilePermissions1790770000000 } from "./1790770000000-OwnFilePermissions";
 
 /**
@@ -41,4 +42,5 @@ export const migrations: Function[] = [
   AgentDeleted1792000000000,
   AgentIssues1792100000000,
   AgentIssuesAllPlatforms1792200000000,
+  DropLegacyTables1792300000000,
 ];

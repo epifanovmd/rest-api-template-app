@@ -1,7 +1,0 @@
-# Программа агента скачивается (yarn agent, yarn agent:fetch) версии AGENT_VERSION.
-/agent
-/agent.prev
-/agent.update.json
-# Свои переменные, архивы для узлов и каталог сборок воркеров (yarn agent:pack).
-/.env
-/bundle/

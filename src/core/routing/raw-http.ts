@@ -2,7 +2,7 @@ import type { IncomingMessage, ServerResponse } from "http";
 import type { Middleware } from "koa";
 
 /**
- * Обработчики HTTP со своим протоколом (канал агентов): получают запрос до
+ * Обработчики HTTP со своим протоколом: получают запрос до
  * разбора тела, CORS и лимита запросов и отвечают сами. Модуль регистрирует
  * `{ provide: RAW_HTTP_HANDLER, useClass }`; App опрашивает их на ролях с
  * HTTP API. Такие пути в Swagger не попадают — документируются в README модуля.

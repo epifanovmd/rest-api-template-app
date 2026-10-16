@@ -95,8 +95,6 @@ const configSchema = z.object({
     shutdownTimeoutMs: positiveInt.default(20_000),
     /** Соединений пула pg-boss на процесс. */
     poolMax: positiveInt.default(4),
-    /** Сколько дней хранить завершённые записи задач (`job_runs`). */
-    retentionDays: positiveInt.default(30),
   }),
 
   storage: z.object({
@@ -313,7 +311,6 @@ export const config: Config = productionSchema.parse({
     concurrency: env.JOBS_CONCURRENCY,
     shutdownTimeoutMs: env.JOBS_SHUTDOWN_TIMEOUT_MS,
     poolMax: env.JOBS_POOL_MAX,
-    retentionDays: env.JOBS_RETENTION_DAYS,
   },
   storage: {
     driver: env.STORAGE_DRIVER,

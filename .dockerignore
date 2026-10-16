@@ -20,14 +20,4 @@ lefthook.yml
 files
 test
 scripts
-
-__pycache__/
-*.pyc
-
 firebaseAccount.json
-.venv
-.agent
-agent/agent
-agent/bundle
-agent/.env
-agent/dist

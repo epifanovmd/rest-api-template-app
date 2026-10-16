@@ -20,9 +20,7 @@ describe("сокеты", () => {
       const ws = await connectSocket(admin);
 
       try {
-        expect(
-          await ws.join("job", "00000000-0000-4000-8000-000000000000"),
-        ).to.deep.equal({ ok: false });
+        expect(await ws.join("users")).to.deep.equal({ ok: true });
       } finally {
         ws.close();
       }

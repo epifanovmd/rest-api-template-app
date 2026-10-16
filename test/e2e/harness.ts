@@ -1,23 +1,12 @@
 import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
-import { ChildProcess, execFile, spawn } from "child_process";
-import { generateKeyPairSync } from "crypto";
+import { ChildProcess, spawn } from "child_process";
 import { once } from "events";
-import {
-  copyFileSync,
-  createWriteStream,
-  existsSync,
-  mkdtempSync,
-  readFileSync,
-  rmSync,
-} from "fs";
+import { createWriteStream } from "fs";
 import { readFile } from "fs/promises";
-import { createServer as createHttpServer, Server } from "http";
 import { Redis } from "ioredis";
-import { AddressInfo, createServer } from "net";
-import { tmpdir } from "os";
-import { join, resolve } from "path";
+import { createServer } from "net";
+import { resolve } from "path";
 import { Client } from "pg";
-import { promisify } from "util";
 
 /**
  * Интеграционный стенд: настоящий сервер (`APP_ROLE=all`) поверх Postgres,
@@ -181,141 +170,6 @@ export const readStored = async (key: string): Promise<string> => {
   }
 };
 
-/** Версия агента: `AGENT_VERSION` окружения, иначе из `.env.example`. */
-export const agentVersion = (): string =>
-  process.env.AGENT_VERSION ||
-  (/^AGENT_VERSION=(\S+)/m.exec(
-    readFileSync(resolve(".env.example"), "utf8"),
-  )?.[1] ??
-    "");
-
-/**
- * Сборки агента с GitHub (`yarn agent:fetch`): программа агента под каждую
- * платформу, `manifest.json`, `install.sh`. По умолчанию — версии `AGENT_VERSION`.
- */
-export const AGENT_DIST_DIR = resolve(
-  env.E2E_AGENT_DIST_DIR ?? `agent/dist/v${agentVersion()}`,
-);
-
-/** Версия сборок агента стенда — из их `manifest.json`. */
-export const AGENT_VERSION = existsSync(join(AGENT_DIST_DIR, "manifest.json"))
-  ? (
-      JSON.parse(
-        readFileSync(join(AGENT_DIST_DIR, "manifest.json"), "utf8"),
-      ) as { version: string }
-    ).version
-  : agentVersion();
-
-/** Агенты стенда: общий токен регистрации. */
-export const AGENT_BOOTSTRAP_TOKEN = "e2e-bootstrap-token-0123456789abcdef0123";
-
-/** Пара ключей проекта (Ed25519, base64): подпись воркеров проекта. */
-const projectKeys = (): { signing: string; public: string } => {
-  const { privateKey, publicKey } = generateKeyPairSync("ed25519");
-  const b64 = (jwkValue: string | undefined) =>
-    Buffer.from(jwkValue ?? "", "base64url").toString("base64");
-
-  return {
-    signing: b64(privateKey.export({ format: "jwk" }).d),
-    public: b64(publicKey.export({ format: "jwk" }).x),
-  };
-};
-
-/** Ключи проекта стенда: ими подписаны сборки воркеров проекта. */
-export const PROJECT_KEYS = projectKeys();
-
-/** Архивы папки агента стенда (agent pack во временный каталог): AGENT_BUNDLE_DIR. */
-let bundleDir = "";
-
-export interface IAgentReleases {
-  /** Адрес каталога сборок агента (как релизы GitHub: `…/download/v<версия>`). */
-  url: string;
-  close: () => Promise<void>;
-}
-
-/**
- * Каталог сборок агента (как релизы GitHub): файлы `AGENT_DIST_DIR`. Из него
- * `agent pack` стенда берёт программу агента под платформу архива.
- */
-const serveAgentReleases = async (dir: string): Promise<IAgentReleases> => {
-  if (!existsSync(join(dir, "manifest.json"))) {
-    throw new Error(`E2E: нет сборок агента в ${dir} — yarn agent:fetch`);
-  }
-  const http: Server = createHttpServer(async (req, res) => {
-    const name = decodeURIComponent((req.url ?? "").split("/").pop() ?? "");
-
-    try {
-      const body = await readFile(join(dir, name));
-
-      res.writeHead(200, { "content-length": body.length });
-      res.end(body);
-    } catch {
-      res.writeHead(404).end();
-    }
-  });
-
-  http.listen(0, "127.0.0.1");
-  await once(http, "listening");
-
-  return {
-    url: `http://127.0.0.1:${(http.address() as AddressInfo).port}/download/v${AGENT_VERSION}`,
-    close: () =>
-      new Promise<void>(done => {
-        http.closeAllConnections();
-        http.close(() => done());
-      }),
-  };
-};
-
-let agentReleases: IAgentReleases | undefined;
-
-/** Платформа этой машины в именах сборок агента: darwin-arm64, linux-amd64. */
-const hostPlatform = (): { os: string; arch: string } => ({
-  os: process.platform === "darwin" ? "darwin" : "linux",
-  arch: process.arch === "arm64" ? "arm64" : "amd64",
-});
-
-/**
- * Архив папки агента под эту машину и сборки воркеров проекта (`release/`),
- * подписанные ключом проекта стенда — как `yarn agent:pack` (с файлами
- * agent/package по pack.files); программа агента — с локального каталога
- * сборок агента.
- */
-const buildProjectBundle = async (releases: string): Promise<string> => {
-  const dir = mkdtempSync(join(tmpdir(), "e2e-agent-bundle-"));
-  const { os, arch } = hostPlatform();
-  const agentBin =
-    env.E2E_AGENT_BIN ?? join(AGENT_DIST_DIR, `agent-${os}-${arch}`);
-
-  await promisify(execFile)(
-    agentBin,
-    [
-      "pack",
-      "--env",
-      "prod",
-      "--platform",
-      `${os}/${arch}`,
-      "--out",
-      dir,
-      "--release-out",
-      join(dir, "release"),
-    ],
-    {
-      cwd: resolve("agent"),
-      env: {
-        ...env,
-        AGENT_SIGNING_KEY: PROJECT_KEYS.signing,
-        AGENT_UPDATE_RELEASES: releases.replace(/\/download\/v[^/]+$/, ""),
-        AGENT_NO_UPDATE_CHECK: "1",
-      },
-    },
-  );
-  // Установщик агента — рядом с архивами, как у yarn agent:pack.
-  copyFileSync(join(AGENT_DIST_DIR, "install.sh"), join(dir, "install.sh"));
-
-  return dir;
-};
-
 let server: ChildProcess | undefined;
 
 export let BASE_URL = "";
@@ -353,11 +207,6 @@ const serverEnv = (port: number): NodeJS.ProcessEnv => ({
   JWT_SECRET_KEY: "e2e-secret-key-0123456789abcdef0123456789",
   ADMIN_EMAIL: E2E.admin.email,
   ADMIN_PASSWORD: E2E.admin.password,
-  AGENT_BOOTSTRAP_TOKEN,
-  AGENT_BUNDLE_DIR: bundleDir,
-  AGENT_STATE_INTERVAL_MS: "1000",
-  AGENT_METRICS_INTERVAL_MS: "1000",
-  AGENT_METRICS_STORE_INTERVAL_MS: "0",
 });
 
 /** Запустить копию API и дождаться готовности. */
@@ -400,8 +249,6 @@ const spawnServer = async (port: number): Promise<ChildProcess> => {
 export const startServer = async (): Promise<void> => {
   await resetDatabase();
   await resetRedis();
-  agentReleases = await serveAgentReleases(AGENT_DIST_DIR);
-  bundleDir = await buildProjectBundle(agentReleases.url);
 
   const [port] = await freePorts(1);
 
@@ -409,7 +256,7 @@ export const startServer = async (): Promise<void> => {
   server = await spawnServer(port);
 };
 
-/** Вторая копия API над той же БД и Redis (без соединений агентов). */
+/** Вторая копия API над той же БД и Redis. */
 export const startPeerServer = async (): Promise<{
   url: string;
   stop: () => Promise<void>;
@@ -432,6 +279,4 @@ export const stopServer = async (): Promise<void> => {
     server.kill("SIGTERM");
     await once(server, "exit");
   }
-  await agentReleases?.close();
-  if (bundleDir) rmSync(bundleDir, { recursive: true, force: true });
 };

@@ -9,35 +9,33 @@ type: project
 Эндпоинты, сущности, события и ошибки каждого модуля — в `src/modules/<name>/README.md` (здесь не
 дублируются). Точная карта ядра — `project_architecture.md`, сводка модулей, очередей и веток — `project_modules.md`,
 доступ — `project_access_control.md`, эталоны и точки расширения — `project_patterns.md`. Спецификация —
-`src/routing/swagger.json` (72 операции, все `/api/v1/...`), Swagger UI — `/api-docs`. Предметные модули
+`src/routing/swagger.json` (65 операций, все `/api/v1/...`), Swagger UI — `/api-docs`. Предметные модули
 — в ветках-примерах (`example/*`).
 
 ## Стек
 
-| Компонент     | Технология                                                                                                                                                                                |
-| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Runtime       | Node.js >= 22.13 (Docker 24-alpine), TypeScript ~6, сборка `tsc`                                                                                                                          |
-| HTTP          | Koa 3 + tsoa 6.6.0 (закреплён), `@koa/router` 14, `@koa/multer`, koa2-swagger-ui                                                                                                          |
-| DI            | inversify 8                                                                                                                                                                               |
-| БД            | PostgreSQL 16 + TypeORM 1.x                                                                                                                                                               |
-| Очередь задач | pg-boss 12 (схема `pgboss` в той же БД)                                                                                                                                                   |
-| Межпроцессное | Redis (ioredis 6), `@socket.io/redis-adapter`                                                                                                                                             |
-| Real-time     | Socket.IO 4 (только websocket)                                                                                                                                                            |
-| Хранилище     | `@aws-sdk/client-s3` + presigner (S3/SeaweedFS) или локальный диск                                                                                                                        |
-| Auth          | jsonwebtoken (HS256), scrypt (bcrypt — только проверка старых хешей), @simplewebauthn/server 14                                                                                           |
-| Почта         | nodemailer 10 + EJS, шаблоны `templates/mail/<locale>/`                                                                                                                                   |
-| Медиа         | sharp, blurhash, ffmpeg/ffprobe (только образ worker), file-type                                                                                                                          |
-| Валидация     | Zod 4                                                                                                                                                                                     |
-| Наблюдаемость | pino, prom-client, Sentry                                                                                                                                                                 |
-| Безопасность  | helmet (koa-helmet), CORS, koa-ratelimit                                                                                                                                                  |
-| Тесты         | Mocha 12 + Chai 6 + Sinon 22; e2e — `test/e2e` против настоящего сервера                                                                                                                  |
-| Агенты        | агент github.com/epifanovmd/agent версии `AGENT_VERSION` (протокол 1.0.0), сервер — ядро `src/core/agent`; папка агента `agent/` (настройки, воркеры, архивы `agent/bundle`, dev, Docker) |
+| Компонент     | Технология                                                                                      |
+| ------------- | ----------------------------------------------------------------------------------------------- |
+| Runtime       | Node.js >= 22.13 (Docker 24-alpine), TypeScript ~6, сборка `tsc`                                |
+| HTTP          | Koa 3 + tsoa 6.6.0 (закреплён), `@koa/router` 14, `@koa/multer`, koa2-swagger-ui                |
+| DI            | inversify 8                                                                                     |
+| БД            | PostgreSQL 16 + TypeORM 1.x                                                                     |
+| Очередь задач | pg-boss 12 (схема `pgboss` в той же БД)                                                         |
+| Межпроцессное | Redis (ioredis 6), `@socket.io/redis-adapter`                                                   |
+| Real-time     | Socket.IO 4 (только websocket)                                                                  |
+| Хранилище     | `@aws-sdk/client-s3` + presigner (S3/SeaweedFS) или локальный диск                              |
+| Auth          | jsonwebtoken (HS256), scrypt (bcrypt — только проверка старых хешей), @simplewebauthn/server 14 |
+| Почта         | nodemailer 10 + EJS, шаблоны `templates/mail/<locale>/`                                         |
+| Медиа         | sharp, blurhash, ffmpeg/ffprobe (только образ worker), file-type                                |
+| Валидация     | Zod 4                                                                                           |
+| Наблюдаемость | pino, prom-client, Sentry                                                                       |
+| Безопасность  | helmet (koa-helmet), CORS, koa-ratelimit                                                        |
+| Тесты         | Mocha 12 + Chai 6 + Sinon 22; e2e — `test/e2e` против настоящего сервера                        |
 
 ## Документация модулей (`src/modules/*/README.md`)
 
-agent, api-key, audit, auth, biometric, file, jobs, mailer, otp, passkeys, permission, profile,
-reset-password-tokens, role, session, socket, storage, user; ядро наблюдаемости — `src/core/observability/README.md`;
-агенты и своя очередь — `src/modules/agent/README.md`; формат сообщений — github.com/epifanovmd/agent `docs/PROTOCOL.md`.
+api-key, audit, auth, biometric, file, jobs, mailer, otp, passkeys, permission, profile,
+reset-password-tokens, role, session, socket, storage, user; ядро наблюдаемости — `src/core/observability/README.md`.
 
 ## Системные маршруты (вне `/api/v1`, без auth/CORS/лимита)
 
@@ -93,17 +91,15 @@ IP по умолчанию) → bodyParser → [swagger, tsoa + ROUTE_PROVIDER] 
 (`apikey:view`) — `apikey:updated` (`ApiKeyDto`); комната `audit` (`audit:view`) — `audit:created`
 (`AuditEventDto`, и автору записи); socket — `room:revoked { type, id }` (сокет выведен из комнаты: права
 больше нет); profile — `profile:updated` (комната `profile`), `profile:privacy-changed`, `user:online`,
-`user:offline`, `presence:init`; session — `session:new`, `session:terminated`; file — `file:processed`;
-jobs — `job:updated` (комната задачи, scope-комната и всегда владельцу).
+`user:offline`, `presence:init`; session — `session:new`, `session:terminated`; file — `file:processed`.
 
 ## Enum-ы и константы
 
 ```
 EFileStatus:       pending | processing | ready | failed
-EJobRunStatus:     queued | running | completed | failed | cancelled
 EPrivacyLevel:     everyone | contacts | nobody
 Roles (const):     admin (= SUPERUSER_ROLE) | user | guest
-AuthContext.kind:  user | bot | service | agent   (схемы `bot` в main нет)
+AuthContext.kind:  user | bot | service   (схемы `bot` в main нет)
 APP_ROLE:          api | worker | all
 ```
 
@@ -126,10 +122,7 @@ APP_ROLE:          api | worker | all
 - Почта: `SMTP_HOST` (пусто — выкл.), `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`.
 - Env предметных модулей в main **нет** — они в `<feature>.config.ts` и `.env.example` веток-примеров.
 - Compose: `ENV_FILE`, `IMAGE`, `TAG`, `API_PORTS`, `S3_ROOT_ACCESS_KEY`/`S3_ROOT_SECRET_KEY`, `S3_PORTS`;
-  агенты (сервер) — `AGENT_VERSION`, `AGENT_BOOTSTRAP_TOKEN`, `AGENT_STATE_INTERVAL_MS`, `AGENT_METRICS_INTERVAL_MS`,
-  `AGENT_METRICS_STORE_INTERVAL_MS` (0 — каждую), `AGENT_METRICS_RETENTION_HOURS`, `AGENT_EVENTS_RETENTION_DAYS`,
-  `AGENT_BUNDLE_DIR` (архивы agent pack), `AGENT_CONFIGS_KEY`, `AGENT_PUBLIC_URL`; e2e — `E2E_SERVER_LOG`; подпись воркеров (agent pack) — `AGENT_SIGNING_KEY`, `AGENT_SIGNING_KEY_FILE` (compose); `yarn agent:fetch` — `AGENT_PLATFORMS`, `AGENT_RELEASES_URL`; yarn agent — `ENV_FILE`, `AGENT_DIR`, `AGENT_NAME`; агент — `AGENT_SERVER_URL`,
-  `AGENT_ENROLL_TOKEN`, `AGENT_DATA_DIR`, `AGENT_NAME`, `AGENT_LABELS`, `AGENT_UPDATE_MODE`, `AGENT_CONFIG`.
+  e2e — `E2E_SERVER_LOG`.
 - E2E: `E2E_POSTGRES_*`, `E2E_REDIS_URL`, `E2E_REDIS_KEY_PREFIX`, `E2E_SMTP_*`, `E2E_MAILPIT_URL`, `E2E_S3_*`, `E2E_STORAGE_DRIVER`,
-  `E2E_LOG_LEVEL`, `E2E_AGENT_DIST_DIR`, `E2E_AGENT_BIN`; интеграционные юнит-тесты — `TEST_DATABASE_URL`,
+  `E2E_LOG_LEVEL`; интеграционные юнит-тесты — `TEST_DATABASE_URL`,
   `TEST_S3_ENDPOINT`.

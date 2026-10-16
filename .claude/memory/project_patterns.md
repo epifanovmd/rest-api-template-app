@@ -41,22 +41,16 @@ type: project
   `modules/socket/socket-validation.ts` (схема, token bucket на сокет/событие, ack `{ ok: false, error: { code,
 message } }`). В main **нет ни одного вызова** (описание — `socket/README.md`, тест — `socket-validation.test.ts`);
   `ProfileHandler` — голый `socket.on` (legacy, для нового кода не образец).
-- Комнаты: policy — `jobs/job-room.policy.ts` (`room:subscribe { type: "job" }`); provider-ов в main нет
-  (контракт `ISocketRoomProvider` в `socket/socket-rooms.ts`).
+- Комнаты: policy — `socket/permission-room.policy.ts` (`permissionRoomPolicy`, регистрируют api-key, audit, user);
+  provider-ов в main нет (контракт `ISocketRoomProvider` в `socket/socket-rooms.ts`).
 - Задачи: служебная очередь с повторами — `mailer/mail-send.job.ts`; `JobError(code, msg, retryable)` —
   `file/file-process.job.ts`, `mailer.service.ts`; cron — `*-cleanup.job.ts` (audit, otp, session, passkeys, file);
-  outbox — `file.service.ts::_enqueueProcessing(manager, …)`, `mailer.service.ts` (`{ manager }`); внешняя очередь —
-  `jobs/demo-echo.handler.ts` (`asExternalJobHandler`, `job` + `jobType` + `io` + `onComplete`), воркер — `agent/workers/echo` (класс на базе `agent_worker.py`);
-  ответ на запрос воркера к серверу — `jobs/demo-echo-lookup.handler.ts` (`asWorkerRequestHandler`, `type` + `workers` +
-  `handle`, отказ — `WorkerRequestError`);
-  health-индикатор — `jobs/jobs.health.ts` (`asHealthIndicator(JobsHealthIndicator)`). Политик доступа к задачам
-  (`asJobAccessPolicy`) в main нет — только владелец/суперпользователь.
+  outbox — `file.service.ts::_enqueueProcessing(manager, …)`, `mailer.service.ts` (`{ manager }`);
+  health-индикатор — `jobs/jobs.health.ts` (`asHealthIndicator(JobsHealthIndicator)`).
 - Хранилище: ключи — `file/file-keys.ts` (`files/<id>/original.<ext>`), обработка через `withLocalFile` —
   `file/file-process.job.ts`, прямая загрузка — `file.service.ts` (`signedPutUrl` + complete с условным `UPDATE`).
 - Права модуля — `audit/audit.permissions.ts` (`definePermissions("audit", { VIEW: "audit:view" })`).
-- E2E-сценарий — `test/e2e/platform.e2e.ts` (файлы S3/local, задачи, биометрия/passkeys), агенты —
-  `test/e2e/agents.e2e.ts` (хелпер `test/e2e/agent.ts`: настоящий агент из `agent/dist` с воркерами echo/echo-release; сборки агента, скрипт и архив установки — `test/e2e/agent-releases.e2e.ts`; harness собирает архив папки агента `agent pack` → `AGENT_BUNDLE_DIR`),
-  клиент `test/e2e/client.ts`, письма — Mailpit API.
+- E2E-сценарий — `test/e2e/platform.e2e.ts` (файлы S3/local, задачи, биометрия/passkeys), клиент `test/e2e/client.ts`, письма — Mailpit API.
 - Bootstrapper — `src/modules/socket/socket.bootstrap.ts`, `src/modules/user/*bootstrap*` (AdminBootstrap, Seed).
 - Guards на маршруте — поиск `@UseGuards(` в `src/modules/auth/`.
 - Permission-scope: `@Security("jwt", ["permission:user:update"])` — `src/modules/user/user.controller.ts`; права
@@ -108,7 +102,7 @@ userIds)` → кто из `userIds` держит viewer в принятых ко
    `scoped: true` (появляется `<p>:own`); базовые права ролей — `ROLE_DEFAULT_PERMISSIONS` (литералами) или
    миграция данных для существующих баз.
 6. Остальные реестры (`asSocketListener/Handler`, `asSocketRoomProvider/Policy`, `asJobHandler`,
-   `asJobAccessPolicy`, `asSecurityScheme`, `asHealthIndicator`, `FILE_USAGE_PROBE`, `ROUTE_PROVIDER`) —
+   `asSecurityScheme`, `asHealthIndicator`, `FILE_USAGE_PROBE`, `ROUTE_PROVIDER`) —
    project_architecture.md «Реестры расширения».
 
 ## Скелет теста сервиса
@@ -186,37 +180,13 @@ describe("FeatureService", () => {
 ответа старые сессии уже недействительны (иначе гонка — e2e «смена пароля» падал ~1 из 5).
 Остальные события — `emit` (не блокируют ответ).
 
-## Задачи: запрос-ответ, внешние задачи агентов
-
-- `JobQueue.request(queue, data, { timeoutMs, priority })` — синхронный вызов исполнителя из HTTP-запроса:
-  видимая задача + ожидание итога (`JobResultWaiter`: сигнал `job_settled` из транзакции завершения,
-  опрос 5 с / 1 с без LISTEN). Ошибка → 502 `JOB_REQUEST_FAILED` (`details.code`), таймаут → 504
-  `JOB_REQUEST_TIMEOUT` и задача снимается. `manager` передать нельзя (ждать чужого коммита некому).
-- Внешние задачи (команды воркерам, протокол агента 1.0.0): core-токен `EXTERNAL_JOB_EXECUTOR`
-  (`IExternalJobExecutor`: canDispatch/dispatch → `ExternalJobUpdate`/poll/cancel/onUpdate/onReconnect), реализация —
-  `AgentJobExecutor` (core/agent). Jobs не импортирует agent. `definition.job: { type, worker? }` (обязателен, иначе
-  ошибка регистрации), хуки `jobType?(info)`, `io?(info)` (ключи FileStorage → подписанные GET/PUT, ttl ≥
-  expireInSeconds), `onComplete(ctx{outputs})`, `onFail`. Штатной остановки нет (`JobQueue.stop`, `POST /jobs/{id}/stop`,
-  `stopRequested` удалены миграцией `NodeAgentName1791600000000`).
-- Старт без опроса pg-boss: `enqueue` внешней без `startAfter` → `startAfter: 10 с` у pg-boss + `NOTIFY job_queued`
-  в транзакции (outbox — дойдёт после коммита) → `JobsBootstrap` в процессах с `canDispatch` → `startNow`.
-  Захват записи — `claimDispatch` (status queued, external_id NULL, started_at NULL или старше 90 с → ставит
-  started_at; статус остаётся queued), неудача — `releaseDispatch` (started_at NULL, error). pg-boss `dispatch`
-  — тот же захват; захвачено другим → `JOB_DISPATCHING` (retry). Reconnect агента → `reconcile` + `startQueued`.
-- `AgentJobExecutor.dispatch`: агенты online, воркер running с командой типа в `manifest.commands`, свободные
-  (health.busy false) первыми; команда `worker.command` id `<jobId>.<attempt>`, args `{jobId,data,files}`; data не по
-  схеме → JobError(AGENT_COMMAND_INVALID, final). Ход — `AgentCommandProgressEvent`, итог — `AgentCommandFinishedEvent`
-  → `ExternalJobService.apply`; CANCELLED → cancelled. Логгер редактирует ключ `code` — писать `errorCode`.
-- S3 (SeaweedFS) presigned PUT: `content-type` должен быть подписан и совпадать (без ContentType — 403) →
-  выходам задавать `contentType`, воркер шлёт ровно его (echo — `text/plain`).
-
 ## Файлы: владение, создание сервером, сборка мусора
 
 - `files.owner_id` → users `ON DELETE SET NULL` (миграция `FileOwnerSetNull`). `ownerId = null` — файл отдан
   домену (`FileService.adopt`) или владелец удалён.
 - Пробы использования пакетные: `IFileUsageProbe.filesInUse(ids)`, регистрация `asFileUsageProbe(Cls)`;
   сводка — `FileUsageChecker`. В main — `ProfileAvatarUsageProbe`.
-- Сервер создаёт файлы сам: `createFromLocal` (распаковка), `registerStored` + `reserveFileKey` (выход воркера).
+- Сервер создаёт файлы сам: `createFromLocal` (распаковка), `registerStored` + `reserveFileKey` (объект уже в хранилище).
 - Удаление домена — `scheduleRemoval(ids, manager)` → `file.remove`; каскадные потери — cron `file.gc`
   (бесхозные старше часа без ссылок).
 - Белый список загрузок расширяется модулем: `defineUploadRules`; `signatures: "binary"` — формат без
@@ -224,20 +194,6 @@ describe("FeatureService", () => {
 
 ## Очереди: пределы
 
-- `JobHandlerRegistry.register` отклоняет `expireInSeconds > 86400` (предел pg-boss — иначе падение при старте) и
-  `leaseSeconds > expireInSeconds` у внешней очереди.
+- `JobHandlerRegistry.register` отклоняет `expireInSeconds > 86400` (`JOB_MAX_EXPIRE_SECONDS`, предел pg-boss —
+  иначе падение при старте).
 - `bigintNumber` — `core/db/transformers.ts` (колонки `bigint` → number).
-
-### Агенты и задачи: файлы итога, своим лично, несколько копий
-
-- Файлы итога внешней задачи: при `done` выходы `io(job).outputs`, которые есть в хранилище
-  (`storage.stat`), пишутся в `job_runs.outputs` `[{name,key,size}]`; ссылки (`GET`, срок
-  `STORAGE_SIGNED_URL_TTL_SECONDS`) подписывает `JobRunViews` при каждой выдаче
-  (`JobsService`, `JobRunTracker.publish` — для записи с `outputs` событие уходит после подписи).
-  `job_runs.job_type` (+ `worker` очереди) пишется `setTarget` до `executor.dispatch`.
-- Нагрузка узла своим — `OwnedEntityEmitter.toOwners`: `node:load {nodeId, agentId, point:{at, host}}` из `AgentMetricsReceivedEvent` (не чаще
-  `NODE_LOAD_EMIT_MS` на агента; при watch метрики идут раз в секунду).
-- Несколько копий: поток агента держит одна (`agents.stream_instance`), остальные пишут в БД и будят её
-  `NOTIFY agent_push`; ждущие итога — `agent_result`. e2e: вторая копия (`startPeerServer`) — команды проходят.
-  Миграционный тест `node.repository.integration` (TEST_DATABASE_URL) откатывает
-  последние миграции по порядку — новая миграция добавляет туда шаг.
