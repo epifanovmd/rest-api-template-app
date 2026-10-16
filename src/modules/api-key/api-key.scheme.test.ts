@@ -23,7 +23,7 @@ const expectCode = async (promise: Promise<unknown>, code: string) => {
 describe("ApiKeySecurityScheme", () => {
   const keys = { verify: sinon.stub() };
   const scheme = new ApiKeySecurityScheme(keys as any);
-  const apiKey = { id: "k1", ownerId: "u1", scopes: ["worker:demo.echo"] };
+  const apiKey = { id: "k1", ownerId: "u1", scopes: ["report:export"] };
 
   beforeEach(() => {
     keys.verify.reset();
@@ -40,7 +40,7 @@ describe("ApiKeySecurityScheme", () => {
   it("ключ из X-Api-Key — контекст сервиса со scopes ключа", async () => {
     const ctx = await scheme.authenticate(
       request({ "x-api-key": "abcdefgh.secret" }),
-      ["worker"],
+      ["report"],
     );
 
     expect(keys.verify.calledWith("abcdefgh.secret")).to.be.true;
@@ -49,7 +49,7 @@ describe("ApiKeySecurityScheme", () => {
       userId: "u1",
       sessionId: "apikey:k1",
       roles: [],
-      permissions: ["worker:demo.echo"],
+      permissions: ["report:export"],
       emailVerified: true,
     });
   });
@@ -87,16 +87,16 @@ describe("ApiKeySecurityScheme", () => {
 
 describe("scopeSatisfied", () => {
   it("точное совпадение и wildcard", () => {
-    expect(scopeSatisfied(["worker:demo.echo"], "worker:demo.echo")).to.be.true;
-    expect(scopeSatisfied(["worker:*"], "worker:demo.echo")).to.be.true;
-    expect(scopeSatisfied(["*"], "worker:demo.echo")).to.be.true;
-    expect(scopeSatisfied(["worker:other"], "worker:demo.echo")).to.be.false;
+    expect(scopeSatisfied(["report:export"], "report:export")).to.be.true;
+    expect(scopeSatisfied(["report:*"], "report:export")).to.be.true;
+    expect(scopeSatisfied(["*"], "report:export")).to.be.true;
+    expect(scopeSatisfied(["report:other"], "report:export")).to.be.false;
   });
 
   it("требование без действия — любой scope домена", () => {
-    expect(scopeSatisfied(["worker:demo.echo"], "worker")).to.be.true;
-    expect(scopeSatisfied(["worker:*"], "worker")).to.be.true;
-    expect(scopeSatisfied(["workers:x"], "worker")).to.be.false;
-    expect(scopeSatisfied([], "worker")).to.be.false;
+    expect(scopeSatisfied(["report:export"], "report")).to.be.true;
+    expect(scopeSatisfied(["report:*"], "report")).to.be.true;
+    expect(scopeSatisfied(["reports:x"], "report")).to.be.false;
+    expect(scopeSatisfied([], "report")).to.be.false;
   });
 });
