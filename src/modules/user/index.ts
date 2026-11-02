@@ -1,3 +1,4 @@
+export * from "./dto";
 export * from "./email-change.service";
 export * from "./events";
 export * from "./password-policy";

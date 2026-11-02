@@ -1,8 +1,7 @@
-import { ITokensDto } from "../../core";
-import { IDeviceInfo } from "../session/session.types";
-import { UserDto } from "../user/dto";
+import { ITokensDto } from "../../../core";
+import { UserDto } from "../../user";
 
-export { IDeviceInfo };
+export type { IDeviceInfo } from "../../session";
 
 export interface IUserResetPasswordRequestDto {
   /** Токен из письма сброса пароля */

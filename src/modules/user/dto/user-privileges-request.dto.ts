@@ -1,5 +1,5 @@
-import { PermissionName } from "../../permission/permission.types";
-import { RoleName } from "../../role/role.types";
+import { PermissionName } from "../../permission";
+import { RoleName } from "../../role";
 
 export interface IUserPrivilegesRequestDto {
   /** Роли для назначения пользователю (заменяет текущие роли). */

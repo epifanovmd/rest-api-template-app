@@ -24,6 +24,8 @@ import {
   ValidateBody,
 } from "../../core";
 import { KoaRequest } from "../../types/koa";
+import { AuthError } from "./auth.errors";
+import { AuthService } from "./auth.service";
 import {
   IDeviceInfo,
   IDisable2FARequestDto,
@@ -36,9 +38,7 @@ import {
   IUserWithTokensDto,
   IVerify2FARequestDto,
   TSignUpRequestDto,
-} from "./auth.dto";
-import { AuthError } from "./auth.errors";
-import { AuthService } from "./auth.service";
+} from "./dto/auth.dto";
 import {
   clearRefreshCookie,
   readRefreshCookie,

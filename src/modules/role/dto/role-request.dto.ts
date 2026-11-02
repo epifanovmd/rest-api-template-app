@@ -1,4 +1,4 @@
-import { PermissionName } from "../../permission/permission.types";
+import { PermissionName } from "../../permission";
 import { RoleName } from "../role.types";
 
 export interface IRolePermissionsRequestDto {

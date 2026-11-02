@@ -1,6 +1,6 @@
+export * from "./dto";
 export * from "./events";
 export * from "./file.controller";
-export * from "./file.dto";
 export * from "./file.entity";
 export * from "./file.errors";
 export * from "./file.module";

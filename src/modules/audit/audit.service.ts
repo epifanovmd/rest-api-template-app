@@ -10,11 +10,11 @@ import {
   logger,
   normalizePagination,
 } from "../../core";
-import { AuditEventDto } from "./audit.dto";
 import { AuditError } from "./audit.errors";
 import { AuditRepository, IAuditCursor } from "./audit.repository";
 import { AUDIT_RETENTION_DAYS, IAuditEntry, IAuditFilter } from "./audit.types";
 import type { AuditEvent } from "./audit-event.entity";
+import { AuditEventDto } from "./dto/audit.dto";
 import { AuditRecordedEvent } from "./events";
 
 const MS_IN_DAY = 86_400_000;

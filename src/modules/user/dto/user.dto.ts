@@ -1,13 +1,13 @@
 import { IPaginatedDto } from "../../../core";
 import { BaseDto } from "../../../core/dto/BaseDto";
 import { NO_SIGNED_FILES, TFileRef, TSignedFiles } from "../../file";
-import { IPermissionDto } from "../../permission/permission.dto";
+import type { IPermissionDto } from "../../permission";
 import {
   collectProfileFiles,
   ProfileDto,
   PublicProfileDto,
 } from "../../profile/dto";
-import { IRoleDto } from "../../role/role.dto";
+import type { IRoleDto } from "../../role";
 import { User } from "../user.entity";
 
 /** Аватары пользователей — для подписи пачкой перед сборкой `UserDto`/`PublicUserDto`. */

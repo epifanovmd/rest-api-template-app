@@ -1,4 +1,4 @@
-import { TPermission } from "../../permission/permission.types";
+import { TPermission } from "../../permission";
 import { TRole } from "../role.types";
 
 /** Набор прав роли заменён — у всех её пользователей изменились эффективные права. */

@@ -18,7 +18,8 @@ src/modules/permission/
 ├── permission.registry.ts        # definePermissions, getRegisteredPermissions, getPermissionCatalog
 ├── permission.controller.ts      # GET /api/v1/permissions — каталог прав
 ├── permission.types.ts           # TPermission, PermissionName
-├── permission.dto.ts             # IPermissionDto, IPermissionListDto, IPermissionCatalogDto
+├── permission.errors.ts          # PermissionError (PERMISSION_*)
+├── dto/permission.dto.ts         # IPermissionDto, IPermissionListDto, IPermissionCatalogDto
 ├── permission.registry.test.ts
 └── index.ts
 ```
@@ -149,6 +150,7 @@ HTTP-контекста (политики сокет-комнат, слушат�
 
 ## Ошибки
 
+`PermissionError` (`permission.errors.ts`, экспортируется из `index.ts`):
 `PERMISSION_INVALID_DEFINITION` (500) — некорректное объявление в `definePermissions`.
 
 ## Тесты

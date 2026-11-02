@@ -1,5 +1,5 @@
-import { BaseDto } from "../../core/dto/BaseDto";
-import { AuditEvent } from "./audit-event.entity";
+import { BaseDto } from "../../../core/dto/BaseDto";
+import { AuditEvent } from "../audit-event.entity";
 
 /** Событие журнала безопасности. */
 export class AuditEventDto extends BaseDto {

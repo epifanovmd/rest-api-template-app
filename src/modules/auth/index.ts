@@ -6,6 +6,7 @@ export * from "./auth.module";
 export * from "./auth.service";
 export * from "./auth.socket-events";
 export * from "./auth.types";
+export * from "./dto";
 export * from "./events";
 export * from "./refresh-cookie";
 export * from "./token-subject";

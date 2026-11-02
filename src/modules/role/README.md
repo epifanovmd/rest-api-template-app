@@ -20,10 +20,12 @@ src/modules/role/
 ├── role.types.ts           # const Roles, TRole
 ├── role.errors.ts          # RoleError — коды ROLE_*
 ├── role.permissions.ts     # RolePermissions (definePermissions("role"))
-├── role.dto.ts             # IRoleDto
 ├── role.listener.ts        # RoleListener: изменения ролей → комната roles
 ├── role.socket-events.ts   # role:updated, role:deleted в контракте сокета
-├── dto/                    # Тела запросов
+├── dto/
+│   ├── role.dto.ts         # IRoleDto
+│   ├── role-request.dto.ts # Тела запросов
+│   └── index.ts            # Реэкспорт role.dto (тела запросов — напрямую)
 ├── events/                 # RoleCreatedEvent, RoleDeletedEvent, RolePermissionsChangedEvent
 └── validation/             # CreateRoleSchema, SetRolePermissionsSchema
 ```
@@ -122,3 +124,6 @@ src/modules/role/
 ## Зависимости
 
 `RoleRepository`, `PermissionRepository`, `EventBus`; `isSuperUser` из `core`.
+
+Публичный API (`index.ts`) включает `role.types` (`Roles`, `TRole`, `RoleName`) и `dto`
+(`IRoleDto`) — другие модули импортируют их только через `index.ts`.

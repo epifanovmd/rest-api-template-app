@@ -5,7 +5,7 @@ import os from "os";
 import path from "path";
 
 import { UnsupportedMediaTypeException } from "./core/http";
-import { isAllowedUpload } from "./modules/file/file-upload.policy";
+import { isAllowedUpload } from "./modules/file";
 
 const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100 MB
 

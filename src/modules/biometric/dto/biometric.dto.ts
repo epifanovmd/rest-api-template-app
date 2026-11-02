@@ -1,4 +1,4 @@
-import { ITokensDto } from "../../core";
+import { ITokensDto } from "../../../core";
 
 export interface IRegisterBiometricRequestDto {
   deviceId: string;

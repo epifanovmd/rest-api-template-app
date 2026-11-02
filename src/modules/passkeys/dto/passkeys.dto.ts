@@ -1,6 +1,6 @@
-import { ITokensDto } from "../../core";
-import { BaseDto } from "../../core/dto/BaseDto";
-import { Passkey } from "./passkey.entity";
+import { ITokensDto } from "../../../core";
+import { BaseDto } from "../../../core/dto/BaseDto";
+import { Passkey } from "../passkey.entity";
 import {
   AuthenticationResponseJSON,
   RegistrationResponseJSON,

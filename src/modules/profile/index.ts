@@ -1,3 +1,4 @@
+export * from "./dto";
 export * from "./events";
 export { EPrivacyLevel } from "./privacy-settings.entity";
 export * from "./privacy-settings.service";

@@ -21,6 +21,7 @@ src/modules/socket/
 ├── socket-event-listener.interface.ts # ISocketEventListener + SOCKET_EVENT_LISTENER токен
 ├── socket.helpers.ts                # Хелперы asSocketHandler(), asSocketListener()
 ├── socket-validation.ts             # onValidated(): схема, лимит частоты, ack с кодом ошибки
+├── socket.errors.ts                 # SocketError (SOCKET_RATE_LIMITED, SOCKET_INTERNAL)
 ├── socket-rooms.ts                  # asSocketRoomProvider(), asSocketRoomPolicy()
 ├── socket-room.service.ts           # SocketRoomService: подписки на комнаты и их пересмотр
 ├── permission-room.policy.ts        # permissionRoomPolicy(): политика комнаты списка по праву
@@ -137,7 +138,8 @@ asSocketRoomPolicy(permissionRoomPolicy(USERS_ROOM, UserPermissions.VIEW));
 
 Ответ: с ack — `{ ok: true, data? }` или `{ ok: false, error: { code, message, details? } }`
 (`TSocketAck`, `ISocketAckError` в `socket.types.ts`); без ack — событие
-`error { event, code, message }`.
+`error { event, code, message }`. Коды `SOCKET_*` — `SocketError` (`socket.errors.ts`,
+экспортируется из `index.ts`).
 
 Лимиты задают модули рядом с хендлером (`<FEATURE>_SOCKET_LIMITS`). Лимит — на сокет, не на пользователя: несколько вкладок имеют
 отдельные вёдра; общий лимит пользователя потребовал бы Redis.
@@ -181,6 +183,11 @@ declare module "../socket/socket.types" {
 | `EventBus`                              | `core`                              | Эмиссия `UserOnlineEvent` / `UserOfflineEvent`       |
 | `isAllowedOrigin`                       | `src/middleware/cors.middleware.ts` | Проверка origin                                      |
 | `UserOnlineEvent`, `UserOfflineEvent`   | `modules/profile`                   | События присутствия                                  |
+
+Известное нарушение границ: `socket.bootstrap.ts` импортирует события присутствия
+напрямую из `../profile/events`, а не через `index.ts` модуля profile (через index —
+цикл загрузки socket ↔ profile). Страж-тест `src/modules/module-boundaries.test.ts`
+держит его в списке известных исключений до отдельной задачи по развязке.
 
 ## Взаимодействие
 

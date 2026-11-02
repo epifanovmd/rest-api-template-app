@@ -1,4 +1,4 @@
-import type { EFileStatus } from "./file.types";
+import type { EFileStatus } from "../file.types";
 
 export interface IFileDto {
   id: string;

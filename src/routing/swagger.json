@@ -250,7 +250,7 @@
 			},
 			"UUID": {
 				"type": "string",
-				"description": "Идентификатор сущности в пути или теле запроса. tsoa проверяет формат до\nконтроллера: неверный uuid → 422, а не ошибка Postgres.",
+				"description": "Идентификатор сущности в пути или теле запроса. tsoa проверяет формат до\nконтроллера: неверный uuid → 400, а не ошибка Postgres.",
 				"pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
 			},
 			"Record_string.string_": {
@@ -309,72 +309,6 @@
 					"name",
 					"size",
 					"contentType"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"ProfileDto": {
-				"description": "Профиль владельца; ссылки на аватар — из карты подписей `files`.",
-				"properties": {
-					"id": {
-						"type": "string"
-					},
-					"userId": {
-						"type": "string"
-					},
-					"firstName": {
-						"type": "string",
-						"nullable": true
-					},
-					"lastName": {
-						"type": "string",
-						"nullable": true
-					},
-					"birthDate": {
-						"type": "string",
-						"format": "date-time",
-						"nullable": true
-					},
-					"gender": {
-						"type": "string",
-						"nullable": true
-					},
-					"locale": {
-						"type": "string",
-						"nullable": true
-					},
-					"lastOnline": {
-						"type": "string",
-						"format": "date-time",
-						"nullable": true
-					},
-					"createdAt": {
-						"type": "string",
-						"format": "date-time"
-					},
-					"updatedAt": {
-						"type": "string",
-						"format": "date-time"
-					},
-					"avatar": {
-						"$ref": "#/components/schemas/IFileDto",
-						"description": "Аватар с подписанными ссылками; нет аватара или связь не загружена — поля нет."
-					},
-					"user": {
-						"$ref": "#/components/schemas/UserDto"
-					}
-				},
-				"required": [
-					"id",
-					"userId",
-					"firstName",
-					"lastName",
-					"birthDate",
-					"gender",
-					"locale",
-					"lastOnline",
-					"createdAt",
-					"updatedAt"
 				],
 				"type": "object",
 				"additionalProperties": false
@@ -462,6 +396,111 @@
 					"createdAt",
 					"updatedAt",
 					"permissions"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"RoleName": {
+				"type": "string",
+				"description": "Имя роли в теле запроса API. Обычная строка: `TRole` с `string & {}`\ntsoa проверить не может и отклоняет любое значение. Известные роли — `Roles`.",
+				"minLength": 1,
+				"maxLength": 100
+			},
+			"ICreateRoleRequestDto": {
+				"properties": {
+					"name": {
+						"$ref": "#/components/schemas/RoleName"
+					}
+				},
+				"required": [
+					"name"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"PermissionName": {
+				"type": "string",
+				"description": "Имя права в теле запроса API (`домен:действие`).",
+				"minLength": 1,
+				"maxLength": 100
+			},
+			"IRolePermissionsRequestDto": {
+				"properties": {
+					"permissions": {
+						"items": {
+							"$ref": "#/components/schemas/PermissionName"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"permissions"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"ProfileDto": {
+				"description": "Профиль владельца; ссылки на аватар — из карты подписей `files`.",
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"userId": {
+						"type": "string"
+					},
+					"firstName": {
+						"type": "string",
+						"nullable": true
+					},
+					"lastName": {
+						"type": "string",
+						"nullable": true
+					},
+					"birthDate": {
+						"type": "string",
+						"format": "date-time",
+						"nullable": true
+					},
+					"gender": {
+						"type": "string",
+						"nullable": true
+					},
+					"locale": {
+						"type": "string",
+						"nullable": true
+					},
+					"lastOnline": {
+						"type": "string",
+						"format": "date-time",
+						"nullable": true
+					},
+					"createdAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"updatedAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"avatar": {
+						"$ref": "#/components/schemas/IFileDto",
+						"description": "Аватар с подписанными ссылками; нет аватара или связь не загружена — поля нет."
+					},
+					"user": {
+						"$ref": "#/components/schemas/UserDto"
+					}
+				},
+				"required": [
+					"id",
+					"userId",
+					"firstName",
+					"lastName",
+					"birthDate",
+					"gender",
+					"locale",
+					"lastOnline",
+					"createdAt",
+					"updatedAt"
 				],
 				"type": "object",
 				"additionalProperties": false
@@ -659,45 +698,6 @@
 					"total",
 					"offset",
 					"limit"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"RoleName": {
-				"type": "string",
-				"description": "Имя роли в теле запроса API. Обычная строка: `TRole` с `string & {}`\ntsoa проверить не может и отклоняет любое значение. Известные роли — `Roles`.",
-				"minLength": 1,
-				"maxLength": 100
-			},
-			"ICreateRoleRequestDto": {
-				"properties": {
-					"name": {
-						"$ref": "#/components/schemas/RoleName"
-					}
-				},
-				"required": [
-					"name"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"PermissionName": {
-				"type": "string",
-				"description": "Имя права в теле запроса API (`домен:действие`).",
-				"minLength": 1,
-				"maxLength": 100
-			},
-			"IRolePermissionsRequestDto": {
-				"properties": {
-					"permissions": {
-						"items": {
-							"$ref": "#/components/schemas/PermissionName"
-						},
-						"type": "array"
-					}
-				},
-				"required": [
-					"permissions"
 				],
 				"type": "object",
 				"additionalProperties": false
@@ -2578,6 +2578,204 @@
 				]
 			}
 		},
+		"/api/v1/roles": {
+			"get": {
+				"operationId": "GetRoles",
+				"responses": {
+					"200": {
+						"description": "Список ролей",
+						"content": {
+							"application/json": {
+								"schema": {
+									"items": {
+										"$ref": "#/components/schemas/IRoleDto"
+									},
+									"type": "array"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Получить все роли с их правами.",
+				"summary": "Список ролей",
+				"tags": [
+					"Role"
+				],
+				"security": [
+					{
+						"jwt": [
+							"permission:role:view"
+						]
+					}
+				],
+				"parameters": []
+			},
+			"post": {
+				"operationId": "CreateRole",
+				"responses": {
+					"201": {
+						"description": "Created",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IRoleDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Создать новую роль.",
+				"summary": "Создание роли",
+				"tags": [
+					"Role"
+				],
+				"security": [
+					{
+						"jwt": [
+							"permission:role:create"
+						]
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"description": "Название роли",
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/ICreateRoleRequestDto",
+								"description": "Название роли"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/roles/{id}": {
+			"delete": {
+				"operationId": "DeleteRole",
+				"responses": {
+					"204": {
+						"description": "No Content"
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Удалить роль. Системные роли (`admin`, `user`, `guest`) не удаляются,\nсобственную роль удаляет только суперпользователь.",
+				"summary": "Удаление роли",
+				"tags": [
+					"Role"
+				],
+				"security": [
+					{
+						"jwt": [
+							"permission:role:delete"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"description": "ID роли",
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/roles/{id}/permissions": {
+			"patch": {
+				"operationId": "SetRolePermissions",
+				"responses": {
+					"200": {
+						"description": "Обновлённая роль",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IRoleDto"
+								}
+							}
+						}
+					},
+					"default": {
+						"description": "Ошибка",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IErrorResponseDto"
+								}
+							}
+						}
+					}
+				},
+				"description": "Установить права для роли.\nЗаменяет текущий набор прав роли указанным. Роль `admin`, право `*` и\nсобственную роль меняет только суперпользователь. Все пользователи роли\nполучают `user:privileges-changed` с новыми правами; их прежние\naccess-токены отклоняются (`AUTH_PRIVILEGES_CHANGED`), сессии остаются.",
+				"summary": "Установка прав роли",
+				"tags": [
+					"Role"
+				],
+				"security": [
+					{
+						"jwt": [
+							"permission:role:update"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"description": "ID роли",
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/UUID"
+						}
+					}
+				],
+				"requestBody": {
+					"description": "Список прав",
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/IRolePermissionsRequestDto",
+								"description": "Список прав"
+							}
+						}
+					}
+				}
+			}
+		},
 		"/api/v1/profile/my": {
 			"get": {
 				"operationId": "GetMyProfile",
@@ -3004,204 +3202,6 @@
 						}
 					}
 				]
-			}
-		},
-		"/api/v1/roles": {
-			"get": {
-				"operationId": "GetRoles",
-				"responses": {
-					"200": {
-						"description": "Список ролей",
-						"content": {
-							"application/json": {
-								"schema": {
-									"items": {
-										"$ref": "#/components/schemas/IRoleDto"
-									},
-									"type": "array"
-								}
-							}
-						}
-					},
-					"default": {
-						"description": "Ошибка",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/IErrorResponseDto"
-								}
-							}
-						}
-					}
-				},
-				"description": "Получить все роли с их правами.",
-				"summary": "Список ролей",
-				"tags": [
-					"Role"
-				],
-				"security": [
-					{
-						"jwt": [
-							"permission:role:view"
-						]
-					}
-				],
-				"parameters": []
-			},
-			"post": {
-				"operationId": "CreateRole",
-				"responses": {
-					"201": {
-						"description": "Created",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/IRoleDto"
-								}
-							}
-						}
-					},
-					"default": {
-						"description": "Ошибка",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/IErrorResponseDto"
-								}
-							}
-						}
-					}
-				},
-				"description": "Создать новую роль.",
-				"summary": "Создание роли",
-				"tags": [
-					"Role"
-				],
-				"security": [
-					{
-						"jwt": [
-							"permission:role:create"
-						]
-					}
-				],
-				"parameters": [],
-				"requestBody": {
-					"description": "Название роли",
-					"required": true,
-					"content": {
-						"application/json": {
-							"schema": {
-								"$ref": "#/components/schemas/ICreateRoleRequestDto",
-								"description": "Название роли"
-							}
-						}
-					}
-				}
-			}
-		},
-		"/api/v1/roles/{id}": {
-			"delete": {
-				"operationId": "DeleteRole",
-				"responses": {
-					"204": {
-						"description": "No Content"
-					},
-					"default": {
-						"description": "Ошибка",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/IErrorResponseDto"
-								}
-							}
-						}
-					}
-				},
-				"description": "Удалить роль. Системные роли (`admin`, `user`, `guest`) не удаляются,\nсобственную роль удаляет только суперпользователь.",
-				"summary": "Удаление роли",
-				"tags": [
-					"Role"
-				],
-				"security": [
-					{
-						"jwt": [
-							"permission:role:delete"
-						]
-					}
-				],
-				"parameters": [
-					{
-						"description": "ID роли",
-						"in": "path",
-						"name": "id",
-						"required": true,
-						"schema": {
-							"$ref": "#/components/schemas/UUID"
-						}
-					}
-				]
-			}
-		},
-		"/api/v1/roles/{id}/permissions": {
-			"patch": {
-				"operationId": "SetRolePermissions",
-				"responses": {
-					"200": {
-						"description": "Обновлённая роль",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/IRoleDto"
-								}
-							}
-						}
-					},
-					"default": {
-						"description": "Ошибка",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/IErrorResponseDto"
-								}
-							}
-						}
-					}
-				},
-				"description": "Установить права для роли.\nЗаменяет текущий набор прав роли указанным. Роль `admin`, право `*` и\nсобственную роль меняет только суперпользователь. Все пользователи роли\nполучают `user:privileges-changed` с новыми правами; их прежние\naccess-токены отклоняются (`AUTH_PRIVILEGES_CHANGED`), сессии остаются.",
-				"summary": "Установка прав роли",
-				"tags": [
-					"Role"
-				],
-				"security": [
-					{
-						"jwt": [
-							"permission:role:update"
-						]
-					}
-				],
-				"parameters": [
-					{
-						"description": "ID роли",
-						"in": "path",
-						"name": "id",
-						"required": true,
-						"schema": {
-							"$ref": "#/components/schemas/UUID"
-						}
-					}
-				],
-				"requestBody": {
-					"description": "Список прав",
-					"required": true,
-					"content": {
-						"application/json": {
-							"schema": {
-								"$ref": "#/components/schemas/IRolePermissionsRequestDto",
-								"description": "Список прав"
-							}
-						}
-					}
-				}
 			}
 		},
 		"/api/v1/user/my": {

@@ -23,7 +23,7 @@ src/modules/auth/
 ├── refresh-cookie.ts           # httpOnly-cookie refresh_token
 ├── auth.errors.ts              # AuthError (AUTH_*)
 ├── auth.types.ts               # TLoginMethod, IAuthRequestMeta
-├── auth.dto.ts                 # Интерфейсы запросов и ответов
+├── dto/auth.dto.ts             # Интерфейсы запросов и ответов
 ├── auth.listener.ts            # EventBus → socket
 ├── auth.socket-events.ts       # auth:2fa-changed в контракте сокета
 ├── auth-password.policy.ts     # AuthPasswordPolicy — политика пароля для модуля user (PASSWORD_POLICY)

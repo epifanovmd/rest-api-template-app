@@ -16,8 +16,8 @@ import {
   TokenSubject,
   toPage,
 } from "../../core";
+import { SessionDto } from "./dto/session.dto";
 import { SessionTerminatedEvent } from "./events";
-import { SessionDto } from "./session.dto";
 import { Session } from "./session.entity";
 import { SessionError } from "./session.errors";
 import { SessionRepository } from "./session.repository";

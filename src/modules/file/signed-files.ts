@@ -1,4 +1,4 @@
-import type { IFileDto } from "./file.dto";
+import type { IFileDto } from "./dto/file.dto";
 import type { File } from "./file.entity";
 
 /** Подписанные DTO файлов по id — карта, из которой DTO модулей берут ссылки. */

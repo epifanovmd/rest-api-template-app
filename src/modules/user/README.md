@@ -188,8 +188,9 @@ src/modules/user/
 
 ### Подтверждённый email (`RequireVerifiedEmailGuard`)
 
-Guard читает claim `emailVerified` из access-токена; claim обновляется при выдаче
-нового токена — после подтверждения клиент обновляет токены.
+Guard (`core/guards`) читает `emailVerified` из контекста аутентификации
+(`ctx.state.user`) — claim access-токена после проверки схемой `jwt`; claim обновляется
+при выдаче нового токена — после подтверждения клиент обновляет токены.
 
 ---
 
@@ -284,6 +285,12 @@ HTTP-контекста (политики сокет-комнат, слушат�
 `PASSWORD_POLICY` (опционально).
 `EmailChangeService`: `UserRepository`, `EmailChangeRequestRepository`,
 `MailerService`, `DataSource`, `EventBus`.
+
+Известное нарушение границ: `dto/user.dto.ts` импортирует `ProfileDto`,
+`PublicProfileDto`, `collectProfileFiles` из `../../profile/dto`, а не через `index.ts`
+модуля profile — DTO user и profile вкладывают друг друга, и импорт через index даёт
+цикл загрузки (сервер не стартует). Страж-тест `src/modules/module-boundaries.test.ts`
+держит его в списке известных исключений.
 
 ## Тесты
 

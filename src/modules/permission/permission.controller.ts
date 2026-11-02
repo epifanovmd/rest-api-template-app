@@ -2,7 +2,7 @@ import { Controller, Get, Response, Route, Security, Tags } from "tsoa";
 
 import type { IErrorResponseDto } from "../../core";
 import { Injectable } from "../../core";
-import { IPermissionCatalogDto } from "./permission.dto";
+import { IPermissionCatalogDto } from "./dto/permission.dto";
 import { getPermissionCatalog } from "./permission.registry";
 
 @Injectable()

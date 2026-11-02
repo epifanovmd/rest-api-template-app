@@ -8,9 +8,9 @@ import { PermissionController } from './../modules/permission/permission.control
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 import { FileController } from './../modules/file/file.controller';
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-import { ProfileController } from './../modules/profile/profile.controller';
-// WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 import { RoleController } from './../modules/role/role.controller';
+// WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+import { ProfileController } from './../modules/profile/profile.controller';
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 import { UserController } from './../modules/user/user.controller';
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
@@ -155,25 +155,6 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "ProfileDto": {
-        "dataType": "refObject",
-        "properties": {
-            "id": {"dataType":"string","required":true},
-            "userId": {"dataType":"string","required":true},
-            "firstName": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
-            "lastName": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
-            "birthDate": {"dataType":"union","subSchemas":[{"dataType":"datetime"},{"dataType":"enum","enums":[null]}],"required":true},
-            "gender": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
-            "locale": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
-            "lastOnline": {"dataType":"union","subSchemas":[{"dataType":"datetime"},{"dataType":"enum","enums":[null]}],"required":true},
-            "createdAt": {"dataType":"datetime","required":true},
-            "updatedAt": {"dataType":"datetime","required":true},
-            "avatar": {"ref":"IFileDto"},
-            "user": {"ref":"UserDto"},
-        },
-        "additionalProperties": false,
-    },
-    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "KnownRole": {
         "dataType": "refAlias",
         "type": {"dataType":"union","subSchemas":[{"dataType":"enum","enums":["admin"]},{"dataType":"enum","enums":["user"]},{"dataType":"enum","enums":["guest"]}],"validators":{}},
@@ -203,6 +184,51 @@ const models: TsoaRoute.Models = {
             "createdAt": {"dataType":"datetime","required":true},
             "updatedAt": {"dataType":"datetime","required":true},
             "permissions": {"dataType":"array","array":{"dataType":"refObject","ref":"IPermissionDto"},"required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "RoleName": {
+        "dataType": "refAlias",
+        "type": {"dataType":"string","validators":{"minLength":{"value":1},"maxLength":{"value":100}}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "ICreateRoleRequestDto": {
+        "dataType": "refObject",
+        "properties": {
+            "name": {"ref":"RoleName","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "PermissionName": {
+        "dataType": "refAlias",
+        "type": {"dataType":"string","validators":{"minLength":{"value":1},"maxLength":{"value":100}}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "IRolePermissionsRequestDto": {
+        "dataType": "refObject",
+        "properties": {
+            "permissions": {"dataType":"array","array":{"dataType":"refAlias","ref":"PermissionName"},"required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "ProfileDto": {
+        "dataType": "refObject",
+        "properties": {
+            "id": {"dataType":"string","required":true},
+            "userId": {"dataType":"string","required":true},
+            "firstName": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
+            "lastName": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
+            "birthDate": {"dataType":"union","subSchemas":[{"dataType":"datetime"},{"dataType":"enum","enums":[null]}],"required":true},
+            "gender": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
+            "locale": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
+            "lastOnline": {"dataType":"union","subSchemas":[{"dataType":"datetime"},{"dataType":"enum","enums":[null]}],"required":true},
+            "createdAt": {"dataType":"datetime","required":true},
+            "updatedAt": {"dataType":"datetime","required":true},
+            "avatar": {"ref":"IFileDto"},
+            "user": {"ref":"UserDto"},
         },
         "additionalProperties": false,
     },
@@ -272,32 +298,6 @@ const models: TsoaRoute.Models = {
             "total": {"dataType":"double","required":true},
             "offset": {"dataType":"double","required":true},
             "limit": {"dataType":"double","required":true},
-        },
-        "additionalProperties": false,
-    },
-    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "RoleName": {
-        "dataType": "refAlias",
-        "type": {"dataType":"string","validators":{"minLength":{"value":1},"maxLength":{"value":100}}},
-    },
-    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "ICreateRoleRequestDto": {
-        "dataType": "refObject",
-        "properties": {
-            "name": {"ref":"RoleName","required":true},
-        },
-        "additionalProperties": false,
-    },
-    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "PermissionName": {
-        "dataType": "refAlias",
-        "type": {"dataType":"string","validators":{"minLength":{"value":1},"maxLength":{"value":100}}},
-    },
-    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "IRolePermissionsRequestDto": {
-        "dataType": "refObject",
-        "properties": {
-            "permissions": {"dataType":"array","array":{"dataType":"refAlias","ref":"PermissionName"},"required":true},
         },
         "additionalProperties": false,
     },
@@ -1244,6 +1244,152 @@ export function RegisterRoutes(router: KoaRouter,opts?:{multer?:ReturnType<typeo
             });
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        const argsRoleController_getRoles: Record<string, TsoaRoute.ParameterSchema> = {
+        };
+        router.get('/api/v1/roles',
+            authenticateMiddleware([{"jwt":["permission:role:view"]}]),
+            ...(fetchMiddlewares<Middleware>(RoleController)),
+            ...(fetchMiddlewares<Middleware>(RoleController.prototype.getRoles)),
+
+            async function RoleController_getRoles(context: Context, next: Next) {
+
+            let validatedArgs: any[] = [];
+            try {
+              validatedArgs = templateService.getValidatedArgs({ args: argsRoleController_getRoles, context, next });
+            } catch (err) {
+              const error = err as any;
+              error.message ||= JSON.stringify({ fields: error.fields });
+              context.status = error.status;
+              context.throw(context.status, error.message, error);
+            }
+
+            const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(context.request) : iocContainer;
+
+            const controller: any = await container.get<RoleController>(RoleController);
+            if (typeof controller['setStatus'] === 'function') {
+                controller.setStatus(undefined);
+            }
+
+            return templateService.apiHandler({
+              methodName: 'getRoles',
+              controller,
+              context,
+              validatedArgs,
+              successStatus: undefined,
+            });
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        const argsRoleController_createRole: Record<string, TsoaRoute.ParameterSchema> = {
+                body: {"in":"body","name":"body","required":true,"ref":"ICreateRoleRequestDto"},
+        };
+        router.post('/api/v1/roles',
+            authenticateMiddleware([{"jwt":["permission:role:create"]}]),
+            ...(fetchMiddlewares<Middleware>(RoleController)),
+            ...(fetchMiddlewares<Middleware>(RoleController.prototype.createRole)),
+
+            async function RoleController_createRole(context: Context, next: Next) {
+
+            let validatedArgs: any[] = [];
+            try {
+              validatedArgs = templateService.getValidatedArgs({ args: argsRoleController_createRole, context, next });
+            } catch (err) {
+              const error = err as any;
+              error.message ||= JSON.stringify({ fields: error.fields });
+              context.status = error.status;
+              context.throw(context.status, error.message, error);
+            }
+
+            const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(context.request) : iocContainer;
+
+            const controller: any = await container.get<RoleController>(RoleController);
+            if (typeof controller['setStatus'] === 'function') {
+                controller.setStatus(undefined);
+            }
+
+            return templateService.apiHandler({
+              methodName: 'createRole',
+              controller,
+              context,
+              validatedArgs,
+              successStatus: 201,
+            });
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        const argsRoleController_deleteRole: Record<string, TsoaRoute.ParameterSchema> = {
+                req: {"in":"request","name":"req","required":true,"dataType":"object"},
+                id: {"in":"path","name":"id","required":true,"ref":"UUID"},
+        };
+        router.delete('/api/v1/roles/:id',
+            authenticateMiddleware([{"jwt":["permission:role:delete"]}]),
+            ...(fetchMiddlewares<Middleware>(RoleController)),
+            ...(fetchMiddlewares<Middleware>(RoleController.prototype.deleteRole)),
+
+            async function RoleController_deleteRole(context: Context, next: Next) {
+
+            let validatedArgs: any[] = [];
+            try {
+              validatedArgs = templateService.getValidatedArgs({ args: argsRoleController_deleteRole, context, next });
+            } catch (err) {
+              const error = err as any;
+              error.message ||= JSON.stringify({ fields: error.fields });
+              context.status = error.status;
+              context.throw(context.status, error.message, error);
+            }
+
+            const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(context.request) : iocContainer;
+
+            const controller: any = await container.get<RoleController>(RoleController);
+            if (typeof controller['setStatus'] === 'function') {
+                controller.setStatus(undefined);
+            }
+
+            return templateService.apiHandler({
+              methodName: 'deleteRole',
+              controller,
+              context,
+              validatedArgs,
+              successStatus: 204,
+            });
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        const argsRoleController_setRolePermissions: Record<string, TsoaRoute.ParameterSchema> = {
+                req: {"in":"request","name":"req","required":true,"dataType":"object"},
+                id: {"in":"path","name":"id","required":true,"ref":"UUID"},
+                body: {"in":"body","name":"body","required":true,"ref":"IRolePermissionsRequestDto"},
+        };
+        router.patch('/api/v1/roles/:id/permissions',
+            authenticateMiddleware([{"jwt":["permission:role:update"]}]),
+            ...(fetchMiddlewares<Middleware>(RoleController)),
+            ...(fetchMiddlewares<Middleware>(RoleController.prototype.setRolePermissions)),
+
+            async function RoleController_setRolePermissions(context: Context, next: Next) {
+
+            let validatedArgs: any[] = [];
+            try {
+              validatedArgs = templateService.getValidatedArgs({ args: argsRoleController_setRolePermissions, context, next });
+            } catch (err) {
+              const error = err as any;
+              error.message ||= JSON.stringify({ fields: error.fields });
+              context.status = error.status;
+              context.throw(context.status, error.message, error);
+            }
+
+            const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(context.request) : iocContainer;
+
+            const controller: any = await container.get<RoleController>(RoleController);
+            if (typeof controller['setStatus'] === 'function') {
+                controller.setStatus(undefined);
+            }
+
+            return templateService.apiHandler({
+              methodName: 'setRolePermissions',
+              controller,
+              context,
+              validatedArgs,
+              successStatus: undefined,
+            });
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         const argsProfileController_getMyProfile: Record<string, TsoaRoute.ParameterSchema> = {
                 req: {"in":"request","name":"req","required":true,"dataType":"object"},
         };
@@ -1571,152 +1717,6 @@ export function RegisterRoutes(router: KoaRouter,opts?:{multer?:ReturnType<typeo
               context,
               validatedArgs,
               successStatus: 204,
-            });
-        });
-        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-        const argsRoleController_getRoles: Record<string, TsoaRoute.ParameterSchema> = {
-        };
-        router.get('/api/v1/roles',
-            authenticateMiddleware([{"jwt":["permission:role:view"]}]),
-            ...(fetchMiddlewares<Middleware>(RoleController)),
-            ...(fetchMiddlewares<Middleware>(RoleController.prototype.getRoles)),
-
-            async function RoleController_getRoles(context: Context, next: Next) {
-
-            let validatedArgs: any[] = [];
-            try {
-              validatedArgs = templateService.getValidatedArgs({ args: argsRoleController_getRoles, context, next });
-            } catch (err) {
-              const error = err as any;
-              error.message ||= JSON.stringify({ fields: error.fields });
-              context.status = error.status;
-              context.throw(context.status, error.message, error);
-            }
-
-            const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(context.request) : iocContainer;
-
-            const controller: any = await container.get<RoleController>(RoleController);
-            if (typeof controller['setStatus'] === 'function') {
-                controller.setStatus(undefined);
-            }
-
-            return templateService.apiHandler({
-              methodName: 'getRoles',
-              controller,
-              context,
-              validatedArgs,
-              successStatus: undefined,
-            });
-        });
-        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-        const argsRoleController_createRole: Record<string, TsoaRoute.ParameterSchema> = {
-                body: {"in":"body","name":"body","required":true,"ref":"ICreateRoleRequestDto"},
-        };
-        router.post('/api/v1/roles',
-            authenticateMiddleware([{"jwt":["permission:role:create"]}]),
-            ...(fetchMiddlewares<Middleware>(RoleController)),
-            ...(fetchMiddlewares<Middleware>(RoleController.prototype.createRole)),
-
-            async function RoleController_createRole(context: Context, next: Next) {
-
-            let validatedArgs: any[] = [];
-            try {
-              validatedArgs = templateService.getValidatedArgs({ args: argsRoleController_createRole, context, next });
-            } catch (err) {
-              const error = err as any;
-              error.message ||= JSON.stringify({ fields: error.fields });
-              context.status = error.status;
-              context.throw(context.status, error.message, error);
-            }
-
-            const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(context.request) : iocContainer;
-
-            const controller: any = await container.get<RoleController>(RoleController);
-            if (typeof controller['setStatus'] === 'function') {
-                controller.setStatus(undefined);
-            }
-
-            return templateService.apiHandler({
-              methodName: 'createRole',
-              controller,
-              context,
-              validatedArgs,
-              successStatus: 201,
-            });
-        });
-        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-        const argsRoleController_deleteRole: Record<string, TsoaRoute.ParameterSchema> = {
-                req: {"in":"request","name":"req","required":true,"dataType":"object"},
-                id: {"in":"path","name":"id","required":true,"ref":"UUID"},
-        };
-        router.delete('/api/v1/roles/:id',
-            authenticateMiddleware([{"jwt":["permission:role:delete"]}]),
-            ...(fetchMiddlewares<Middleware>(RoleController)),
-            ...(fetchMiddlewares<Middleware>(RoleController.prototype.deleteRole)),
-
-            async function RoleController_deleteRole(context: Context, next: Next) {
-
-            let validatedArgs: any[] = [];
-            try {
-              validatedArgs = templateService.getValidatedArgs({ args: argsRoleController_deleteRole, context, next });
-            } catch (err) {
-              const error = err as any;
-              error.message ||= JSON.stringify({ fields: error.fields });
-              context.status = error.status;
-              context.throw(context.status, error.message, error);
-            }
-
-            const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(context.request) : iocContainer;
-
-            const controller: any = await container.get<RoleController>(RoleController);
-            if (typeof controller['setStatus'] === 'function') {
-                controller.setStatus(undefined);
-            }
-
-            return templateService.apiHandler({
-              methodName: 'deleteRole',
-              controller,
-              context,
-              validatedArgs,
-              successStatus: 204,
-            });
-        });
-        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-        const argsRoleController_setRolePermissions: Record<string, TsoaRoute.ParameterSchema> = {
-                req: {"in":"request","name":"req","required":true,"dataType":"object"},
-                id: {"in":"path","name":"id","required":true,"ref":"UUID"},
-                body: {"in":"body","name":"body","required":true,"ref":"IRolePermissionsRequestDto"},
-        };
-        router.patch('/api/v1/roles/:id/permissions',
-            authenticateMiddleware([{"jwt":["permission:role:update"]}]),
-            ...(fetchMiddlewares<Middleware>(RoleController)),
-            ...(fetchMiddlewares<Middleware>(RoleController.prototype.setRolePermissions)),
-
-            async function RoleController_setRolePermissions(context: Context, next: Next) {
-
-            let validatedArgs: any[] = [];
-            try {
-              validatedArgs = templateService.getValidatedArgs({ args: argsRoleController_setRolePermissions, context, next });
-            } catch (err) {
-              const error = err as any;
-              error.message ||= JSON.stringify({ fields: error.fields });
-              context.status = error.status;
-              context.throw(context.status, error.message, error);
-            }
-
-            const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(context.request) : iocContainer;
-
-            const controller: any = await container.get<RoleController>(RoleController);
-            if (typeof controller['setStatus'] === 'function') {
-                controller.setStatus(undefined);
-            }
-
-            return templateService.apiHandler({
-              methodName: 'setRolePermissions',
-              controller,
-              context,
-              validatedArgs,
-              successStatus: undefined,
             });
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa

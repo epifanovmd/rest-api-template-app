@@ -17,7 +17,7 @@ import {
 import type { IErrorResponseDto, IPaginatedDto, UUID } from "../../core";
 import { getContextUser, Injectable } from "../../core";
 import { KoaRequest } from "../../types/koa";
-import { SessionDto } from "./session.dto";
+import { SessionDto } from "./dto/session.dto";
 import { SessionService } from "./session.service";
 
 @Injectable()

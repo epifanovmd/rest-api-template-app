@@ -1,5 +1,5 @@
-import { IPaginatedDto } from "../../core";
-import { TPermission } from "./permission.types";
+import { IPaginatedDto } from "../../../core";
+import { TPermission } from "../permission.types";
 
 export interface IPermissionDto {
   id: string;

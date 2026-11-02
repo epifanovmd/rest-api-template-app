@@ -1,7 +1,7 @@
 import { inject } from "inversify";
 
 import { AccessService, EventBus, Injectable, logger } from "../../core";
-import { ProfileUpdatedEvent } from "../profile/events";
+import { ProfileUpdatedEvent } from "../profile";
 import { RoleDeletedEvent, RolePermissionsChangedEvent } from "../role";
 import {
   ISocketEventListener,

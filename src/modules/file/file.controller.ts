@@ -21,7 +21,7 @@ import type { IErrorResponseDto, IPaginatedDto } from "../../core";
 import { getContextUser, Injectable, ValidateBody } from "../../core";
 import { UUID } from "../../core/http";
 import { KoaRequest } from "../../types/koa";
-import { ICreateUploadBody, IDirectUploadDto, IFileDto } from "./file.dto";
+import { ICreateUploadBody, IDirectUploadDto, IFileDto } from "./dto/file.dto";
 import { FileService } from "./file.service";
 import { CreateUploadSchema } from "./validation/create-upload.validate";
 

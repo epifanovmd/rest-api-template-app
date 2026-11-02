@@ -26,9 +26,9 @@ import {
 import { AuthService } from "../auth";
 import { IDeviceInfo } from "../session";
 import { UserService } from "../user";
+import { PasskeyDto } from "./dto/passkeys.dto";
 import { PasskeyAddedEvent, PasskeyRemovedEvent } from "./events";
 import { PasskeyChallengeRepository } from "./passkey-challenge.repository";
-import { PasskeyDto } from "./passkeys.dto";
 import { PasskeyError } from "./passkeys.errors";
 import { PasskeysRepository } from "./passkeys.repository";
 

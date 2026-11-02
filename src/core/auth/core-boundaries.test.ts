@@ -35,12 +35,16 @@ const findModuleImports = (dir: string): string[] =>
   });
 
 /**
- * Архитектурный страж: ядро и глобальные типы не зависят от доменных
+ * Архитектурный страж: ядро, общие хелперы и глобальные типы не зависят от доменных
  * модулей — зависимости идут только из модулей в ядро.
  */
 describe("Границы ядра", () => {
   it("src/core/** не импортирует src/modules/**", () => {
     expect(findModuleImports(join(SRC, "core"))).to.deep.equal([]);
+  });
+
+  it("src/common/** не импортирует src/modules/**", () => {
+    expect(findModuleImports(join(SRC, "common"))).to.deep.equal([]);
   });
 
   it("src/types/** не импортирует src/modules/**", () => {

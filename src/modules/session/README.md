@@ -22,8 +22,8 @@ src/modules/session/
 ├── session.socket-events.ts      # session:new, session:terminated в контракте сокета
 ├── session-cleanup.job.ts        # SessionCleanupJob (cron, очередь session.cleanup)
 ├── session.errors.ts             # SessionError (SESSION_*)
-├── session.dto.ts                # SessionDto
 ├── session.types.ts              # IDeviceInfo, TSessionEndReason
+├── dto/session.dto.ts            # SessionDto (реэкспорт — dto/index.ts)
 ├── events/session-terminated.event.ts
 └── *.test.ts
 ```

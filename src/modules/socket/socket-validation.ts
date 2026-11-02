@@ -1,17 +1,13 @@
 import { z } from "zod";
 
-import { defineErrors, HttpException, logger } from "../../core";
+import { HttpException, logger } from "../../core";
+import { SocketError } from "./socket.errors";
 import {
   ISocketAckError,
   ISocketEvents,
   TSocket,
   TSocketAck,
 } from "./socket.types";
-
-export const SocketError = defineErrors("SOCKET", {
-  RATE_LIMITED: { status: 429, message: "Слишком частые события" },
-  INTERNAL: { status: 500, message: "Ошибка обработки события" },
-});
 
 /** Token bucket: `perSecond` токенов в секунду, запас — `burst`. */
 export interface ISocketRateLimit {

@@ -17,7 +17,7 @@ src/modules/biometric/
 ├── biometric.repository.ts
 ├── biometric.service.ts
 ├── biometric.controller.ts
-├── biometric.dto.ts
+├── dto/biometric.dto.ts
 ├── biometric.errors.ts               # BiometricError (BIOMETRIC_*)
 ├── events/biometric.events.ts        # BiometricAddedEvent, BiometricRemovedEvent
 ├── validation/biometric.validate.ts   # RegisterBiometric, GenerateNonce, VerifyBiometricSignature

@@ -25,6 +25,7 @@ import {
 } from "../../core";
 import { KoaRequest } from "../../types/koa";
 import { setRefreshCookie } from "../auth";
+import { BiometricService } from "./biometric.service";
 import {
   IBiometricDevicesResponseDto,
   IGenerateNonceRequestDto,
@@ -33,8 +34,7 @@ import {
   IRegisterBiometricResponseDto,
   IVerifyBiometricSignatureRequestDto,
   IVerifyBiometricSignatureResponseDto,
-} from "./biometric.dto";
-import { BiometricService } from "./biometric.service";
+} from "./dto/biometric.dto";
 import {
   GenerateNonceSchema,
   RegisterBiometricSchema,

@@ -13,8 +13,8 @@ import {
 import type { ICursorPageDto, IErrorResponseDto, UUID } from "../../core";
 import { getContextUser, Injectable, ValidateQuery } from "../../core";
 import { KoaRequest } from "../../types/koa";
-import { AuditEventDto } from "./audit.dto";
 import { AuditService } from "./audit.service";
+import { AuditEventDto } from "./dto/audit.dto";
 import { AuditQuerySchema, MyAuditQuerySchema } from "./validation";
 
 @Injectable()

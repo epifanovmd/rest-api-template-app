@@ -1,12 +1,12 @@
 import { expect } from "chai";
 
 import { ALL_PERMISSIONS } from "../../core/auth/superuser";
+import { PermissionError } from "./permission.errors";
 import {
   definePermissions,
   getDomainPermissions,
   getPermissionCatalog,
   getRegisteredPermissions,
-  PermissionError,
   unregisterPermissionDomain,
 } from "./permission.registry";
 

@@ -34,7 +34,7 @@ src/modules/file/
 ├── ffmpeg.ts                  # Обёртка ffmpeg/ffprobe
 ├── file-upload.policy.ts      # Белый список, проверка сигнатуры (файл или начало объекта)
 ├── file-usage.probe.ts        # FILE_USAGE_PROBE / IFileUsageProbe / asFileUsageProbe
-├── file.dto.ts                # IFileDto, ICreateUploadBody, IDirectUploadDto
+├── dto/file.dto.ts            # IFileDto, ICreateUploadBody, IDirectUploadDto
 ├── validation/                # CreateUploadSchema
 └── events/                    # FileUploadedEvent, FileProcessedEvent, FileDeletedEvent
 ```

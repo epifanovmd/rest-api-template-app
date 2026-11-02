@@ -1,6 +1,6 @@
-import { IPaginatedDto } from "../../core";
-import { IPermissionDto } from "../permission/permission.dto";
-import { TRole } from "./role.types";
+import { IPaginatedDto } from "../../../core";
+import { IPermissionDto } from "../../permission";
+import { TRole } from "../role.types";
 
 export interface IRoleDto {
   id: string;

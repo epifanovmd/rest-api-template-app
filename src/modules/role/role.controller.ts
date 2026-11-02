@@ -19,11 +19,11 @@ import type { IErrorResponseDto } from "../../core";
 import { getContextUser, Injectable, ValidateBody } from "../../core";
 import { UUID } from "../../core/http";
 import { KoaRequest } from "../../types/koa";
+import { IRoleDto } from "./dto/role.dto";
 import {
   ICreateRoleRequestDto,
   IRolePermissionsRequestDto,
 } from "./dto/role-request.dto";
-import { IRoleDto } from "./role.dto";
 import { RoleService } from "./role.service";
 import { SetRolePermissionsSchema } from "./validation";
 import { CreateRoleSchema } from "./validation/create-role.validate";

@@ -3,14 +3,7 @@ import {
   ownPermission,
 } from "../../core/auth/has-permission";
 import { ALL_PERMISSIONS } from "../../core/auth/superuser";
-import { defineErrors } from "../../core/http";
-
-export const PermissionError = defineErrors("PERMISSION", {
-  INVALID_DEFINITION: {
-    status: 500,
-    message: "Некорректное объявление прав модуля",
-  },
-});
+import { PermissionError } from "./permission.errors";
 
 /** Право в объявлении модуля: имя и подпись для редакторов ролей. */
 export interface IPermissionDefinition {

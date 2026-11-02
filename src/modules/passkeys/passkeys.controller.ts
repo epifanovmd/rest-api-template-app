@@ -32,12 +32,12 @@ import {
   IVerifyRegistrationRequestDto,
   IVerifyRegistrationResponseDto,
   PasskeyDto,
-} from "./passkeys.dto";
-import { PasskeysService } from "./passkeys.service";
+} from "./dto/passkeys.dto";
 import {
   PublicKeyCredentialCreationOptionsJSON,
   PublicKeyCredentialRequestOptionsJSON,
-} from "./webauthn.dto";
+} from "./dto/webauthn.dto";
+import { PasskeysService } from "./passkeys.service";
 
 @Injectable()
 @Tags("Passkeys")

@@ -1,7 +1,7 @@
 import { inject } from "inversify";
 
 import { FileStorage, Injectable } from "../../core";
-import type { IFileDto } from "./file.dto";
+import type { IFileDto } from "./dto/file.dto";
 import { File } from "./file.entity";
 import { EFileStatus } from "./file.types";
 import type { TFileRef, TSignedFiles } from "./signed-files";

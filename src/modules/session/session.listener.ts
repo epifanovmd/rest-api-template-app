@@ -6,7 +6,7 @@ import {
   PasswordChangedEvent,
   UserDeletedEvent,
   UserPrivilegesChangedEvent,
-} from "../user/events";
+} from "../user";
 import { SessionTerminatedEvent } from "./events";
 import { SessionService } from "./session.service";
 

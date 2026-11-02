@@ -23,7 +23,7 @@ src/modules/audit/
 ├── events/                 # AuditRecordedEvent
 ├── audit.controller.ts     # 2 эндпоинта
 ├── audit-cleanup.job.ts    # AuditCleanupJob (cron)
-├── audit.dto.ts            # AuditEventDto
+├── dto/audit.dto.ts        # AuditEventDto
 ├── audit.types.ts          # AuditEventType, AUDIT_RETENTION_DAYS
 ├── audit.errors.ts         # AuditError (AUDIT_*)
 ├── audit.permissions.ts    # AuditPermissions (audit:view)

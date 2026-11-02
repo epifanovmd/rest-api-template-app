@@ -1,7 +1,7 @@
 import { inject } from "inversify";
 
 import { EventBus, Injectable } from "../../core";
-import { SessionDto } from "../session/session.dto";
+import { SessionDto } from "../session";
 import { ISocketEventListener, SocketEmitterService } from "../socket";
 import {
   TwoFactorDisabledEvent,

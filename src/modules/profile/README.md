@@ -49,6 +49,7 @@ src/modules/profile/
 ├── profile.service.test.ts           # Тесты ProfileService
 ├── privacy-settings.service.test.ts  # Тесты PrivacySettingsService
 ├── presence.listener.test.ts         # Тесты PresenceListener
+├── profile.handler.test.ts           # Тесты ProfileHandler (profile:subscribe)
 └── index.ts                          # Публичный API модуля
 ```
 
@@ -213,6 +214,10 @@ src/modules/profile/
 | ------------------- | ------------------------------------------- |
 | `profile:subscribe` | Клиент подписывается на комнату `"profile"` |
 
+Обрабатывается через `onValidated` (модуль socket): событие без данных (схема
+`z.undefined()`; любые данные — отказ с `VALIDATION_ERROR`, в комнату не входит),
+лимит 1/с с запасом 5; успех — ack `{ ok: true }`.
+
 ### ProfileListener (ISocketEventListener)
 
 | Событие EventBus              | Socket-событие            | Комната/Получатель    | Данные               |
@@ -251,6 +256,11 @@ src/modules/profile/
 | `AccessService`                                        | `core`           | Проверка суперпользователя (`isSuperUser`)                   |
 | `SocketEmitterService`, `SocketClientRegistry`         | `modules/socket` | Отправка событий, список онлайн для `presence:init`          |
 | `SOCKET_HANDLER`, `SOCKET_EVENT_LISTENER`              | `modules/socket` | Регистрация handler и listener                               |
+
+Известное нарушение границ: `dto/profile.dto.ts` импортирует `UserDto` из
+`../../user/dto`, а не через `index.ts` модуля user — DTO user и profile вкладывают
+друг друга, и импорт через index даёт цикл загрузки (сервер не стартует). Страж-тест
+`src/modules/module-boundaries.test.ts` держит его в списке известных исключений.
 
 ## Связи пользователей (`profile.relations.ts`)
 

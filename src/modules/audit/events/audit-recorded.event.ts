@@ -1,4 +1,4 @@
-import type { AuditEventDto } from "../audit.dto";
+import type { AuditEventDto } from "../dto/audit.dto";
 
 /** Событие безопасности записано в журнал. */
 export class AuditRecordedEvent {

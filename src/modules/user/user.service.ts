@@ -29,9 +29,8 @@ import { OtpRepository, OtpService } from "../otp";
 import { PermissionRepository } from "../permission";
 import { PrivacySettingsService } from "../profile";
 import { Profile } from "../profile/profile.entity";
-import { RoleRepository } from "../role";
+import { RoleRepository, Roles, TRole } from "../role";
 import { Role } from "../role/role.entity";
-import { Roles, TRole } from "../role/role.types";
 import {
   collectUserFiles,
   IUserChangePasswordDto,

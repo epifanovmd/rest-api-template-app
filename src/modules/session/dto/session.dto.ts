@@ -1,5 +1,5 @@
-import { BaseDto } from "../../core/dto/BaseDto";
-import { Session } from "./session.entity";
+import { BaseDto } from "../../../core/dto/BaseDto";
+import { Session } from "../session.entity";
 
 export class SessionDto extends BaseDto {
   id: string;

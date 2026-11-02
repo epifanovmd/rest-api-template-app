@@ -1,3 +1,4 @@
+export * from "./dto";
 export * from "./events";
 export * from "./passkeys.controller";
 export * from "./passkeys.errors";

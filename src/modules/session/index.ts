@@ -1,6 +1,6 @@
+export * from "./dto";
 export * from "./events";
 export * from "./session.controller";
-export * from "./session.dto";
 export * from "./session.entity";
 export * from "./session.errors";
 export * from "./session.module";

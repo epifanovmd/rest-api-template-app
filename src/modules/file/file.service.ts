@@ -17,9 +17,9 @@ import {
 } from "../../core";
 import { AuthContext } from "../../types/koa";
 import type { ISignedPutUrlOptions } from "../storage";
+import { ICreateUploadBody, IDirectUploadDto, IFileDto } from "./dto/file.dto";
 import { FileDeletedEvent, FileUploadedEvent } from "./events";
 import { FileAccess } from "./file.access";
-import { ICreateUploadBody, IDirectUploadDto, IFileDto } from "./file.dto";
 import { File } from "./file.entity";
 import { FileError } from "./file.errors";
 import { FilePermissions } from "./file.permissions";

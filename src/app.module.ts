@@ -12,7 +12,7 @@ import { OtpModule } from "./modules/otp";
 import { PasskeysModule } from "./modules/passkeys";
 import { ProfileModule } from "./modules/profile";
 import { ResetPasswordTokensModule } from "./modules/reset-password-tokens";
-import { SessionModule } from "./modules/session/session.module";
+import { SessionModule } from "./modules/session";
 import { SocketModule } from "./modules/socket";
 import { StorageModule } from "./modules/storage";
 import { UserModule } from "./modules/user";

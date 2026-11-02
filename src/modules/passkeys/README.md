@@ -21,8 +21,10 @@ src/modules/passkeys/
 ├── passkey-challenge-cleanup.job.ts   # PasskeyChallengeCleanupJob (cron)
 ├── passkeys.errors.ts                 # PasskeyError (PASSKEY_*)
 ├── events/passkey.events.ts           # PasskeyAddedEvent, PasskeyRemovedEvent
-├── passkeys.dto.ts                    # PasskeyDto, тела запросов/ответов
-├── webauthn.dto.ts                    # WebAuthn JSON-структуры для OpenAPI
+├── dto/
+│   ├── passkeys.dto.ts                # PasskeyDto, тела запросов/ответов
+│   ├── webauthn.dto.ts                # WebAuthn JSON-структуры для OpenAPI
+│   └── index.ts                       # Реэкспорт DTO
 └── *.test.ts
 ```
 

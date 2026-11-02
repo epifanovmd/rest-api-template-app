@@ -22,16 +22,16 @@ import { SessionService } from "../session";
 import { PasswordChangedEvent, UserService } from "../user";
 import { User } from "../user/user.entity";
 import { AccountLockout } from "./account-lockout";
+import { AuthError } from "./auth.errors";
+import { IAuthRequestMeta, TLoginMethod } from "./auth.types";
+import { AuthAttemptsStore, IAttemptsStore } from "./auth-attempts.store";
 import {
   IDeviceInfo,
   ISignInRequestDto,
   ISignInResponseDto,
   IUserWithTokensDto,
   TSignUpRequestDto,
-} from "./auth.dto";
-import { AuthError } from "./auth.errors";
-import { IAuthRequestMeta, TLoginMethod } from "./auth.types";
-import { AuthAttemptsStore, IAttemptsStore } from "./auth-attempts.store";
+} from "./dto/auth.dto";
 import {
   AccountLockedEvent,
   LoginFailedEvent,

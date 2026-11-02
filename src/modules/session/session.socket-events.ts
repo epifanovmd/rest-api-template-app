@@ -2,7 +2,7 @@
  * Сокет-события модуля: дополняют контракт `socket.types` (declare module
  * работает только с модулем-объявлением, не с index).
  */
-import type { SessionDto } from "./session.dto";
+import type { SessionDto } from "./dto/session.dto";
 
 export interface ISocketSessionPayload {
   sessionId: string;
