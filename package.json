@@ -66,7 +66,7 @@
     "koa-helmet": "^9",
     "koa-ratelimit": "^6",
     "koa2-swagger-ui": "^5.12.0",
-    "multer": "^2.4.0",
+    "multer": "^2.5.0",
     "nodemailer": "^10",
     "pg": "^8.23.0",
     "pg-boss": "^12",
@@ -79,7 +79,7 @@
     "ws": "^8",
     "yauzl": "^3.4.0",
     "yazl": "^3.3.1",
-    "zod": "^4.6.5"
+    "zod": "^4.6.6"
   },
   "devDependencies": {
     "@eslint/js": "^10",
@@ -117,7 +117,9 @@
     "typescript-eslint": "^8"
   },
   "resolutions": {
+    "**/@hapi/content": "^6.0.3",
     "**/@types/koa": "^3.0.3",
+    "**/body-parser": "^1.20.9",
     "**/handlebars": "^4.7.10"
   }
 }
