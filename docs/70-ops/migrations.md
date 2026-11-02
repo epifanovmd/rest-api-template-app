@@ -16,7 +16,7 @@ depends_on: [ops/commands]
 - Сущности регистрируются в `@Module({ entities })`; `src/data-source.ts` собирает их из
   дерева модулей (`collectEntities(AppModule)`) — поиска файлов по маске нет.
 - Миграции применяются в порядке списка `src/migrations/index.ts`, а не по имени файла.
-- Применённая миграция не редактируется: изменение схемы — новая миграция.
+- Правила миграций — [conventions/entities-migrations](../30-conventions/entities-migrations.md).
 - Смена смысла прав или данных — миграция данных (роли, `user_permissions`, scopes
   `api_keys`), а не правка кода засева.
 - pg-boss держит свою схему `pgboss` и мигрирует её сам.

@@ -45,7 +45,7 @@ Redis, Socket.IO, S3/диск, Zod, pino, prom-client + Sentry, Mocha. Роль 
   правила или правила противоречат — остановиться и спросить, а не решать самому.
 - Модульный монолит: код — в модуле-владельце (`src/modules/<feature>/`); контроллер →
   сервис → репозиторий → сущность; наружу — только DTO; чужой модуль — через его
-  `index.ts` ([module-layers](docs/20-architecture/module-layers.md)).
+  `index.ts`, кроме `*.entity` для связей и репозиториев ORM ([module-layers](docs/20-architecture/module-layers.md)).
 - Ядро (`src/core`, `src/types`) не импортирует модули; расширение — токенами-реестрами
   ([extension-points](docs/20-architecture/extension-points.md)).
 - DI — только через `@Module.providers`; общее для процессов состояние — в Redis/БД.

@@ -94,7 +94,8 @@ describe("FeatureService", () => {
 
 | Тест                                    | Что ловит                                                    |
 | --------------------------------------- | ------------------------------------------------------------ |
-| `src/core/auth/core-boundaries.test.ts` | импорт модулей из `src/core`, `src/types`                    |
+| `src/core/auth/core-boundaries.test.ts` | импорт модулей из `src/core`, `src/types`, `src/common`      |
+| `src/modules/module-boundaries.test.ts` | импорт чужого модуля мимо `index.ts` (кроме `*.entity`)      |
 | `src/core/db/entity-registry.test.ts`   | сущности, не собранные из модулей                            |
 | `src/routing/spec.test.ts`              | дубли `operationId`, невыполнимые схемы, необъявленные права |
 | `modules/mailer/mail-renderer.test.ts`  | неполные наборы шаблонов писем по локалям                    |
@@ -110,4 +111,4 @@ describe("FeatureService", () => {
 - Письма — Mailpit: `mail`, `codeFrom`, `tokenFrom`.
 - Сокеты — `connectSocket(actor)` из `socket.ts`.
 - Несколько реплик — `startPeerServer()` из `harness.ts`.
-- Каждый новый эндпоинт вызывается хотя бы одним сценарием — иначе падает `zz-coverage`.
+- Каждый новый эндпоинт вызывается хотя бы одним сценарием ([ops/e2e](../70-ops/e2e.md)).

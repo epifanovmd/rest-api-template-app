@@ -48,7 +48,6 @@ securityDefinitions`; без реестра — 500 на маршруте.
 
 - TypeORM 1.x: `select` — только объектом (`{ id: true }`).
 - Колонки `bigint` → number — трансформер `bigintNumber` (`core/db/transformers.ts`).
-- Применённую миграцию не правят; смена смысла прав — миграция данных.
 - `BaseDto` бросает 500, если entity `undefined`.
 - `list.map(Dto.fromEntity)` с картой подписанных файлов вторым аргументом не
   компилируется — передавать карту явно.
@@ -82,4 +81,3 @@ securityDefinitions`; без реестра — 500 на маршруте.
 
 - Все функции — стрелочные (`func-style: expression`); хелпер объявляется выше
   первого использования.
-- Новый эндпоинт без вызова в e2e роняет `test/e2e/zz-coverage.e2e.ts`.

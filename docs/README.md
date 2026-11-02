@@ -208,4 +208,5 @@
 
 ## Предложения в inbox
 
-Открытых предложений нет.
+- [2026-11-02-dto-mutual-nesting](inbox/2026-11-02-dto-mutual-nesting.md)
+- [2026-11-02-socket-profile-decoupling](inbox/2026-11-02-socket-profile-decoupling.md)
