@@ -1,4 +1,5 @@
-# Git-хуки: форматирование и линт застейдженных файлов, затем проверка типов и тесты.
+# Git-хуки: форматирование и линт застейдженных файлов, затем проверка типов и тесты;
+# формат сообщения коммита — commit-msg.
 pre-commit:
   parallel: false
   jobs:
@@ -23,3 +24,8 @@ pre-commit:
 
     - name: test
       run: yarn test
+
+commit-msg:
+  jobs:
+    - name: conventional-commit
+      run: node scripts/git/commit-msg.mjs {1}
