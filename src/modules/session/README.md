@@ -1,3 +1,8 @@
+---
+module: modules/session
+summary: Сессии устройств: выдача и ротация refresh-токена, завершение с немедленным отзывом access-токена, фоновая очистка
+---
+
 # Модуль Session
 
 Сессии устройств пользователя: создание при входе, ротация refresh-токена,
@@ -14,6 +19,7 @@ src/modules/session/
 ├── session.service.ts
 ├── session.controller.ts         # 3 эндпоинта
 ├── session.listener.ts           # EventBus → завершение сессий, отзыв токенов, разрыв сокетов
+├── session.socket-events.ts      # session:new, session:terminated в контракте сокета
 ├── session-cleanup.job.ts        # SessionCleanupJob (cron, очередь session.cleanup)
 ├── session.errors.ts             # SessionError (SESSION_*)
 ├── session.dto.ts                # SessionDto
@@ -95,6 +101,9 @@ src/modules/session/
 | `UserDeletedEvent`           | user     | `TokenService.revokeUser(userId)` + `disconnectUser(userId)` (сессии удаляются каскадом)    |
 
 Ошибка обработчика логируется и не пробрасывается.
+
+Событие `session:new` (`SessionDto`, новая сессия при входе) объявлено здесь, а шлёт его
+`AuthListener` модуля auth по `UserLoggedInEvent`.
 
 ## Ошибки
 

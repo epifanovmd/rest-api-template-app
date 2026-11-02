@@ -1,3 +1,8 @@
+---
+module: modules/profile
+summary: Профили пользователей, настройки приватности и присутствие online/offline
+---
+
 # Модуль Profile
 
 Модуль управления профилями пользователей и настройками приватности. Предоставляет CRUD-операции для профилей, управление статусом присутствия (online/offline), а также гранулярные настройки видимости персональных данных (последний онлайн, телефон, аватар).
@@ -16,8 +21,14 @@ src/modules/profile/
 ├── profile.controller.ts             # REST-контроллер (tsoa)
 ├── profile.errors.ts                 # ProfileError — коды PROFILE_*
 ├── profile.permissions.ts            # ProfilePermissions (definePermissions("profile"))
+├── profile.relations.ts              # Токены CONTACT_RELATION, PRESENCE_AUDIENCE для модулей связей
+├── profile.socket-events.ts          # Socket-события модуля (дополнение ISocketEvents/ISocketEmitEvents)
+├── profile-avatar.probe.ts           # ProfileAvatarUsageProbe — аватар защищает файл от удаления
 ├── profile.handler.ts                # Socket-обработчик (подписка клиентов на комнату)
 ├── profile.listener.ts               # Слушатель событий EventBus -> Socket
+├── presence.service.ts               # PresenceService — запись lastOnline
+├── presence.listener.ts              # PresenceListener — рассылка user:online / user:offline
+├── presence.handler.ts               # PresenceHandler — presence:init при подключении
 ├── dto/
 │   ├── profile.dto.ts                # ProfileDto, PublicProfileDto, IProfileListDto
 │   ├── profile-update-request.dto.ts # IProfileUpdateRequestDto
@@ -26,14 +37,18 @@ src/modules/profile/
 ├── events/
 │   ├── profile-updated.event.ts      # Событие ProfileUpdatedEvent
 │   ├── privacy-settings-updated.event.ts # Событие PrivacySettingsUpdatedEvent
+│   ├── user-online.event.ts          # Событие UserOnlineEvent
+│   ├── user-offline.event.ts         # Событие UserOfflineEvent
 │   └── index.ts                      # Реэкспорт событий
 ├── validation/
 │   ├── update-privacy.validate.ts    # Zod-схема UpdatePrivacySchema
 │   ├── update-profile.validate.ts    # Zod-схема UpdateProfileSchema
 │   ├── profile-list-query.validate.ts # Zod-схема ProfileListQuerySchema (limit/offset)
 │   └── index.ts                      # Реэкспорт валидаций
+├── validation/profile.validation.test.ts # Тесты схем валидации
 ├── profile.service.test.ts           # Тесты ProfileService
 ├── privacy-settings.service.test.ts  # Тесты PrivacySettingsService
+├── presence.listener.test.ts         # Тесты PresenceListener
 └── index.ts                          # Публичный API модуля
 ```
 
@@ -41,21 +56,21 @@ src/modules/profile/
 
 ### Profile (таблица `profiles`)
 
-Личные данные и статус присутствия пользователя.
+Личные данные пользователя, аватар и время последнего онлайна.
 
-| Поле         | Тип                                             | Описание                                       |
-| ------------ | ----------------------------------------------- | ---------------------------------------------- |
-| `id`         | `uuid` (PK)                                     | Уникальный идентификатор профиля               |
-| `userId`     | `uuid` (unique)                                 | ID связанного пользователя                     |
-| `firstName`  | `varchar(40)`, nullable                         | Имя                                            |
-| `lastName`   | `varchar(40)`, nullable                         | Фамилия                                        |
-| `birthDate`  | `date`, nullable                                | Дата рождения                                  |
-| `gender`     | `varchar(20)`, nullable                         | Пол (свободная форма)                          |
-| `locale`     | `varchar(10)`, nullable, default `NULL`         | Язык пользователя (`ru`, `en-US`) — язык писем |
-| `status`     | `enum('online','offline')`, default `'offline'` | Текущий статус присутствия                     |
-| `lastOnline` | `timestamp`, nullable                           | Время последнего онлайна                       |
-| `createdAt`  | `timestamp`                                     | Дата создания                                  |
-| `updatedAt`  | `timestamp`                                     | Дата обновления                                |
+| Поле         | Тип                                     | Описание                                       |
+| ------------ | --------------------------------------- | ---------------------------------------------- |
+| `id`         | `uuid` (PK)                             | Уникальный идентификатор профиля               |
+| `userId`     | `uuid` (unique)                         | ID связанного пользователя                     |
+| `firstName`  | `varchar(40)`, nullable                 | Имя                                            |
+| `lastName`   | `varchar(40)`, nullable                 | Фамилия                                        |
+| `birthDate`  | `date`, nullable                        | Дата рождения                                  |
+| `gender`     | `varchar(20)`, nullable                 | Пол (свободная форма)                          |
+| `locale`     | `varchar(10)`, nullable, default `NULL` | Язык пользователя (`ru`, `en-US`) — язык писем |
+| `lastOnline` | `timestamptz`, nullable                 | Время последнего онлайна (пишется при offline) |
+| `avatarId`   | `uuid`, nullable                        | ID файла-аватара                               |
+| `createdAt`  | `timestamptz`                           | Дата создания                                  |
+| `updatedAt`  | `timestamptz`                           | Дата обновления                                |
 
 **Индексы:**
 
@@ -78,8 +93,8 @@ src/modules/profile/
 | `showLastOnline` | `enum(EPrivacyLevel)`, default `EVERYONE` | Кто видит время последнего онлайна |
 | `showPhone`      | `enum(EPrivacyLevel)`, default `CONTACTS` | Кто видит телефон                  |
 | `showAvatar`     | `enum(EPrivacyLevel)`, default `EVERYONE` | Кто видит аватар                   |
-| `createdAt`      | `timestamp`                               | Дата создания                      |
-| `updatedAt`      | `timestamp`                               | Дата обновления                    |
+| `createdAt`      | `timestamptz`                             | Дата создания                      |
+| `updatedAt`      | `timestamptz`                             | Дата обновления                    |
 
 **Индексы:**
 
@@ -95,27 +110,27 @@ src/modules/profile/
 
 ### Профиль текущего пользователя
 
-| Метод    | Путь                     | Security                                                  | Описание                                                                                   |
-| -------- | ------------------------ | --------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| `GET`    | `/api/profile/my`        | `@Security("jwt")`                                        | Получить профиль текущего пользователя. Возвращает `ProfileDto`.                           |
-| `PATCH`  | `/api/profile/my/update` | `@Security("jwt")` + `@ValidateBody(UpdateProfileSchema)` | Обновить профиль. Принимает `IProfileUpdateRequestDto`.                                    |
-| `DELETE` | `/api/profile/my/delete` | `@Security("jwt")`                                        | Очистить профиль: имя, фамилия, дата рождения, пол, аватар → `null`; запись остаётся. 204. |
+| Метод    | Путь                        | Security                                                  | Описание                                                                                   |
+| -------- | --------------------------- | --------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `GET`    | `/api/v1/profile/my`        | `@Security("jwt")`                                        | Получить профиль текущего пользователя. Возвращает `ProfileDto`.                           |
+| `PATCH`  | `/api/v1/profile/my/update` | `@Security("jwt")` + `@ValidateBody(UpdateProfileSchema)` | Обновить профиль. Принимает `IProfileUpdateRequestDto`.                                    |
+| `DELETE` | `/api/v1/profile/my/delete` | `@Security("jwt")`                                        | Очистить профиль: имя, фамилия, дата рождения, пол, аватар → `null`; запись остаётся. 204. |
 
 ### Настройки приватности
 
-| Метод   | Путь                      | Security                                                  | Описание                                                                                                                           |
-| ------- | ------------------------- | --------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| `GET`   | `/api/profile/my/privacy` | `@Security("jwt")`                                        | Получить настройки приватности. При отсутствии создаются через `INSERT … ON CONFLICT DO NOTHING` (параллельные запросы не падают). |
-| `PATCH` | `/api/profile/my/privacy` | `@Security("jwt")` + `@ValidateBody(UpdatePrivacySchema)` | Обновить настройки приватности.                                                                                                    |
+| Метод   | Путь                         | Security                                                  | Описание                                                                                                                           |
+| ------- | ---------------------------- | --------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `GET`   | `/api/v1/profile/my/privacy` | `@Security("jwt")`                                        | Получить настройки приватности. При отсутствии создаются через `INSERT … ON CONFLICT DO NOTHING` (параллельные запросы не падают). |
+| `PATCH` | `/api/v1/profile/my/privacy` | `@Security("jwt")` + `@ValidateBody(UpdatePrivacySchema)` | Обновить настройки приватности.                                                                                                    |
 
 ### Администрирование
 
-| Метод    | Путь                           | Security                                                                                   | Описание                                                                                             |
-| -------- | ------------------------------ | ------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------- |
-| `GET`    | `/api/profile/all`             | `@Security("jwt", ["permission:profile:view"])` + `@ValidateQuery(ProfileListQuerySchema)` | `IProfileListDto` = `IPaginatedDto<PublicProfileDto>`; `limit` по умолчанию 20, ≤ 100; `offset` ≥ 0. |
-| `GET`    | `/api/profile/{userId}`        | `@Security("jwt")`                                                                         | Публичный профиль пользователя по `userId`.                                                          |
-| `PATCH`  | `/api/profile/update/{userId}` | `@Security("jwt", ["permission:profile:update"])` + `@ValidateBody(UpdateProfileSchema)`   | Обновить профиль другого пользователя.                                                               |
-| `DELETE` | `/api/profile/delete/{userId}` | `@Security("jwt", ["permission:profile:delete"])`                                          | Очистить профиль другого пользователя (запись остаётся). 204.                                        |
+| Метод    | Путь                              | Security                                                                                   | Описание                                                                                             |
+| -------- | --------------------------------- | ------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------- |
+| `GET`    | `/api/v1/profile/all`             | `@Security("jwt", ["permission:profile:view"])` + `@ValidateQuery(ProfileListQuerySchema)` | `IProfileListDto` = `IPaginatedDto<PublicProfileDto>`; `limit` по умолчанию 20, ≤ 100; `offset` ≥ 0. |
+| `GET`    | `/api/v1/profile/{userId}`        | `@Security("jwt")`                                                                         | Публичный профиль пользователя по `userId`.                                                          |
+| `PATCH`  | `/api/v1/profile/update/{userId}` | `@Security("jwt", ["permission:profile:update"])` + `@ValidateBody(UpdateProfileSchema)`   | Обновить профиль другого пользователя.                                                               |
+| `DELETE` | `/api/v1/profile/delete/{userId}` | `@Security("jwt", ["permission:profile:delete"])`                                          | Очистить профиль другого пользователя (запись остаётся). 204.                                        |
 
 `{userId}` — `UUID` (неверный формат → 422). Профиль суперпользователя через
 `update/{userId}` и `delete/{userId}` меняет только суперпользователь
@@ -128,7 +143,10 @@ src/modules/profile/
 - `locale` — код языка (`ru`, `en`, `en-US`, `pt_BR`), ≤ 10 символов, или `null`.
   Письма отправляются на `ru`/`en` (прочие языки — `ru`), см. модуль mailer;
 - `birthDate` — ISO-дата (`YYYY-MM-DD` или date-time), не раньше 1900-01-01 и не в
-  будущем, или `null`.
+  будущем, или `null`;
+- `avatarId` — UUID файла или `null` (снять аватар). Аватаром может быть только своё
+  изображение (`image/*`) со статусом не `pending` и не `failed`, иначе
+  `PROFILE_AVATAR_INVALID` (400).
 
 ## Сервисы
 
@@ -139,10 +157,18 @@ src/modules/profile/
 | `getProfiles(offset?, limit?)`         | `IPaginatedDto<PublicProfileDto>` через `normalizePagination`/`toPage`; `createdAt DESC`.                |
 | `getProfileByAttr(where)`              | Поиск по произвольным условиям. Нет — `PROFILE_NOT_FOUND` (404).                                         |
 | `getProfileByUserId(userId)`           | Профиль по `userId`. Нет — `PROFILE_NOT_FOUND` (404).                                                    |
-| `updateProfile(userId, body)`          | Обновление профиля. Эмитит `ProfileUpdatedEvent`.                                                        |
+| `updateProfile(userId, body)`          | Обновление профиля (с проверкой `avatarId`). Эмитит `ProfileUpdatedEvent`.                               |
 | `deleteProfile(userId)`                | Очистка личных полей профиля (запись остаётся). Эмитит `ProfileUpdatedEvent`. Нет — `PROFILE_NOT_FOUND`. |
 | `updateProfileOf(actor, userId, body)` | `updateProfile` чужого профиля; цель — суперпользователь, актор нет → `PROFILE_SUPERUSER_EDIT`.          |
 | `clearProfileOf(actor, userId)`        | `deleteProfile` чужого профиля с той же проверкой (`AccessService.isSuperUser`).                         |
+| `toProfileDto(profile)`                | `ProfileDto` с подписанным аватаром.                                                                     |
+| `toPublicProfileDto(profile)`          | `PublicProfileDto` с подписанным аватаром.                                                               |
+
+### PresenceService
+
+| Метод                | Описание                                                           |
+| -------------------- | ------------------------------------------------------------------ |
+| `setOffline(userId)` | Записать `lastOnline = now()`; ошибка БД логируется, не бросается. |
 
 ### PrivacySettingsService
 
@@ -155,26 +181,29 @@ src/modules/profile/
 
 ## DTO
 
-- **ProfileDto** — полное представление (id, userId, firstName, lastName, birthDate, gender, locale, lastOnline, avatar, user); `avatar` — `IFileDto` из карты подписей
+- **ProfileDto** — полное представление (id, userId, firstName, lastName, birthDate, gender, locale, lastOnline, createdAt, updatedAt, avatar, user); `avatar` — `IFileDto` из карты подписей
 - **PublicProfileDto** — ограниченное (id, userId, firstName, lastName, lastOnline, avatarUrl); `avatarUrl` — подписанная ссылка из карты, `null` — аватара нет
 - Оба — `fromEntity(profile, files: TSignedFiles)`; файлы — `collectProfileFiles(profiles)`, сборка с подписью — `ProfileService.toProfileDto` / `toPublicProfileDto` (репозиторий грузит `avatar`). `PublicProfileDto` использует `PublicUserDto` и модули, показывающие чужие профили. Настройка `showAvatar` в DTO пока не применяется.
 - **IProfileListDto** — `IPaginatedDto<PublicProfileDto>` (`items`, `total`, `offset`, `limit`)
-- **IProfileUpdateRequestDto** — данные обновления (firstName?, lastName?, birthDate?, gender?, locale?)
+- **IProfileUpdateRequestDto** — данные обновления (firstName?, lastName?, birthDate?, gender?, locale?, avatarId?)
 - **PrivacySettingsDto** — настройки приватности (showLastOnline, showPhone, showAvatar)
 
 ## Ошибки и права
 
 - `ProfileError.NOT_FOUND` → `PROFILE_NOT_FOUND` (404).
+- `ProfileError.AVATAR_INVALID` → `PROFILE_AVATAR_INVALID` (400).
 - `ProfileError.SUPERUSER_EDIT` → `PROFILE_SUPERUSER_EDIT` (403).
 - `ProfilePermissions` (группа «Профили», чужие профили): `profile:view` — просмотр,
   `profile:update` — изменение, `profile:delete` — очистка.
 
 ## События (Events)
 
-| Событие                       | Данные             | Когда                               |
-| ----------------------------- | ------------------ | ----------------------------------- |
-| `ProfileUpdatedEvent`         | `PublicProfileDto` | При обновлении профиля              |
-| `PrivacySettingsUpdatedEvent` | `userId: string`   | При обновлении настроек приватности |
+| Событие                       | Данные                                | Когда                                                 |
+| ----------------------------- | ------------------------------------- | ----------------------------------------------------- |
+| `ProfileUpdatedEvent`         | `PublicProfileDto`                    | При обновлении профиля                                |
+| `PrivacySettingsUpdatedEvent` | `userId`, `settings: PrivacySettings` | При обновлении настроек приватности                   |
+| `UserOnlineEvent`             | `userId`                              | Первое соединение пользователя (эмитит модуль socket) |
+| `UserOfflineEvent`            | `userId`                              | Закрыто последнее соединение (эмитит модуль socket)   |
 
 ## Socket-интеграция
 
@@ -186,20 +215,42 @@ src/modules/profile/
 
 ### ProfileListener (ISocketEventListener)
 
-| Событие EventBus              | Socket-событие            | Комната/Получатель    | Данные             |
-| ----------------------------- | ------------------------- | --------------------- | ------------------ |
-| `ProfileUpdatedEvent`         | `profile:updated`         | комната `"profile"`   | `PublicProfileDto` |
-| `PrivacySettingsUpdatedEvent` | `profile:privacy-changed` | пользователь `userId` | `{}`               |
+| Событие EventBus              | Socket-событие            | Комната/Получатель    | Данные               |
+| ----------------------------- | ------------------------- | --------------------- | -------------------- |
+| `ProfileUpdatedEvent`         | `profile:updated`         | комната `"profile"`   | `PublicProfileDto`   |
+| `PrivacySettingsUpdatedEvent` | `profile:privacy-changed` | пользователь `userId` | `PrivacySettingsDto` |
+
+### PresenceListener (ISocketEventListener)
+
+| Событие EventBus   | Socket-событие | Получатель                       | Данные                   |
+| ------------------ | -------------- | -------------------------------- | ------------------------ |
+| `UserOnlineEvent`  | `user:online`  | аудитория из `PRESENCE_AUDIENCE` | `{ userId }`             |
+| `UserOfflineEvent` | `user:offline` | аудитория из `PRESENCE_AUDIENCE` | `{ userId, lastOnline }` |
+
+На offline сначала пишется `lastOnline` (`PresenceService.setOffline`).
+
+### PresenceHandler (ISocketHandler)
+
+При подключении отправляет клиенту `presence:init` (`{ onlineUserIds }`) — онлайн из
+`peers(userId)` всех `PRESENCE_AUDIENCE`; пустой список не отправляется.
+
+### ProfileAvatarUsageProbe
+
+Регистрируется через `asFileUsageProbe`: файл, который чей-то аватар, модуль file не удаляет.
+
+Типы событий объявлены в `profile.socket-events.ts` (`declare module` для `socket.types`).
 
 ## Зависимости
 
-| Зависимость                               | Откуда           | Использование                             |
-| ----------------------------------------- | ---------------- | ----------------------------------------- |
-| `User` entity                             | `modules/user`   | Связь `OneToOne` в `Profile`              |
-| `File` entity                             | `modules/file`   | Связь `ManyToOne` (аватар)                |
-| `EventBus`                                | `core`           | Публикация и подписка на доменные события |
-| `SocketEmitterService`                    | `modules/socket` | Отправка событий через socket             |
-| `SOCKET_HANDLER`, `SOCKET_EVENT_LISTENER` | `modules/socket` | Регистрация handler и listener            |
+| Зависимость                                            | Откуда           | Использование                                                |
+| ------------------------------------------------------ | ---------------- | ------------------------------------------------------------ |
+| `User` entity                                          | `modules/user`   | Связь `OneToOne` в `Profile`                                 |
+| `File` entity                                          | `modules/file`   | Связь `ManyToOne` (аватар)                                   |
+| `FileRepository`, `FileUrlService`, `asFileUsageProbe` | `modules/file`   | Проверка аватара, подпись ссылок, защита аватара от удаления |
+| `EventBus`                                             | `core`           | Публикация и подписка на доменные события                    |
+| `AccessService`                                        | `core`           | Проверка суперпользователя (`isSuperUser`)                   |
+| `SocketEmitterService`, `SocketClientRegistry`         | `modules/socket` | Отправка событий, список онлайн для `presence:init`          |
+| `SOCKET_HANDLER`, `SOCKET_EVENT_LISTENER`              | `modules/socket` | Регистрация handler и listener                               |
 
 ## Связи пользователей (`profile.relations.ts`)
 
@@ -218,10 +269,6 @@ src/modules/profile/
 ## Перечисления
 
 ```typescript
-enum EProfileStatus {
-  Online = "online",
-  Offline = "offline",
-}
 enum EPrivacyLevel {
   EVERYONE = "everyone",
   CONTACTS = "contacts",

@@ -1,3 +1,8 @@
+---
+module: modules/file
+summary: Файлы пользователей: загрузка с проверкой типа, фоновая обработка медиа, подписанные ссылки, владение и сборка мусора
+---
+
 # Модуль File
 
 Файлы пользователей: загрузка с проверкой типа, хранение через `FileStorage` (модуль storage), фоновая обработка медиа (webp, превью, blurhash, длительность, waveform), выдача подписанных ссылок, удаление. С диском и S3 напрямую модуль не работает — только с ключами хранилища.
@@ -13,7 +18,7 @@ src/modules/file/
 ├── file.permissions.ts        # FilePermissions: file:view, file:delete (scoped — есть :own)
 ├── file.access.ts             # FileAccess: OwnedAccess по ownerId
 ├── file-keys.ts               # Раскладка ключей: files/<id>/original.<ext>, <variant>.<ext>
-├── file.repository.ts         # findPage ({ ownedBy? }), findStalePending, transitionStatus
+├── file.repository.ts         # findPage ({ ownedBy? }), findStalePending, findOrphans, transitionStatus
 ├── file.service.ts            # Загрузка (multipart и прямая), список и просмотр с областью прав, удаление
 ├── file-url.service.ts        # FileUrlService: единственное место подписи ссылок (toDto, toDtoMap, buildWithFiles)
 ├── signed-files.ts            # TSignedFiles, TFileRef, NO_SIGNED_FILES, signedUrlOf, signedFileOf
@@ -24,6 +29,7 @@ src/modules/file/
 ├── file-gc.job.ts             # FileGcJob — cron file.gc (сборка бесхозных без ссылок)
 ├── file-usage.checker.ts      # FileUsageChecker — сводка проб всех модулей
 ├── file.listener.ts           # события файла → file:uploaded/processed/deleted владельцу
+├── file.socket-events.ts      # file:* в контракте сокета
 ├── media-processor.service.ts # sharp/ffmpeg на локальных файлах
 ├── ffmpeg.ts                  # Обёртка ffmpeg/ffprobe
 ├── file-upload.policy.ts      # Белый список, проверка сигнатуры (файл или начало объекта)
@@ -134,12 +140,12 @@ src/modules/file/
 
 ## Задачи
 
-| Очередь                | Обработчик       | Политика                       | Что делает                                                                                                                                                                                                                                                                                                  |
-| ---------------------- | ---------------- | ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `file.process`         | `FileProcessJob` | `retryLimit: 2`                | `withLocalFile(key)` → `MediaProcessorService.process` во временном каталоге → производные в хранилище → `processing → ready` + `FileProcessedEvent`. После последней попытки — `failed` + событие, `JobError("FILE_PROCESSING_FAILED", …, false)`. Файл удалён во время обработки — производные убираются. |
-| `file.cleanup-pending` | `FileCleanupJob` | cron `0 * * * *`, без повторов | Удаляет `pending` старше суток (до 500 за запуск) вместе с объектами.                                                                                                                                                                                                                                       |
-| `file.remove`          | `FileRemoveJob`  | `retryLimit: 5`                | `removeUnused(fileIds)`: удаляет из списка файлы без ссылок (пробы) — записи и объекты. Ставит `scheduleRemoval` в транзакции удаления домена (частями по 500).                                                                                                                                             |
-| `file.gc`              | `FileGcJob`      | cron `15 4 * * *`              | Бесхозные (`ownerId = null`), не `pending`, старше часа — пачками по id; без ссылок удаляются. Собирает файлы, чьи ссылающиеся записи ушли каскадом (пространство, пользователь).                                                                                                                           |
+| Очередь                | Обработчик       | Политика                           | Что делает                                                                                                                                                                                                                                                                                                  |
+| ---------------------- | ---------------- | ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `file.process`         | `FileProcessJob` | `retryLimit: 2`                    | `withLocalFile(key)` → `MediaProcessorService.process` во временном каталоге → производные в хранилище → `processing → ready` + `FileProcessedEvent`. После последней попытки — `failed` + событие, `JobError("FILE_PROCESSING_FAILED", …, false)`. Файл удалён во время обработки — производные убираются. |
+| `file.cleanup-pending` | `FileCleanupJob` | cron `0 * * * *`, без повторов     | Удаляет `pending` старше суток (до 500 за запуск) вместе с объектами.                                                                                                                                                                                                                                       |
+| `file.remove`          | `FileRemoveJob`  | `retryLimit: 5`                    | `removeUnused(fileIds)`: удаляет из списка файлы без ссылок (пробы) — записи и объекты. Ставит `scheduleRemoval` в транзакции удаления домена (частями по 500).                                                                                                                                             |
+| `file.gc`              | `FileGcJob`      | cron `15 4 * * *`, `retryLimit: 1` | Бесхозные (`ownerId = null`), не `pending`, старше часа — пачками по id (`FileRepository.findOrphans`); без ссылок удаляются. Собирает файлы, чьи ссылающиеся записи ушли каскадом (пространство, пользователь).                                                                                            |
 
 Обработка: изображение — webp до 2048 px (с автоповоротом по EXIF), превью 200/800, blurhash; видео — ffprobe (размеры, длительность), превью из первого кадра (сбой кадра не фатален); аудио — m4a AAC 128k, длительность, waveform. Сбой blurhash/waveform не фатален.
 
@@ -156,7 +162,7 @@ src/modules/file/
 
 ## Ошибки (`FileError`, код `FILE_*`)
 
-`NOT_FOUND` 404 (нет файла или он недоступен), `FORBIDDEN` 403 (видим, но нет права на действие; `complete` чужой загрузки; нет права просмотра для списка), `IN_USE` 409, `TYPE_NOT_ALLOWED` 415, `SIGNATURE_MISMATCH` 415, `TOO_LARGE` 413, `UPLOAD_INCOMPLETE` 409, `SIZE_MISMATCH` 400.
+`NOT_FOUND` 404 (нет файла или он недоступен), `FORBIDDEN` 403 (видим, но нет права на действие; `complete` чужой загрузки; нет права просмотра для списка), `IN_USE` 409, `TYPE_NOT_ALLOWED` 415, `SIGNATURE_MISMATCH` 415, `TOO_LARGE` 413, `UPLOAD_INCOMPLETE` 409, `SIZE_MISMATCH` 400, `INVALID_UPLOAD_RULE` 500 (некорректное правило `defineUploadRules` при загрузке модуля).
 
 ## Владение и жизненный цикл файла
 
@@ -181,10 +187,10 @@ src/modules/file/
 
 ## Зависимости
 
-| Зависимость                             | Использование                                     |
-| --------------------------------------- | ------------------------------------------------- |
-| `FileStorage` (модуль storage)          | Оригиналы, производные, подписанные ссылки        |
-| `JobQueue` (модуль jobs)                | `file.process`, `file.cleanup-pending`            |
-| `SocketEmitterService`                  | `file:uploaded`, `file:processed`, `file:deleted` |
-| `sharp`, `blurhash`, `ffmpeg`/`ffprobe` | Обработка медиа (на процессе-воркере)             |
-| `file-type`                             | Сигнатуры (ESM-only, `await import`)              |
+| Зависимость                             | Использование                                                    |
+| --------------------------------------- | ---------------------------------------------------------------- |
+| `FileStorage` (модуль storage)          | Оригиналы, производные, подписанные ссылки                       |
+| `JobQueue` (модуль jobs)                | `file.process`, `file.cleanup-pending`, `file.remove`, `file.gc` |
+| `SocketEmitterService`                  | `file:uploaded`, `file:processed`, `file:deleted`                |
+| `sharp`, `blurhash`, `ffmpeg`/`ffprobe` | Обработка медиа (на процессе-воркере)                            |
+| `file-type`                             | Сигнатуры (ESM-only, `await import`)                             |

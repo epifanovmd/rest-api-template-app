@@ -1,3 +1,8 @@
+---
+module: modules/user
+summary: Аккаунты пользователей: контакты, привилегии, подтверждение и смена email, пароль, удаление, поиск, засев администратора
+---
+
 # Модуль User
 
 Управление пользователями: аккаунт (email, телефон, username), привилегии (роли и
@@ -40,20 +45,21 @@ src/modules/user/
 
 ### User (`users`)
 
-| Поле                      | Тип            | Ограничения                             |
-| ------------------------- | -------------- | --------------------------------------- |
-| `id`                      | `uuid`         | PK                                      |
-| `email`                   | `varchar(50)`  | nullable, уникален среди не-NULL        |
-| `emailVerified`           | `boolean`      | default `false`                         |
-| `phone`                   | `varchar(14)`  | nullable, уникален среди не-NULL, `+7…` |
-| `username`                | `varchar(32)`  | nullable, уникален среди не-NULL        |
-| `passwordHash`            | `text`         | хеш `core/auth/password` (scrypt)       |
-| `twoFactorHash`           | `text`         | nullable                                |
-| `twoFactorHint`           | `varchar(100)` | nullable                                |
-| `createdAt` / `updatedAt` | `timestamptz`  |                                         |
+| Поле                      | Тип            | Ограничения                                 |
+| ------------------------- | -------------- | ------------------------------------------- |
+| `id`                      | `uuid`         | PK                                          |
+| `email`                   | `varchar(50)`  | nullable, уникален среди не-NULL            |
+| `emailVerified`           | `boolean`      | default `false`                             |
+| `phone`                   | `varchar(14)`  | nullable, уникален среди не-NULL, `+7…`     |
+| `username`                | `varchar(32)`  | nullable, `unique: true` + частичный индекс |
+| `passwordHash`            | `text`         | хеш `core/auth/password` (scrypt)           |
+| `twoFactorHash`           | `text`         | nullable                                    |
+| `twoFactorHint`           | `varchar(100)` | nullable                                    |
+| `createdAt` / `updatedAt` | `timestamptz`  |                                             |
 
-Индексы (частичные, `WHERE <col> IS NOT NULL`): `IDX_USERS_EMAIL`, `IDX_USERS_PHONE`,
-`IDX_USERS_USERNAME`. Связи: `roles` (M:N `user_roles`), `directPermissions`
+Индексы (уникальные частичные, `WHERE <col> IS NOT NULL`): `IDX_USERS_EMAIL`,
+`IDX_USERS_PHONE`, `IDX_USERS_USERNAME`. У `username` дополнительно колонка
+`unique: true` — отдельное ограничение уникальности (NULL в PostgreSQL не конфликтуют). Связи: `roles` (M:N `user_roles`), `directPermissions`
 (M:N `user_permissions`), `profile` (1:1, создаётся вместе с пользователем).
 
 ### EmailChangeRequest (`email_change_requests`)
@@ -76,16 +82,16 @@ src/modules/user/
 
 ### Текущий пользователь
 
-| Метод   | Путь                   | Тело                               | Ответ     | Описание                                                                                                |
-| ------- | ---------------------- | ---------------------------------- | --------- | ------------------------------------------------------------------------------------------------------- |
-| `GET`   | `my`                   | —                                  | `UserDto` | Свои данные                                                                                             |
-| `PATCH` | `my/update`            | `{ email?, phone? }`               | `UserDto` | Телефон — сразу. Email — **не сразу**: запрос смены (см. «Смена email»). Занятые → 409                  |
-| `POST`  | `my/email/confirm`     | `{ code }` (6 цифр)                | `UserDto` | Подтверждение смены email; `ThrottleGuard(10, 15 мин, "user:email-change-confirm")`                     |
-| `POST`  | `my/delete`            | `{ password }`                     | 204       | Удаление аккаунта с подтверждением паролем                                                              |
-| `PATCH` | `my/username`          | `{ username }`                     | `UserDto` | Username, занят → 409                                                                                   |
-| `POST`  | `verify-email/request` | —                                  | 204       | Код на email. Повтор не чаще раза в 60 с (429); `ThrottleGuard(5, 15 мин, "user:verify-email-request")` |
-| `POST`  | `verify-email`         | `{ code }` (6 цифр)                | 204       | Подтверждение кода; `ThrottleGuard(10, 15 мин, "user:verify-email")`                                    |
-| `POST`  | `changePassword`       | `{ currentPassword, newPassword }` | 204       | `newPassword` 8–100 символов + политика пароля; остальные сессии завершаются                            |
+| Метод   | Путь                   | Тело                               | Ответ     | Описание                                                                                                                         |
+| ------- | ---------------------- | ---------------------------------- | --------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `GET`   | `my`                   | —                                  | `UserDto` | Свои данные                                                                                                                      |
+| `PATCH` | `my/update`            | `{ email?, phone? }`               | `UserDto` | Телефон — сразу. Email — **не сразу**: запрос смены (см. «Смена email»). Занятые → 409                                           |
+| `POST`  | `my/email/confirm`     | `{ code }` (6 цифр)                | `UserDto` | Подтверждение смены email; `ThrottleGuard(10, 15 мин, "user:email-change-confirm")`                                              |
+| `POST`  | `my/delete`            | `{ password }`                     | 204       | Удаление аккаунта с подтверждением паролем                                                                                       |
+| `PATCH` | `my/username`          | `{ username }`                     | `UserDto` | Username, занят → 409                                                                                                            |
+| `POST`  | `verify-email/request` | —                                  | 204       | Код на email. Повтор не чаще раза в 60 с (429); `ThrottleGuard(5, 15 мин, "user:verify-email-request")`                          |
+| `POST`  | `verify-email`         | `{ code }` (6 цифр)                | 204       | Подтверждение кода; `ThrottleGuard(10, 15 мин, "user:verify-email")`                                                             |
+| `POST`  | `changePassword`       | `{ currentPassword, newPassword }` | 204       | `newPassword` 8–100 символов + политика пароля; остальные сессии завершаются; `ThrottleGuard(5, 15 мин, "user:change-password")` |
 
 ### Публичные
 
@@ -274,7 +280,8 @@ HTTP-контекста (политики сокет-комнат, слушат�
 
 `UserService`: `MailerService`, `OtpService`, `OtpRepository`, `UserRepository`,
 `RoleRepository`, `PermissionRepository`, `PrivacySettingsService`, `DataSource`,
-`EventBus`, `EmailChangeService`, политики `PASSWORD_POLICY` (опционально).
+`EventBus`, `EmailChangeService`, `FileUrlService` (подпись аватаров в DTO), политики
+`PASSWORD_POLICY` (опционально).
 `EmailChangeService`: `UserRepository`, `EmailChangeRequestRepository`,
 `MailerService`, `DataSource`, `EventBus`.
 

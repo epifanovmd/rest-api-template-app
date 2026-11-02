@@ -1,3 +1,8 @@
+---
+module: core/observability
+summary: Наблюдаемость — метрики Prometheus, отправка 5xx и ошибок процесса в Sentry, проверки здоровья зависимостей и модулей.
+---
+
 # Наблюдаемость (`core/observability`)
 
 Метрики Prometheus, отправка ошибок в Sentry и проверки
@@ -27,8 +32,8 @@
 | `METRICS_ENABLED` | `observability.metricsEnabled` | `true`        | `/metrics` и сбор HTTP-метрик                                     |
 | `METRICS_TOKEN`   | `observability.metricsToken`   | пусто         | Bearer-токен для `/metrics`; пусто — без защиты (закрывать сетью) |
 | `SENTRY_DSN`      | `observability.sentryDsn`      | пусто         | DSN Sentry; пусто — ошибки не отправляются                        |
-| `APP_NAME`        | `app.name`                     | `rest-api`    | Метка `service` метрик, `serverName` в Sentry                     |
-| `APP_ROLE`        | `app.role`                     | `all`         | Метка `role` метрик                                               |
+| `APP_NAME`        | `app.name`                     | `rest-api`    | Метка `service` метрик; часть `serverName` в Sentry               |
+| `APP_ROLE`        | `app.role`                     | `all`         | Метка `role` метрик; часть `serverName` в Sentry                  |
 | `APP_VERSION`     | — (env)                        | версия пакета | `release` в Sentry; в образ пишется при релизе                    |
 
 ## Метрики
@@ -89,7 +94,8 @@ scrape_configs:
 ## Ошибки (Sentry)
 
 - `@sentry/node` инициализируется в `instrument.ts` при `SENTRY_DSN` (лениво, без
-  DSN пакет не грузится). Только ошибки, без трассировки.
+  DSN пакет не грузится). Только ошибки, без трассировки. `serverName` —
+  `<app.name>:<app.role>` (например `rest-api:worker`).
 - `reportError(err, ctx, status = ctx.status)` — хук error middleware: в трекер
   уходят только 5xx, с тегами `source=http`, `route`, `request_id` и `user.id`.
 - `reportProcessError(err, "unhandledRejection" | "uncaughtException")` — из

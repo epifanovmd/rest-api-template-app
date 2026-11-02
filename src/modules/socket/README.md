@@ -1,3 +1,8 @@
+---
+module: modules/socket
+summary: Инфраструктура реального времени на Socket.IO: JWT-подключение, присутствие, типизированный эмиттер, комнаты и проверка входящих событий
+---
+
 # Модуль Socket
 
 Инфраструктурный модуль реального времени на базе Socket.IO. Предоставляет WebSocket-сервер с JWT-аутентификацией, реестр подключённых клиентов, типизированный эмиттер событий и точки расширения для других модулей.
@@ -28,7 +33,7 @@ src/modules/socket/
 
 ### SocketServerService
 
-Обёртка над `Socket.IO Server`. Создаётся с CORS-настройками из конфига, транспорт только WebSocket.
+Обёртка над `Socket.IO Server`. Origin проверяется той же функцией, что и у HTTP — `isAllowedOrigin` из `src/middleware/cors.middleware.ts`; транспорт только WebSocket. С Redis подключается шардированный Redis-адаптер.
 
 | Метод         | Описание                   |
 | ------------- | -------------------------- |
@@ -80,6 +85,7 @@ JWT-аутентификация при каждом подключении. И�
    клиент подписывается сразу по `connect`, запрос не должен теряться. Затем присутствие в
    `SocketClientRegistry`, комната `user_${userId}`, комнаты от всех `ISocketRoomProvider`
    (`asSocketRoomProvider`), `ISocketHandler.onConnection()`.
+   Первое соединение пользователя (на любой реплике) — `UserOnlineEvent`.
 3. При отключении: снятие присутствия; последнее соединение — `UserOfflineEvent`.
 4. Вызов `register()` на всех `ISocketEventListener` — на всех ролях процесса.
 
@@ -166,27 +172,28 @@ declare module "../socket/socket.types" {
 
 ## Зависимости
 
-| Зависимость    | Откуда   | Использование                 |
-| -------------- | -------- | ----------------------------- |
-| `socket.io`    | npm      | WebSocket-сервер              |
-| `HttpServer`   | `core`   | HTTP-сервер для Socket.IO     |
-| `TokenService` | `core`   | JWT-верификация               |
-| `EventBus`     | `core`   | Очистка подписок при shutdown |
-| `config.cors`  | `config` | CORS-настройки                |
+| Зависимость                             | Откуда                              | Использование                                        |
+| --------------------------------------- | ----------------------------------- | ---------------------------------------------------- |
+| `socket.io`, `@socket.io/redis-adapter` | npm                                 | WebSocket-сервер, общие комнаты реплик               |
+| `HttpServer`                            | `core`                              | HTTP-сервер для Socket.IO                            |
+| `TokenService`                          | `core`                              | JWT-верификация                                      |
+| `AccessService`                         | `core`                              | Права в `permissionRoomPolicy`, `OwnedEntityEmitter` |
+| `EventBus`                              | `core`                              | Эмиссия `UserOnlineEvent` / `UserOfflineEvent`       |
+| `isAllowedOrigin`                       | `src/middleware/cors.middleware.ts` | Проверка origin                                      |
+| `UserOnlineEvent`, `UserOfflineEvent`   | `modules/profile`                   | События присутствия                                  |
 
 ## Взаимодействие
 
-Listeners регистрируют auth, user (+ role), profile, session, api-key, audit, file,
-jobs. Room provider-ов нет. Политики комнат:
+Listeners регистрируют auth, user (+ role), profile, session, api-key, audit, file.
+Room provider-ов нет. Политики комнат:
 
-| Комната     | Политика (модуль)                               | Вход                                |
-| ----------- | ----------------------------------------------- | ----------------------------------- |
-| `users`     | `permissionRoomPolicy` (user)                   | `user:view`                         |
-| `roles`     | `permissionRoomPolicy` (user, провайдеры role)  | `role:view`                         |
-| `api-keys`  | `permissionRoomPolicy` (api-key)                | `apikey:view`                       |
-| `audit`     | `permissionRoomPolicy` (audit)                  | `audit:view`                        |
-| `job_<id>`  | `job` (jobs)                                    | суперпользователь, владелец, policy |
-| `user_<id>` | без политики — входит каждый сокет пользователя | —                                   |
+| Комната     | Политика (модуль)                               | Вход          |
+| ----------- | ----------------------------------------------- | ------------- |
+| `users`     | `permissionRoomPolicy` (user)                   | `user:view`   |
+| `roles`     | `permissionRoomPolicy` (user, провайдеры role)  | `role:view`   |
+| `api-keys`  | `permissionRoomPolicy` (api-key)                | `apikey:view` |
+| `audit`     | `permissionRoomPolicy` (audit)                  | `audit:view`  |
+| `user_<id>` | без политики — входит каждый сокет пользователя | —             |
 
 События по комнатам — в README модулей.
 

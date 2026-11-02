@@ -1,3 +1,8 @@
+---
+module: modules/jobs
+summary: Очередь фоновых и cron-задач на pg-boss: реализация JobQueue ядра, повторы, постановка в транзакции (outbox)
+---
+
 # Модуль Jobs
 
 Очередь задач на pg-boss 12 (Postgres): реализация `JobQueue` из ядра

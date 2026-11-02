@@ -1,3 +1,8 @@
+---
+module: modules/role
+summary: Роли и наборы их прав: API управления ролями и идемпотентный засев ролей по умолчанию
+---
+
 # Модуль Role
 
 Роли пользователей и их права: API просмотра/создания/удаления ролей, замена набора
@@ -9,7 +14,7 @@
 ```
 src/modules/role/
 ├── role.entity.ts          # Role (таблица roles)
-├── role.repository.ts      # findById/findByName/findByNames/findAll/ensureByName/findMemberIds
+├── role.repository.ts      # findById/findByName/findByNames/findAll/ensureByName/findMemberIds/grantPermissionsIfMissing/updateWithResponse
 ├── role.service.ts         # RoleService
 ├── role.controller.ts      # REST, /api/v1/roles
 ├── role.types.ts           # const Roles, TRole
@@ -35,12 +40,12 @@ src/modules/role/
 
 ## Endpoints (`/api/v1/roles`)
 
-| Метод    | Путь               | Право         | Ответ        | Описание                                                 |
-| -------- | ------------------ | ------------- | ------------ | -------------------------------------------------------- |
-| `GET`    | `/`                | `role:view`   | `IRoleDto[]` | Все роли с правами                                       |
-| `POST`   | `/`                | `role:create` | `IRoleDto`   | Создать роль; существующая → `ROLE_ALREADY_EXISTS` (409) |
-| `DELETE` | `{id}`             | `role:delete` | 204          | Удалить роль (см. «Удаление»)                            |
-| `PATCH`  | `{id}/permissions` | `role:update` | `IRoleDto`   | Заменить права роли                                      |
+| Метод    | Путь               | Право         | Ответ          | Описание                                                 |
+| -------- | ------------------ | ------------- | -------------- | -------------------------------------------------------- |
+| `GET`    | `/`                | `role:view`   | `IRoleDto[]`   | Все роли с правами                                       |
+| `POST`   | `/`                | `role:create` | 201 `IRoleDto` | Создать роль; существующая → `ROLE_ALREADY_EXISTS` (409) |
+| `DELETE` | `{id}`             | `role:delete` | 204            | Удалить роль (см. «Удаление»)                            |
+| `PATCH`  | `{id}/permissions` | `role:update` | `IRoleDto`     | Заменить права роли                                      |
 
 `{id}` — `UUID`.
 
@@ -66,7 +71,9 @@ src/modules/role/
 Вызывается `AdminBootstrap` при старте. Идемпотентен и безопасен для нескольких реплик:
 все права из реестра (`getRegisteredPermissions()`: объявленные модулями через
 `definePermissions`, включая `apikey:*`, `audit:view`) и роли создаются через `INSERT … ON CONFLICT DO NOTHING`;
-роли, у которых уже есть права, не трогаются (ручные изменения сохраняются).
+роли без прав получают права по умолчанию через
+`RoleRepository.grantPermissionsIfMissing` (тоже `ON CONFLICT DO NOTHING`); роли, у
+которых уже есть права, не трогаются (ручные изменения сохраняются).
 
 | Роль    | Права по умолчанию                                     |
 | ------- | ------------------------------------------------------ |

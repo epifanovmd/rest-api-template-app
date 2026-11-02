@@ -1,3 +1,8 @@
+---
+module: modules/passkeys
+summary: Регистрация и вход по WebAuthn/FIDO2 passkeys
+---
+
 # Модуль Passkeys (WebAuthn)
 
 Регистрация и вход по WebAuthn/FIDO2 passkeys (`@simplewebauthn/server`).
@@ -76,4 +81,4 @@ src/modules/passkeys/
 
 ## Зависимости
 
-`UserService`, `AuthService` (модуль auth), `DataSource`, `EventBus`.
+`UserService`, `AuthService` (модуль auth), `EventBus`.

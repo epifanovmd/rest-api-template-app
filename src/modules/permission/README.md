@@ -1,3 +1,8 @@
+---
+module: modules/permission
+summary: Реестр прав модулей (definePermissions), каталог прав с подписями и справочник прав в БД
+---
+
 # Модуль Permission
 
 Справочник прав (RBAC + permissions): сущность, репозиторий, **реестр прав модулей** и
@@ -61,7 +66,7 @@ export const ReportPermissions = definePermissions(
 
 Объявления в модулях: `UserPermissions` (user), `RolePermissions` (role),
 `ProfilePermissions` (profile), `ApiKeyPermissions` (apikey), `AuditPermissions`
-(audit), `JobsPermissions` (jobs), `FilePermissions` (file — пример scoped-прав:
+(audit), `FilePermissions` (file — пример scoped-прав:
 `file:view`, `file:delete` и их `:own`).
 
 Строки в `@Security("jwt", ["permission:…"])` остаются литералами: генератор

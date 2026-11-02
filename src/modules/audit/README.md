@@ -1,3 +1,8 @@
+---
+module: modules/audit
+summary: Журнал событий безопасности: запись из доменных событий, лента «Моя активность» и общий журнал, очистка по сроку хранения
+---
+
 # Модуль Audit
 
 Журнал событий безопасности: входы (успешные и неудачные), блокировки, 2FA, смена
@@ -54,20 +59,19 @@ src/modules/audit/
 
 ## События → записи (`AuditListener`)
 
-| Событие (модуль)                          | Тип записи                                                     |
-| ----------------------------------------- | -------------------------------------------------------------- |
-| `UserLoggedInEvent` (auth)                | `auth.login.succeeded` (`meta.method`)                         |
-| `LoginFailedEvent` (auth)                 | `auth.login.failed` (`meta.login`, `reason`)                   |
-| `AccountLockedEvent` (auth)               | `auth.account.locked` (`meta.until`)                           |
-| `TwoFactorEnabled/DisabledEvent` (auth)   | `auth.2fa.enabled` / `auth.2fa.disabled`                       |
-| `PasswordChangedEvent` (user)             | `auth.password.changed` / `auth.password.reset`                |
-| `UserSignedOutEvent` (auth)               | `auth.signed-out` / `auth.signed-out-all`                      |
-| `SessionTerminatedEvent` (session)        | `session.terminated` (`meta.reason`; кроме завершений выходом) |
-| `PasskeyAdded/RemovedEvent` (passkeys)    | `passkey.added` / `passkey.removed`                            |
-| `BiometricAdded/RemovedEvent` (biometric) | `biometric.added` / `biometric.removed`                        |
-
-Типы `api-key.created` / `api-key.revoked` зарезервированы: модуль api-key пока не
-публикует событий — подписка добавляется, когда они появятся.
+| Событие (модуль)                          | Тип записи                                                      |
+| ----------------------------------------- | --------------------------------------------------------------- |
+| `UserLoggedInEvent` (auth)                | `auth.login.succeeded` (`meta.method`)                          |
+| `LoginFailedEvent` (auth)                 | `auth.login.failed` (`meta.login`, `reason`)                    |
+| `AccountLockedEvent` (auth)               | `auth.account.locked` (`meta.until`)                            |
+| `TwoFactorEnabled/DisabledEvent` (auth)   | `auth.2fa.enabled` / `auth.2fa.disabled`                        |
+| `PasswordChangedEvent` (user)             | `auth.password.changed` / `auth.password.reset`                 |
+| `UserSignedOutEvent` (auth)               | `auth.signed-out` / `auth.signed-out-all`                       |
+| `SessionTerminatedEvent` (session)        | `session.terminated` (`meta.reason`; кроме завершений выходом)  |
+| `PasskeyAdded/RemovedEvent` (passkeys)    | `passkey.added` / `passkey.removed`                             |
+| `BiometricAdded/RemovedEvent` (biometric) | `biometric.added` / `biometric.removed`                         |
+| `ApiKeyCreatedEvent` (api-key)            | `api-key.created` (`actorId` — владелец; `meta.name`, `scopes`) |
+| `ApiKeyRevokedEvent` (api-key)            | `api-key.revoked` (`actorId` — кто отозвал)                     |
 
 **Запись напрямую, не через очередь.** `EventBus.emit` не ждёт асинхронных
 обработчиков, поэтому запрос не тормозит; запись — один `INSERT`, а постановка в

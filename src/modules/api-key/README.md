@@ -1,3 +1,8 @@
+---
+module: modules/api-key
+summary: API-ключи сервисов для интеграций: выпуск, отзыв и схема аутентификации apiKey со scope
+---
+
 # Модуль ApiKey
 
 API-ключи сервисов (интеграции) и схема аутентификации
@@ -20,6 +25,7 @@ src/modules/api-key/
 ├── api-key.errors.ts      # ApiKeyError (APIKEY_*)
 ├── api-key.permissions.ts # ApiKeyPermissions (definePermissions)
 ├── api-key.types.ts       # Константы формата ключа
+├── events/                # ApiKeyCreatedEvent, ApiKeyRevokedEvent
 ├── dto/, validation/
 └── *.test.ts
 ```
@@ -63,7 +69,7 @@ src/modules/api-key/
 | ----- | ------------------------------ | --------------- | -------------------------------------------------------------------------- |
 | POST  | `/api/v1/api-keys`             | `apikey:create` | `{ name, scopes[], expiresAt? }` → 201 `{ apiKey, key }` (ключ — один раз) |
 | GET   | `/api/v1/api-keys`             | `apikey:view`   | `offset`/`limit` → `IPaginatedDto<ApiKeyDto>`                              |
-| POST  | `/api/v1/api-keys/{id}/revoke` | `apikey:revoke` | Отзыв, 204 (повторный — тоже 204)                                          |
+| POST  | `/api/v1/api-keys/{id}/revoke` | `apikey:revoke` | Отзыв, 204 (повторный — тоже 204); нет ключа — 404 `APIKEY_NOT_FOUND`      |
 
 Права объявлены `definePermissions("apikey", …)` (группа «API-ключи»); по умолчанию
 есть только у admin (через `*`).

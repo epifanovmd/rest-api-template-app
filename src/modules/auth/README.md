@@ -1,3 +1,8 @@
+---
+module: modules/auth
+summary: Регистрация, вход (пароль, 2FA), блокировка аккаунта, сброс пароля, обновление токенов, выход и refresh-cookie
+---
+
 # Модуль авторизации (Auth)
 
 Регистрация, вход (пароль, 2FA; passkey и биометрия — через `completeLogin`),
@@ -20,9 +25,11 @@ src/modules/auth/
 ├── auth.types.ts               # TLoginMethod, IAuthRequestMeta
 ├── auth.dto.ts                 # Интерфейсы запросов и ответов
 ├── auth.listener.ts            # EventBus → socket
+├── auth.socket-events.ts       # auth:2fa-changed в контракте сокета
+├── auth-password.policy.ts     # AuthPasswordPolicy — политика пароля для модуля user (PASSWORD_POLICY)
 ├── auth.module.ts
 ├── events/                     # UserLoggedIn, LoginFailed, AccountLocked, UserSignedOut, TwoFactorEnabled/Disabled
-├── validation/                 # Zod-схемы; account-password.ts — политика пароля
+├── validation/                 # Zod-схемы; account-password.ts — пароль аккаунта, two-factor-password.ts — пароли 2FA
 └── *.test.ts
 ```
 
@@ -60,12 +67,13 @@ src/modules/auth/
 **Регистрация.** Email приводится к нижнему регистру, телефон — `normalizePhone`.
 Email и телефон проверяются на уникальность оба; гонка регистраций (PG `23505`) → 409.
 
-**Политика пароля** (`validatePasswordPolicy` из ядра, реэкспорт из модуля): минимум
-8 символов, не совпадает с email (и его частью до `@`), не из встроенного списка частых
-паролей. Применяется в Zod-схемах `sign-up` и `reset-password` и повторно в сервисе
+**Политика пароля** (`validatePasswordPolicy` из ядра, реэкспорт из модуля): 8–100
+символов, не совпадает с email (и его частью до `@`) и username (если переданы), не из
+встроенного списка частых паролей. Применяется в Zod-схемах `sign-up` и `reset-password` и повторно в сервисе
 (`ValidationException` → 400 `VALIDATION_ERROR`, поле `password`). При сбросе пароль
 проверяется до погашения токена (`peek` → проверка → `check`). Смену пароля делает
-модуль user — он должен вызывать ту же функцию.
+модуль user: политику он получает через токен `PASSWORD_POLICY` — модуль auth
+регистрирует `AuthPasswordPolicy` (`asPasswordPolicy`), та же функция с email и username.
 
 **Вход.** Несуществующий логин и неверный пароль — одинаковый 401
 `AUTH_INVALID_CREDENTIALS` (пароль проверяется и для несуществующего пользователя).
@@ -80,7 +88,9 @@ IP: 429 `AUTH_ACCOUNT_LOCKED`, `details.retryAfter` (с) и заголовок `
 `AuthAttemptsStore` (ключи `auth:login:*`, Redis или память процесса). IP-лимит
 `ThrottleGuard` работает дополнительно.
 
-**2FA.** Пароль 2FA — от 6 символов; включение/отключение требуют пароль аккаунта.
+**2FA.** Новый пароль 2FA (`enable-2fa`) — 8–100 символов (без списка частых паролей);
+при вводе (`verify-2fa`, `disable-2fa`) — от 6 символов, чтобы прежние пароли
+оставались рабочими. Включение/отключение требуют пароль аккаунта.
 `verify-2fa`: неудачи на пользователя (`TWO_FACTOR_MAX_FAILURES = 5` за 15 мин) → 429
 `AUTH_TOO_MANY_ATTEMPTS` + `Retry-After`; `jti` гасится при успехе (`SET NX`).
 
