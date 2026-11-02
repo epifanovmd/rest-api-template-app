@@ -1,7 +1,7 @@
 ---
 id: ops/git-hooks
 title: Git-хуки
-summary: lefthook — pre-commit (prettier и eslint по застейдженным, typecheck, тесты), commit-msg (Conventional Commits).
+summary: lefthook — pre-commit (prettier и eslint по застейдженным, typecheck, тесты).
 layer: project
 roles: [devops, developer]
 stages: [commit]
@@ -23,13 +23,6 @@ depends_on: [process/git]
 | `eslint`    | застейдженные `src/**/*.ts` → `eslint --fix`, кроме `src/routing/routes.ts` и `src/migrations/**`; `stage_fixed`            |
 | `typecheck` | `yarn typecheck`                                                                                                            |
 | `test`      | `yarn test` (юнит-тесты целиком)                                                                                            |
-
-### commit-msg
-
-`node scripts/git/commit-msg.mjs <файл сообщения>` — формат Conventional Commits на
-русском: `<type>(<scope>)!: <описание>`, типы `feat fix refactor perf test docs style
-build ci chore revert`, заголовок до 100 символов. Merge, revert, `fixup!`/`squash!`
-проходят как есть. Правила — [process/git](../10-process/git.md).
 
 ## Что хуки не проверяют
 

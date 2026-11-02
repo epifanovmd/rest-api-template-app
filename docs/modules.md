@@ -1,4 +1,4 @@
-<!-- Сгенерировано scripts/docs/index.mjs (yarn docs:index). Не редактировать вручную. -->
+<!-- Ведётся вручную: правило — docs/00-meta/authoring.md#индекс. -->
 
 # Модули
 

@@ -50,8 +50,9 @@ depends_on: [meta/doc-system, meta/protection]
 ## Формат README модуля
 
 Шаблон — [templates/module-readme.md](templates/module-readme.md). Frontmatter:
-`module` (путь от `src/`) и `summary` — из них строится карта `docs/modules.md`. Содержимое — назначение, public API, устройство,
-зависимости, gotcha. Не пересказывать код и общие правила.
+`module` (путь от `src/`) и `summary` — то же описание стоит в строке карты
+`docs/modules.md`. Содержимое — назначение, public API, устройство, зависимости,
+gotcha. Не пересказывать код и общие правила.
 
 ## Размер и стиль
 
@@ -62,9 +63,13 @@ depends_on: [meta/doc-system, meta/protection]
 
 ## Индекс
 
-```sh
-yarn docs:index   # пересобрать docs/README.md и docs/modules.md
-```
+Индексы ведутся вручную, в той же правке, что и документ:
 
-При пересборке скрипт сообщает об ошибках формата: frontmatter, id, граф
-`depends_on`, битые ссылки.
+- добавлен, переименован или удалён документ `docs/**` — строка в таблице его папки
+  в [docs/README.md](../README.md): ссылка `id`, `summary`, слой, роли, этапы;
+- добавлен, переименован или удалён README модуля — строка в
+  [docs/modules.md](../modules.md): ссылка, `summary`;
+- изменился `summary` — он же обновляется в строке индекса.
+
+Перед завершением правки сверить: frontmatter заполнен, `id` совпадает с путём,
+ссылки ведут на существующие файлы, `depends_on` ссылается на существующие `id`.

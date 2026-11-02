@@ -75,7 +75,7 @@ Redis, Socket.IO, S3/диск, Zod, pino, prom-client + Sentry, Mocha. Роль 
 
 ## Защищённые правила
 
-`CLAUDE.md`, `README.md`, `docs/**` (кроме `docs/inbox/`), `.claude/`, `scripts/{docs,git}`,
+`CLAUDE.md`, `README.md`, `docs/**` (кроме `docs/inbox/`), `.claude/`,
 конфиги линтера и git-хуков меняются **только по явному указанию пользователя**
 ([protection](docs/00-meta/protection.md)).
 
@@ -89,5 +89,4 @@ Redis, Socket.IO, S3/диск, Zod, pino, prom-client + Sentry, Mocha. Роль 
 yarn lint && yarn typecheck         # после каждой итерации (+ yarn test:file <путь>)
 yarn verify                         # generate + lint + typecheck + test + build
 yarn services:up && yarn test:e2e   # e2e на одноразовых сервисах
-yarn docs:index                     # пересобрать индексы документации
 ```

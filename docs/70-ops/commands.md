@@ -20,7 +20,6 @@ depends_on: []
 | тест одного файла / папки | `yarn test:file <path>` (папка — glob: `yarn test:file "src/modules/file/**/*.test.ts"`)                                    |
 | полная проверка           | `yarn verify` — generate, lint, typecheck, test, build; плюс `yarn test:e2e` при изменении API, схемы БД или инфраструктуры |
 | форматирование файлов     | `yarn prettier --write <файлы>`                                                                                             |
-| документация              | `yarn docs:index` — пересборка индексов                                                                                     |
 
 | Команда                  | Что делает                                                                        |
 | ------------------------ | --------------------------------------------------------------------------------- |
@@ -30,7 +29,6 @@ depends_on: []
 | `yarn test:file <path>`  | тесты по пути без `.mocharc.yml` (`--require tsx`, timeout 10 с)                  |
 | `yarn test:e2e`          | e2e против настоящего сервера ([e2e](e2e.md)); нужны сервисы (`yarn services:up`) |
 | `yarn prettier:fix`      | Prettier по `src/**/*.ts`                                                         |
-| `yarn docs:index`        | пересобрать `docs/README.md` и `docs/modules.md`                                  |
 | `yarn outdated`          | устаревшие зависимости                                                            |
 
 Перед сдачей задачи обязательна полная проверка; что считается «готово» —

@@ -17,14 +17,14 @@ depends_on: [meta/doc-system]
 - `CLAUDE.md`, корневой `README.md`;
 - `docs/**`, кроме `docs/inbox/`;
 - `.claude/rules/`, `.claude/skills/`, `.claude/agents/`, `.claude/settings.json`;
-- машинные правила: `scripts/docs/`, `scripts/git/`, конфигурации линтера и git-хуков.
+- конфигурации линтера и git-хуков.
 
 Не защищены и обновляются по ходу задачи:
 
 - README модулей `src/**/README.md` — меняются вместе с кодом модуля;
 - `docs/inbox/` — сюда агент пишет предложения;
-- сгенерированные индексы `docs/README.md`, `docs/modules.md` — пересобираются
-  `yarn docs:index`.
+- индексы `docs/README.md`, `docs/modules.md` — обновляются вместе с документом
+  или README модуля ([authoring](authoring.md#индекс)).
 
 ## Явное указание
 

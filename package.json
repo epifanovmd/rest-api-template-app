@@ -37,7 +37,6 @@
     "migration:revert": "NODE_ENV=development tsx ./node_modules/typeorm/cli.js migration:revert -d src/data-source.ts",
     "typecheck": "tsc --noEmit",
     "verify": "yarn generate && yarn lint && yarn typecheck && yarn test && yarn build",
-    "docs:index": "node --no-warnings scripts/docs/index.mjs --write",
     "gen:module": "node scripts/gen-module.mjs",
     "prepare": "lefthook install",
     "migration:run:prod": "typeorm migration:run -d build/data-source.js"

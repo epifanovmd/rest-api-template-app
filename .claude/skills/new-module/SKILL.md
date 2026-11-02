@@ -12,6 +12,7 @@ argument-hint: "[что за модуль и зачем]"
 3. Структура и регистрация — по эталону [recipes](../../../docs/50-tech/recipes.md);
    генератор каркаса, если он есть, — [ops/commands](../../../docs/70-ops/commands.md).
 4. `README.md` по [шаблону](../../../docs/00-meta/templates/module-readme.md).
-5. `yarn docs:index` и быстрая проверка ([ops/commands](../../../docs/70-ops/commands.md)).
+5. Строка в [docs/modules.md](../../../docs/modules.md) и быстрая проверка
+   ([ops/commands](../../../docs/70-ops/commands.md)).
 
 Модуль: $ARGUMENTS
