@@ -10,13 +10,13 @@ presence, адаптер Socket.IO. Без `REDIS_URL` потребители р
 
 ## Public API
 
-| Экспорт                                       | Что                                                                         |
-| --------------------------------------------- | --------------------------------------------------------------------------- |
-| `getRedis()`                                  | общий клиент для обычных команд; `undefined` без `REDIS_URL`                |
-| `isRedisConfigured()`                         | задан ли `REDIS_URL`                                                        |
-| `createRedisClient(purpose, { prefixKeys? })` | отдельное соединение (pub/sub, адаптер); без `REDIS_URL` — исключение       |
-| `closeRedis()`                                | закрыть общий клиент                                                        |
-| `LiveStore(prefix)`                           | `getJson`/`setJson`/`delete`/`setIfAbsent`/`incrBy` с TTL; Redis или память |
+| Экспорт                                       | Что                                                                                        |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `getRedis()`                                  | общий клиент для обычных команд; `undefined` без `REDIS_URL`                               |
+| `isRedisConfigured()`                         | задан ли `REDIS_URL`                                                                       |
+| `createRedisClient(purpose, { prefixKeys? })` | отдельное соединение (pub/sub, адаптер); без `REDIS_URL` — исключение «REDIS_URL не задан» |
+| `closeRedis()`                                | закрыть общий клиент; вызывает `App.shutdown`                                              |
+| `LiveStore(prefix)`                           | `getJson`/`setJson`/`delete`/`setIfAbsent`/`incrBy` с TTL; Redis или память                |
 
 ## Устройство
 
@@ -39,6 +39,10 @@ presence, адаптер Socket.IO. Без `REDIS_URL` потребители р
 
 - В production `REDIS_URL` обязателен (проверка конфига): без него лимиты, отзыв
   токенов и presence у каждой реплики свои.
-- Общий клиент создаётся лениво при первом `getRedis()` — в том числе при импорте
-  `middleware` (лимит запросов создаётся на уровне модуля).
-- `closeRedis()` в коде приложения не вызывается.
+- Общий клиент создаётся лениво при первом `getRedis()`; импорт `middleware` его не
+  открывает — лимит запросов создаётся фабрикой при сборке цепочки.
+- `closeRedis()` вызывается в `App.shutdown` (`src/app.ts`) после остановки
+  бутстраперов (сокеты, фоновые задачи) и до закрытия БД. Юнит-тестом не покрыто
+  (`App.shutdown` не собирается в тесте); ручная проверка: `yarn dev` с `REDIS_URL`,
+  `redis-cli client list` показывает `<APP_NAME>:shared`, после Ctrl+C соединения нет и
+  процесс завершается без ожидания `SHUTDOWN_TIMEOUT_MS`.

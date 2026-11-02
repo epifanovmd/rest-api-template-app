@@ -303,6 +303,25 @@ describe("TokenService", () => {
       }
     });
 
+    it("scope without role:/permission: prefix denies access (fail closed)", async () => {
+      const token = createToken({
+        userId: "user-1",
+        roles: ["user"],
+        permissions: ["chat:view"],
+        emailVerified: true,
+      });
+
+      try {
+        await service.verify(token, ["permision:user:manage"]);
+        expect.fail("should have thrown");
+      } catch (err) {
+        expect(err).to.include({
+          status: 403,
+          code: "AUTH_INSUFFICIENT_PERMISSIONS",
+        });
+      }
+    });
+
     it("empty scopes array skips scope checking", async () => {
       const token = createToken({
         userId: "user-1",

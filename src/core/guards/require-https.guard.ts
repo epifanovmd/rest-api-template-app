@@ -14,7 +14,7 @@ import { IGuard } from "./types";
 export class RequireHttpsGuard implements IGuard {
   process(ctx: Context): boolean {
     if (!ctx.secure) {
-      throw new ForbiddenException("HTTPS required.");
+      throw new ForbiddenException("Требуется HTTPS.");
     }
 
     return true;

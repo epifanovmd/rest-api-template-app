@@ -70,8 +70,13 @@ export const createRateLimitMiddleware = ({
   };
 };
 
-export const rateLimitMiddleware = createRateLimitMiddleware({
-  ...config.rateLimit,
-  redis: getRedis(),
-  skip: ctx => isRateLimitExempt(ctx.path),
-});
+/**
+ * Лимит API приложения. Создаётся при сборке приложения, а не при импорте:
+ * общий клиент Redis открывается только когда лимит действительно нужен.
+ */
+export const createAppRateLimitMiddleware = (): Koa.Middleware =>
+  createRateLimitMiddleware({
+    ...config.rateLimit,
+    redis: getRedis(),
+    skip: ctx => isRateLimitExempt(ctx.path),
+  });

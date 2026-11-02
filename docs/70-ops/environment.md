@@ -53,20 +53,20 @@ yarn dev                            # http://localhost:8181, Swagger — /api-do
 
 ## Группы переменных (`.env.example`)
 
-| Группа        | Переменные                                                                                                                                                                 |
-| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| App / Server  | `APP_NAME`, `APP_ROLE` (`api`/`worker`/`all`), `APP_PUBLIC_URL`, `PUBLIC_HOST`, `SERVER_HOST`, `SERVER_PORT` (8181), `TRUST_PROXY`, `API_DOCS_ENABLED`, `API_DOCS_SERVERS` |
-| Хранилище     | `STORAGE_DRIVER` (`local`/`s3`), `STORAGE_LOCAL_PATH`, `STORAGE_SIGNED_URL_TTL_SECONDS`, `S3_*` (в т.ч. `S3_PUBLIC_ENDPOINT`, `S3_FORCE_PATH_STYLE`)                       |
-| Задачи        | `JOBS_CONCURRENCY`, `JOBS_SHUTDOWN_TIMEOUT_MS`, `JOBS_POOL_MAX`                                                                                                            |
-| Наблюдаемость | `METRICS_ENABLED`, `METRICS_TOKEN`, `SENTRY_DSN`, `LOG_LEVEL`, `LOG_PRETTY`                                                                                                |
-| Остановка     | `SHUTDOWN_DRAIN_MS`, `SHUTDOWN_INFLIGHT_TIMEOUT_MS`, `SHUTDOWN_TIMEOUT_MS`                                                                                                 |
-| Redis         | `REDIS_URL`, `REDIS_KEY_PREFIX` (изоляция в общем Redis)                                                                                                                   |
-| Лимиты, CORS  | `RATE_LIMIT`, `RATE_LIMIT_INTERVAL`, `CORS_ALLOWED_ORIGINS`                                                                                                                |
-| Auth          | `JWT_SECRET_KEY` (≥ 32), `JWT_ACCESS_TTL`, `JWT_REFRESH_TTL_DAYS`, `AUTH_REFRESH_COOKIE`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`                                                  |
-| OTP / сброс   | `OTP_EXPIRE_MINUTES`, `RESET_PASS_TOKEN_EXPIRE_MINUTES`, `WEB_URL_RESET_PASSWORD`                                                                                          |
-| WebAuthn      | `WEB_AUTHN_RP_NAME`, `WEB_AUTHN_RP_HOST`, `WEB_AUTHN_RP_SCHEMA`, `WEB_AUTHN_RP_PORT`                                                                                       |
-| БД            | `POSTGRES_*` (host, port, db, user, password, SSL, пул, таймауты, slow query), `DB_MIGRATIONS_RUN`                                                                         |
-| SMTP          | `SMTP_HOST` (пусто — почта выключена), `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`                                                                   |
+| Группа        | Переменные                                                                                                                                                                                |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| App / Server  | `APP_NAME`, `APP_VERSION`, `APP_ROLE` (`api`/`worker`/`all`), `APP_PUBLIC_URL`, `PUBLIC_HOST`, `SERVER_HOST`, `SERVER_PORT` (8181), `TRUST_PROXY`, `API_DOCS_ENABLED`, `API_DOCS_SERVERS` |
+| Хранилище     | `STORAGE_DRIVER` (`local`/`s3`), `STORAGE_LOCAL_PATH`, `STORAGE_SIGNED_URL_TTL_SECONDS`, `S3_*` (в т.ч. `S3_PUBLIC_ENDPOINT`, `S3_FORCE_PATH_STYLE`)                                      |
+| Задачи        | `JOBS_CONCURRENCY`, `JOBS_SHUTDOWN_TIMEOUT_MS`, `JOBS_POOL_MAX`                                                                                                                           |
+| Наблюдаемость | `METRICS_ENABLED`, `METRICS_TOKEN`, `SENTRY_DSN`, `LOG_LEVEL`, `LOG_PRETTY`                                                                                                               |
+| Остановка     | `SHUTDOWN_DRAIN_MS`, `SHUTDOWN_INFLIGHT_TIMEOUT_MS`, `SHUTDOWN_TIMEOUT_MS`                                                                                                                |
+| Redis         | `REDIS_URL`, `REDIS_KEY_PREFIX` (изоляция в общем Redis)                                                                                                                                  |
+| Лимиты, CORS  | `RATE_LIMIT`, `RATE_LIMIT_INTERVAL`, `CORS_ALLOWED_ORIGINS`                                                                                                                               |
+| Auth          | `JWT_SECRET_KEY` (≥ 32), `JWT_ACCESS_TTL`, `JWT_REFRESH_TTL_DAYS`, `AUTH_REFRESH_COOKIE`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`                                                                 |
+| OTP / сброс   | `OTP_EXPIRE_MINUTES`, `RESET_PASS_TOKEN_EXPIRE_MINUTES`, `WEB_URL_RESET_PASSWORD`                                                                                                         |
+| WebAuthn      | `WEB_AUTHN_RP_NAME`, `WEB_AUTHN_RP_HOST`, `WEB_AUTHN_RP_SCHEMA`, `WEB_AUTHN_RP_PORT`                                                                                                      |
+| БД            | `POSTGRES_*` (host, port, db, user, password, SSL, пул, таймауты, slow query), `DB_MIGRATIONS_RUN`                                                                                        |
+| SMTP          | `SMTP_HOST` (пусто — почта выключена), `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`                                                                                  |
 
 Переменные compose (`ENV_FILE`, `IMAGE`, `TAG`, `API_PORTS`, `S3_ROOT_*`, `S3_PORTS`,
 `INFRA_NETWORK`) — [services-compose](services-compose.md); `E2E_*` — [e2e](e2e.md).

@@ -254,7 +254,8 @@ export class TokenService {
   }
 
   /**
-   * Проверяет, что токен удовлетворяет ВСЕМ требуемым областям (семантика AND).
+   * Проверяет, что токен удовлетворяет ВСЕМ требуемым областям (семантика AND);
+   * scope без префикса `role:`/`permission:` — отказ.
    * Обход суперпользователя: `SUPERUSER_ROLE` или право `ALL_PERMISSIONS`.
    */
   private checkScopes(decoded: JWTDecoded, scopes: SecurityScopes): void {
@@ -272,6 +273,9 @@ export class TokenService {
         if (!hasPermission(permissions, scope.slice(11))) {
           throw AuthTokenError.INSUFFICIENT_PERMISSIONS();
         }
+      } else {
+        // Неизвестный формат scope — отказ: опечатка не должна открывать маршрут.
+        throw AuthTokenError.INSUFFICIENT_PERMISSIONS();
       }
     }
   }

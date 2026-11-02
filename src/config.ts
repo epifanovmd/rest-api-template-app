@@ -86,6 +86,8 @@ const configSchema = z.object({
     role: z.enum(["api", "worker", "all"]).default("all"),
     /** Публичный URL API (для ссылок в письмах, подписанных URL файлов). */
     publicUrl: z.string().default("http://localhost:8181"),
+    /** Версия сборки: `APP_VERSION`, иначе версия пакета (Sentry release, `/health`). */
+    version: z.string().min(1).default("unknown"),
   }),
 
   jobs: z.object({
@@ -301,11 +303,18 @@ export type Config = z.infer<typeof configSchema>;
 
 const { env } = process;
 
+/** Версия сборки: непустой `APP_VERSION`, иначе версия пакета; пусто — `undefined` (умолчание схемы). */
+export const resolveAppVersion = (
+  source: NodeJS.ProcessEnv,
+): string | undefined =>
+  source.APP_VERSION || source.npm_package_version || undefined;
+
 export const config: Config = productionSchema.parse({
   app: {
     name: env.APP_NAME,
     role: env.APP_ROLE,
     publicUrl: env.APP_PUBLIC_URL,
+    version: resolveAppVersion(env),
   },
   jobs: {
     concurrency: env.JOBS_CONCURRENCY,

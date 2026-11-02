@@ -10,16 +10,17 @@ summary: Сквозные Koa-middleware приложения — requestId, л�
 
 ## Public API
 
-| Экспорт                                                                                                        | Что                                                                             |
-| -------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| `RegisterBaseMiddlewares`                                                                                      | `requestId` → `requestLogger` → `error` — для всех маршрутов, включая служебные |
-| `RegisterAppMiddlewares`                                                                                       | `helmet` → `cors` → `rateLimit` → `bodyParser` — для маршрутов API              |
-| `notFoundMiddleware`                                                                                           | 404 `NOT_FOUND` в общем формате; ставится после всех маршрутов                  |
-| `errorMiddleware`, `ErrorResponseBody`                                                                         | исключение → `IErrorResponseDto` + `requestId`; 5xx — в лог и Sentry            |
-| `requestIdMiddleware`, `REQUEST_ID_HEADER`                                                                     | `X-Request-ID` из запроса (если uuid) или новый; кладёт в ALS логгера           |
-| `isAllowedOrigin`                                                                                              | политика origin, общая для HTTP и Socket.IO                                     |
-| `createRateLimitMiddleware`, `isRateLimitExempt`                                                               | лимит по IP: Redis или память, fail-open                                        |
-| `helmetMiddleware`, `corsMiddleware`, `bodyParserMiddleware`, `requestLoggerMiddleware`, `rateLimitMiddleware` | готовые экземпляры                                                              |
+| Экспорт                                                                                 | Что                                                                             |
+| --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| `RegisterBaseMiddlewares`                                                               | `requestId` → `requestLogger` → `error` — для всех маршрутов, включая служебные |
+| `RegisterAppMiddlewares`                                                                | `helmet` → `cors` → `rateLimit` → `bodyParser` — для маршрутов API              |
+| `notFoundMiddleware`                                                                    | 404 `NOT_FOUND` в общем формате; ставится после всех маршрутов                  |
+| `errorMiddleware`, `ErrorResponseBody`                                                  | исключение → `IErrorResponseDto` + `requestId`; 5xx — в лог и Sentry            |
+| `requestIdMiddleware`, `REQUEST_ID_HEADER`                                              | `X-Request-ID` из запроса (если uuid) или новый; кладёт в ALS логгера           |
+| `isAllowedOrigin`                                                                       | политика origin, общая для HTTP и Socket.IO                                     |
+| `createRateLimitMiddleware`, `isRateLimitExempt`                                        | лимит по IP: Redis или память, fail-open                                        |
+| `createAppRateLimitMiddleware`                                                          | лимит API по `config.rateLimit`; вызывается в `RegisterAppMiddlewares`          |
+| `helmetMiddleware`, `corsMiddleware`, `bodyParserMiddleware`, `requestLoggerMiddleware` | готовые экземпляры                                                              |
 
 ## Устройство
 
@@ -38,7 +39,11 @@ tsoa и маршруты модулей → `notFoundMiddleware`.
 - **CORS:** `CORS_ALLOWED_ORIGINS`, `*` — любой origin; `credentials: true`;
   разрешены `X-Request-ID`, `X-Device-Name`, `X-Device-Type`.
 - **Лимит:** `config.rateLimit`, ключ — `ctx.ip`; пути `/files/*` (подписанные
-  ссылки) не считаются. Ошибка хранилища — запрос пропускается с предупреждением;
+  ссылки) не считаются. Экземпляр создаёт фабрика `createAppRateLimitMiddleware()` при
+  сборке цепочки, а не импорт модуля: общий клиент Redis открывается только тогда
+  (тестом не покрыто — ручная проверка: импорт `src/middleware` в скрипте с
+  `REDIS_URL` не создаёт соединения в `redis-cli client list`). Ошибка хранилища —
+  запрос пропускается с предупреждением;
   ошибки ниже по цепочке пробрасываются как есть.
 - **Лог доступа:** `/ping`, `/ready` не логируются; запрос дольше 2 с — `warn`
   (long-poll помечается `longPollSignal` и медленным не считается).
@@ -53,8 +58,6 @@ socket (`isAllowedOrigin`).
 
 ## Gotcha
 
-- `rateLimitMiddleware` создаётся при импорте модуля: импорт `middleware` уже
-  открывает соединение с Redis (`getRedis()`).
 - Системные маршруты стоят до `RegisterAppMiddlewares`: у них нет CORS, helmet и
   лимита, но есть `requestId` и формат ошибок.
 - `ctx.ip` за прокси корректен только при `TRUST_PROXY` (`koa.proxy`).

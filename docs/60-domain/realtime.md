@@ -49,7 +49,7 @@ depends_on: [domain/access]
 | `ping { ts }`                                      | `pong { ts }`                                                  |
 | `auth:refresh { accessToken }`                     | ack `{ ok, expiresAt?, error? }` — та же сессия и пользователь |
 | `room:subscribe` / `room:unsubscribe { type, id }` | ack `{ ok }`                                                   |
-| `profile:subscribe`                                | вход в комнату `profile`                                       |
+| `profile:subscribe`                                | ack `{ ok }`, вход в комнату `profile`; без данных, ≤1/с       |
 
 ## Сервер → клиент
 

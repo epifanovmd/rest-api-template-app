@@ -42,8 +42,8 @@ summary: Аутентификация и проверка прав без зна
   `privileges:changed:<id>` с TTL = срок access-токена. Пишутся в память процесса и в
   Redis; проверка — память, затем один `MGET` с локальным кэшем 1 с. Отзыв сессии
   важнее смены прав (`AUTH_SESSION_REVOKED` против `AUTH_PRIVILEGES_CHANGED`).
-- **Scopes `jwt`** — семантика AND: `role:<r>` и `permission:<p>`; суперпользователь
-  проходит всё.
+- **Scopes `jwt`** — семантика AND: `role:<r>` и `permission:<p>`; любой другой
+  формат — отказ (fail closed); суперпользователь проходит всё.
 - **Пароли** — `scrypt$N$salt$hash`; bcrypt-хеши `$2…` только проверяются.
 
 ## Зависимости
@@ -55,9 +55,10 @@ summary: Аутентификация и проверка прав без зна
 
 ## Gotcha
 
-- Страж `core-boundaries.test.ts`: `src/core/**` и `src/types/**` не импортируют
+- Страж `core-boundaries.test.ts`: `src/core/**`, `src/types/**` и `src/common/**` не импортируют
   `src/modules/**`.
-- Scope `jwt` без префикса `role:`/`permission:` молча игнорируется — проверку такого
-  scope делает сама схема (как `apiKey`).
+- Scope `jwt` без префикса `role:`/`permission:` (в т. ч. опечатка вроде `permision:`)
+  даёт 403 `AUTH_INSUFFICIENT_PERMISSIONS` — опечатка не открывает маршрут. Суперпользователь
+  проходит и такой scope: проверка формата идёт после его обхода.
 - Без Redis отзыв виден только своему процессу; недоступный Redis — fail-open с логом.
 - `AccessService` всегда идёт в БД: в горячем пути предпочитать права из токена.

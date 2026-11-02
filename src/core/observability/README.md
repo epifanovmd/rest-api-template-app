@@ -27,14 +27,14 @@ summary: Наблюдаемость — метрики Prometheus, отправ�
 
 ## Конфиг
 
-| Переменная        | Секция конфига                 | По умолчанию  | Смысл                                                             |
-| ----------------- | ------------------------------ | ------------- | ----------------------------------------------------------------- |
-| `METRICS_ENABLED` | `observability.metricsEnabled` | `true`        | `/metrics` и сбор HTTP-метрик                                     |
-| `METRICS_TOKEN`   | `observability.metricsToken`   | пусто         | Bearer-токен для `/metrics`; пусто — без защиты (закрывать сетью) |
-| `SENTRY_DSN`      | `observability.sentryDsn`      | пусто         | DSN Sentry; пусто — ошибки не отправляются                        |
-| `APP_NAME`        | `app.name`                     | `rest-api`    | Метка `service` метрик; часть `serverName` в Sentry               |
-| `APP_ROLE`        | `app.role`                     | `all`         | Метка `role` метрик; часть `serverName` в Sentry                  |
-| `APP_VERSION`     | — (env)                        | версия пакета | `release` в Sentry; в образ пишется при релизе                    |
+| Переменная        | Секция конфига                 | По умолчанию                                           | Смысл                                                                      |
+| ----------------- | ------------------------------ | ------------------------------------------------------ | -------------------------------------------------------------------------- |
+| `METRICS_ENABLED` | `observability.metricsEnabled` | `true`                                                 | `/metrics` и сбор HTTP-метрик                                              |
+| `METRICS_TOKEN`   | `observability.metricsToken`   | пусто                                                  | Bearer-токен для `/metrics`; пусто — без защиты (закрывать сетью)          |
+| `SENTRY_DSN`      | `observability.sentryDsn`      | пусто                                                  | DSN Sentry; пусто — ошибки не отправляются                                 |
+| `APP_NAME`        | `app.name`                     | `rest-api`                                             | Метка `service` метрик; часть `serverName` в Sentry                        |
+| `APP_ROLE`        | `app.role`                     | `all`                                                  | Метка `role` метрик; часть `serverName` в Sentry                           |
+| `APP_VERSION`     | `app.version`                  | версия пакета (`npm_package_version`), иначе `unknown` | `release` в Sentry, поле `version` в `/health`; в образ пишется при релизе |
 
 ## Метрики
 
@@ -95,7 +95,7 @@ scrape_configs:
 
 - `@sentry/node` инициализируется в `instrument.ts` при `SENTRY_DSN` (лениво, без
   DSN пакет не грузится). Только ошибки, без трассировки. `serverName` —
-  `<app.name>:<app.role>` (например `rest-api:worker`).
+  `<app.name>:<app.role>` (например `rest-api:worker`), `release` — `config.app.version`.
 - `reportError(err, ctx, status = ctx.status)` — хук error middleware: в трекер
   уходят только 5xx, с тегами `source=http`, `route`, `request_id` и `user.id`.
 - `reportProcessError(err, "unhandledRejection" | "uncaughtException")` — из
@@ -115,7 +115,7 @@ scrape_configs:
 Ответ `/health`: `{ status: "ok" | "degraded", ready, role, services: { database, redis, smtp, ...модули } }`,
 статусы сервисов — `ok`, `error`, `not_configured`. 503 — если упала БД, Redis
 (настроенный) или критичная проверка модуля. Вне production добавляются
-`uptime`, `version`, `memory`.
+`uptime`, `version` (`config.app.version`), `memory`.
 
 Проверка модуля (например, pg-boss):
 

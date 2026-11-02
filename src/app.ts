@@ -12,6 +12,7 @@ import { config, nodeEnv } from "./config";
 import {
   BOOTSTRAP,
   buildDocsServers,
+  closeRedis,
   DbHealthMonitor,
   EventBus,
   hasPendingMigrations,
@@ -312,6 +313,9 @@ export class App {
     await this.destroyBootstrappers();
 
     if (iocContainer.isBound(EventBus)) iocContainer.get(EventBus).clear();
+
+    // Общий клиент Redis (лимиты, presence, отзыв токенов) — после сокетов и задач.
+    await closeRedis();
 
     this.dbHealth.stop();
 

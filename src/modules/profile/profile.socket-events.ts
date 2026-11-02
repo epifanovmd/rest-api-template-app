@@ -2,6 +2,7 @@
  * Сокет-события модуля: дополняют контракт `socket.types` (declare module
  * работает только с модулем-объявлением, не с index).
  */
+import type { ISocketAckResponse } from "../socket";
 import type { PrivacySettingsDto, PublicProfileDto } from "./dto";
 
 export interface ISocketUserPresencePayload {
@@ -15,7 +16,11 @@ export interface ISocketPresenceInitPayload {
 
 declare module "../socket/socket.types" {
   interface ISocketEvents {
-    "profile:subscribe": () => void;
+    /** Войти в комнату `profile`; данных нет, ответ — ack */
+    "profile:subscribe": (
+      data?: undefined,
+      ack?: (res: ISocketAckResponse) => void,
+    ) => void;
   }
 
   interface ISocketEmitEvents {

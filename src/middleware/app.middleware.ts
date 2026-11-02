@@ -4,7 +4,7 @@ import { bodyParserMiddleware } from "./body-parser.middleware";
 import { corsMiddleware } from "./cors.middleware";
 import { errorMiddleware } from "./error.middleware";
 import { helmetMiddleware } from "./helmet.middleware";
-import { rateLimitMiddleware } from "./rate-limit.middleware";
+import { createAppRateLimitMiddleware } from "./rate-limit.middleware";
 import { requestIdMiddleware } from "./request-id.middleware";
 import { requestLoggerMiddleware } from "./request-logger.middleware";
 
@@ -28,6 +28,6 @@ export const RegisterAppMiddlewares = (app: Koa) => {
   app
     .use(helmetMiddleware)
     .use(corsMiddleware)
-    .use(rateLimitMiddleware)
+    .use(createAppRateLimitMiddleware())
     .use(bodyParserMiddleware);
 };

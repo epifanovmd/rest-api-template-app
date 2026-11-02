@@ -6,6 +6,7 @@ import { ForbiddenException, UnauthorizedException } from "../http";
 import { ApiKeyGuard } from "./api-key.guard";
 import { IpWhitelistGuard } from "./ip-whitelist.guard";
 import { RequireHttpsGuard } from "./require-https.guard";
+import { RequireVerifiedEmailGuard } from "./require-verified-email.guard";
 
 const createCtx = (overrides: Record<string, any> = {}) =>
   ({
@@ -106,5 +107,39 @@ describe("IpWhitelistGuard", () => {
     });
 
     expect(() => guard.process(ctx)).to.throw(ForbiddenException);
+  });
+});
+
+describe("RequireVerifiedEmailGuard", () => {
+  const guard = new RequireVerifiedEmailGuard();
+
+  it("берёт emailVerified из контекста аутентификации, без повторного разбора токена", async () => {
+    const ctx = createCtx({
+      state: { user: { userId: "u-1", emailVerified: true } },
+    });
+
+    expect(await guard.process(ctx)).to.be.true;
+  });
+
+  it("email не подтверждён — ForbiddenException", async () => {
+    const ctx = createCtx({
+      state: { user: { userId: "u-1", emailVerified: false } },
+    });
+
+    try {
+      await guard.process(ctx);
+      expect.fail("should have thrown");
+    } catch (err) {
+      expect(err).to.be.instanceOf(ForbiddenException);
+    }
+  });
+
+  it("нет аутентифицированного пользователя — UnauthorizedException", async () => {
+    try {
+      await guard.process(createCtx({ state: {} }));
+      expect.fail("should have thrown");
+    } catch (err) {
+      expect(err).to.be.instanceOf(UnauthorizedException);
+    }
   });
 });

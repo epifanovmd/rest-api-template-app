@@ -1,13 +1,22 @@
+import { z } from "zod";
+
 import { Injectable } from "../../core";
-import { ISocketHandler, TSocket } from "../socket";
+import { ISocketHandler, onValidated, TSocket } from "../socket";
+
+/** Подписка на изменения профилей: событие без данных, с лимитом частоты. */
+const SubscribeSchema = z.undefined();
 
 @Injectable()
 export class ProfileHandler implements ISocketHandler {
-  constructor() {}
-
   onConnection(socket: TSocket): void {
-    socket.on("profile:subscribe", () => {
-      socket.join("profile");
-    });
+    onValidated(
+      socket,
+      "profile:subscribe",
+      SubscribeSchema,
+      () => {
+        socket.join("profile");
+      },
+      { rateLimit: { perSecond: 1, burst: 5 } },
+    );
   }
 }

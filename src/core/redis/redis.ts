@@ -21,7 +21,7 @@ export const createRedisClient = (
   const url = config.redis.url;
 
   if (!url) {
-    throw new Error("REDIS_URL is not configured");
+    throw new Error("REDIS_URL не задан");
   }
 
   const client = new Redis(url, {

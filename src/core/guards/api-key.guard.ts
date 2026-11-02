@@ -11,7 +11,7 @@ import { IGuard } from "./types";
  * @param header   — заголовок (по умолчанию 'x-api-key')
  *
  * @example
- * @UseGuards(ApiKeyGuard(process.env.INTERNAL_API_KEY, 'x-api-key'))
+ * @UseGuards(ApiKeyGuard(config.<секция>.apiKey, 'x-api-key'))
  * @Post('/internal/sync')
  */
 export const ApiKeyGuard = (validKey: string, header = "x-api-key") =>
@@ -20,7 +20,7 @@ export const ApiKeyGuard = (validKey: string, header = "x-api-key") =>
       const key = ctx.headers[header];
 
       if (!key || key !== validKey) {
-        throw new UnauthorizedException("Invalid or missing API key.");
+        throw new UnauthorizedException("Неверный или отсутствующий API-ключ.");
       }
 
       return true;

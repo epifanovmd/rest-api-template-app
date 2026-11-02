@@ -1,12 +1,13 @@
 import { Context } from "koa";
 
-import { verifyToken } from "../auth";
+import { AuthContext } from "../../types/koa";
 import { ForbiddenException, UnauthorizedException } from "../http";
 import { IGuard } from "./types";
 
 /**
  * Требует подтверждённого email у пользователя.
- * Читает claim emailVerified из JWT без обращения к БД.
+ * Читает `emailVerified` из контекста аутентификации (`ctx.state.user`), который
+ * заполняет схема безопасности после проверки токена и отзыва сессии.
  * Должен использоваться вместе с @Security('jwt').
  *
  * @example
@@ -15,17 +16,15 @@ import { IGuard } from "./types";
  * @Post('/send-message')
  */
 export class RequireVerifiedEmailGuard implements IGuard {
-  async process(ctx: Context): Promise<boolean> {
-    const token = ctx.headers.authorization?.split(" ")[1];
+  process(ctx: Context): boolean {
+    const user = ctx.state.user as AuthContext | undefined;
 
-    if (!token) {
+    if (!user) {
       throw new UnauthorizedException();
     }
 
-    const { emailVerified } = await verifyToken(token);
-
-    if (!emailVerified) {
-      throw new ForbiddenException("Email verification required.");
+    if (!user.emailVerified) {
+      throw new ForbiddenException("Требуется подтверждённый email.");
     }
 
     return true;
